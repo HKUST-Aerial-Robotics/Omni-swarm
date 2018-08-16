@@ -1,0 +1,11 @@
+Header header
+uint32 sys_time
+uint32 remote_node_num
+uint32 self_id
+uint32[] node_ids
+float32[] node_dis
+float32[] rssi
+uint32[] recv_distance_time
+bool[] active
+bool[] data_available
+infinity_uwb_ros/data_buffer[] datas
