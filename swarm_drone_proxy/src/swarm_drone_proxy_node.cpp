@@ -75,6 +75,9 @@ class SwarmDroneProxy
 
     void send_swarm_mavlink(const float * dis) 
     {
+
+        // ROS_INFO("SENDING MAVLINK");
+
         mavlink_message_t msg;
 
         mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(), 
@@ -90,6 +93,7 @@ class SwarmDroneProxy
 
     void on_remote_nodes_data_recv(const infinity_uwb_ros::remote_uwb_info & info)
     {
+
         int drone_num = info.node_ids.size();
         const std::vector<unsigned int> & ids = info.node_ids;
 
@@ -170,11 +174,12 @@ public:
     SwarmDroneProxy(ros::NodeHandle & _nh):
         nh(_nh)
     {
+        ROS_INFO("Start SWARM Drone Proxy");
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe("/vins_estimator/odometry", 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
-        uwb_senddata_pub = nh.advertise<data_buffer>("send_broadcast_data", 1);
+        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
     }
 };
 
@@ -182,6 +187,6 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "swarm_drone_proxy");
     ros::NodeHandle nh("swarm_drone_proxy");
-
+    new SwarmDroneProxy(nh);
     ros::spin();
 }

@@ -125,7 +125,7 @@ public:
         });
 
         uwbfuse.callback = cb;
-        printf("Will use %d number of keyframe\n", frame_num);
+        ROS_INFO("Will use %d number of keyframe\n", frame_num);
         uwbfuse.max_frame_number = frame_num;
         uwbfuse.id_to_index = ids_index_in_arr;
         /*
@@ -164,7 +164,7 @@ private:
 int main(int argc, char ** argv)
 {
 
-    printf("SWARM VO FUSE ROS\nIniting\n");
+    ROS_INFO("SWARM VO FUSE ROS\nIniting\n");
 
     //Use time as seed
     srand (time(NULL));

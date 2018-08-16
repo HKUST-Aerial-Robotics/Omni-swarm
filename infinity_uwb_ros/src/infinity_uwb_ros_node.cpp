@@ -74,7 +74,7 @@ protected:
         remote_node_pub.publish(info);
         if (count ++ % 50 == 1)
         {
-            printf("[c%d,ts %d] ID %d nodes total %d active %d\n",count, sys_time,self_id, info.remote_node_num, active_node_num);
+            ROS_INFO("[c%d,ts %d] ID %d nodes total %d active %d\n",count, sys_time,self_id, info.remote_node_num, active_node_num);
             fflush(stdout);
         }
     }
@@ -85,7 +85,7 @@ private:
 
 int main(int argc, char** argv)
 {
-    printf("ININITY UWB ROS\nIniting\n");
+    ROS_INFO("ININITY UWB ROS\nIniting\n");
     
     ros::init(argc, argv, "uwb_node");
 

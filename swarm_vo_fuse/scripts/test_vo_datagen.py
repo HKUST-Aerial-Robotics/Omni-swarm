@@ -16,7 +16,7 @@ import rospy
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, pattern="RANDOM_WALK"):
+    def __init__(self, drone_num = 10, enable_pub_swarm = True, self_id = 0, pattern="RANDOM_WALK"):
         self.drone_pos =  np.array([[ 43.70093261,  10.61551406,   2.36836231],
             [  1.5152637, -19.0210859,   18.42497852],
             [ -6.87888708,  -7.30557088,  -2.98264606],
@@ -33,7 +33,8 @@ class SimulateDronesEnv(object):
         self.drone_dis = np.zeros((drone_num, drone_num))
         self.colors = matplotlib.cm.rainbow(np.linspace(0, 1, drone_num))
         self.count = 0
-        self.self_id = 0
+        self.self_id = self_id
+        self.enable_pub_swarm = enable_pub_swarm
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
         self.base_coor = np.array([
@@ -59,7 +60,7 @@ class SimulateDronesEnv(object):
 
 
         self.poses_pub = rospy.Publisher("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, queue_size=1)
-
+        self.self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
         self.tm = rospy.Timer(rospy.Duration(0.1), self.update)
 
 
@@ -94,6 +95,7 @@ class SimulateDronesEnv(object):
             plt.pause(0.1)
 
         Xii = self.drone_pos - self.base_coor[0:self.drone_num]
+        Vii = self.drone_vel
 
 
         for i in range(self.drone_num):
@@ -103,6 +105,7 @@ class SimulateDronesEnv(object):
             [-math.sin(th), math.cos(th), 0],
             [0, 0, 1]])
             Xii[i] = np.dot(mat, Xii[i])
+            Vii[i] = np.dot(mat, Vii[i])
 
         # print("DronePos", self.drone_pos)
         # print("Xii", Xii)
@@ -123,10 +126,18 @@ class SimulateDronesEnv(object):
             pose.position.y = Xii[i][1]
             pose.position.z = Xii[i][2]
 
+
             odom = Odometry()
             odom.pose.pose = pose
+
+            odom.twist.twist.linear.x = Vii[i][0]
+            odom.twist.twist.linear.y = Vii[i][1]
+            odom.twist.twist.linear.z = Vii[i][2]
+
             rpos.drone_self_poses.append(odom)
 
+            if i == self.self_id:
+                self.self_odom_pub.publish(odom) 
 
         for i in range(self.drone_num):
             for j in range(self.drone_num):
@@ -134,13 +145,16 @@ class SimulateDronesEnv(object):
                 rpos.distance_time[i*self.drone_num + j] = 0
 
         self.count = self.count + 1
-
-        self.poses_pub.publish(rpos)
+        if self.enable_pub_swarm:
+            self.poses_pub.publish(rpos)
 
 
 if __name__ == "__main__":
     # plt.ion()
     print("Starting vo data generation")
     rospy.init_node("vo_data_gen")
-    env = SimulateDronesEnv(drone_num=10)
+    drone_num = rospy.get_param('~drone_num', 10)
+    self_id = rospy.get_param("~self_id", 0)
+    enable_pub_swarm = rospy.get_param("~enable_pub_drone_source", True)
+    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_pub_swarm=enable_pub_swarm)
     rospy.spin()
