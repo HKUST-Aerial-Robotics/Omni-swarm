@@ -4,7 +4,7 @@
 #include "ceres/ceres.h"
 #include <vector>
 #include "ros/ros.h"
-#include <swarm_drone_proxy/swarm_drone_source_data.h>
+#include <swarm_msgs/swarm_drone_source_data.h>
 #include <algorithm>
 #include <set>
 #include <map>
@@ -12,7 +12,7 @@
 #include <thread>  
 #include <unistd.h>
 #include "swarm_vo_fuse/swarm_vo_fuser.hpp"
-#include "swarm_vo_fuse/swarm_fused.h"
+#include "swarm_msgs/swarm_fused.h"
 #include <geometry_msgs/Point.h>
 
 using ceres::CostFunction;
@@ -22,8 +22,7 @@ using ceres::Solve;
 using ceres::SizedCostFunction;
 using ceres::Covariance;
 
-using namespace swarm_drone_proxy;
-using namespace swarm_vo_fuse;
+using namespace swarm_msgs;
 using namespace Eigen;
 
 

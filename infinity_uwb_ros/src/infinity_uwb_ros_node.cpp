@@ -3,12 +3,13 @@
 #include <unistd.h>
 #include <ros/ros.h>
 #include "uwb_helper.h"
-#include <infinity_uwb_ros/remote_uwb_info.h>
-#include <infinity_uwb_ros/incoming_broadcast_data.h>
-#include <infinity_uwb_ros/data_buffer.h>
+#include <swarm_msgs/remote_uwb_info.h>
+#include <swarm_msgs/incoming_broadcast_data.h>
+#include <swarm_msgs/data_buffer.h>
 #include <std_msgs/Header.h>
 #include <std_msgs/String.h>
 
+using namespace swarm_msgs;
 
 class UWBRosNodeofNode: public UWBHelperNode
 {
@@ -17,15 +18,15 @@ public:
         UWBHelperNode(serial_name, baudrate, false)
 
     {
-        remote_node_pub = nh.advertise<infinity_uwb_ros::remote_uwb_info>("remote_nodes", 1);
-        broadcast_data_pub = nh.advertise<infinity_uwb_ros::incoming_broadcast_data>("incoming_broadcast_data",1);
+        remote_node_pub = nh.advertise<remote_uwb_info>("remote_nodes", 1);
+        broadcast_data_pub = nh.advertise<incoming_broadcast_data>("incoming_broadcast_data",1);
 
         recv_bdmsg = nh.subscribe("send_broadcast_data", 1, &UWBRosNodeofNode::on_send_broadcast_req, this);   
     }
 
 protected:
 
-    virtual void on_send_broadcast_req(infinity_uwb_ros::data_buffer msg)
+    virtual void on_send_broadcast_req(data_buffer msg)
     {
         
         this->send_broadcast_data(msg.data);
@@ -35,7 +36,7 @@ protected:
         UWBHelperNode::on_broadcast_data_recv(_id, _recv_time, _msg);
         // printf("Recv broadcast data %s", (char*)_msg.data());
         
-        infinity_uwb_ros::incoming_broadcast_data data;
+        incoming_broadcast_data data;
         data.header.stamp = ros::Time::now();
         data.lps_time = sys_time;
         data.remote_id = _id;
@@ -50,7 +51,7 @@ protected:
         UWBHelperNode::on_node_data_updated();
      
         static int count = 0;
-        infinity_uwb_ros::remote_uwb_info info;
+        remote_uwb_info info;
         info.sys_time = this->sys_time;
         info.remote_node_num = this->nodes_info.size();
         info.self_id = this->self_id;
@@ -67,7 +68,7 @@ protected:
             info.data_available.push_back(nod.msg.size()!=0);
             // std::string ret((char*)nod.msg.data(), nod.msg.size());
             // Buffer bu
-            infinity_uwb_ros::data_buffer buf;
+            data_buffer buf;
             buf.data = nod.msg;
             info.datas.push_back(buf);
         }

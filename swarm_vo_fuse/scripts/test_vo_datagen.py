@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-from swarm_drone_proxy.msg import swarm_drone_source_data
+from swarm_msgs.msg import swarm_drone_source_data
 from geometry_msgs.msg import PoseStamped, Pose
 from nav_msgs.msg import Odometry
 import numpy as np

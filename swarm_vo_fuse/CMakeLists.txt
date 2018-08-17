@@ -10,13 +10,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  infinity_uwb_ros
   roscpp
   rospy
   rosmsg
   std_msgs
   geometry_msgs
-  message_generation
+  swarm_msgs
 )
 find_package(Ceres REQUIRED)
 
@@ -54,10 +53,10 @@ find_package(Ceres REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  swarm_fused.msg
-)
+# add_message_files(
+  # FILES
+  # swarm_fused.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -74,11 +73,11 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#   geometry_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##

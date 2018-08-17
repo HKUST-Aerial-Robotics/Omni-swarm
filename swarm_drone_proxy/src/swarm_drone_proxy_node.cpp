@@ -1,15 +1,14 @@
 #include "ros/ros.h"
-#include <swarm_drone_proxy/swarm_drone_source_data.h>
+#include <swarm_msgs/swarm_drone_source_data.h>
 #include <nav_msgs/Odometry.h>
 #include <mavlink/swarm/mavlink.h>
-#include <infinity_uwb_ros/remote_uwb_info.h>
-#include <infinity_uwb_ros/data_buffer.h>
+#include <swarm_msgs/remote_uwb_info.h>
+#include <swarm_msgs/data_buffer.h>
 #include <map>
 #include <eigen3/Eigen/Dense>
 #include <cstdint>
 
-using namespace swarm_drone_proxy;
-using namespace infinity_uwb_ros;
+using namespace swarm_msgs;
 using namespace nav_msgs;
 
 class SwarmDroneProxy
@@ -100,7 +99,7 @@ class SwarmDroneProxy
     
     std::vector<float> past_self_dis;
 
-    void on_remote_nodes_data_recv(const infinity_uwb_ros::remote_uwb_info & info)
+    void on_remote_nodes_data_recv(const remote_uwb_info & info)
     {
 
         int drone_num = info.node_ids.size() + 1;

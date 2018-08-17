@@ -8,4 +8,4 @@ float32[] rssi
 uint32[] recv_distance_time
 bool[] active
 bool[] data_available
-infinity_uwb_ros/data_buffer[] datas
+swarm_msgs/data_buffer[] datas

@@ -16,8 +16,6 @@ using ceres::Solve;
 using ceres::SizedCostFunction;
 using ceres::Covariance;
 
-using namespace swarm_drone_proxy;
-
 using namespace Eigen;
 
 typedef std::vector<Vector3d> vec_array;

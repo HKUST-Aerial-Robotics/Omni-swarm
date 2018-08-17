@@ -1,20 +1,18 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(swarm_drone_proxy)
+project(swarm_msgs)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+# add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rosmsg
-  rospy
-  std_msgs
-  geometry_msgs
+  message_generation
+  message_runtime
   nav_msgs
-  swarm_msgs
+  geometry_msgs
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -51,10 +49,14 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-  # FILES
-  # swarm_drone_source_data.msg
-# )
+add_message_files(
+  FILES
+  remote_uwb_info.msg
+  incoming_broadcast_data.msg
+  data_buffer.msg
+  swarm_drone_source_data.msg
+  swarm_fused.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -71,12 +73,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-#   geometry_msgs
-#   nav_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  nav_msgs 
+  geometry_msgs
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -108,9 +110,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
-#  LIBRARIES swarm_drone_proxy
-CATKIN_DEPENDS roscpp rosmsg rospy std_msgs message_runtime geometry_msgs nav_msgs
+#  INCLUDE_DIRS include
+#  LIBRARIES swarm_msgs
+#  CATKIN_DEPENDS message_generation message_runtime nav_msgs odometry_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -121,13 +123,13 @@ CATKIN_DEPENDS roscpp rosmsg rospy std_msgs message_runtime geometry_msgs nav_ms
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+# include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/swarm_drone_proxy.cpp
+#   src/${PROJECT_NAME}/swarm_msgs.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -138,7 +140,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/swarm_drone_proxy_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/swarm_msgs_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -151,9 +153,9 @@ add_executable(${PROJECT_NAME}_node src/swarm_drone_proxy_node.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -177,11 +179,11 @@ target_link_libraries(${PROJECT_NAME}_node
 # )
 
 ## Mark cpp header files for installation
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-  PATTERN ".svn" EXCLUDE
-)
+# install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+#   PATTERN ".svn" EXCLUDE
+# )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -195,7 +197,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_swarm_drone_proxy.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_swarm_msgs.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

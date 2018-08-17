@@ -22,8 +22,6 @@ using ceres::Solve;
 using ceres::SizedCostFunction;
 using ceres::Covariance;
 
-using namespace swarm_drone_proxy;
-
 using namespace Eigen;
 
 float rand_FloatRange(float a, float b)
