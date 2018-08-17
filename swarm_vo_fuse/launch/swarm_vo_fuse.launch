@@ -6,4 +6,8 @@
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
         <param name="max_keyframe_num" value="20" type="int" />
     </node>
+    <include file="$(find ptgrey_reader)/launch/stereo.launch">
+    </include>
+    <include file="$(find djisdkwrapper)/launch/sdk.launch">
+    </include>
 </launch>

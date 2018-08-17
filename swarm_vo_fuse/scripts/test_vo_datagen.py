@@ -61,7 +61,7 @@ class SimulateDronesEnv(object):
 
         self.poses_pub = rospy.Publisher("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, queue_size=1)
         self.self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
-        self.tm = rospy.Timer(rospy.Duration(0.01), self.update)
+        self.tm = rospy.Timer(rospy.Duration(0.1), self.update)
 
 
     def update_vel(self, dt):
@@ -71,7 +71,7 @@ class SimulateDronesEnv(object):
         
 
 
-    def update(self, e, dt=0.01, show=False):
+    def update(self, e, dt=0.1, show=False):
         self.update_vel(dt)
         self.drone_pos = self.drone_pos + self.drone_vel * dt
         for i in range(self.drone_num):

@@ -4,7 +4,7 @@ project(swarm_vo_fuse)
 ## Compile as C++11, supported in ROS Kinetic and newer
 set(CMAKE_BUILD_TYPE "Release")
 # add_compile_options(-std=c++11)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -111,7 +111,7 @@ find_package(Ceres REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES swarm_vo_fuse
-#  CATKIN_DEPENDS infinity_uwb_ros roscpp rospy std_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs  swarm_msgs
 #  DEPENDS system_lib
 )
 
@@ -150,7 +150,7 @@ add_executable(${PROJECT_NAME}_node src/swarm_vo_fuse_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
