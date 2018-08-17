@@ -104,18 +104,26 @@ public:
     bool judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos,
         const std::vector<unsigned int> & _ids)
     {
+        if (_ids.size() < 2)
+            return false;
         if (past_dis_matrix.size() ==0)
             return true;
+
         if (_ids.size() > drone_num)
+        {
+            drone_num = _ids.size();
             return true;
+        }
 
         
-        for (int _id : _ids)
+        for (int i = 0; i < _ids.size() ; i ++)
         {
+            int _id = _ids[i];
             int _index = (id_to_index)[_id];
             if (last_key_frame_has_id[_index])
             {
-                Eigen::Vector3d _diff = self_pos[_id] - last_key_frame_self_pos[_index];
+                // ROS_INFO("%d %f %f %f", _id, self_pos[i].x(), self_pos[i].y(), self_pos[i].z());
+                Eigen::Vector3d _diff = self_pos[i] - last_key_frame_self_pos[_index];
                 if (_diff.norm() > min_accept_keyframe_movement)
                 {
                     return true;
@@ -125,11 +133,11 @@ public:
         return false;
     }
 
-    void add_new_data_tick(Eigen::MatrixXd dis_matrix, vec_array self_pos, std::vector<unsigned int> _ids)
+    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, std::vector<unsigned int> _ids)
     {
         if (judge_is_key_frame(dis_matrix, self_pos, _ids))
         {
-
+            // ROS_INFO("Its keyframe");
             last_key_frame_self_pos = std::vector<Eigen::Vector3d>((id_to_index).size());
             last_key_frame_has_id =  std::vector<bool>((id_to_index).size());
             std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
@@ -143,7 +151,7 @@ public:
 
 
             past_dis_matrix.push_back(dis_matrix);
-            past_self_pos.push_back(self_pos);
+            past_self_pos.push_back(vec_array(self_pos));
             past_ids.push_back(_ids);
 
             if (_ids.size() > drone_num)
@@ -161,11 +169,15 @@ public:
             has_new_keyframe = true;
         }
 
-        else if (solve_count > 0)
+        else
         {
-            auto id2vec = EvaluateEstPosition(dis_matrix, self_pos, _ids);
-            if (callback != nullptr)
-                (*callback)(id2vec);
+            // ROS_INFO("Not a keyf");
+            if (solve_count > 0)
+            {
+                auto id2vec = EvaluateEstPosition(dis_matrix, self_pos, _ids);
+                if (callback != nullptr)
+                    (*callback)(id2vec);
+            }
         }
     }
 

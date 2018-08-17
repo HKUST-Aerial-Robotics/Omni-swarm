@@ -50,6 +50,8 @@ class UWBFuserNode{
 protected:
     void on_remote_drones_poses_recieved(swarm_drone_source_data rdp)
     {
+
+        // ROS_INFO("Recv remote drone poses");
         int self_id = rdp.self_id;
         auto ids = rdp.ids;
         auto diss = rdp.distance_matrix;

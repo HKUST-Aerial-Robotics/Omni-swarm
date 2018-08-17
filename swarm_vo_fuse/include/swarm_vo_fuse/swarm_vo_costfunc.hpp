@@ -171,7 +171,9 @@ class SwarmDistanceResidual : public CostFunction {
 
                 Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth) - self_pos[i];
                 double d_hat = _rel.norm();
-                double d_bar = dis_matrix(i,j); 
+
+                // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
+                double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
                 residual[count] = (d_hat - d_bar);
 
                 if (jacobians != NULL && jacobians[0] != NULL) {

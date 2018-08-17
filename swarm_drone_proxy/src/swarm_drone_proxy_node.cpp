@@ -28,9 +28,13 @@ class SwarmDroneProxy
 
     bool odometry_available = false;
 
+    nav_msgs::Odometry self_odom;
+
 
     void on_local_odometry_recv(const nav_msgs::Odometry & odom)
     {
+
+        // ROS_INFO("Odom recv");
         pos.x() = odom.pose.pose.position.x;
         pos.y() = odom.pose.pose.position.y;
         pos.z() = odom.pose.pose.position.z;
@@ -38,6 +42,10 @@ class SwarmDroneProxy
         vel.x() = odom.twist.twist.linear.x;
         vel.y() = odom.twist.twist.linear.y;
         vel.z() = odom.twist.twist.linear.z;
+
+        self_odom = odom;
+
+        odometry_available = true;
     }
 
     bool parse_mavlink_data(const std::vector<uint8_t> & buf, nav_msgs::Odometry & odom, std::vector<float>& _dis)
@@ -65,6 +73,7 @@ class SwarmDroneProxy
                 for (int i = 0; i < 10; i++)
                 {
                     _dis[i] = swarm_info.remote_distance[i];
+                    // ROS_INFO("id %d %f", i, _dis[i]);
                 }              
 
                 return true;  
@@ -94,11 +103,11 @@ class SwarmDroneProxy
     void on_remote_nodes_data_recv(const infinity_uwb_ros::remote_uwb_info & info)
     {
 
-        int drone_num = info.node_ids.size();
+        int drone_num = info.node_ids.size() + 1;
         const std::vector<unsigned int> & ids = info.node_ids;
 
         std::vector<std::vector<float>> id_n_distance(100);
-        std::vector<Odometry> id_odoms;
+        std::map<int, Odometry> id_odoms;
 
 
         std::vector<unsigned int> available_id;
@@ -106,8 +115,9 @@ class SwarmDroneProxy
         available_id.push_back(info.self_id);
 
         float self_dis[100] = {0};
+        std::vector<float> self_dis_vec(10);
 
-        for (int i = 0; i < drone_num; i++)
+        for (int i = 0; i < 10; i++)
         {
             self_dis[i] = -1;
         }
@@ -117,10 +127,13 @@ class SwarmDroneProxy
             int _id = info.node_ids[i];
 
             self_dis[_id] = info.node_dis[i];
+            self_dis_vec[_id] = info.node_dis[i];
+
+            // ROS_INFO("i %d id %d %f", i ,_id, self_dis[_id]);
 
             auto s = info.datas[i];
             nav_msgs::Odometry odom;
-            std::vector<float> _dis(drone_num);
+            std::vector<float> _dis(10);
             bool ret = parse_mavlink_data(s.data, odom, _dis);
             if (ret)
             {
@@ -130,17 +143,20 @@ class SwarmDroneProxy
             }
         }
 
-        if (past_self_dis.size() > 0)
+        if (past_self_dis.size() > 0 && odometry_available)
         {
             id_n_distance[info.self_id] = past_self_dis;
+            past_self_dis = self_dis_vec;
         }
         else{
-            past_self_dis = info.node_dis; 
+            past_self_dis = self_dis_vec;
             send_swarm_mavlink(self_dis);
             return;
         }
+
+        id_odoms[info.self_id] = self_odom;
+
         
-        past_self_dis = info.node_dis;
 
 
 
@@ -154,20 +170,26 @@ class SwarmDroneProxy
 
         for (int i = 0; i < available_id.size(); i++)
         {
+
+            int _idx = available_id[i];
+            data.drone_self_poses[i] = id_odoms[_idx]; 
             for (int j = 0; j < available_id.size(); j++)
             {
-                int _idx = available_id[i];
                 int _idy = available_id[j];
 
-                distance_measure[i * available_id.size() + j] = id_n_distance[_idx][_idy];
+                // ROS_INFO("idx %d idy %d dis %f", _idx, _idy, id_n_distance[_idx][_idy]);
+                if (_idx != _idy)
+                    distance_measure[i * available_id.size() + j] = id_n_distance[_idx][_idy];
+                else
+                    distance_measure[i * available_id.size() + j] = 0;
             }
         }
 
         send_swarm_mavlink(self_dis);
 
         data.distance_matrix = distance_measure;
-
-        swarm_sourcedata_pub.publish(data);
+        if (odometry_available)
+            swarm_sourcedata_pub.publish(data);
     }
 
 public:
