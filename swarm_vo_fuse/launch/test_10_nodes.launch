@@ -5,6 +5,7 @@
     </node>
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
         <param name="max_keyframe_num" value="20" type="int" />
+        <param name="thread_num" value="4" type="int" />
     </node>
       <node pkg="tf"
         type="static_transform_publisher"
