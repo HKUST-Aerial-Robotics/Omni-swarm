@@ -135,7 +135,7 @@ class SimulateDronesEnv(object):
             odom.twist.twist.linear.y = Vii[i][1]
             odom.twist.twist.linear.z = Vii[i][2]
 
-            rpos.drone_self_poses.append(odom)
+            rpos.drone_self_odoms.append(odom)
 
             if i == self.self_id:
                 odom.header.frame_id = "my_frame"

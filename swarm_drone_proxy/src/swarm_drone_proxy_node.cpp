@@ -164,7 +164,7 @@ class SwarmDroneProxy
 
         swarm_drone_source_data data;
         data.ids = available_id;
-        data.drone_self_poses = std::vector<Odometry>(available_id.size());
+        data.drone_self_odoms = std::vector<Odometry>(available_id.size());
         data.drone_num = available_id.size();
         data.self_id = info.self_id;
         data.self_frame_id = self_odom.header.frame_id;
@@ -173,7 +173,7 @@ class SwarmDroneProxy
         {
 
             int _idx = available_id[i];
-            data.drone_self_poses[i] = id_odoms[_idx]; 
+            data.drone_self_odoms[i] = id_odoms[_idx]; 
             for (int j = 0; j < available_id.size(); j++)
             {
                 int _idy = available_id[j];

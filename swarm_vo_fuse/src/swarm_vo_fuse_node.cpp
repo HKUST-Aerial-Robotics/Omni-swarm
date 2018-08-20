@@ -56,7 +56,7 @@ protected:
         int self_id = rdp.self_id;
         auto ids = rdp.ids;
         auto diss = rdp.distance_matrix;
-        auto _self_pose = rdp.drone_self_poses;
+        auto _self_odoms = rdp.drone_self_odoms;
         int drone_num_now = rdp.drone_num;
 
         frame_id = rdp.self_frame_id;
@@ -82,9 +82,9 @@ protected:
         //Exange self id and zero
         for(int i = 0; i < drone_num_now; i++)
         {
-            auto vec = _self_pose[i];
+            auto odom = _self_odoms[i];
 
-            auto position = vec.pose.pose.position;
+            auto position = odom.pose.pose.position;
             self_pos[i] = Eigen::Vector3d(position.x, position.y, position.z);
 
             for (int j = 0;j<drone_num_now; j++)
