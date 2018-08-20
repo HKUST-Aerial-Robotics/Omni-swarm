@@ -68,7 +68,7 @@ protected:
         {
             //This is first time of receive data
             this->self_id = self_id;
-            uwbfuse.self_id = self_id;
+            uwbfuse->self_id = self_id;
             add_drone_id(self_id);
         }
 
@@ -100,10 +100,10 @@ protected:
             }
         }
 
-        uwbfuse.id_to_index = ids_index_in_arr;
+        uwbfuse->id_to_index = ids_index_in_arr;
 
-        uwbfuse.add_new_data_tick(dis_mat, self_pos, self_vel, ids);
-        this->uwbfuse.solve();
+        uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, ids);
+        this->uwbfuse->solve();
 
     }
 
@@ -125,12 +125,13 @@ protected:
 public:
     ros::NodeHandle & nh;
     UWBFuserNode(ros::NodeHandle & _nh):
-        nh(_nh),uwbfuse(10)
+        nh(_nh)
     {
         recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
-        int frame_num = 0;
+        int frame_num = 0, thread_num;
         nh.param<int>("max_keyframe_num", frame_num, 10);
-
+        nh.param<int>("thread_num", thread_num, 4);
+        uwbfuse = new UWBVOFuser(frame_num, thread_num);
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel)>
@@ -167,10 +168,10 @@ public:
             return;
         });
 
-        uwbfuse.callback = cb;
+        uwbfuse->callback = cb;
         ROS_INFO("Will use %d number of keyframe\n", frame_num);
-        uwbfuse.max_frame_number = frame_num;
-        uwbfuse.id_to_index = ids_index_in_arr;
+        uwbfuse->max_frame_number = frame_num;
+        uwbfuse->id_to_index = ids_index_in_arr;
         /*
         solve_thread = std::thread([&]{
             while (true)
@@ -183,17 +184,13 @@ public:
     }
 private:
 
-    void slow_update(const ros::TimerEvent& e)
-    {
-        uwbfuse.solve();
-    }
     ros::Subscriber recv_remote_drones;
     ros::Publisher fused_drone_data_pub;
 
     std::string frame_id = "";
 
     std::map<int, ros::Publisher> remote_drone_odom_pubs;
-    UWBVOFuser uwbfuse;
+    UWBVOFuser * uwbfuse = nullptr;
 
     std::vector<int> remote_ids_arr;
     std::set<int> remote_ids_set;

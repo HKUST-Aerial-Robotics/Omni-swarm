@@ -45,43 +45,46 @@ class UWBVOFuser
     std::vector<Eigen::MatrixXd> past_dis_matrix;
     std::vector<vec_array> past_self_pos, past_self_vel;
     std::vector<std::vector<unsigned int>> past_ids;
-    int drone_num;
+    int drone_num = 0;
 
     int solve_count = 0;
     const double min_accept_keyframe_movement = 0.2;
 
-    double Zxyzth[10000] = 
-            {-21.48147416 , 12.7661877,   21.20343478,0,
-             -3.3077791 ,  -9.87719654,  14.30700117,0,
-            -35.50198334, -21.12191708,  32.77340531,0,
-            -22.59650833,  -2.95609427, -20.10679965,0,
-            -31.24850392,  19.58565513,  -4.74885159,0,
-             33.30543244, -13.61200742, -10.19166553,0,
-              7.25038821, -20.35836745,   5.3823983 ,0,
-              8.73040171,  -5.20697205,  23.1825567 ,0,
-             11.51975686,   3.42533134,   3.74197347,0};
+    double Zxyzth[1000] = {0};
+
+            // {-21.48147416 , 12.7661877,   21.20343478,0,
+            //  -3.3077791 ,  -9.87719654,  14.30700117,0,
+            // -35.50198334, -21.12191708,  32.77340531,0,
+            // -22.59650833,  -2.95609427, -20.10679965,0,
+            // -31.24850392,  19.58565513,  -4.74885159,0,
+            //  33.30543244, -13.61200742, -10.19166553,0,
+            //   7.25038821, -20.35836745,   5.3823983 ,0,
+            //   8.73040171,  -5.20697205,  23.1825567 ,0,
+            //  11.51975686,   3.42533134,   3.74197347,0};
 
     double covariance_xx[10000];
 
 public:
     std::map<int, int> id_to_index;
-    int max_frame_number;
+    int max_frame_number = 20;
+    int last_drone_num = 0;
     int self_id = -1;
+    int thread_num;
     ID2VecCallback * callback = nullptr;
-    UWBVOFuser(int _max_frame_number, ID2VecCallback* _callback=nullptr):
-        max_frame_number(_max_frame_number),callback(_callback)
+    UWBVOFuser(int _max_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
+        max_frame_number(_max_frame_number),callback(_callback),thread_num(_thread_num)
     {
-       random_init_Zxyz();
+       random_init_Zxyz(Zxyzth);
     }
 
-    void random_init_Zxyz()
+    void random_init_Zxyz(double * _Zxyzth, int start=0)
     {
-        for (int i=0;i<1000;i++)
+        for (int i=start;i<100;i++)
         {
-            Zxyzth[i*4] = rand_FloatRange(-30,30);
-            Zxyzth[i*4+1] = rand_FloatRange(-30,30); 
-            Zxyzth[i*4+2] = rand_FloatRange(-30,30); 
-            Zxyzth[i*4 +3] = rand_FloatRange(0,6.28); 
+            _Zxyzth[i*4] = rand_FloatRange(-30,30);
+            _Zxyzth[i*4+1] = rand_FloatRange(-30,30); 
+            _Zxyzth[i*4+2] = rand_FloatRange(-30,30); 
+            _Zxyzth[i*4 +3] = rand_FloatRange(0,6.28); 
         }
     }
 
@@ -181,6 +184,7 @@ public:
     }
 
     int last_problem_ptr = 0;
+    bool finish_init = false;
     
 
     Eigen::Vector3d get_estimate_pos(int _id)
@@ -245,16 +249,62 @@ public:
         if (callback != nullptr && call_cb)
             (*callback)(id2vec, id2vel);
     }
+    
+    double _ZxyTest[1000] = {0};
+
+    bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10)
+    {
+
+        double cost = drone_num * drone_num / 2 * 0.2;
+        bool cost_updated = false;
+
+        ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
+
+        for (int i = 0; i < max_number; i++)
+        {
+            random_init_Zxyz(_ZxyTest, start_drone_num);
+            double c = solve_once(_ZxyTest, false);
+            if (c < cost)
+            {
+                ROS_INFO("Got better cost %f", c);
+                cost_updated = true;
+                cost = c;
+                memcpy(Zxyzth, _ZxyTest, 1000*sizeof(double));
+                if (i > min_number)
+                {
+                    return true;
+                }
+            }     
+        }
+        
+        return cost_updated;
+    }
 
     void solve()
     {
 
+        if(! has_new_keyframe || past_dis_matrix.size() < max_frame_number)
+            return;
+        if(!finish_init || drone_num > last_drone_num)
+        {
+            finish_init = solve_with_multiple_init(last_drone_num);
+            if (finish_init)
+            {
+                last_drone_num = drone_num;
+                ROS_INFO("Finish init\n");
+            }
+
+        }
+        else{
+            solve_once(this->Zxyzth, true);
+        }
+    }
+
+    double solve_once(double * Zxyzth, bool report=false)
+    {
 
         Problem problem;
 
-        if (past_dis_matrix.size() < max_frame_number || ! has_new_keyframe)
-            return;
-        
         if (solve_count % 10 == 0)
             printf("TICK %d Trying to solve size %ld\n", solve_count, past_dis_matrix.size());
 
@@ -277,13 +327,18 @@ public:
         ceres::Solver::Options options;
         options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
         options.max_num_iterations = 200;
-        options.num_threads = 1;
+        options.num_threads = thread_num;
         Solver::Summary summary;
         // options.minimizer_progress_to_stdout = true;
         options.trust_region_strategy_type = ceres::DOGLEG;
 
         // std::cout << "Start solving problem" << std::endl;
         ceres::Solve(options, &problem, &summary);
+
+        if (!report)
+        {
+            return summary.final_cost;
+        }
 
         if (solve_count % 10 == 0)
             std::cout << summary.BriefReport()<< " Time : " << summary.total_time_in_seconds << "\n";
@@ -352,5 +407,6 @@ public:
 
         solve_count ++;
 
+        return summary.final_cost;
     } 
 };
