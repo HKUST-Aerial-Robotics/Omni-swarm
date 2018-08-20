@@ -198,18 +198,17 @@ class SwarmDistanceResidual : public CostFunction {
         return true;
     }
 public:
-    SwarmDistanceResidual(const Eigen::MatrixXd & _dis_matrix,vec_array _self_pos, const std::vector<unsigned int>& _ids,std::map<int, int> _id2index)
-        : dis_matrix(_dis_matrix){
+    SwarmDistanceResidual(const Eigen::MatrixXd & _dis_matrix,vec_array _self_pos, vec_array _self_vel, const std::vector<unsigned int>& _ids,std::map<int, int> _id2index): 
+            dis_matrix(_dis_matrix), 
+            self_vel(_self_vel), 
+            self_pos(_self_pos), 
+            id_to_index(_id2index), 
+            ids(_ids)
+        {
 
-            id_to_index = _id2index;
-            //first of ids must be self id
             int drone_num_now = _ids.size();
             set_num_residuals(drone_num_now * (drone_num_now-1) / 2);
             mutable_parameter_block_sizes()->push_back(num_params());
-
-
-            self_pos = _self_pos;
-            ids = _ids;
         }
 
     Vector3d est_id_pose_in_k(int j, int i, double const * Zxyzth) const
@@ -224,9 +223,23 @@ public:
         return _rel;
     }
 
+    Vector3d est_id_vel_in_k(int j, int i, double const * Zxyzth) const
+    {
+        double Ztheji = 0;
+        Eigen::Vector3d Zji;
+        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
+        
+        Matrix3d rho_ji = rho_mat(Ztheji);
+        Vector3d  _rel = rho_ji * self_vel[j];
+
+        return _rel;
+    }
+
 private:
     Eigen::MatrixXd dis_matrix;
     vec_array self_pos;
+    vec_array self_vel;
+
     std::vector<unsigned int> ids;
     std::map<int, int> id_to_index;
     int num_params() const

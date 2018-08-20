@@ -13,7 +13,7 @@
 #include <functional>
 
 typedef std::map<unsigned int, Eigen::Vector3d> ID2Vector3d;
-typedef std::function<void(const ID2Vector3d &)> ID2VecCallback;
+typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &)> ID2VecCallback;
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -35,15 +35,15 @@ class UWBVOFuser
 {
 
     CostFunction*
-        _setup_cost_function(const Eigen::MatrixXd & dis_mat,const vec_array& self_pos, std::vector<unsigned int> _ids)
+        _setup_cost_function(const Eigen::MatrixXd & dis_mat,const vec_array& self_pos, const vec_array& self_vel, std::vector<unsigned int> _ids)
     {
         CostFunction* cost_function =
-            new SwarmDistanceResidual(dis_mat, self_pos, _ids, id_to_index);
+            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, _ids, id_to_index);
         return cost_function;
     }
 
     std::vector<Eigen::MatrixXd> past_dis_matrix;
-    std::vector<vec_array> past_self_pos;
+    std::vector<vec_array> past_self_pos, past_self_vel;
     std::vector<std::vector<unsigned int>> past_ids;
     int drone_num;
 
@@ -96,10 +96,12 @@ public:
     std::vector<Eigen::Vector3d> last_key_frame_self_pos;
     std::vector<bool> last_key_frame_has_id;
     std::map<int, Vector3d> est_pos;
+    std::map<int, Vector3d> est_vel;
+
     
     bool has_new_keyframe = false;
 
-    bool judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos,
+    bool judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel,
         const std::vector<unsigned int> & _ids)
     {
         if (_ids.size() < 2)
@@ -131,9 +133,9 @@ public:
         return false;
     }
 
-    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, std::vector<unsigned int> _ids)
+    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, const vec_array & self_vel, std::vector<unsigned int> _ids)
     {
-        if (judge_is_key_frame(dis_matrix, self_pos, _ids))
+        if (judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids))
         {
             // ROS_INFO("Its keyframe");
             last_key_frame_self_pos = std::vector<Eigen::Vector3d>((id_to_index).size());
@@ -150,6 +152,7 @@ public:
 
             past_dis_matrix.push_back(dis_matrix);
             past_self_pos.push_back(vec_array(self_pos));
+            past_self_vel.push_back(vec_array(self_vel));
             past_ids.push_back(_ids);
 
             if (_ids.size() > drone_num)
@@ -172,9 +175,7 @@ public:
             // ROS_INFO("Not a keyf");
             if (solve_count > 0)
             {
-                auto id2vec = EvaluateEstPosition(dis_matrix, self_pos, _ids);
-                if (callback != nullptr)
-                    (*callback)(id2vec);
+                EvaluateEstPosition(dis_matrix, self_pos, self_vel, _ids, true);
             }
         }
     }
@@ -187,11 +188,12 @@ public:
         return est_pos[_id];
     }
 
-    ID2Vector3d EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, std::vector<unsigned int> _ids)
+    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, std::vector<unsigned int> _ids, bool call_cb = false)
     {
-        ID2Vector3d id2vec;
 
-        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, _ids, id_to_index);
+        ID2Vector3d id2vec;
+        ID2Vector3d id2vel;
+        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, _ids, id_to_index);
 
         int drone_num_now = _ids.size();
 
@@ -209,12 +211,14 @@ public:
         {
             int _id = _ids[i];
             Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
+            Eigen::Vector3d vel = swarmRes.est_id_vel_in_k(i, self_ptr, Zxyzth);
+
             est_pos[_id] = pos;
+            est_vel[_id] = vel;
             id2vec[_id] = pos;
+            id2vel[_id] = vel;
+
         }
-
-
-        return id2vec;
 
         /*
         for (int i = 0;i<drone_num_now;i++)
@@ -238,6 +242,8 @@ public:
             );
         }
         */
+        if (callback != nullptr && call_cb)
+            (*callback)(id2vec, id2vel);
     }
 
     void solve()
@@ -259,7 +265,7 @@ public:
         for (int i=start_ptr; i < end_ptr; i++)
         {
             problem.AddResidualBlock(
-                _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_ids[i]),
+                _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_self_vel[i], past_ids[i]),
                 NULL,
                 Zxyzth
             );
@@ -279,7 +285,6 @@ public:
         // std::cout << "Start solving problem" << std::endl;
         ceres::Solve(options, &problem, &summary);
 
-        // EvaluateEstPosition(past_dis_matrix.back(), past_self_pos.back(), past_ids.back());
         if (solve_count % 10 == 0)
             std::cout << summary.BriefReport()<< " Time : " << summary.total_time_in_seconds << "\n";
         // std::cout << summary.FullReport()<< "\n";
@@ -294,12 +299,8 @@ public:
 
         if (ret)
         {
-            // auto id2vec = EvaluateEstPosition(dis_matrix, self_pos, _ids);
-            auto id2vec = EvaluateEstPosition(
-                past_dis_matrix.back(), past_self_pos.back(), past_ids.back());
-
-            if (callback != nullptr)
-                (*callback)(id2vec);
+            EvaluateEstPosition(
+                past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(), past_ids.back(), true);
 
             covariance.GetCovarianceBlock(Zxyzth, Zxyzth, covariance_xx);
             if (solve_count % 100 == 0)

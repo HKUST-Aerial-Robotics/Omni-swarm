@@ -14,6 +14,8 @@
 #include "swarm_vo_fuse/swarm_vo_fuser.hpp"
 #include "swarm_msgs/swarm_fused.h"
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Vector3.h>
+
 #include <nav_msgs/Odometry.h>
 
 using ceres::CostFunction;
@@ -78,6 +80,8 @@ protected:
 
         Eigen::MatrixXd dis_mat(drone_num_now, drone_num_now);
         vec_array self_pos(drone_num_now);
+        vec_array self_vel(drone_num_now);
+
 
         //Exange self id and zero
         for(int i = 0; i < drone_num_now; i++)
@@ -85,7 +89,10 @@ protected:
             auto odom = _self_odoms[i];
 
             auto position = odom.pose.pose.position;
+            auto vel = odom.twist.twist.linear;
+
             self_pos[i] = Eigen::Vector3d(position.x, position.y, position.z);
+            self_vel[i] = Eigen::Vector3d(vel.x, vel.y, vel.z);
 
             for (int j = 0;j<drone_num_now; j++)
             {
@@ -95,7 +102,7 @@ protected:
 
         uwbfuse.id_to_index = ids_index_in_arr;
 
-        uwbfuse.add_new_data_tick(dis_mat, self_pos, ids);
+        uwbfuse.add_new_data_tick(dis_mat, self_pos, self_vel, ids);
         this->uwbfuse.solve();
 
     }
@@ -126,22 +133,32 @@ public:
 
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
-        auto cb = new std::function<void(const ID2Vector3d & id2vec)>([&](const ID2Vector3d & id2vec) {
+        auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel)>
+        ([&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel) {
             swarm_fused fused;
 
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
                 geometry_msgs::Point p;
+                geometry_msgs::Vector3 v;
                 p.x = it.second.x();
                 p.y = it.second.y();
                 p.z = it.second.z();
+
+                //May cause error
+                v.x = id2vel.at(it.first).x();
+                v.y = id2vel.at(it.first).y();
+                v.z = id2vel.at(it.first).z();
+
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
+                fused.remote_drone_velocity.push_back(v);
 
                 Odometry odom;
                 odom.header.frame_id = frame_id;
                 odom.pose.pose.position = p;
+                odom.twist.twist.linear = v;
                 
                 pub_odom_id(it.first, odom);
             }

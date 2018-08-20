@@ -67,7 +67,7 @@ class SimulateDronesEnv(object):
     def update_vel(self, dt):
         move_num = 10
         # self.drone_vel = self.drone_vel + np.random.randn(self.drone_num, 3) *2* dt - self.drone_pos * 0.05*dt
-        self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *2* dt - self.drone_pos[0:move_num] * 0.2*dt
+        self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *1* dt - self.drone_pos[0:move_num] * 4.0*dt
         
 
 
