@@ -28,7 +28,7 @@ class SimulateDronesEnv(object):
             [-19.89705788,  -0.04917075, -44.4819556 ],
             [ 10.18059028,   1.6724144,  -34.09760646]])[0:drone_num]
  
-        self.drone_vel = np.zeros((drone_num, 3))
+        self.drone_vel = np.random.randn(drone_num,3) * 5
         self.drone_num = drone_num
         self.drone_dis = np.zeros((drone_num, drone_num))
         self.colors = matplotlib.cm.rainbow(np.linspace(0, 1, drone_num))
@@ -67,7 +67,8 @@ class SimulateDronesEnv(object):
     def update_vel(self, dt):
         move_num = 10
         # self.drone_vel = self.drone_vel + np.random.randn(self.drone_num, 3) *2* dt - self.drone_pos * 0.05*dt
-        self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *1* dt - self.drone_pos[0:move_num] * 4.0*dt
+        # self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0.1* dt - self.drone_pos[0:move_num] * 0.1*dt
+        self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0* dt - self.drone_pos[0:move_num] * 0.1*dt
         
 
 
@@ -148,7 +149,7 @@ class SimulateDronesEnv(object):
 
         self.count = self.count + 1
         if self.enable_pub_swarm:
-            rpos.self_frame_id =  "my_frame"
+            rpos.self_frame_id =  "base_link"
             self.poses_pub.publish(rpos)
 
 
