@@ -25,6 +25,7 @@ class SwarmDroneProxy
     Eigen::Vector3d pos;
     Eigen::Vector3d vel;
 
+
     bool odometry_available = false;
 
     nav_msgs::Odometry self_odom;
@@ -166,6 +167,7 @@ class SwarmDroneProxy
         data.drone_self_poses = std::vector<Odometry>(available_id.size());
         data.drone_num = available_id.size();
         data.self_id = info.self_id;
+        data.self_frame_id = self_odom.header.frame_id;
 
         for (int i = 0; i < available_id.size(); i++)
         {
@@ -196,8 +198,11 @@ public:
         nh(_nh)
     {
         ROS_INFO("Start SWARM Drone Proxy");
+
+        std::string vins_topic ="";
+        nh.param<std::string>("vins_topic", vins_topic, "/vins_estimator/odometry");
         // read /vins_estimator/odometry and send to uwb by mavlink
-        local_odometry_sub = nh.subscribe("/vins_estimator/odometry", 1, &SwarmDroneProxy::on_local_odometry_recv, this);
+        local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);

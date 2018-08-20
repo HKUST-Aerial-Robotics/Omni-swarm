@@ -130,6 +130,7 @@ class SimulateDronesEnv(object):
             odom = Odometry()
             odom.pose.pose = pose
 
+            # odom.header.frame_id = "my_frame"
             odom.twist.twist.linear.x = Vii[i][0]
             odom.twist.twist.linear.y = Vii[i][1]
             odom.twist.twist.linear.z = Vii[i][2]
@@ -137,6 +138,7 @@ class SimulateDronesEnv(object):
             rpos.drone_self_poses.append(odom)
 
             if i == self.self_id:
+                odom.header.frame_id = "my_frame"
                 self.self_odom_pub.publish(odom) 
 
         for i in range(self.drone_num):
@@ -146,6 +148,7 @@ class SimulateDronesEnv(object):
 
         self.count = self.count + 1
         if self.enable_pub_swarm:
+            rpos.self_frame_id =  "my_frame"
             self.poses_pub.publish(rpos)
 
 

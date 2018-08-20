@@ -14,6 +14,7 @@
 #include "swarm_vo_fuse/swarm_vo_fuser.hpp"
 #include "swarm_msgs/swarm_fused.h"
 #include <geometry_msgs/Point.h>
+#include <nav_msgs/Odometry.h>
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -24,6 +25,7 @@ using ceres::Covariance;
 
 using namespace swarm_msgs;
 using namespace Eigen;
+using namespace nav_msgs;
 
 
 
@@ -56,6 +58,8 @@ protected:
         auto diss = rdp.distance_matrix;
         auto _self_pose = rdp.drone_self_poses;
         int drone_num_now = rdp.drone_num;
+
+        frame_id = rdp.self_frame_id;
 
 
         if (remote_ids_arr.size() == 0)
@@ -95,6 +99,21 @@ protected:
         this->uwbfuse.solve();
 
     }
+
+    void pub_odom_id(unsigned int id, const Odometry & odom)
+    {
+        if (remote_drone_odom_pubs.find(id) == remote_drone_odom_pubs.end())
+        {
+            char name[100] = {0};
+            sprintf(name, "/swarm_drones/drone_%d_odom", id);
+            remote_drone_odom_pubs[id] = nh.advertise<Odometry>(name, 1);
+        }
+
+        auto pub = remote_drone_odom_pubs[id];
+
+        pub.publish(odom);
+    }
+
     std::thread solve_thread;
 public:
     ros::NodeHandle & nh;
@@ -119,6 +138,12 @@ public:
                 p.z = it.second.z();
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
+
+                Odometry odom;
+                odom.header.frame_id = frame_id;
+                odom.pose.pose.position = p;
+                
+                pub_odom_id(it.first, odom);
             }
 
             fused_drone_data_pub.publish(fused);
@@ -147,6 +172,10 @@ private:
     }
     ros::Subscriber recv_remote_drones;
     ros::Publisher fused_drone_data_pub;
+
+    std::string frame_id = "";
+
+    std::map<int, ros::Publisher> remote_drone_odom_pubs;
     UWBVOFuser uwbfuse;
 
     std::vector<int> remote_ids_arr;

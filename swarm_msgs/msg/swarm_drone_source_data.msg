@@ -5,3 +5,4 @@ uint32[] ids
 bool[] active
 float32[] distance_matrix
 uint32[] distance_time
+string self_frame_id
