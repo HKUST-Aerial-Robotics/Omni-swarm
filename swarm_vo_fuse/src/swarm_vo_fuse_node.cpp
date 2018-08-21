@@ -128,10 +128,12 @@ public:
         nh(_nh)
     {
         recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
-        int frame_num = 0, thread_num;
-        nh.param<int>("max_keyframe_num", frame_num, 10);
+        int frame_num = 0, thread_num , min_frame_num;
+        nh.param<int>("max_keyframe_num", frame_num, 20);
+        nh.param<int>("min_keyframe_num", min_frame_num, 10);
+
         nh.param<int>("thread_num", thread_num, 4);
-        uwbfuse = new UWBVOFuser(frame_num, thread_num);
+        uwbfuse = new UWBVOFuser(frame_num, min_frame_num, thread_num);
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel)>

@@ -67,12 +67,13 @@ class UWBVOFuser
 public:
     std::map<int, int> id_to_index;
     int max_frame_number = 20;
+    int min_frame_number = 10;
     int last_drone_num = 0;
     int self_id = -1;
     int thread_num;
     ID2VecCallback * callback = nullptr;
-    UWBVOFuser(int _max_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
-        max_frame_number(_max_frame_number),callback(_callback),thread_num(_thread_num)
+    UWBVOFuser(int _max_frame_number,int _min_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
+        max_frame_number(_max_frame_number), min_frame_num(_min_frame_number),callback(_callback),thread_num(_thread_num)
     {
        random_init_Zxyz(Zxyzth);
     }
@@ -118,7 +119,16 @@ public:
             return true;
         }
 
-        
+
+        int _index = (id_to_index)[self_id];
+        //self_pos 0 must be self
+        Eigen::Vector3d _diff = self_pos[0] - last_key_frame_self_pos[_index];
+
+        if (_diff.norm() > min_accept_keyframe_movement)
+        {
+            return true;
+        }
+        /*
         for (int i = 0; i < _ids.size() ; i ++)
         {
             int _id = _ids[i];
@@ -132,7 +142,7 @@ public:
                     return true;
                 }
             }
-        }
+        }*/
         return false;
     }
 
@@ -254,16 +264,22 @@ public:
 
     bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10)
     {
+        
+        int frame_num_now = past_dis_matrix.size();
+        if (frame_num_now > max_frame_number)
+            frame_num_now = max_frame_number;
 
-        double cost = drone_num * drone_num / 2 * 0.2;
+        double cost = drone_num * drone_num * 0.1 * frame_num_now;
         bool cost_updated = false;
 
-        ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
+        // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
 
         for (int i = 0; i < max_number; i++)
         {
             random_init_Zxyz(_ZxyTest, start_drone_num);
             double c = solve_once(_ZxyTest, false);
+                ROS_INFO("Got better cost %f", c);
+
             if (c < cost)
             {
                 ROS_INFO("Got better cost %f", c);
@@ -283,7 +299,7 @@ public:
     void solve()
     {
 
-        if(! has_new_keyframe || past_dis_matrix.size() < max_frame_number)
+        if(! has_new_keyframe || past_dis_matrix.size() < min_frame_number)
             return;
         if(!finish_init || drone_num > last_drone_num)
         {
@@ -310,6 +326,7 @@ public:
 
         int end_ptr = past_dis_matrix.size();
         int start_ptr = end_ptr - max_frame_number;
+        start_ptr = start_ptr > 0 ? start_ptr : 0;
         has_new_keyframe = false;
 
         for (int i=start_ptr; i < end_ptr; i++)
@@ -350,19 +367,20 @@ public:
 
         std::vector<std::pair<const double*, const double*> > covariance_blocks;
         covariance_blocks.push_back(std::make_pair(Zxyzth, Zxyzth));
-        bool ret = covariance.Compute(covariance_blocks, &problem);
-
+        // bool ret = covariance.Compute(covariance_blocks, &problem);
+        bool ret = false;
+        EvaluateEstPosition(
+            past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(), past_ids.back(), true);
         if (ret)
         {
-            EvaluateEstPosition(
-                past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(), past_ids.back(), true);
+
 
             covariance.GetCovarianceBlock(Zxyzth, Zxyzth, covariance_xx);
             if (solve_count % 100 == 0)
                 for (int i = 0;i<drone_num - 1;i++)
                 {
                     int _id = past_ids.back()[i];
-                    printf("i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f covr %3.2f %3.2f %3.2f %3.2f\n", 
+                    ROS_INFO("i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f covr %3.2f %3.2f %3.2f %3.2f\n", 
                         i,
                         _id,
                         Zxyzth[i*4],
@@ -388,7 +406,7 @@ public:
                 for (int i = 0;i<drone_num - 1;i++)
                 {
                     int _id = past_ids.back()[i];
-                    printf("i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n", 
+                    ROS_INFO("i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n", 
                         i,
                         _id,
                         Zxyzth[i*4],

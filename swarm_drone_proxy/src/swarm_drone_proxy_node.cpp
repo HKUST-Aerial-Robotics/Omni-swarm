@@ -27,6 +27,7 @@ class SwarmDroneProxy
 
 
     bool odometry_available = false;
+    bool odometry_updated = false;
 
     nav_msgs::Odometry self_odom;
 
@@ -46,6 +47,7 @@ class SwarmDroneProxy
         self_odom = odom;
 
         odometry_available = true;
+        odometry_updated = true;
     }
 
     bool parse_mavlink_data(const std::vector<uint8_t> & buf, nav_msgs::Odometry & odom, std::vector<float>& _dis)
@@ -189,8 +191,11 @@ class SwarmDroneProxy
         send_swarm_mavlink(self_dis);
 
         data.distance_matrix = distance_measure;
-        if (odometry_available)
+        if (odometry_available && odometry_updated)
+        {
+            odometry_updated = false;
             swarm_sourcedata_pub.publish(data);
+        }
     }
 
 public:

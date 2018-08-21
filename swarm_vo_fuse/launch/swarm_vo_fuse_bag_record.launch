@@ -1,0 +1,12 @@
+<launch>
+    <include file="$(find infinity_uwb_ros)/launch/uwb_node_manifold2_usb.launch">
+    </include>
+    <include file="$(find ptgrey_reader)/launch/stereo.launch">
+    </include>
+    <include file="$(find djisdkwrapper)/launch/sdk.launch">
+    </include>
+    <node pkg="swarm_vo_fuse" name="swarm_tx2_helper" type="swarm_tx2_helper.py" output="screen"> 
+    </node>
+     <node pkg="rosbag" type="record" name="rosbag_record_swarm"
+       args="record -o ros_bag_swarm_novo.bag /dji_sdk_1/dji_sdk/imu /stereo/left/image /stereo/right/image /uwb_node/remote_nodes"/>  
+</launch>

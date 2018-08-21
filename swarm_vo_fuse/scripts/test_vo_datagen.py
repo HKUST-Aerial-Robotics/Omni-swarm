@@ -17,8 +17,8 @@ import rospy
 
 class SimulateDronesEnv(object):
     def __init__(self, drone_num = 10, enable_pub_swarm = True, self_id = 0, pattern="RANDOM_WALK"):
-        self.drone_pos =  np.array([[ 43.70093261,  10.61551406,   2.36836231],
-            [  1.5152637, -19.0210859,   18.42497852],
+        self.drone_pos =  np.array([[ 3.70093261,  0.61551406,   2.36836231],
+            [  1.5152637, -1.0210859,   1.42497852],
             [ -6.87888708,  -7.30557088,  -2.98264606],
             [-14.95149762, -28.57279825,  -3.99203142],
             [ -5.6960475,   24.00769547,   3.45203488],
@@ -28,7 +28,10 @@ class SimulateDronesEnv(object):
             [-19.89705788,  -0.04917075, -44.4819556 ],
             [ 10.18059028,   1.6724144,  -34.09760646]])[0:drone_num]
  
-        self.drone_vel = np.random.randn(drone_num,3) * 5
+        # self.drone_vel = np.random.randn(drone_num,3) * 5
+        self.drone_vel = np.zeros((drone_num, 3))
+        self.drone_vel[0] = np.array([1,-0.5,0.1])
+
         self.drone_num = drone_num
         self.drone_dis = np.zeros((drone_num, drone_num))
         self.colors = matplotlib.cm.rainbow(np.linspace(0, 1, drone_num))
@@ -39,7 +42,7 @@ class SimulateDronesEnv(object):
         # print(self.base_coor)
         self.base_coor = np.array([
             [0, 0, 0],
-            [-21.48147416 , 12.7661877,   21.20343478],
+            [-1.48147416 , 2.7661877,   1.20343478],
             [ -3.3077791 ,  -9.87719654,  14.30700117],
             [-35.50198334, -21.12191708,  32.77340531],
             [-22.59650833,  -2.95609427, -20.10679965],
@@ -65,7 +68,7 @@ class SimulateDronesEnv(object):
 
 
     def update_vel(self, dt):
-        move_num = 10
+        move_num = 1
         # self.drone_vel = self.drone_vel + np.random.randn(self.drone_num, 3) *2* dt - self.drone_pos * 0.05*dt
         # self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0.1* dt - self.drone_pos[0:move_num] * 0.1*dt
         self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0* dt - self.drone_pos[0:move_num] * 0.1*dt
@@ -139,7 +142,7 @@ class SimulateDronesEnv(object):
             rpos.drone_self_odoms.append(odom)
 
             if i == self.self_id:
-                odom.header.frame_id = "my_frame"
+                odom.header.frame_id = "world"
                 self.self_odom_pub.publish(odom) 
 
         for i in range(self.drone_num):
@@ -149,7 +152,7 @@ class SimulateDronesEnv(object):
 
         self.count = self.count + 1
         if self.enable_pub_swarm:
-            rpos.self_frame_id =  "base_link"
+            rpos.self_frame_id =  "world"
             self.poses_pub.publish(rpos)
 
 

@@ -32,7 +32,7 @@ class SwarmVOVisual:
         mark.scale.x = 0.25
         mark.scale.y = 0.5
         mark.scale.z = 1.0
-        mark.header.frame_id = "base_link";
+        mark.header.frame_id = "world"
 
         return mark
 
