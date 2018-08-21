@@ -6,7 +6,9 @@ from swarm_msgs.msg import swarm_fused
 import numpy as np
 import random
 from std_msgs.msg import ColorRGBA
+from geometry_msgs.msg import Point
 import copy
+import math
 
 class SwarmVOVisual:
     def draw_arrow_marker(self, pos, vel, color, _id, r=1):
@@ -14,9 +16,13 @@ class SwarmVOVisual:
         # print(type(vel))
         pos_tgt = copy.deepcopy(pos)
 
-        pos_tgt.x = pos.x + vel.x*r
-        pos_tgt.y = pos.y + vel.y*r
-        pos_tgt.z = pos.z + vel.z*r
+        pos_tgt.x = vel.x*r
+        pos_tgt.y = vel.y*r
+        pos_tgt.z = vel.z*r
+
+        total_len = math.sqrt(pos_tgt.x**2 + pos_tgt.y ** 2 + pos_tgt.z **2)
+
+        vec_start = Point(0,0,0)
 
         mark = Marker()
         mark.type = mark
@@ -28,10 +34,10 @@ class SwarmVOVisual:
         mark.color.r = color[0]
         mark.color.g = color[1]
         mark.color.b = color[2]
-        mark.points = [pos, pos_tgt]
-        mark.scale.x = 0.25
-        mark.scale.y = 0.5
-        mark.scale.z = 1.0
+        mark.points = [vec_start, pos_tgt]
+        mark.scale.x = 0.05
+        mark.scale.y = total_len * 0.2
+        mark.scale.z = total_len * 0.3
         mark.header.frame_id = "world"
 
         return mark

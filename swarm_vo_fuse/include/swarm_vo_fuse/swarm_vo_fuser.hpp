@@ -120,9 +120,20 @@ public:
         }
 
 
+        int ptr = 0;
+        for (int i = 0; i < _ids.size(); i ++)
+        {
+            if (_ids[i] == self_id)
+            {
+                ptr = i;
+                // ROS_INFO("self_id %d ptr is %d, pos %f %f %f",self_id, ptr,self_pos[ptr].x(), self_pos[ptr].y(), self_pos[ptr].z() );
+                break;
+            }
+        }
+
         int _index = (id_to_index)[self_id];
         //self_pos 0 must be self
-        Eigen::Vector3d _diff = self_pos[0] - last_key_frame_self_pos[_index];
+        Eigen::Vector3d _diff = self_pos[ptr] - last_key_frame_self_pos[_index];
 
         if (_diff.norm() > min_accept_keyframe_movement)
         {
@@ -150,7 +161,7 @@ public:
     {
         if (judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids))
         {
-            // ROS_INFO("Its keyframe");
+            // ROS_INFO("Its keyframe %d", past_ids.size() + 1);
             last_key_frame_self_pos = std::vector<Eigen::Vector3d>((id_to_index).size());
             last_key_frame_has_id =  std::vector<bool>((id_to_index).size());
             std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
@@ -301,6 +312,7 @@ public:
 
         if(! has_new_keyframe || past_dis_matrix.size() < min_frame_number)
             return;
+        
         if(!finish_init || drone_num > last_drone_num)
         {
             finish_init = solve_with_multiple_init(last_drone_num);
@@ -358,7 +370,7 @@ public:
         }
 
         if (solve_count % 10 == 0)
-            std::cout << summary.BriefReport()<< " Time : " << summary.total_time_in_seconds << "\n";
+            std::cout << summary.BriefReport()<< " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
         // std::cout << summary.FullReport()<< "\n";
 
 

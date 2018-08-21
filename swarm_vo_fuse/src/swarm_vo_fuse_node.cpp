@@ -50,6 +50,7 @@ class UWBFuserNode{
         return remote_ids_arr.size();
     }
 
+    double t_last = 0;
 protected:
     void on_remote_drones_poses_recieved(swarm_drone_source_data rdp)
     {
@@ -62,6 +63,8 @@ protected:
         int drone_num_now = rdp.drone_num;
 
         frame_id = rdp.self_frame_id;
+
+        uwbfuse->self_id = self_id;
 
 
         if (remote_ids_arr.size() == 0)
@@ -102,8 +105,15 @@ protected:
 
         uwbfuse->id_to_index = ids_index_in_arr;
 
-        uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, ids);
-        this->uwbfuse->solve();
+        double t_now = rdp.header.stamp.toSec();
+        
+        if (t_now - t_last > 0.1)
+        {
+            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, ids);
+            this->uwbfuse->solve();
+            t_last = t_now;
+        }
+
 
     }
 

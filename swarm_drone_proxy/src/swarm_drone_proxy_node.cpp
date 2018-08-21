@@ -32,6 +32,18 @@ class SwarmDroneProxy
     nav_msgs::Odometry self_odom;
 
 
+    Odometry naive_predict(const Odometry & odom_now, double now)
+    {
+        Odometry ret = odom_now;
+        // double now = ros::Time::now().toSec();
+        double t_odom = odom_now.header.stamp.toSec();
+        // ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+        ret.pose.pose.position.x += (now - t_odom) * odom_now.twist.twist.linear.x;
+        ret.pose.pose.position.y += (now - t_odom) * odom_now.twist.twist.linear.y;
+        ret.pose.pose.position.z += (now - t_odom) * odom_now.twist.twist.linear.z;
+        return ret;
+    }
+
     void on_local_odometry_recv(const nav_msgs::Odometry & odom)
     {
 
@@ -156,11 +168,8 @@ class SwarmDroneProxy
             return;
         }
 
-        id_odoms[info.self_id] = self_odom;
-
-        
-
-
+        //Using last distances, assume cost 0.02 time offset
+        id_odoms[info.self_id] = naive_predict(self_odom, info.header.stamp.toSec() - 0.02);
 
         std::vector<float> distance_measure(available_id.size() * available_id.size());
 
@@ -170,6 +179,7 @@ class SwarmDroneProxy
         data.drone_num = available_id.size();
         data.self_id = info.self_id;
         data.self_frame_id = self_odom.header.frame_id;
+        data.header.stamp = info.header.stamp;
 
         for (int i = 0; i < available_id.size(); i++)
         {
