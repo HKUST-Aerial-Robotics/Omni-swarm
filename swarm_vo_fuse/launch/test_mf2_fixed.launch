@@ -1,0 +1,11 @@
+<launch>
+    <include file="$(find infinity_uwb_ros)/launch/uwb_node_manifold2_usb.launch">
+    </include>
+    <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen"> 
+    </node>
+    <!-- <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
+        <param name="max_keyframe_num" value="20" type="int" />
+    </node> -->
+    <node pkg="swarm_vo_fuse" name="swarm_fix_odom" type="swarm_fix_odom.py" output="screen"> 
+    </node>
+</launch>
