@@ -10,6 +10,7 @@
 
 using namespace swarm_msgs;
 using namespace nav_msgs;
+using namespace geometry_msgs;
 
 class SwarmDroneProxy
 {
@@ -24,6 +25,8 @@ class SwarmDroneProxy
 
     Eigen::Vector3d pos;
     Eigen::Vector3d vel;
+    Eigen::Quaterniond quat;
+
 
 
     bool odometry_available = false;
@@ -56,6 +59,12 @@ class SwarmDroneProxy
         vel.y() = odom.twist.twist.linear.y;
         vel.z() = odom.twist.twist.linear.z;
 
+
+        quat.w() = odom.pose.pose.orientation.w;
+        quat.x() = odom.pose.pose.orientation.w;
+        quat.y() = odom.pose.pose.orientation.w;
+        quat.z() = odom.pose.pose.orientation.w;
+
         self_odom = odom;
 
         odometry_available = true;
@@ -84,6 +93,11 @@ class SwarmDroneProxy
                 odom.twist.twist.linear.y = swarm_info.vy;
                 odom.twist.twist.linear.z = swarm_info.vz;
 
+                odom.pose.pose.orientation.w = swarm_info.q0;
+                odom.pose.pose.orientation.x = swarm_info.q1;
+                odom.pose.pose.orientation.y = swarm_info.q2;
+                odom.pose.pose.orientation.z = swarm_info.q3;
+
                 for (int i = 0; i < 10; i++)
                 {
                     _dis[i] = swarm_info.remote_distance[i];
@@ -103,7 +117,8 @@ class SwarmDroneProxy
 
         mavlink_message_t msg;
 
-        mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(), 
+        mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(),
+            quat.w(), quat.x(), quat.y(), quat.z(),
             vel.x(), vel.y(), vel.z(), dis);
         int len = mavlink_msg_to_send_buffer(buf , &msg);
         data_buffer buffer;

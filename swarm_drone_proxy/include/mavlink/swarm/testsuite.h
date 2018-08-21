@@ -37,13 +37,17 @@ static void mavlink_test_swarm_info(uint8_t system_id, uint8_t component_id, mav
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_swarm_info_t packet_in = {
-        17.0,45.0,73.0,101.0,129.0,157.0,{ 185.0, 186.0, 187.0, 188.0, 189.0, 190.0, 191.0, 192.0, 193.0, 194.0 },197
+        17.0,45.0,73.0,101.0,129.0,157.0,185.0,213.0,241.0,269.0,{ 297.0, 298.0, 299.0, 300.0, 301.0, 302.0, 303.0, 304.0, 305.0, 306.0 },245
     };
     mavlink_swarm_info_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
         packet1.x = packet_in.x;
         packet1.y = packet_in.y;
         packet1.z = packet_in.z;
+        packet1.q0 = packet_in.q0;
+        packet1.q1 = packet_in.q1;
+        packet1.q2 = packet_in.q2;
+        packet1.q3 = packet_in.q3;
         packet1.vx = packet_in.vx;
         packet1.vy = packet_in.vy;
         packet1.vz = packet_in.vz;
@@ -63,12 +67,12 @@ static void mavlink_test_swarm_info(uint8_t system_id, uint8_t component_id, mav
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_swarm_info_pack(system_id, component_id, &msg , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
+    mavlink_msg_swarm_info_pack(system_id, component_id, &msg , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
     mavlink_msg_swarm_info_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_swarm_info_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
+    mavlink_msg_swarm_info_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
     mavlink_msg_swarm_info_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
@@ -81,7 +85,7 @@ static void mavlink_test_swarm_info(uint8_t system_id, uint8_t component_id, mav
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
         
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_swarm_info_send(MAVLINK_COMM_1 , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
+    mavlink_msg_swarm_info_send(MAVLINK_COMM_1 , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 , packet1.vx , packet1.vy , packet1.vz , packet1.remote_distance );
     mavlink_msg_swarm_info_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
