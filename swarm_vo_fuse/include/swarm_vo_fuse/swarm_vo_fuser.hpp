@@ -73,7 +73,7 @@ public:
     int thread_num;
     ID2VecCallback * callback = nullptr;
     UWBVOFuser(int _max_frame_number,int _min_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
-        max_frame_number(_max_frame_number), min_frame_num(_min_frame_number),callback(_callback),thread_num(_thread_num)
+        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),thread_num(_thread_num)
     {
        random_init_Zxyz(Zxyzth);
     }
