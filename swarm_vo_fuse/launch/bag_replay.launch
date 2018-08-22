@@ -8,7 +8,7 @@
     <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
     </node>
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
-       <param name="max_keyframe_num" value="200" type="int" />
+       <param name="max_keyframe_num" value="100" type="int" />
        <param name="min_keyframe_num" value="20" type="int" />
     </node>
     <include file="$(find vins_estimator)/launch/dji_stereo.launch">
