@@ -1,5 +1,8 @@
 <launch>
-    <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen"> 
+    <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen">
+       <param name="vins_topic" value="/vins_estimator/odometry_ned" type="string" />
+    </node>
+    <node pkg="swarm_drone_proxy" name="odometry_transfer" type="odometry_transfer.py" output="screen">
     </node>
     <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
     </node>

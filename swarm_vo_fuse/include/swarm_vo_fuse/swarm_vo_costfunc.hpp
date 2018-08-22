@@ -19,10 +19,11 @@ using ceres::Covariance;
 using namespace Eigen;
 
 typedef std::vector<Vector3d> vec_array;
+typedef std::vector<Quaterniond> quat_array;
 
 
 class SwarmDistanceResidual : public CostFunction {
- 
+    Vector3d Anntenna; 
     inline int param_index(int i) const
     {
         //Convert index of matrix and vector to id
@@ -138,12 +139,12 @@ class SwarmDistanceResidual : public CostFunction {
         {
             if (i == delta)
             {
-                ret =  ret - partial_rho_by_theta(Ztheji) * self_pos[j];
+                ret =  ret - partial_rho_by_theta(Ztheji) *  (self_pos[j] + self_quat[j] * Anntenna);
             }
 
             if (j == delta)
             {
-                ret =  ret + partial_rho_by_theta(Ztheji) * self_pos[j];
+                ret =  ret + partial_rho_by_theta(Ztheji) * (self_pos[j] + self_quat[j] * Anntenna);
             }
         }
         return _rel_dir.dot(ret);
@@ -167,7 +168,7 @@ class SwarmDistanceResidual : public CostFunction {
             for (int j = i + 1; j < drone_num_now ; j++)
             {
 
-                Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth) - self_pos[i];
+                Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth) - (self_pos[i] + self_quat[i] * Anntenna);
                 double d_hat = _rel.norm();
 
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
@@ -198,12 +199,19 @@ class SwarmDistanceResidual : public CostFunction {
         return true;
     }
 public:
-    SwarmDistanceResidual(const Eigen::MatrixXd & _dis_matrix,vec_array _self_pos, vec_array _self_vel, const std::vector<unsigned int>& _ids,std::map<int, int> _id2index): 
+    SwarmDistanceResidual(const Eigen::MatrixXd & _dis_matrix,
+                const vec_array & _self_pos, 
+                const vec_array & _self_vel, 
+                const quat_array & _self_quat, 
+                const std::vector<unsigned int>& _ids,
+                std::map<int, int> _id2index): 
             dis_matrix(_dis_matrix), 
             self_vel(_self_vel), 
             self_pos(_self_pos), 
+            self_quat(_self_quat), 
             id_to_index(_id2index), 
-            ids(_ids)
+            ids(_ids),
+            Anntenna(-0.1,0,-0.12)
         {
 
             int drone_num_now = _ids.size();
@@ -211,7 +219,7 @@ public:
             mutable_parameter_block_sizes()->push_back(num_params());
         }
 
-    Vector3d est_id_pose_in_k(int j, int i, double const * Zxyzth) const
+    Vector3d est_id_pose_in_k(int j, int i, double const * Zxyzth, bool estimate_antenna = false) const
     {
         double Ztheji = 0;
         Eigen::Vector3d Zji;
@@ -219,7 +227,8 @@ public:
         
         Matrix3d rho_ji = rho_mat(Ztheji);
         Vector3d  _rel = Zji + rho_ji * self_pos[j];
-
+        if (estimate_antenna)
+            _rel = _rel +  self_quat[j] * Anntenna;
         return _rel;
     }
 
@@ -239,6 +248,7 @@ private:
     Eigen::MatrixXd dis_matrix;
     vec_array self_pos;
     vec_array self_vel;
+    quat_array self_quat;
 
     std::vector<unsigned int> ids;
     std::map<int, int> id_to_index;

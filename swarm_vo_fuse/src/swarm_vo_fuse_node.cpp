@@ -84,6 +84,7 @@ protected:
         Eigen::MatrixXd dis_mat(drone_num_now, drone_num_now);
         vec_array self_pos(drone_num_now);
         vec_array self_vel(drone_num_now);
+        quat_array self_quat(drone_num_now);
 
 
         //Exange self id and zero
@@ -92,10 +93,12 @@ protected:
             auto odom = _self_odoms[i];
 
             auto position = odom.pose.pose.position;
+            auto quat = odom.pose.pose.orientation;
             auto vel = odom.twist.twist.linear;
 
             self_pos[i] = Eigen::Vector3d(position.x, position.y, position.z);
             self_vel[i] = Eigen::Vector3d(vel.x, vel.y, vel.z);
+            self_quat[i] = Eigen::Quaterniond(quat.w, quat.x, quat.y, quat.z);
 
             for (int j = 0;j<drone_num_now; j++)
             {
@@ -109,7 +112,7 @@ protected:
         
         if (t_now - t_last > 0.1)
         {
-            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, ids);
+            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids);
             this->uwbfuse->solve();
             t_last = t_now;
         }

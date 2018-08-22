@@ -35,15 +35,18 @@ class UWBVOFuser
 {
 
     CostFunction*
-        _setup_cost_function(const Eigen::MatrixXd & dis_mat,const vec_array& self_pos, const vec_array& self_vel, std::vector<unsigned int> _ids)
+        _setup_cost_function(const Eigen::MatrixXd & dis_mat,
+            const vec_array& self_pos, const vec_array& self_vel, const quat_array & self_quat,
+            std::vector<unsigned int> _ids)
     {
         CostFunction* cost_function =
-            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, _ids, id_to_index);
+            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index);
         return cost_function;
     }
 
     std::vector<Eigen::MatrixXd> past_dis_matrix;
     std::vector<vec_array> past_self_pos, past_self_vel;
+    std::vector<quat_array> past_self_quat;
     std::vector<std::vector<unsigned int>> past_ids;
     int drone_num = 0;
 
@@ -157,7 +160,8 @@ public:
         return false;
     }
 
-    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, const vec_array & self_vel, std::vector<unsigned int> _ids)
+    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, 
+    const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
     {
         if (judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids))
         {
@@ -175,8 +179,9 @@ public:
 
 
             past_dis_matrix.push_back(dis_matrix);
-            past_self_pos.push_back(vec_array(self_pos));
-            past_self_vel.push_back(vec_array(self_vel));
+            past_self_pos.push_back(self_pos);
+            past_self_vel.push_back(self_vel);
+            past_self_quat.push_back(self_quat);
             past_ids.push_back(_ids);
 
             if (_ids.size() > drone_num)
@@ -199,7 +204,7 @@ public:
             // ROS_INFO("Not a keyf");
             if (solve_count > 0)
             {
-                EvaluateEstPosition(dis_matrix, self_pos, self_vel, _ids, true);
+                EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, true);
             }
         }
     }
@@ -213,12 +218,12 @@ public:
         return est_pos[_id];
     }
 
-    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, std::vector<unsigned int> _ids, bool call_cb = false)
+    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat, std::vector<unsigned int> _ids, bool call_cb = false)
     {
 
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
-        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, _ids, id_to_index);
+        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index);
 
         int drone_num_now = _ids.size();
 
@@ -344,7 +349,7 @@ public:
         for (int i=start_ptr; i < end_ptr; i++)
         {
             problem.AddResidualBlock(
-                _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_self_vel[i], past_ids[i]),
+                _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_self_vel[i], past_self_quat[i], past_ids[i]),
                 NULL,
                 Zxyzth
             );
@@ -382,7 +387,7 @@ public:
         // bool ret = covariance.Compute(covariance_blocks, &problem);
         bool ret = false;
         EvaluateEstPosition(
-            past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(), past_ids.back(), true);
+            past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
         if (ret)
         {
 
