@@ -82,10 +82,11 @@ public:
     int self_id = -1;
     int thread_num;
     double cost_now = 0;
+    double acpt_cost = 0.4;
     ID2VecCallback * callback = nullptr;
-    UWBVOFuser(int _max_frame_number,int _min_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
+    UWBVOFuser(int _max_frame_number,int _min_frame_number, double _acpt_cost = 0.4 ,int _thread_num=4, ID2VecCallback* _callback=nullptr):
         max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),
-        thread_num(_thread_num),last_key_frame_self_pos(100),last_key_frame_has_id(100)
+        thread_num(_thread_num),last_key_frame_self_pos(100),last_key_frame_has_id(100),acpt_cost(_acpt_cost)
     {
        random_init_Zxyz(Zxyzth);
     }
@@ -340,7 +341,7 @@ public:
     bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10)
     {
         
-        double cost = drone_num * drone_num * 0.1;
+        double cost = acpt_cost;
         bool cost_updated = false;
 
         // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
@@ -369,8 +370,10 @@ public:
 
     double solve()
     {
+        if( keyframe_num < min_frame_number)
+            return -1;
 
-        if(! has_new_keyframe || keyframe_num < min_frame_number)
+        if(! has_new_keyframe)
             return cost_now;
         
         if(!finish_init || drone_num > last_drone_num)
@@ -386,7 +389,8 @@ public:
         else{
             cost_now = solve_once(this->Zxyzth, true);
         }
-
+        if (cost_now > acpt_cost)
+            finish_init = false;
         return cost_now;
     }
 
@@ -400,7 +404,7 @@ public:
 
         has_new_keyframe = false;
 
-        for (int i= 0 ; i < past_dis_matrix.size(); i++)
+        for (int i = 0 ; i < past_dis_matrix.size(); i++)
         {
             problem.AddResidualBlock(
                 _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_self_vel[i], past_self_quat[i], past_ids[i]),
@@ -423,13 +427,17 @@ public:
         // std::cout << "Start solving problem" << std::endl;
         ceres::Solve(options, &problem, &summary);
 
+        double equv_cost = 2 * summary.final_cost  / past_dis_matrix.size();
+        
+        equv_cost = equv_cost /(double) (drone_num * (drone_num-1) / 2);
+        equv_cost = sqrt(equv_cost);
         if (!report)
         {
-            return summary.final_cost  / past_dis_matrix.size();
+            return equv_cost;
         }
 
         if (solve_count % 10 == 0)
-            std::cout << summary.BriefReport()<< " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
+            std::cout << summary.BriefReport() << " Equv cost : " << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
         // std::cout << summary.FullReport()<< "\n";
 
 
@@ -496,6 +504,6 @@ public:
 
         solve_count ++;
 
-        return summary.final_cost / past_dis_matrix.size();
+        return equv_cost;
     } 
 };
