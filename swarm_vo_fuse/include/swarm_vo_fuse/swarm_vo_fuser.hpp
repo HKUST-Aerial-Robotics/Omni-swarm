@@ -13,7 +13,9 @@
 #include <functional>
 
 typedef std::map<unsigned int, Eigen::Vector3d> ID2Vector3d;
-typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &)> ID2VecCallback;
+typedef std::map<unsigned int, Eigen::Quaterniond> ID2Quat;
+
+typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &, const ID2Quat &)> ID2VecCallback;
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -224,6 +226,7 @@ public:
 
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
+        ID2Quat id2quat;
         SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index);
 
         int drone_num_now = _ids.size();
@@ -243,12 +246,13 @@ public:
             int _id = _ids[i];
             Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
             Eigen::Vector3d vel = swarmRes.est_id_vel_in_k(i, self_ptr, Zxyzth);
+            Eigen::Quaterniond quat = swarmRes.est_id_quat_in_k(i, self_ptr, Zxyzth);
 
             est_pos[_id] = pos;
             est_vel[_id] = vel;
             id2vec[_id] = pos;
             id2vel[_id] = vel;
-
+            id2quat[_id] = quat;
         }
 
         /*
@@ -274,7 +278,7 @@ public:
         }
         */
         if (callback != nullptr && call_cb)
-            (*callback)(id2vec, id2vel);
+            (*callback)(id2vec, id2vel, id2quat);
     }
     
     double _ZxyTest[1000] = {0};

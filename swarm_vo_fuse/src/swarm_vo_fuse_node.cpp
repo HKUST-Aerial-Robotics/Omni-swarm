@@ -153,8 +153,8 @@ public:
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
-        auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel)>
-        ([&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel) {
+        auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat)>
+        ([&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
             swarm_fused fused;
 
             // printf("Pubing !\n");
@@ -171,6 +171,8 @@ public:
                 v.y = id2vel.at(it.first).y();
                 v.z = id2vel.at(it.first).z();
 
+                Quaterniond quat = id2quat.at(it.first);
+
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
                 fused.remote_drone_velocity.push_back(v);
@@ -178,6 +180,12 @@ public:
                 Odometry odom;
                 odom.header.frame_id = frame_id;
                 odom.pose.pose.position = p;
+                
+                odom.pose.pose.orientation.w = quat.w();
+                odom.pose.pose.orientation.x = quat.x();
+                odom.pose.pose.orientation.y = quat.y();
+                odom.pose.pose.orientation.z = quat.z();
+
                 odom.twist.twist.linear = v;
                 
                 pub_odom_id(it.first, odom);

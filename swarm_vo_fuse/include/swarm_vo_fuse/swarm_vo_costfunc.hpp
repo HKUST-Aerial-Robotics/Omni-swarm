@@ -250,6 +250,16 @@ public:
         return _rel;
     }
 
+    Quaterniond est_id_quat_in_k(int j, int i, double const * Zxyzth) const
+    {
+        double Ztheji = 0;
+        Eigen::Vector3d Zji;
+        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
+        
+        Quaterniond _quat = AngleAxisd(Ztheji, Vector3d::UnitZ()) * self_quat[j];
+        return _quat;
+    }
+
 private:
     Eigen::MatrixXd dis_matrix;
     vec_array self_pos;
