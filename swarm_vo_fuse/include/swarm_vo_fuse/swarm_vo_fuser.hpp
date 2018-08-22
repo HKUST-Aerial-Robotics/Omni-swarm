@@ -35,6 +35,10 @@ float rand_FloatRange(float a, float b)
 
 class UWBVOFuser
 {
+    enum FrameLevel {
+        SWARM_KEYFRAME,
+        SWARM_NONKEYFRAME
+    };
 
     CostFunction*
         _setup_cost_function(const Eigen::MatrixXd & dis_mat,
@@ -50,6 +54,7 @@ class UWBVOFuser
     std::vector<vec_array> past_self_pos, past_self_vel;
     std::vector<quat_array> past_self_quat;
     std::vector<std::vector<unsigned int>> past_ids;
+    std::vector<FrameLevel> past_frame_level;
     int drone_num = 0;
 
     int solve_count = 0;
@@ -79,7 +84,8 @@ public:
     double cost_now = 0;
     ID2VecCallback * callback = nullptr;
     UWBVOFuser(int _max_frame_number,int _min_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
-        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),thread_num(_thread_num)
+        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),
+        thread_num(_thread_num),last_key_frame_self_pos(100),last_key_frame_has_id(100)
     {
        random_init_Zxyz(Zxyzth);
     }
@@ -111,6 +117,8 @@ public:
     
     bool has_new_keyframe = false;
 
+    int keyframe_num = 0;
+
     bool judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel,
         const std::vector<unsigned int> & _ids)
     {
@@ -139,10 +147,21 @@ public:
 
         int _index = (id_to_index)[self_id];
         //self_pos 0 must be self
+        /*
+        ROS_INFO("index %d ptr %d lapos %f %f %f pos %f %f %f", _index, ptr,
+            last_key_frame_self_pos[_index].x(),
+            last_key_frame_self_pos[_index].y(),
+            last_key_frame_self_pos[_index].z(),
+            self_pos[ptr].x(),
+            self_pos[ptr].y(),
+            self_pos[ptr].z()
+         );
+        */
         Eigen::Vector3d _diff = self_pos[ptr] - last_key_frame_self_pos[_index];
 
         if (_diff.norm() > min_accept_keyframe_movement)
         {
+            // ROS_INFO("move %f %f %f, is kf", _diff.x(), _diff.y(), _diff.z());
             return true;
         }
         /*
@@ -163,54 +182,89 @@ public:
         return false;
     }
 
-    void add_new_data_tick(Eigen::MatrixXd dis_matrix,const vec_array & self_pos, 
-    const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
+    void delete_frame_i(int i)
     {
-        if (judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids))
+        past_ids.erase(past_ids.begin() + i);
+        past_dis_matrix.erase(past_dis_matrix.begin() + i);
+        past_self_pos.erase(past_self_pos.begin() + i);
+        past_self_vel.erase(past_self_vel.begin() + i);
+        past_self_quat.erase(past_self_quat.begin() + i);
+        past_frame_level.erase(past_frame_level.begin() + i);
+    }
+
+    void process_frame_clear()
+    { 
+        int i = 0;
+
+        //Delete non keyframe first
+        while ( i < past_ids.size() && past_ids.size() > max_frame_number)
         {
-            // ROS_INFO("Its keyframe %d", past_ids.size() + 1);
-            last_key_frame_self_pos = std::vector<Eigen::Vector3d>((id_to_index).size());
-            last_key_frame_has_id =  std::vector<bool>((id_to_index).size());
-            std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
-
-            for (int _id : _ids)
+            if (past_frame_level[i] == FrameLevel::SWARM_NONKEYFRAME)
             {
-                int _index = (id_to_index)[_id];
-                last_key_frame_self_pos[_index] = self_pos[_id];
-                last_key_frame_has_id[_index] = true;
+                delete_frame_i(i);
             }
-
-
-            past_dis_matrix.push_back(dis_matrix);
-            past_self_pos.push_back(self_pos);
-            past_self_vel.push_back(self_vel);
-            past_self_quat.push_back(self_quat);
-            past_ids.push_back(_ids);
-
-            if (_ids.size() > drone_num)
+            else
             {
-                drone_num = _ids.size();
+                i++;
             }
-
-            if (past_ids.size() > max_frame_number)
-            {
-                // past_ids.erase(past_ids.begin());
-                // past_dis_matrix.erase(past_dis_matrix.begin());
-                // past_self_pos.erase(past_self_pos.begin());
-            }
-
-            has_new_keyframe = true;
         }
 
-        else
+        //Delete keyframe in head then
+        while (past_ids.size() > max_frame_number)
         {
-            // ROS_INFO("Not a keyf");
-            if (solve_count > 0)
-            {
-                EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, true);
-            }
+            delete_frame_i(0);
+            keyframe_num --;
         }
     }
+
+    void add_new_data_tick(
+        Eigen::MatrixXd dis_matrix,const vec_array & self_pos, 
+        const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
+    {
+        process_frame_clear();
+
+        if (judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids))
+        {
+
+            keyframe_num ++;
+            // ROS_INFO("Its keyframe %d", past_ids.size() + 1);
+            past_frame_level.push_back(FrameLevel::SWARM_KEYFRAME);
+            // last_key_frame_self_pos = std::vector<Eigen::Vector3d>((id_to_index).size());
+            // last_key_frame_has_id =  std::vector<bool>((id_to_index).size());
+
+
+            std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
+
+            for (int i = 0 ; i < _ids.size(); i++)
+            {
+                int _id = _ids[i];
+                // ROS_INFO("lf %d %f %f %f", _id, self_pos[_id].x(),self_pos[_id].y(),self_pos[_id].z() );
+                int _index = (id_to_index)[_id];
+                last_key_frame_self_pos[_index] = Vector3d(self_pos[i]);
+                last_key_frame_has_id[_index] = true;
+            }
+        }
+        else
+        {
+            past_frame_level.push_back(FrameLevel::SWARM_NONKEYFRAME);
+        }
+        
+
+        past_dis_matrix.push_back(dis_matrix);
+        past_self_pos.push_back(self_pos);
+        past_self_vel.push_back(self_vel);
+        past_self_quat.push_back(self_quat);
+        past_ids.push_back(_ids);
+
+        if (_ids.size() > drone_num)
+        {
+            drone_num = _ids.size();
+        }
+
+
+        has_new_keyframe = true;
+    }
+
 
     int last_problem_ptr = 0;
     bool finish_init = false;
@@ -316,7 +370,7 @@ public:
     double solve()
     {
 
-        if(! has_new_keyframe || past_dis_matrix.size() < min_frame_number)
+        if(! has_new_keyframe || keyframe_num < min_frame_number)
             return cost_now;
         
         if(!finish_init || drone_num > last_drone_num)
@@ -344,13 +398,9 @@ public:
         if (solve_count % 10 == 0)
             printf("TICK %d Trying to solve size %ld\n", solve_count, past_dis_matrix.size());
 
-        int end_ptr = past_dis_matrix.size();
-        int start_ptr = end_ptr - max_frame_number;
-        start_ptr = start_ptr > 0 ? start_ptr : 0;
-        double use_frame = end_ptr - start_ptr;
         has_new_keyframe = false;
 
-        for (int i=start_ptr; i < end_ptr; i++)
+        for (int i= 0 ; i < past_dis_matrix.size(); i++)
         {
             problem.AddResidualBlock(
                 _setup_cost_function(past_dis_matrix[i], past_self_pos[i], past_self_vel[i], past_self_quat[i], past_ids[i]),
@@ -375,7 +425,7 @@ public:
 
         if (!report)
         {
-            return summary.final_cost;
+            return summary.final_cost  / past_dis_matrix.size();
         }
 
         if (solve_count % 10 == 0)
@@ -446,6 +496,6 @@ public:
 
         solve_count ++;
 
-        return summary.final_cost / use_frame;
+        return summary.final_cost / past_dis_matrix.size();
     } 
 };

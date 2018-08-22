@@ -73,6 +73,7 @@ protected:
             //This is first time of receive data
             this->self_id = self_id;
             uwbfuse->self_id = self_id;
+            ROS_INFO("self id %d", self_id);
             add_drone_id(self_id);
         }
 
@@ -98,6 +99,7 @@ protected:
             auto vel = odom.twist.twist.linear;
 
             self_pos[i] = Eigen::Vector3d(position.x, position.y, position.z);
+            // ROS_INFO("SP %d  %f %f %f", i, self_pos[i].x(), self_pos[i].y(), self_pos[i].z());
             self_vel[i] = Eigen::Vector3d(vel.x, vel.y, vel.z);
             self_quat[i] = Eigen::Quaterniond(quat.w, quat.x, quat.y, quat.z);
 
@@ -111,7 +113,7 @@ protected:
 
         double t_now = rdp.header.stamp.toSec();
         
-        if (t_now - t_last > 0.1)
+        if (t_now - t_last > 1 / force_freq)
         {
             uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids);
             std_msgs::Float32 cost;
@@ -138,6 +140,7 @@ protected:
         pub.publish(odom);
     }
 
+    float force_freq = 10;
 public:
     ros::NodeHandle & nh;
     UWBFuserNode(ros::NodeHandle & _nh):
@@ -147,7 +150,7 @@ public:
         int frame_num = 0, thread_num , min_frame_num;
         nh.param<int>("max_keyframe_num", frame_num, 20);
         nh.param<int>("min_keyframe_num", min_frame_num, 10);
-
+        nh.param<float>("force_freq", force_freq, 10);
         nh.param<int>("thread_num", thread_num, 4);
         uwbfuse = new UWBVOFuser(frame_num, min_frame_num, thread_num);
        
