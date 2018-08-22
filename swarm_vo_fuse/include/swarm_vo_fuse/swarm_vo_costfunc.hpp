@@ -168,7 +168,7 @@ class SwarmDistanceResidual : public CostFunction {
             for (int j = i + 1; j < drone_num_now ; j++)
             {
 
-                Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth) - (self_pos[i] + self_quat[i] * Anntenna);
+                Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth, true) - (self_pos[i] + self_quat[i] * Anntenna);
                 double d_hat = _rel.norm();
 
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
@@ -212,6 +212,7 @@ public:
             id_to_index(_id2index), 
             ids(_ids),
             Anntenna(-0.1,0,-0.12)
+
         {
 
             int drone_num_now = _ids.size();
@@ -226,9 +227,14 @@ public:
         Zji_theji(j, i, Zji, Ztheji, Zxyzth);
         
         Matrix3d rho_ji = rho_mat(Ztheji);
-        Vector3d  _rel = Zji + rho_ji * self_pos[j];
+        Vector3d  _rel(0,0,0);
         if (estimate_antenna)
-            _rel = _rel +  self_quat[j] * Anntenna;
+        {
+            _rel =  Zji + rho_ji * (self_pos[j] + self_quat[j] * Anntenna);
+        }
+        else {
+            _rel = Zji + rho_ji * self_pos[j];
+        }
         return _rel;
     }
 

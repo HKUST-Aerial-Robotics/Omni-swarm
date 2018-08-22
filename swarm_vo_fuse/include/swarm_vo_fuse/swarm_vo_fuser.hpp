@@ -74,6 +74,7 @@ public:
     int last_drone_num = 0;
     int self_id = -1;
     int thread_num;
+    double cost_now = 0;
     ID2VecCallback * callback = nullptr;
     UWBVOFuser(int _max_frame_number,int _min_frame_number,int _thread_num=4, ID2VecCallback* _callback=nullptr):
         max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),thread_num(_thread_num)
@@ -281,11 +282,7 @@ public:
     bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10)
     {
         
-        int frame_num_now = past_dis_matrix.size();
-        if (frame_num_now > max_frame_number)
-            frame_num_now = max_frame_number;
-
-        double cost = drone_num * drone_num * 0.1 * frame_num_now;
+        double cost = drone_num * drone_num * 0.1;
         bool cost_updated = false;
 
         // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
@@ -300,7 +297,7 @@ public:
             {
                 ROS_INFO("Got better cost %f", c);
                 cost_updated = true;
-                cost = c;
+                cost_now = cost = c;
                 memcpy(Zxyzth, _ZxyTest, 1000*sizeof(double));
                 if (i > min_number)
                 {
@@ -312,11 +309,11 @@ public:
         return cost_updated;
     }
 
-    void solve()
+    double solve()
     {
 
         if(! has_new_keyframe || past_dis_matrix.size() < min_frame_number)
-            return;
+            return cost_now;
         
         if(!finish_init || drone_num > last_drone_num)
         {
@@ -329,8 +326,10 @@ public:
 
         }
         else{
-            solve_once(this->Zxyzth, true);
+            cost_now = solve_once(this->Zxyzth, true);
         }
+
+        return cost_now;
     }
 
     double solve_once(double * Zxyzth, bool report=false)
@@ -344,6 +343,7 @@ public:
         int end_ptr = past_dis_matrix.size();
         int start_ptr = end_ptr - max_frame_number;
         start_ptr = start_ptr > 0 ? start_ptr : 0;
+        double use_frame = end_ptr - start_ptr;
         has_new_keyframe = false;
 
         for (int i=start_ptr; i < end_ptr; i++)
@@ -442,6 +442,6 @@ public:
 
         solve_count ++;
 
-        return summary.final_cost;
+        return summary.final_cost / use_frame;
     } 
 };

@@ -9,6 +9,9 @@ from std_msgs.msg import ColorRGBA
 from geometry_msgs.msg import Point
 import copy
 import math
+import matplotlib.pyplot as plt
+from std_msgs.msg import Float32
+
 
 class SwarmVOVisual:
     def draw_arrow_marker(self, pos, vel, color, _id, r=1):
@@ -50,17 +53,34 @@ class SwarmVOVisual:
             mark = self.draw_arrow_marker(pos, vel, self.colors[id], id)
             self.pub.publish(mark)
 
+    def on_cost_recv(self, cost):
+        self.cost_array.append(cost.data)
+
+
+
     def __init__(self):
         self.pub = rospy.Publisher('/swarm_drones/drones_mark', Marker, queue_size=1)
         self.sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused", swarm_fused, self.on_fused_data)
+        self.sub2 = rospy.Subscriber("/swarm_drones/solving_cost", Float32, self.on_cost_recv)
         self.colors = [[
             random.uniform(0,1),
             random.uniform(0,1),
             random.uniform(0,1)
             ] for i in range(100)]
 
+        self.cost_array = []
+
 if __name__ == "__main__":
+    plt.ion()
+    plt.figure("Solving cost")
     print("Start swarm vo visualize")
     rospy.init_node("swarm_vo_visualize")
     visual = SwarmVOVisual()
+    rate = rospy.Rate(10)
+    while not rospy.is_shutdown():
+        # rate.sleep()
+        plt.clf()
+        plt.plot(visual.cost_array)
+        plt.grid(which="both")
+        plt.pause(0.1)
     rospy.spin()

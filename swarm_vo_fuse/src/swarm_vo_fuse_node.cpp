@@ -17,6 +17,7 @@
 #include <geometry_msgs/Vector3.h>
 
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Float32.h>
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -113,8 +114,11 @@ protected:
         if (t_now - t_last > 0.1)
         {
             uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids);
-            this->uwbfuse->solve();
+            std_msgs::Float32 cost;
+            cost.data = this->uwbfuse->solve();
             t_last = t_now;
+
+            solving_cost_pub.publish(cost);
         }
 
 
@@ -134,7 +138,6 @@ protected:
         pub.publish(odom);
     }
 
-    std::thread solve_thread;
 public:
     ros::NodeHandle & nh;
     UWBFuserNode(ros::NodeHandle & _nh):
@@ -149,6 +152,7 @@ public:
         uwbfuse = new UWBVOFuser(frame_num, min_frame_num, thread_num);
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
+        solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
         auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel)>
         ([&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel) {
             swarm_fused fused;
@@ -187,20 +191,11 @@ public:
         ROS_INFO("Will use %d number of keyframe\n", frame_num);
         uwbfuse->max_frame_number = frame_num;
         uwbfuse->id_to_index = ids_index_in_arr;
-        /*
-        solve_thread = std::thread([&]{
-            while (true)
-            {
-                this->uwbfuse.solve();
-                // usleep(1000000);
-            }
-        });
-        */
     }
 private:
 
     ros::Subscriber recv_remote_drones;
-    ros::Publisher fused_drone_data_pub;
+    ros::Publisher fused_drone_data_pub, solving_cost_pub;
 
     std::string frame_id = "";
 
