@@ -1,4 +1,5 @@
 <launch>
+    <param name="use_sim_time" value="true" type="bool" />
     <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/odometry_ned" type="string" />
     </node>
@@ -15,5 +16,5 @@
     <node pkg="tf"
         type="static_transform_publisher"
         name="my_frame_link"
-        args="0 0 0 0 0 0 map base_link 10" />
+        args="0 0 0 0 3.1415926 0 world world_ned 100" />
 </launch>

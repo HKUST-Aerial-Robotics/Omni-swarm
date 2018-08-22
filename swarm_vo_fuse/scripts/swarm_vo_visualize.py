@@ -38,7 +38,7 @@ class SwarmVOVisual:
         mark.scale.x = 0.05
         mark.scale.y = total_len * 0.2
         mark.scale.z = total_len * 0.3
-        mark.header.frame_id = "world"
+        mark.header.frame_id = "world_ned"
 
         return mark
 

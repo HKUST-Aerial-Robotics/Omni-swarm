@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import rospy
 from nav_msgs.msg import Odometry
-from tf.transformations import *
 import math
 import numpy as np
+from pyquaternion import Quaternion
 
-pub = rospy.Publisher("/vins_estimator/odometry_ned", Odometry, queue_size=0)
+pub = rospy.Publisher("/vins_estimator/odometry_ned", Odometry, queue_size=1)
 
 def on_odometry(odom):
-    q_rot = quaternion_from_euler(0, math.pi, 0)
+    q_rot = Quaternion(axis=[0, 1, 0], angle=3.14159265)
     pos = np.array([
             odom.pose.pose.position.x,
             odom.pose.pose.position.y,
@@ -18,29 +18,32 @@ def on_odometry(odom):
             odom.twist.twist.linear.y,
             odom.twist.twist.linear.z])
 
-    quat = np.array([
-            odom.pose.pose.oriention.x,
-            odom.pose.pose.oriention.y,
-            odom.pose.pose.oriention.z,
-            odom.pose.pose.oriention.w
-            ])
+    quat = Quaternion(
+            odom.pose.pose.orientation.w,
+            odom.pose.pose.orientation.x,
+            odom.pose.pose.orientation.y,
+            odom.pose.pose.orientation.z
+            )
     
-    quat = q_rot * quat
+    quat = q_rot * quat * q_rot
 
-    pos = q_rot * pos
-    vel = q_rot * vel
+    pos = q_rot.rotate(pos)
+    vel = q_rot.rotate(vel)
 
     odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z = pos[0], pos[1], pos[2]
     odom.twist.twist.linear.x, odom.twist.twist.linear.y, odom.twist.twist.linear.z = vel[0], vel[1], vel[2]
-    odom.pose.pose.oriention.x = quat[0]
-    odom.pose.pose.oriention.y = quat[1]
-    odom.pose.pose.oriention.z = quat[2]
-    odom.pose.pose.oriention.w = quat[3]
+    odom.pose.pose.orientation.w = quat.q[0]
+    odom.pose.pose.orientation.x = quat.q[1]
+    odom.pose.pose.orientation.y = quat.q[2]
+    odom.pose.pose.orientation.z = quat.q[3]
+
+    odom.header.frame_id = "world_ned"
+    odom.child_frame_id = ""
 
     pub.publish(odom)
 
 
 if __name__ == "__main__":
     rospy.init_node("odometry_transfer")
-    sub = rospy.Subscriber("/vins_estimator/odometry", Odometry, on_odometry, queue_size=0)
+    sub = rospy.Subscriber("/vins_estimator/odometry", Odometry, on_odometry, queue_size=1)
     rospy.spin()
