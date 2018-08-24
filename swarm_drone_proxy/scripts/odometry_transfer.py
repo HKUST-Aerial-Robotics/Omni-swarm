@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import rospy
 from nav_msgs.msg import Odometry
 import math
@@ -8,6 +9,10 @@ from pyquaternion import Quaternion
 pub = rospy.Publisher("/vins_estimator/odometry_ned", Odometry, queue_size=1)
 
 def on_odometry(odom):
+
+    latency = rospy.get_time() - odom.header.stamp.to_sec()
+
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Lantency", latency*1000, " ms ")
     q_rot = Quaternion(axis=[0, 1, 0], angle=3.14159265)
     pos = np.array([
             odom.pose.pose.position.x,

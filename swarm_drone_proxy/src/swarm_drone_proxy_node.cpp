@@ -124,6 +124,8 @@ class SwarmDroneProxy
         data_buffer buffer;
         buffer.data = std::vector<uint8_t>(buf, buf+len);
 
+        // ROS_INFO("length %d rate %d", len, len*400);
+
         uwb_senddata_pub.publish(buffer);
     }
     

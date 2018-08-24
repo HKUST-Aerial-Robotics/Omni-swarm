@@ -51,9 +51,27 @@ void UWBHelperNode::configure_port(int baudrate)
         return ;
     }
 
-    cfsetospeed(&tty, (speed_t)B921600);
-    cfsetispeed(&tty, (speed_t)B921600);
+    speed_t spd = B921600;
+    switch (baudrate)
+    {
+        case 230400:
+            spd = B230400;
+            break;
+        case 460800:
+            spd = B460800;
+            break;
+        case 921600:
+            spd = B921600;                
+            break;
+        case 115200:
+        default:
+            spd = B115200;
+            break;
+    }
 
+    cfsetospeed(&tty, spd);
+    cfsetispeed(&tty, spd);
+    
     tty.c_cflag |= (CLOCAL | CREAD);    /* ignore modem controls */
     tty.c_cflag &= ~CSIZE;
     tty.c_cflag |= CS8;         /* 8-bit characters */
@@ -177,6 +195,7 @@ uint8_t UWBHelperNode::read_byte_from_serial()
 {
     char c;
     int n = read (serial_fd, &c, sizeof(char));
+    // printf("%2x ", c);
     return c;
 }
 
@@ -224,7 +243,12 @@ void UWBHelperNode::parse_header()
         return;
     }
 
+    // printf("Found node header\n");
     int node_num = this->parse_node_header();
+    if (node_num > 10)
+    {
+        node_num = 0;
+    }
     this->read_wait_remote_node_num = node_num;
     this->read_status = WAIT_FOR_NODE_DETAIL;
     // printf("node_num %d\n", node_num);

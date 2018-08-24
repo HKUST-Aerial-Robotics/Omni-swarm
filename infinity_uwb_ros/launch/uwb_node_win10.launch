@@ -1,6 +1,6 @@
 <launch>
     <node pkg="infinity_uwb_ros" name="uwb_node" type="infinity_uwb_ros_node" output="screen"> 
         <param name="serial_name" value="/dev/ttyS6" />
-        <param name="baudrate" value="921600" type="int" />
+        <param name="baudrate" value="115200" type="int" />
     </node>
 </launch>

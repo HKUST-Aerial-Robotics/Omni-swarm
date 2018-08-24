@@ -96,7 +96,7 @@ int main(int argc, char** argv)
     nh.param<int>("baudrate", baudrate, 921600);
     nh.param<std::string>("serial_name", serial_name, "/dev/ttyUSB0");
 
-    UWBRosNodeofNode uwbhelper(serial_name, 921600, nh, true);
+    UWBRosNodeofNode uwbhelper(serial_name, baudrate, nh, true);
 
 
     ros::Rate loop_rate(200);
