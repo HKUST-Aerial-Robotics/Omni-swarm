@@ -3,7 +3,7 @@ project(swarm_vo_fuse)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 set(CMAKE_BUILD_TYPE "Release")
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
 
 ## Find catkin macros and libraries

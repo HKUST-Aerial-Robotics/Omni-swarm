@@ -83,9 +83,9 @@ public:
     int thread_num;
     double cost_now = 0;
     double acpt_cost = 0.4;
-    ID2VecCallback * callback = nullptr;
-    UWBVOFuser(int _max_frame_number,int _min_frame_number, double _acpt_cost = 0.4 ,int _thread_num=4, ID2VecCallback* _callback=nullptr):
-        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),callback(_callback),
+    ID2VecCallback callback;
+    UWBVOFuser(int _max_frame_number,int _min_frame_number, double _acpt_cost = 0.4 ,int _thread_num=4):
+        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
         thread_num(_thread_num),last_key_frame_self_pos(100),last_key_frame_has_id(100),acpt_cost(_acpt_cost)
     {
        random_init_Zxyz(Zxyzth);
@@ -333,7 +333,7 @@ public:
         }
         */
         if (callback != nullptr && call_cb)
-            (*callback)(id2vec, id2vel, id2quat);
+            (callback)(id2vec, id2vel, id2quat);
     }
     
     double _ZxyTest[1000] = {0};

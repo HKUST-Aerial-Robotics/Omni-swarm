@@ -51,6 +51,9 @@ void UWBHelperNode::configure_port(int baudrate)
         return ;
     }
 
+#if defined(__MACH__)
+    speed_t spd = baudrate;
+#else
     speed_t spd = B921600;
     switch (baudrate)
     {
@@ -68,7 +71,7 @@ void UWBHelperNode::configure_port(int baudrate)
             spd = B115200;
             break;
     }
-
+#endif
     cfsetospeed(&tty, spd);
     cfsetispeed(&tty, spd);
     

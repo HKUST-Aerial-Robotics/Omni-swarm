@@ -158,8 +158,7 @@ public:
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
-        auto cb = new std::function<void(const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat)>
-        ([&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
+        uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
             swarm_fused fused;
 
             // printf("Pubing !\n");
@@ -198,9 +197,8 @@ public:
 
             fused_drone_data_pub.publish(fused);
             return;
-        });
+        };
 
-        uwbfuse->callback = cb;
         ROS_INFO("Will use %d number of keyframe\n", frame_num);
         uwbfuse->max_frame_number = frame_num;
         uwbfuse->id_to_index = ids_index_in_arr;
