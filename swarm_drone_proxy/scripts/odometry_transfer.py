@@ -50,5 +50,5 @@ def on_odometry(odom):
 
 if __name__ == "__main__":
     rospy.init_node("odometry_transfer")
-    sub = rospy.Subscriber("/vins_estimator/odometry", Odometry, on_odometry, queue_size=1)
+    sub = rospy.Subscriber("/vins_estimator/imu_propagate", Odometry, on_odometry, queue_size=1)
     rospy.spin()
