@@ -7,8 +7,8 @@
     </include>
     <node pkg="swarm_vo_fuse" name="swarm_tx2_helper" type="swarm_tx2_helper.py" output="screen"> 
     </node>
-      <include file="$(find vins_estimator)/launch/dji_stereo.launch">
+    <include file="$(find vins_estimator)/launch/dji_stereo.launch">
     </include>
-     <!-- <node pkg="rosbag" type="record" name="rosbag_record_swarm" -->
-       <!-- args="record -o ros_bag_swarm_novo.bag /dji_sdk_1/dji_sdk/imu /stereo/left/image /stereo/right/image /uwb_node/remote_nodes"/>   -->
+     <node pkg="rosbag" type="record" name="rosbag_record_swarm"
+      args="record -o ros_bag_swarm_novo.bag /vins_estimator/imu_propagate /uwb_node/remote_nodes"/>
 </launch>
