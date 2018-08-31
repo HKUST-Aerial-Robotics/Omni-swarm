@@ -5,7 +5,7 @@
         <param name="is_show" type="bool" value="false"/>
         <param name="is_print" type="bool" value="true"/>
         <param name="is_sync" type="bool" value="$(arg is_sync)"/>
-	<rosparam command="load" file="/home/dji/swarm_config/camera_config.yaml" />
+	<rosparam command="load" file="/home/dji/SwarmAutoInstall/config/camera_config.yaml" />
         <rosparam>
         # common setting and default individual settings
         cam_cnt: 2
