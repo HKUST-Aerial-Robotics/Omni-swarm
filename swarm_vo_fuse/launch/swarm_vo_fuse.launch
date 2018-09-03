@@ -1,6 +1,6 @@
 <launch>
     <arg name="bag_path" default="/home/dji/.ros" />
-    <include file="$(find infinity_uwb_ros)/launch/uwb_node_manifold2.launch">
+    <include file="$(find infinity_uwb_ros)/launch/uwb_node_manifold2_usb.launch">
     </include>
     <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/odometry" type="string" />
