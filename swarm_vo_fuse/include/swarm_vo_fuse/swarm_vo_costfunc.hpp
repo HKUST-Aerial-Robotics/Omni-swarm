@@ -211,7 +211,7 @@ public:
             self_quat(_self_quat), 
             id_to_index(_id2index), 
             ids(_ids),
-            Anntenna(-0.1,0,-0.12)
+            Anntenna(-0.07,0,0.09)
 
         {
 

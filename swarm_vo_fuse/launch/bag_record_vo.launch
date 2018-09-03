@@ -7,6 +7,6 @@
     </include>
     <node pkg="swarm_vo_fuse" name="swarm_tx2_helper" type="swarm_tx2_helper.py" output="screen"> 
     </node>
-      <include file="$(find vins_estimator)/launch/dji_stereo.launch">
+    <include file="$(find vins_estimator)/launch/dji_stereo.launch">
     </include>
 </launch>

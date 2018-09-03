@@ -5,15 +5,15 @@
     </node> -->
     <node pkg="swarm_drone_proxy" name="odometry_transfer" type="odometry_transfer.py" output="screen">
     </node>
-    <!-- <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
-    </node> -->
-    <!-- <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
+    <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
+    </node>
+    <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
        <param name="force_freq" value="5" type="double" />
        <param name="max_accept_cost" value="0.5" type="double" />
        <param name="max_keyframe_num" value="100" type="int" />
        <param name="min_keyframe_num" value="10" type="int" />
        <param name="thread_num" value="2" type="int" />
-    </node>  -->
+    </node>
     <include  file="$(find vins_estimator)/launch/dji_stereo.launch">
     </include>
     <node pkg="tf"
