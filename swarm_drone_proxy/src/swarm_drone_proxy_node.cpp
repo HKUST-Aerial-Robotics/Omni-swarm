@@ -63,9 +63,9 @@ class SwarmDroneProxy
 
 
         quat.w() = odom.pose.pose.orientation.w;
-        quat.x() = odom.pose.pose.orientation.w;
-        quat.y() = odom.pose.pose.orientation.w;
-        quat.z() = odom.pose.pose.orientation.w;
+        quat.x() = odom.pose.pose.orientation.x;
+        quat.y() = odom.pose.pose.orientation.y;
+        quat.z() = odom.pose.pose.orientation.z;
 
         self_odom = odom;
 
