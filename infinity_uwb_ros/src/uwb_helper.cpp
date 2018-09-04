@@ -57,6 +57,12 @@ void UWBHelperNode::configure_port(int baudrate)
     speed_t spd = B921600;
     switch (baudrate)
     {
+        case 3000000:
+            spd = B3000000;
+            break;
+        case 1000000:
+            spd = B1000000;
+            break;
         case 230400:
             spd = B230400;
             break;

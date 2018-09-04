@@ -14,7 +14,7 @@ import random
 import copy
 import rospy
 
-self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
+self_odom_pub =  rospy.Publisher("/vins_estimator/imu_propagate", Odometry, queue_size=1)
 pose = Pose()
 pose.orientation.w = 1
 pose.orientation.x = 0

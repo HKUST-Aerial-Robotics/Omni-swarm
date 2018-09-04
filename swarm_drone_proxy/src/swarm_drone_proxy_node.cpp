@@ -34,6 +34,8 @@ class SwarmDroneProxy
 
     nav_msgs::Odometry self_odom;
 
+    int force_self_id = -1;
+
 
     Odometry naive_predict(const Odometry & odom_now, double now)
     {
@@ -131,6 +133,8 @@ class SwarmDroneProxy
     
     std::vector<float> past_self_dis;
 
+    bool force_self_id_avail = false;
+
     void on_remote_nodes_data_recv(const remote_uwb_info & info)
     {
 
@@ -171,6 +175,9 @@ class SwarmDroneProxy
                 id_n_distance[_id] = _dis;
                 available_id.push_back(_id);
                 id_odoms[_id] = odom;
+                // printf("%d id selfidforce %d\n", _id, force_self_id);
+                if (_id == force_self_id)
+                    force_self_id_avail = true;
             }
         }
 
@@ -194,7 +201,16 @@ class SwarmDroneProxy
         data.ids = available_id;
         data.drone_self_odoms = std::vector<Odometry>(available_id.size());
         data.drone_num = available_id.size();
-        data.self_id = info.self_id;
+
+        if (force_self_id >= 0)
+        {
+            data.self_id = force_self_id;
+        }
+        else
+        {
+            data.self_id = info.self_id;
+        }
+
         data.self_frame_id = self_odom.header.frame_id;
         data.header.stamp = info.header.stamp;
 
@@ -218,11 +234,12 @@ class SwarmDroneProxy
         send_swarm_mavlink(self_dis);
 
         data.distance_matrix = distance_measure;
-        if (odometry_available && odometry_updated)
-        {
-            odometry_updated = false;
-            swarm_sourcedata_pub.publish(data);
-        }
+        if (force_self_id_avail || force_self_id < 0)
+            if (odometry_available && odometry_updated)
+            {
+                odometry_updated = false;
+                swarm_sourcedata_pub.publish(data);
+            }
     }
 
 public:
@@ -233,6 +250,7 @@ public:
 
         std::string vins_topic ="";
         nh.param<std::string>("vins_topic", vins_topic, "/vins_estimator/odometry");
+        nh.param<int>("force_self_id", force_self_id, -1);
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);

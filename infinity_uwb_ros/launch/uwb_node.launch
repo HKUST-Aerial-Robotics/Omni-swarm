@@ -1,0 +1,8 @@
+<launch>
+    <arg name="serial_name" default="/dev/ttyS6" />
+    <arg name="baudrate" default="921600" />
+    <node pkg="infinity_uwb_ros" name="uwb_node" type="infinity_uwb_ros_node" output="screen"> 
+        <param name="serial_name" value="$( arg serial_name)" />
+        <param name="baudrate" value="$( arg baudrate)" type="int" />
+    </node>
+</launch>
