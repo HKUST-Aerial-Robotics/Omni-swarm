@@ -12,6 +12,4 @@
        <param name="min_keyframe_num" value="10" type="int" />
        <param name="thread_num" value="4" type="int" />
     </node>
-    <node pkg="rosbag" type="record" name="rosbag_record_swarm"
-       args="record -o $(arg bag_path) /dji_sdk_1/dji_sdk/imu /vins_estimator/imu_propagate /vins_estimator/odometry /uwb_node/remote_nodes /drone_1/position_cmd /dji_sdk_1/dji_sdk/flight_control_setpoint_generic"/>  
 </launch>
