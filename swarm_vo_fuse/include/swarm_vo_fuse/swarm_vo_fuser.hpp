@@ -162,7 +162,7 @@ public:
 
         if (_diff.norm() > min_accept_keyframe_movement)
         {
-            // ROS_INFO("move %f %f %f, is kf", _diff.x(), _diff.y(), _diff.z());
+            ROS_INFO("KF move %f %f %f, is kf", _diff.x(), _diff.y(), _diff.z());
             return true;
         }
         /*
