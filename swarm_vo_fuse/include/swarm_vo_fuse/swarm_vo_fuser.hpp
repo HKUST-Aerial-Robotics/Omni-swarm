@@ -247,7 +247,8 @@ public:
         }
         else
         {
-            past_frame_level.push_back(FrameLevel::SWARM_NONKEYFRAME);
+            if (past_frame_level.size() < max_frame_number)
+                past_frame_level.push_back(FrameLevel::SWARM_NONKEYFRAME);
         }
         
 
