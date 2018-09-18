@@ -2,8 +2,21 @@
 from __future__ import print_function
 import rospy
 import pygame
-# import pymavlink
+import pymavlink
 import sys, pygame
+
+
+class SwarmCommander():
+    def __init__(self):
+        pass
+    def try_arm(self):
+        pass
+
+    def send_mavlink_msg(self):
+        pass
+    
+    def parse_data(self):
+        pass
 
 class RCState():
     def __init__(self):
@@ -22,12 +35,16 @@ class RCState():
         pygame.init()
         pygame.joystick.init()
 
+        size = [50, 70]
+        screen = pygame.display.set_mode(size)
+
         self.joystick = pygame.joystick.Joystick(0)
     
     def pack_mavlink(self):
         return
 
     def update(self):
+
         for event in pygame.event.get(): # User did something
             if event.type == pygame.QUIT: # If user clicked close
                 done=True # Flag that we are done so we exit this loop
@@ -35,10 +52,11 @@ class RCState():
             if event.type == pygame.JOYBUTTONDOWN:
                 print("Joystick button pressed.")
             if event.type == pygame.JOYBUTTONUP:
+                print(event)
                 print("Joystick button released.")
-            print(event)
         
-
+        joystick = self.joystick
+        joystick.init()
         self.rcA = joystick.get_axis(2)
         self.rcE = - joystick.get_axis(3)
         self.rcR = joystick.get_axis(0)
@@ -55,6 +73,8 @@ class RCState():
         self.sw1 = joystick.get_button(8)
         self.sw2 = joystick.get_button(9)
 
+        self.btnA = joystick.get_button(11)
+
         # A 11
         # B 12
         # Y 14
@@ -64,11 +84,6 @@ class RCState():
 
      
 if __name__ == "__main__":
-    rospy.init_node("swarm_station_joy")
-
-    joystick = pygame.joystick.Joystick(0)
-    joystick.init()
-
-    axes = joystick.get_numaxes()
-
-    print(axes)
+    rcs = RCState()
+    while True:
+        rcs.update()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from dji_sdk.srv import SetHardSync
+import time
 
 if __name__ == "__main__":
     #Enable chicken blood mode
@@ -13,6 +14,7 @@ if __name__ == "__main__":
     ret = 0
     while ret == 0:
         ret = call_hardsyc(20, 0)
+        time.sleep(0.1)
     
     rospy.loginfo("Successful called hardsyc")
     rospy.loginfo("exiting hardsyc")

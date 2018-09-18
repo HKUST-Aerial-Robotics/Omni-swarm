@@ -148,13 +148,24 @@ public:
     {
         recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
         int frame_num = 0, thread_num , min_frame_num;
-        float acpt_cost = 0.4;
+        float acpt_cost = 0.4;  
+
+        float anntenna_pos_x = 0, anntenna_pos_y = 0,anntenna_pos_z = 0.27;
+
         nh.param<int>("max_keyframe_num", frame_num, 20);
         nh.param<int>("min_keyframe_num", min_frame_num, 10);
         nh.param<float>("force_freq", force_freq, 10);
         nh.param<float>("max_accept_cost", acpt_cost, 0.4);
         nh.param<int>("thread_num", thread_num, 4);
-        uwbfuse = new UWBVOFuser(frame_num, min_frame_num, acpt_cost, thread_num);
+
+        nh.param<float>("anntenna_pos/x", anntenna_pos_x, 0);
+        nh.param<float>("anntenna_pos/y", anntenna_pos_y, 0);
+        nh.param<float>("anntenna_pos/z", anntenna_pos_z, 0.27);
+
+
+        Eigen::Vector3d ann_pos(anntenna_pos_x, anntenna_pos_y, anntenna_pos_z);
+
+        uwbfuse = new UWBVOFuser(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);

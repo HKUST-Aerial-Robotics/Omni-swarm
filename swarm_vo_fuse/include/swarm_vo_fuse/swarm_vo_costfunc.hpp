@@ -149,7 +149,8 @@ class SwarmDistanceResidual : public CostFunction {
         }
         return _rel_dir.dot(ret);
     }
-    
+
+
     virtual bool Evaluate(double const* const* _Zxyzth, double* residual, double** jacobians) const {
 
         double const * Zxyzth = *_Zxyzth;
@@ -168,12 +169,11 @@ class SwarmDistanceResidual : public CostFunction {
             for (int j = i + 1; j < drone_num_now ; j++)
             {
 
-                Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth, true) - (self_pos[i] + self_quat[i] * Anntenna);
-                double d_hat = _rel.norm();
 
+                Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
                 double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
-                residual[count] = (d_hat - d_bar);
+                residual[count] = (_rel.norm() - d_bar);
 
                 if (jacobians != NULL && jacobians[0] != NULL) {
                     for (int m =0; m<4 ; m++)
@@ -204,14 +204,16 @@ public:
                 const vec_array & _self_vel, 
                 const quat_array & _self_quat, 
                 const std::vector<unsigned int>& _ids,
-                std::map<int, int> _id2index): 
+                std::map<int, int> _id2index,
+                Eigen::Vector3d anntena_pos
+                ): 
             dis_matrix(_dis_matrix), 
             self_vel(_self_vel), 
             self_pos(_self_pos), 
             self_quat(_self_quat), 
             id_to_index(_id2index), 
             ids(_ids),
-            Anntenna(-0.07,0,0.09)
+            Anntenna(anntena_pos)
 
         {
 
@@ -258,6 +260,12 @@ public:
         
         Quaterniond _quat = AngleAxisd(Ztheji, Vector3d::UnitZ()) * self_quat[j];
         return _quat;
+    }
+    
+    inline Eigen::Vector3d distance_j_i(int j, int i, double const* Zxyzth) const
+    {
+        Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth, true) - (self_pos[i] + self_quat[i] * Anntenna);
+        return _rel;
     }
 
 private:

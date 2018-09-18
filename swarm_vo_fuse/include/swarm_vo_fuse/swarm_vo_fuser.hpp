@@ -46,7 +46,7 @@ class UWBVOFuser
             std::vector<unsigned int> _ids)
     {
         CostFunction* cost_function =
-            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index);
+            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
         return cost_function;
     }
 
@@ -84,8 +84,9 @@ public:
     double cost_now = 0;
     double acpt_cost = 0.4;
     ID2VecCallback callback;
-    UWBVOFuser(int _max_frame_number,int _min_frame_number, double _acpt_cost = 0.4 ,int _thread_num=4):
-        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
+    Eigen::Vector3d ann_pos;
+    UWBVOFuser(int _max_frame_number,int _min_frame_number, Eigen::Vector3d _ann_pos, double _acpt_cost = 0.4 ,int _thread_num=4):
+        max_frame_number(_max_frame_number), min_frame_number(_min_frame_number), ann_pos(_ann_pos),
         thread_num(_thread_num),last_key_frame_self_pos(100),last_key_frame_has_id(100),acpt_cost(_acpt_cost)
     {
        random_init_Zxyz(Zxyzth);
@@ -162,7 +163,7 @@ public:
 
         if (_diff.norm() > min_accept_keyframe_movement)
         {
-            ROS_INFO("KF move %f %f %f, is kf", _diff.x(), _diff.y(), _diff.z());
+            ROS_INFO("KF move %f %f %f, is kf, count %d", _diff.x(), _diff.y(), _diff.z(), past_self_pos.size());
             return true;
         }
         /*
@@ -244,13 +245,19 @@ public:
                 last_key_frame_self_pos[_index] = Vector3d(self_pos[i]);
                 last_key_frame_has_id[_index] = true;
             }
+            has_new_keyframe = true;
         }
         else
         {
             if (past_frame_level.size() < max_frame_number)
-                past_frame_level.push_back(FrameLevel::SWARM_NONKEYFRAME);
+            {
+                // past_frame_level.push_back(FrameLevel::SWARM_NONKEYFRAME);
+            }
+
         }
         
+        if (finish_init)
+            EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, true);
 
         past_dis_matrix.push_back(dis_matrix);
         past_self_pos.push_back(self_pos);
@@ -264,7 +271,6 @@ public:
         }
 
 
-        has_new_keyframe = true;
     }
 
 
@@ -283,7 +289,7 @@ public:
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
-        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index);
+        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
 
         int drone_num_now = _ids.size();
 
@@ -311,28 +317,29 @@ public:
             id2quat[_id] = quat;
         }
 
-        /*
+        printf("\nDistance Matrix\n\t\t");
         for (int i = 0;i<drone_num_now;i++)
         {
-            int _id = _ids[i];
-            int _index = id_to_index->at(_id);
-            printf("i %d index %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n", 
-                i,
-                _index,
-                _id,
-                Zxyzth[(_index-1)*4],
-                Zxyzth[(_index-1)*4+1],
-                Zxyzth[(_index-1)*4+2],
-                Zxyzth[(_index-1)*4+3],
-                est_pos[_id].x(),
-                est_pos[_id].y(),
-                est_pos[_id].z(),
-                self_pos[i].x(),
-                self_pos[i].y(),
-                self_pos[i].z()
-            );
+            int _id_i = _ids[i];
+            printf("%d:\t", _id_i);
         }
-        */
+
+        for (int i = 0;i<drone_num_now;i++)
+        {
+            int _id_i = _ids[i];
+            int _index_i = id_to_index.at(_id_i);
+            printf("\nE/M%d:\t", _id_i);
+            for (int j = 0;j<drone_num_now;j++)
+            {
+                int _id_j = _ids[j];
+                int _index_j = id_to_index.at(_id_j);
+
+                double est_d = swarmRes.distance_j_i(j, i, Zxyzth).norm();
+                printf("%3.2f:%3.2f\t", est_d, dis_matrix(i, j));
+            }
+
+        }
+
         if (callback != nullptr && call_cb)
             (callback)(id2vec, id2vel, id2quat);
     }
@@ -387,9 +394,11 @@ public:
             }
 
         }
-        else{
+        else if (has_new_keyframe)
+        {
             cost_now = solve_once(this->Zxyzth, true);
         }
+        
         if (cost_now > acpt_cost)
             finish_init = false;
         return cost_now;
@@ -437,8 +446,8 @@ public:
             return equv_cost;
         }
 
-        if (solve_count % 10 == 0)
-            std::cout << summary.BriefReport() << " Equv cost : " << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
+        // if (solve_count % 10 == 0)
+        std::cout<<"\n\nSize:" << past_dis_matrix.size() <<"\n" << summary.BriefReport() << " Equv cost : " << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
         // std::cout << summary.FullReport()<< "\n";
 
 
@@ -453,10 +462,8 @@ public:
             past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
         if (ret)
         {
-
-
             covariance.GetCovarianceBlock(Zxyzth, Zxyzth, covariance_xx);
-            if (solve_count % 100 == 0)
+            if (solve_count % 10 == 0)
                 for (int i = 0;i<drone_num - 1;i++)
                 {
                     int _id = past_ids.back()[i];
@@ -482,7 +489,7 @@ public:
         }
         else
         {
-            if (solve_count % 100 == 0)
+            if (solve_count % 10 == 0)
                 for (int i = 0;i<drone_num - 1;i++)
                 {
                     int _id = past_ids.back()[i];
