@@ -258,7 +258,7 @@ public:
         Eigen::Vector3d Zji;
         Zji_theji(j, i, Zji, Ztheji, Zxyzth);
         
-        Quaterniond _quat = AngleAxisd(Ztheji, Vector3d::UnitZ()) * self_quat[j];
+        Quaterniond _quat = AngleAxisd(-Ztheji, Vector3d::UnitZ()) * self_quat[j];
         return _quat;
     }
     

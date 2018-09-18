@@ -86,8 +86,6 @@ public:
     
     bool has_new_keyframe = false;
 
-    int keyframe_num = 0;
-
     double _ZxyTest[1000] = {0};
 
 
@@ -200,9 +198,6 @@ public:
         std::vector<unsigned int> is_kf_list = judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids);
         if (is_kf_list.size() > 0)
         {
-
-            keyframe_num ++;
-
 
             std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
 

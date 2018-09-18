@@ -1,23 +1,12 @@
 <launch>
     <param name="use_sim_time" value="true" type="bool" />
-    <!-- <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen">
-       <param name="vins_topic" value="/vins_estimator/odometry_ned" type="string" />
+    <!-- <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
     </node> -->
-    <node pkg="swarm_drone_proxy" name="odometry_transfer" type="odometry_transfer.py" output="screen">
-    </node>
-    <node pkg="swarm_vo_fuse" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen"> 
-    </node>
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
        <param name="force_freq" value="5" type="double" />
-       <param name="max_accept_cost" value="0.5" type="double" />
+       <param name="max_accept_cost" value="1.0" type="double" />
        <param name="max_keyframe_num" value="100" type="int" />
        <param name="min_keyframe_num" value="10" type="int" />
-       <param name="thread_num" value="2" type="int" />
+       <param name="thread_num" value="4" type="int" />
     </node>
-    <include  file="$(find vins_estimator)/launch/dji_stereo.launch">
-    </include>
-    <node pkg="tf"
-        type="static_transform_publisher"
-        name="my_frame_link"
-        args="0 0 0 0 3.1415926 0 world world_ned 100" />
 </launch>
