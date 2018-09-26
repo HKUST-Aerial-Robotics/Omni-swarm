@@ -35,8 +35,8 @@ class RCState():
         pygame.init()
         pygame.joystick.init()
 
-        size = [50, 70]
-        screen = pygame.display.set_mode(size)
+        size = [10, 10]
+        # screen = pygame.display.set_mode(size)
 
         self.joystick = pygame.joystick.Joystick(0)
     
@@ -60,7 +60,7 @@ class RCState():
         self.rcA = joystick.get_axis(2)
         self.rcE = - joystick.get_axis(3)
         self.rcR = joystick.get_axis(0)
-        self.rcT = joystick.get_axis(1)
+        self.rcT = -joystick.get_axis(1)
         self.rcAUX1 = joystick.get_axis(4)
         self.rcAUX2 = joystick.get_axis(5)
 
@@ -74,6 +74,10 @@ class RCState():
         self.sw2 = joystick.get_button(9)
 
         self.btnA = joystick.get_button(11)
+
+
+        print("\rrcA {:3.2f} rcE {:3.2f} rcR {:3.2f} rcT {:3.2f} rcAUX1 {:3.2f} rc AUX2 {:3.2f}".format(
+            self.rcA, self.rcE, self.rcR, self.rcT, self.rcAUX1, self.rcAUX2), end="")
 
         # A 11
         # B 12
