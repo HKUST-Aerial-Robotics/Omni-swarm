@@ -11,25 +11,48 @@
 
 using namespace swarm_msgs;
 
+#define MAX_SEND_BYTES 250
+
 class UWBRosNodeofNode: public UWBHelperNode
 {
+    ros::Timer fast_timer, slow_timer;
 public:
     UWBRosNodeofNode(std::string serial_name, int baudrate, ros::NodeHandle nh,bool enable_debug):
         UWBHelperNode(serial_name, baudrate, false)
-
     {
         remote_node_pub = nh.advertise<remote_uwb_info>("remote_nodes", 1);
         broadcast_data_pub = nh.advertise<incoming_broadcast_data>("incoming_broadcast_data",1);
 
         recv_bdmsg = nh.subscribe("send_broadcast_data", 1, &UWBRosNodeofNode::on_send_broadcast_req, this);   
+        fast_timer = nh.createTimer(ros::Duration(0.005), &UWBRosNodeofNode::fast_timer_callback, this);
+        slow_timer = nh.createTimer(ros::Duration(0.02), &UWBRosNodeofNode::send_broadcast_data_callback, this);
     }
 
 protected:
 
+// void
+    void send_broadcast_data_callback(const ros::TimerEvent & e)
+    {
+        if (send_buffer.size() <= MAX_SEND_BYTES)
+        {
+            this->send_broadcast_data(send_buffer);
+            send_buffer.clear();
+        }
+        else {
+            std::vector<uint8_t> sub(&send_buffer[0],&send_buffer[MAX_SEND_BYTES]);
+            this->send_broadcast_data(sub);
+            send_buffer.erase(send_buffer.begin(), send_buffer.begin() + MAX_SEND_BYTES);
+        }
+    }
+
+    void fast_timer_callback(const ros::TimerEvent & e)
+    {
+        this->read_and_parse();
+    }
     virtual void on_send_broadcast_req(data_buffer msg)
     {
-        
-        this->send_broadcast_data(msg.data);
+        // this->send_broadcast_data(msg.data);
+        send_buffer.insert(send_buffer.end(), msg.data.begin(), msg.data.end());
     }
     virtual void on_broadcast_data_recv(int _id, int _recv_time, Buffer _msg) override
     {
@@ -82,6 +105,8 @@ protected:
 private:
     ros::Publisher remote_node_pub, broadcast_data_pub;
     ros::Subscriber recv_bdmsg;
+
+    std::vector<uint8_t> send_buffer;
 };
 
 int main(int argc, char** argv)
@@ -98,12 +123,5 @@ int main(int argc, char** argv)
 
     UWBRosNodeofNode uwbhelper(serial_name, baudrate, nh, true);
 
-
-    ros::Rate loop_rate(200);
-    while (ros::ok())
-    {
-        uwbhelper.read_and_parse();
-        ros::spinOnce();
-        loop_rate.sleep();
-    }
+    ros::spin();
 }

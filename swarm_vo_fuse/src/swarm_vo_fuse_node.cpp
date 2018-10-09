@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include "swarm_vo_fuse/swarm_vo_fuser.hpp"
 #include "swarm_msgs/swarm_fused.h"
+#include "swarm_msgs/swarm_fused_relative.h"
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
 
@@ -168,15 +169,19 @@ public:
         uwbfuse = new UWBVOFuser(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
        
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
+        fused_drone_rel_data_pub = nh.advertise<swarm_fused_relative>("/swarm_drones/swarm_drone_fused_relative", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
         uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
             swarm_fused fused;
-
+            swarm_fused_relative relative_fused;
+            Eigen::Vector3d self_pos = id2vec.at(self_id);
+            Eigen::Vector3d self_vel = id2vel.at(self_id);
+            Eigen::Quaterniond self_quat = id2quat.at(self_id);
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
-                geometry_msgs::Point p;
-                geometry_msgs::Vector3 v;
+                geometry_msgs::Point p, rel_p;
+                geometry_msgs::Vector3 v, rel_v;
                 p.x = it.second.x();
                 p.y = it.second.y();
                 p.z = it.second.z();
@@ -186,11 +191,28 @@ public:
                 v.y = id2vel.at(it.first).y();
                 v.z = id2vel.at(it.first).z();
 
-                Quaterniond quat = id2quat.at(it.first);
-
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
                 fused.remote_drone_velocity.push_back(v);
+
+                Quaterniond quat = id2quat.at(it.first);
+                
+                rel_p.x = it.second.x() - self_pos.x();
+                rel_p.y = it.second.y() - self_pos.y();
+                rel_p.z = it.second.z() - self_pos.z();
+
+                rel_v.x = id2vel.at(it.first).x() - self_vel.x();
+                rel_v.y = id2vel.at(it.first).y() - self_vel.y();
+                rel_v.z = id2vel.at(it.first).z() - self_vel.z();
+
+                Eigen::Quaterniond rel_quat =  self_quat.inverse() * quat;
+                Vector3d euler = rel_quat.toRotationMatrix().eulerAngles(0, 1, 2);
+                double rel_yaw = euler.z();
+
+                relative_fused.ids.push_back(it.first);
+                relative_fused.relative_drone_position.push_back(rel_p);
+                relative_fused.relative_drone_velocity.push_back(rel_v);
+                relative_fused.relative_drone_yaw.push_back(rel_yaw);
 
                 Odometry odom;
                 odom.header.frame_id = frame_id;
@@ -207,6 +229,7 @@ public:
             }
 
             fused_drone_data_pub.publish(fused);
+            fused_drone_rel_data_pub.publish(relative_fused);
             return;
         };
 
@@ -217,7 +240,7 @@ public:
 private:
 
     ros::Subscriber recv_remote_drones;
-    ros::Publisher fused_drone_data_pub, solving_cost_pub;
+    ros::Publisher fused_drone_data_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
 

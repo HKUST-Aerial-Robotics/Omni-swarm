@@ -4,6 +4,8 @@
 #include <mavlink/swarm/mavlink.h>
 #include <swarm_msgs/remote_uwb_info.h>
 #include <swarm_msgs/data_buffer.h>
+#include <swarm_msgs/swarm_fused.h>
+#include <swarm_msgs/swarm_fused_relative.h>
 #include <map>
 #include <eigen3/Eigen/Dense>
 #include <cstdint>
@@ -18,6 +20,7 @@ class SwarmDroneProxy
     
     ros::Subscriber local_odometry_sub;
     ros::Subscriber swarm_data_sub;
+    ros::Subscriber swarm_rel_sub;
     ros::Publisher swarm_sourcedata_pub;
     ros::Publisher uwb_senddata_pub;
 
@@ -35,6 +38,7 @@ class SwarmDroneProxy
     nav_msgs::Odometry self_odom;
 
     int force_self_id = -1;
+    int self_id = -1;
 
 
     Odometry naive_predict(const Odometry & odom_now, double now)
@@ -115,25 +119,51 @@ class SwarmDroneProxy
     void send_swarm_mavlink(const float * dis) 
     {
 
-        // ROS_INFO("SENDING MAVLINK");
-
         mavlink_message_t msg;
 
         mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(),
             quat.w(), quat.x(), quat.y(), quat.z(),
             vel.x(), vel.y(), vel.z(), dis);
+
+        // mavlink_msg_swarm_relative_fused_encode()
         int len = mavlink_msg_to_send_buffer(buf , &msg);
         data_buffer buffer;
         buffer.data = std::vector<uint8_t>(buf, buf+len);
-
-        // ROS_INFO("length %d rate %d", len, len*400);
-
         uwb_senddata_pub.publish(buffer);
     }
     
     std::vector<float> past_self_dis;
 
     bool force_self_id_avail = false;
+
+    void on_swarm_fused_data_recv(const swarm_fused_relative fused)
+    {
+
+        uint8_t buf[1000] = {0};
+
+        mavlink_message_t msg;
+        printf("Fused data recv\n");
+        if (self_id < 0)
+            return;
+
+        for (int i = 0; i < fused.ids.size(); i++)
+        {
+            uint8_t _id = fused.ids[i];
+            if (_id != self_id)
+            {
+                printf("Send %d to %d rel\n", self_id, _id);
+                mavlink_msg_swarm_relative_fused_pack(0, 0, &msg, self_id, _id,
+                    fused.relative_drone_position[i].x,
+                    fused.relative_drone_position[i].y,
+                    fused.relative_drone_position[i].z,
+                    fused.relative_drone_yaw[i]);
+                int len = mavlink_msg_to_send_buffer(buf , &msg);
+                data_buffer buffer;
+                buffer.data = std::vector<uint8_t>(buf, buf+len);
+                uwb_senddata_pub.publish(buffer);
+            }
+        }
+    }
 
     void on_remote_nodes_data_recv(const remote_uwb_info & info)
     {
@@ -148,6 +178,7 @@ class SwarmDroneProxy
         std::vector<unsigned int> available_id;
 
         available_id.push_back(info.self_id);
+        self_id = info.self_id;
 
         float self_dis[100] = {0};
         std::vector<float> self_dis_vec(10);
@@ -254,6 +285,7 @@ public:
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);
+        swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this);
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
     }

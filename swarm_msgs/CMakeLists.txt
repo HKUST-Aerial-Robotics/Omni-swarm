@@ -56,6 +56,7 @@ add_message_files(
   data_buffer.msg
   swarm_drone_source_data.msg
   swarm_fused.msg
+  swarm_fused_relative.msg
 )
 
 ## Generate services in the 'srv' folder

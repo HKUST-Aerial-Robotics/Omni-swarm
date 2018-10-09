@@ -10,7 +10,36 @@ from builtins import range
 from builtins import object
 import struct, array, time, json, os, sys, platform
 
-from ...generator.mavcrc import x25crc
+'''MAVLink X25 CRC code'''
+
+
+class x25crc(object):
+    '''x25 CRC - based on checksum.h from mavlink library'''
+    def __init__(self, buf=None):
+        self.crc = 0xffff
+        if buf is not None:
+            if isinstance(buf, str):
+                self.accumulate_str(buf)
+            else:
+                self.accumulate(buf)
+
+    def accumulate(self, buf):
+        '''add in some more bytes'''
+        accum = self.crc
+        for b in buf:
+            tmp = b ^ (accum & 0xff)
+            tmp = (tmp ^ (tmp<<4)) & 0xFF
+            accum = (accum>>8) ^ (tmp<<8) ^ (tmp<<3) ^ (tmp>>4)
+        self.crc = accum
+
+    def accumulate_str(self, buf):
+        '''add in some more bytes'''
+        accum = self.crc
+        import array
+        bytes = array.array('B')
+        bytes.fromstring(buf)
+        self.accumulate(bytes)
+        
 import hashlib
 
 WIRE_PROTOCOL_VERSION = '2.0'
@@ -2929,9 +2958,39 @@ enums['RC_TYPE'][1] = EnumEntry('RC_TYPE_SPEKTRUM_DSMX', '''Spektrum DSMX''')
 RC_TYPE_ENUM_END = 2 # 
 enums['RC_TYPE'][2] = EnumEntry('RC_TYPE_ENUM_END', '''''')
 
+# POSITION_TARGET_TYPEMASK
+enums['POSITION_TARGET_TYPEMASK'] = {}
+POSITION_TARGET_TYPEMASK_X_IGNORE = 1 # 0b0000000000000001 Ignore position x
+enums['POSITION_TARGET_TYPEMASK'][1] = EnumEntry('POSITION_TARGET_TYPEMASK_X_IGNORE', '''0b0000000000000001 Ignore position x''')
+POSITION_TARGET_TYPEMASK_Y_IGNORE = 2 # 0b0000000000000010 Ignore position y
+enums['POSITION_TARGET_TYPEMASK'][2] = EnumEntry('POSITION_TARGET_TYPEMASK_Y_IGNORE', '''0b0000000000000010 Ignore position y''')
+POSITION_TARGET_TYPEMASK_Z_IGNORE = 4 # 0b0000000000000100 Ignore position z
+enums['POSITION_TARGET_TYPEMASK'][4] = EnumEntry('POSITION_TARGET_TYPEMASK_Z_IGNORE', '''0b0000000000000100 Ignore position z''')
+POSITION_TARGET_TYPEMASK_VX_IGNORE = 8 # 0b0000000000001000 Ignore velocity x
+enums['POSITION_TARGET_TYPEMASK'][8] = EnumEntry('POSITION_TARGET_TYPEMASK_VX_IGNORE', '''0b0000000000001000 Ignore velocity x''')
+POSITION_TARGET_TYPEMASK_VY_IGNORE = 16 # 0b0000000000010000 Ignore velocity y
+enums['POSITION_TARGET_TYPEMASK'][16] = EnumEntry('POSITION_TARGET_TYPEMASK_VY_IGNORE', '''0b0000000000010000 Ignore velocity y''')
+POSITION_TARGET_TYPEMASK_VZ_IGNORE = 32 # 0b0000000000100000 Ignore velocity z
+enums['POSITION_TARGET_TYPEMASK'][32] = EnumEntry('POSITION_TARGET_TYPEMASK_VZ_IGNORE', '''0b0000000000100000 Ignore velocity z''')
+POSITION_TARGET_TYPEMASK_AX_IGNORE = 64 # 0b0000000001000000 Ignore acceleration x
+enums['POSITION_TARGET_TYPEMASK'][64] = EnumEntry('POSITION_TARGET_TYPEMASK_AX_IGNORE', '''0b0000000001000000 Ignore acceleration x''')
+POSITION_TARGET_TYPEMASK_AY_IGNORE = 128 # 0b0000000010000000 Ignore acceleration y
+enums['POSITION_TARGET_TYPEMASK'][128] = EnumEntry('POSITION_TARGET_TYPEMASK_AY_IGNORE', '''0b0000000010000000 Ignore acceleration y''')
+POSITION_TARGET_TYPEMASK_AZ_IGNORE = 256 # 0b0000000100000000 Ignore acceleration z
+enums['POSITION_TARGET_TYPEMASK'][256] = EnumEntry('POSITION_TARGET_TYPEMASK_AZ_IGNORE', '''0b0000000100000000 Ignore acceleration z''')
+POSITION_TARGET_TYPEMASK_FORCE_SET = 512 # 0b0000001000000000 Use force instead of acceleration
+enums['POSITION_TARGET_TYPEMASK'][512] = EnumEntry('POSITION_TARGET_TYPEMASK_FORCE_SET', '''0b0000001000000000 Use force instead of acceleration''')
+POSITION_TARGET_TYPEMASK_YAW_IGNORE = 1024 # 0b0000010000000000 Ignore yaw
+enums['POSITION_TARGET_TYPEMASK'][1024] = EnumEntry('POSITION_TARGET_TYPEMASK_YAW_IGNORE', '''0b0000010000000000 Ignore yaw''')
+POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE = 2048 # 0b0000100000000000 Ignore yaw rate
+enums['POSITION_TARGET_TYPEMASK'][2048] = EnumEntry('POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE', '''0b0000100000000000 Ignore yaw rate''')
+POSITION_TARGET_TYPEMASK_ENUM_END = 2049 # 
+enums['POSITION_TARGET_TYPEMASK'][2049] = EnumEntry('POSITION_TARGET_TYPEMASK_ENUM_END', '''''')
+
 # message IDs
 MAVLINK_MSG_ID_BAD_DATA = -1
 MAVLINK_MSG_ID_SWARM_INFO = 400
+MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED = 401
 MAVLINK_MSG_ID_HEARTBEAT = 0
 MAVLINK_MSG_ID_SYS_STATUS = 1
 MAVLINK_MSG_ID_SYSTEM_TIME = 2
@@ -3097,6 +3156,7 @@ MAVLINK_MSG_ID_OBSTACLE_DISTANCE = 330
 MAVLINK_MSG_ID_ODOMETRY = 331
 MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS = 332
 MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER = 333
+MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY = 350
 
 class MAVLink_swarm_info_message(MAVLink_message):
         '''
@@ -3131,6 +3191,34 @@ class MAVLink_swarm_info_message(MAVLink_message):
 
         def pack(self, mav, force_mavlink1=False):
                 return MAVLink_message.pack(self, mav, 59, struct.pack('<ffffffffff10fB', self.x, self.y, self.z, self.q0, self.q1, self.q2, self.q3, self.vx, self.vy, self.vz, self.remote_distance[0], self.remote_distance[1], self.remote_distance[2], self.remote_distance[3], self.remote_distance[4], self.remote_distance[5], self.remote_distance[6], self.remote_distance[7], self.remote_distance[8], self.remote_distance[9], self.odom_vaild), force_mavlink1=force_mavlink1)
+
+class MAVLink_swarm_relative_fused_message(MAVLink_message):
+        '''
+
+        '''
+        id = MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED
+        name = 'SWARM_RELATIVE_FUSED'
+        fieldnames = ['source_id', 'target_id', 'rel_x', 'rel_y', 'rel_z', 'rel_yaw_offset']
+        ordered_fieldnames = [ 'rel_x', 'rel_y', 'rel_z', 'rel_yaw_offset', 'source_id', 'target_id' ]
+        format = '<ffffBB'
+        native_format = bytearray('<ffffBB', 'ascii')
+        orders = [4, 5, 0, 1, 2, 3]
+        lengths = [1, 1, 1, 1, 1, 1]
+        array_lengths = [0, 0, 0, 0, 0, 0]
+        crc_extra = 63
+
+        def __init__(self, source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset):
+                MAVLink_message.__init__(self, MAVLink_swarm_relative_fused_message.id, MAVLink_swarm_relative_fused_message.name)
+                self._fieldnames = MAVLink_swarm_relative_fused_message.fieldnames
+                self.source_id = source_id
+                self.target_id = target_id
+                self.rel_x = rel_x
+                self.rel_y = rel_y
+                self.rel_z = rel_z
+                self.rel_yaw_offset = rel_yaw_offset
+
+        def pack(self, mav, force_mavlink1=False):
+                return MAVLink_message.pack(self, mav, 63, struct.pack('<ffffBB', self.rel_x, self.rel_y, self.rel_z, self.rel_yaw_offset, self.source_id, self.target_id), force_mavlink1=force_mavlink1)
 
 class MAVLink_heartbeat_message(MAVLink_message):
         '''
@@ -7553,24 +7641,25 @@ class MAVLink_play_tune_message(MAVLink_message):
         '''
         id = MAVLINK_MSG_ID_PLAY_TUNE
         name = 'PLAY_TUNE'
-        fieldnames = ['target_system', 'target_component', 'tune']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'tune' ]
-        format = '<BB30s'
-        native_format = bytearray('<BBc', 'ascii')
-        orders = [0, 1, 2]
-        lengths = [1, 1, 1]
-        array_lengths = [0, 0, 30]
+        fieldnames = ['target_system', 'target_component', 'tune', 'tune2']
+        ordered_fieldnames = [ 'target_system', 'target_component', 'tune', 'tune2' ]
+        format = '<BB30s200s'
+        native_format = bytearray('<BBcc', 'ascii')
+        orders = [0, 1, 2, 3]
+        lengths = [1, 1, 1, 1]
+        array_lengths = [0, 0, 30, 200]
         crc_extra = 187
 
-        def __init__(self, target_system, target_component, tune):
+        def __init__(self, target_system, target_component, tune, tune2=0):
                 MAVLink_message.__init__(self, MAVLink_play_tune_message.id, MAVLink_play_tune_message.name)
                 self._fieldnames = MAVLink_play_tune_message.fieldnames
                 self.target_system = target_system
                 self.target_component = target_component
                 self.tune = tune
+                self.tune2 = tune2
 
         def pack(self, mav, force_mavlink1=False):
-                return MAVLink_message.pack(self, mav, 187, struct.pack('<BB30s', self.target_system, self.target_component, self.tune), force_mavlink1=force_mavlink1)
+                return MAVLink_message.pack(self, mav, 187, struct.pack('<BB30s200s', self.target_system, self.target_component, self.tune, self.tune2), force_mavlink1=force_mavlink1)
 
 class MAVLink_camera_information_message(MAVLink_message):
         '''
@@ -8324,9 +8413,39 @@ class MAVLink_trajectory_representation_bezier_message(MAVLink_message):
         def pack(self, mav, force_mavlink1=False):
                 return MAVLink_message.pack(self, mav, 231, struct.pack('<Q5f5f5f5f5fB', self.time_usec, self.pos_x[0], self.pos_x[1], self.pos_x[2], self.pos_x[3], self.pos_x[4], self.pos_y[0], self.pos_y[1], self.pos_y[2], self.pos_y[3], self.pos_y[4], self.pos_z[0], self.pos_z[1], self.pos_z[2], self.pos_z[3], self.pos_z[4], self.delta[0], self.delta[1], self.delta[2], self.delta[3], self.delta[4], self.pos_yaw[0], self.pos_yaw[1], self.pos_yaw[2], self.pos_yaw[3], self.pos_yaw[4], self.valid_points), force_mavlink1=force_mavlink1)
 
+class MAVLink_debug_float_array_message(MAVLink_message):
+        '''
+        Large debug/prototyping array. The message uses the maximum
+        available payload for data. The array_id and name fields are
+        used to discriminate between messages in code and in user
+        interfaces (respectively). Do not use in production code.
+        '''
+        id = MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY
+        name = 'DEBUG_FLOAT_ARRAY'
+        fieldnames = ['time_usec', 'name', 'array_id', 'data']
+        ordered_fieldnames = [ 'time_usec', 'array_id', 'name', 'data' ]
+        format = '<QH10s58f'
+        native_format = bytearray('<QHcf', 'ascii')
+        orders = [0, 2, 1, 3]
+        lengths = [1, 1, 1, 58]
+        array_lengths = [0, 0, 10, 58]
+        crc_extra = 232
+
+        def __init__(self, time_usec, name, array_id, data=0):
+                MAVLink_message.__init__(self, MAVLink_debug_float_array_message.id, MAVLink_debug_float_array_message.name)
+                self._fieldnames = MAVLink_debug_float_array_message.fieldnames
+                self.time_usec = time_usec
+                self.name = name
+                self.array_id = array_id
+                self.data = data
+
+        def pack(self, mav, force_mavlink1=False):
+                return MAVLink_message.pack(self, mav, 232, struct.pack('<QH10s58f', self.time_usec, self.array_id, self.name, self.data[0], self.data[1], self.data[2], self.data[3], self.data[4], self.data[5], self.data[6], self.data[7], self.data[8], self.data[9], self.data[10], self.data[11], self.data[12], self.data[13], self.data[14], self.data[15], self.data[16], self.data[17], self.data[18], self.data[19], self.data[20], self.data[21], self.data[22], self.data[23], self.data[24], self.data[25], self.data[26], self.data[27], self.data[28], self.data[29], self.data[30], self.data[31], self.data[32], self.data[33], self.data[34], self.data[35], self.data[36], self.data[37], self.data[38], self.data[39], self.data[40], self.data[41], self.data[42], self.data[43], self.data[44], self.data[45], self.data[46], self.data[47], self.data[48], self.data[49], self.data[50], self.data[51], self.data[52], self.data[53], self.data[54], self.data[55], self.data[56], self.data[57]), force_mavlink1=force_mavlink1)
+
 
 mavlink_map = {
         MAVLINK_MSG_ID_SWARM_INFO : MAVLink_swarm_info_message,
+        MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED : MAVLink_swarm_relative_fused_message,
         MAVLINK_MSG_ID_HEARTBEAT : MAVLink_heartbeat_message,
         MAVLINK_MSG_ID_SYS_STATUS : MAVLink_sys_status_message,
         MAVLINK_MSG_ID_SYSTEM_TIME : MAVLink_system_time_message,
@@ -8492,6 +8611,7 @@ mavlink_map = {
         MAVLINK_MSG_ID_ODOMETRY : MAVLink_odometry_message,
         MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS : MAVLink_trajectory_representation_waypoints_message,
         MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER : MAVLink_trajectory_representation_bezier_message,
+        MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY : MAVLink_debug_float_array_message,
 }
 
 class MAVError(Exception):
@@ -8923,6 +9043,34 @@ class MAVLink(object):
 
                 '''
                 return self.send(self.swarm_info_encode(odom_vaild, x, y, z, q0, q1, q2, q3, vx, vy, vz, remote_distance), force_mavlink1=force_mavlink1)
+
+        def swarm_relative_fused_encode(self, source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset):
+                '''
+                
+
+                source_id                 : Source ID of drone (uint8_t)
+                target_id                 : Target ID of drone (uint8_t)
+                rel_x                     : Relative X Position (float)
+                rel_y                     : Relative Y Position (float)
+                rel_z                     : Relative Z Position (float)
+                rel_yaw_offset            : Relative Yaw coorinate offset (float)
+
+                '''
+                return MAVLink_swarm_relative_fused_message(source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset)
+
+        def swarm_relative_fused_send(self, source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset, force_mavlink1=False):
+                '''
+                
+
+                source_id                 : Source ID of drone (uint8_t)
+                target_id                 : Target ID of drone (uint8_t)
+                rel_x                     : Relative X Position (float)
+                rel_y                     : Relative Y Position (float)
+                rel_z                     : Relative Z Position (float)
+                rel_yaw_offset            : Relative Yaw coorinate offset (float)
+
+                '''
+                return self.send(self.swarm_relative_fused_encode(source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset), force_mavlink1=force_mavlink1)
 
         def heartbeat_encode(self, type, autopilot, base_mode, custom_mode, system_status, mavlink_version=3):
                 '''
@@ -10699,7 +10847,7 @@ class MAVLink(object):
                 chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
                 chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
                 chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan9_raw                 : RC channel 9 value. A value of 0 means to ignore this field. (uint16_t)
+                chan9_raw                 : RC channel 9 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
@@ -10734,7 +10882,7 @@ class MAVLink(object):
                 chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
                 chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
                 chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan9_raw                 : RC channel 9 value. A value of 0 means to ignore this field. (uint16_t)
+                chan9_raw                 : RC channel 9 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
                 chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
@@ -11060,7 +11208,7 @@ class MAVLink(object):
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 x                         : X Position in NED frame (float)
                 y                         : Y Position in NED frame (float)
                 z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
@@ -11086,7 +11234,7 @@ class MAVLink(object):
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 x                         : X Position in NED frame (float)
                 y                         : Y Position in NED frame (float)
                 z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
@@ -11112,7 +11260,7 @@ class MAVLink(object):
 
                 time_boot_ms              : Timestamp (time since system boot). (uint32_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 x                         : X Position in NED frame (float)
                 y                         : Y Position in NED frame (float)
                 z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
@@ -11138,7 +11286,7 @@ class MAVLink(object):
 
                 time_boot_ms              : Timestamp (time since system boot). (uint32_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 x                         : X Position in NED frame (float)
                 y                         : Y Position in NED frame (float)
                 z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
@@ -11165,7 +11313,7 @@ class MAVLink(object):
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 lat_int                   : X Position in WGS84 frame (int32_t)
                 lon_int                   : Y Position in WGS84 frame (int32_t)
                 alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
@@ -11192,7 +11340,7 @@ class MAVLink(object):
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 lat_int                   : X Position in WGS84 frame (int32_t)
                 lon_int                   : Y Position in WGS84 frame (int32_t)
                 alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
@@ -11218,7 +11366,7 @@ class MAVLink(object):
 
                 time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 lat_int                   : X Position in WGS84 frame (int32_t)
                 lon_int                   : Y Position in WGS84 frame (int32_t)
                 alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
@@ -11244,7 +11392,7 @@ class MAVLink(object):
 
                 time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
                 coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (uint16_t)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
                 lat_int                   : X Position in WGS84 frame (int32_t)
                 lon_int                   : Y Position in WGS84 frame (int32_t)
                 alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
@@ -13896,27 +14044,29 @@ class MAVLink(object):
                 '''
                 return self.send(self.button_change_encode(time_boot_ms, last_change_ms, state), force_mavlink1=force_mavlink1)
 
-        def play_tune_encode(self, target_system, target_component, tune):
+        def play_tune_encode(self, target_system, target_component, tune, tune2=0):
                 '''
                 Control vehicle tone generation (buzzer)
 
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 tune                      : tune in board specific format (char)
+                tune2                     : tune extension (appended to tune) (char)
 
                 '''
-                return MAVLink_play_tune_message(target_system, target_component, tune)
+                return MAVLink_play_tune_message(target_system, target_component, tune, tune2)
 
-        def play_tune_send(self, target_system, target_component, tune, force_mavlink1=False):
+        def play_tune_send(self, target_system, target_component, tune, tune2=0, force_mavlink1=False):
                 '''
                 Control vehicle tone generation (buzzer)
 
                 target_system             : System ID (uint8_t)
                 target_component          : Component ID (uint8_t)
                 tune                      : tune in board specific format (char)
+                tune2                     : tune extension (appended to tune) (char)
 
                 '''
-                return self.send(self.play_tune_encode(target_system, target_component, tune), force_mavlink1=force_mavlink1)
+                return self.send(self.play_tune_encode(target_system, target_component, tune, tune2), force_mavlink1=force_mavlink1)
 
         def camera_information_encode(self, time_boot_ms, vendor_name, model_name, firmware_version, focal_length, sensor_size_h, sensor_size_v, resolution_h, resolution_v, lens_id, flags, cam_definition_version, cam_definition_uri):
                 '''
@@ -14725,4 +14875,36 @@ class MAVLink(object):
 
                 '''
                 return self.send(self.trajectory_representation_bezier_encode(time_usec, valid_points, pos_x, pos_y, pos_z, delta, pos_yaw), force_mavlink1=force_mavlink1)
+
+        def debug_float_array_encode(self, time_usec, name, array_id, data=0):
+                '''
+                Large debug/prototyping array. The message uses the maximum available
+                payload for data. The array_id and name fields are
+                used to discriminate between messages in code and in
+                user interfaces (respectively). Do not use in
+                production code.
+
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                name                      : Name, for human-friendly display in a Ground Control Station (char)
+                array_id                  : Unique ID used to discriminate between arrays (uint16_t)
+                data                      : data (float)
+
+                '''
+                return MAVLink_debug_float_array_message(time_usec, name, array_id, data)
+
+        def debug_float_array_send(self, time_usec, name, array_id, data=0, force_mavlink1=False):
+                '''
+                Large debug/prototyping array. The message uses the maximum available
+                payload for data. The array_id and name fields are
+                used to discriminate between messages in code and in
+                user interfaces (respectively). Do not use in
+                production code.
+
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                name                      : Name, for human-friendly display in a Ground Control Station (char)
+                array_id                  : Unique ID used to discriminate between arrays (uint16_t)
+                data                      : data (float)
+
+                '''
+                return self.send(self.debug_float_array_encode(time_usec, name, array_id, data), force_mavlink1=force_mavlink1)
 
