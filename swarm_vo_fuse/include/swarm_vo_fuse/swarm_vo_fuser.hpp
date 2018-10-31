@@ -265,6 +265,8 @@ public:
             id2vec[_id] = pos;
             id2vel[_id] = vel;
             id2quat[_id] = quat;
+
+            printf("Id %d pos %3.2f %3.2f %3.2f dis27 %3.2f\n", _id, pos.x(), pos.y(), pos.z(), (pos-est_pos[7]).norm());
         }
 
         printf("\nDistance Matrix\n\t\t");
@@ -289,6 +291,8 @@ public:
             }
 
         }
+
+        printf("\n\n");
 
         if (callback != nullptr && call_cb)
             (callback)(id2vec, id2vel, id2quat);
