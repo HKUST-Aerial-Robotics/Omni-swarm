@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 from __future__ import print_function
 import rospy
 import pymavlink
@@ -7,6 +7,7 @@ import time
 from swarm_msgs.msg import data_buffer, swarm_drone_source_data, remote_uwb_info, swarm_fused_relative
 import time
 from geometry_msgs.msg import Pose, PoseStamped
+from nav_msgs.msg import Odometry
 from pyquaternion import Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import threading
@@ -28,6 +29,7 @@ class SwarmOfflineTune:
         self.main_pose = PoseStamped()
         self.swarm_source_data_sub = rospy.Subscriber("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, self.on_swarm_source_data, queue_size=1)
         self.swarm_relatived_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused_relative", swarm_fused_relative, self.on_swarm_fused_relative, queue_size=1)
+        self.odom_sub= rospy.Subscriber("/vins_estimator/odometry", Odometry, self.on_vo_odom, queue_size=1)
         
         self.swarm_vicon_pose_sub = {}
         self.swarm_vicon_pose = {}
@@ -43,6 +45,9 @@ class SwarmOfflineTune:
         # self.main_odom_sub = rospy.Subscriber("/vins_estimator/odometry", odometry)
         
         print(self.swarm_vicon_pose_sub)
+
+        self.yaw_vicon = 0
+        self.yaw_odom = 0
 
         self.dis_vicon = {}
     
@@ -61,6 +66,10 @@ class SwarmOfflineTune:
     def on_vicon_pose(self, _id, _pose):
         if _id == self.main_id:
             self.main_pose = _pose
+            quat = _pose.pose.orientation
+            quaternion = (quat.x, quat.y, quat.z, quat.w)
+            roll, pitch, yaw = euler_from_quaternion(quaternion)
+            self.yaw_vicon = yaw
 
         self.swarm_vicon_pose[_id] = _pose
         for _id_j in self.swarm_vicon_pose:
@@ -77,6 +86,12 @@ class SwarmOfflineTune:
             else:
                 self.dis_vicon[_id_j] = {_id : _dis}
         # print(self.dis_vicon)
+
+    def on_vo_odom(self, odom):
+        quat = odom.pose.pose.orientation
+        quaternion = (quat.x, quat.y, quat.z, quat.w)
+        roll, pitch, yaw = euler_from_quaternion(quaternion)
+        self.yaw_odom = yaw
 
     def on_swarm_source_data(self, ssd):
         try:
@@ -114,8 +129,13 @@ class SwarmOfflineTune:
             remote_pose = _pose.pose
             _pose.header.frame_id = "world"
             _pose.header.stamp = rospy.Time.now()
-            remote_pose.position.x = main_position.x + rel_pos.x
-            remote_pose.position.y = main_position.y + rel_pos.y
+
+            yaw_off_set = self.yaw_vicon - self.yaw_odom
+            print("Yaw vicon {} odom {}".format(self.yaw_vicon, self.yaw_odom))
+            sx = math.sin(yaw_off_set)
+            cx = math.cos(yaw_off_set)
+            remote_pose.position.x = main_position.x + rel_pos.x * cx + rel_pos.y * sx
+            remote_pose.position.y = main_position.y + rel_pos.y * cx - rel_pos.x * sx
             remote_pose.position.z = main_position.z + rel_pos.z
 
             remote_pose.orientation.w = 1

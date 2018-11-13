@@ -213,7 +213,8 @@ class SwarmDroneProxy
                     force_self_id_avail = true;
             }
             else {
-                ROS_INFO("Drone %d Mavlink Parse Failed", _id);
+                if (gcs_mode)
+                    ROS_INFO("Drone %d Mavlink Parse Failed", _id);
             }
         }
 
@@ -224,7 +225,8 @@ class SwarmDroneProxy
         }
         else{
             past_self_dis = self_dis_vec;
-            send_swarm_mavlink(self_dis);
+            if (!gcs_mode)
+                send_swarm_mavlink(self_dis);
             return;
         }
 
@@ -274,7 +276,9 @@ class SwarmDroneProxy
             }
         }
 
-        send_swarm_mavlink(self_dis);
+        if (!gcs_mode)
+            send_swarm_mavlink(self_dis);
+
 
         data.distance_matrix = distance_measure;
         if (force_self_id_avail || force_self_id < 0 && (odometry_available && odometry_updated))

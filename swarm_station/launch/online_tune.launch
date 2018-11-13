@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="swarm_station" name="swarm_station" type="swarm_offline_tune.py" output="screen">
+    </node> 
+    <include file="$(find mocap_optitrack)/launch/mocap.launch">
+    </include>
+</launch>
