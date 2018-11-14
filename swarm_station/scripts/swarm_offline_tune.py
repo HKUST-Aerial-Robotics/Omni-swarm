@@ -188,13 +188,19 @@ if __name__ == "__main__":
                     plt.grid(which="both")
                     plt.pause(0.05)
 
+                    plt.figure("Hist Figure {} to {} Error".format(idx, idy))
+                    plt.clf()
+                    plt.hist(tune.dis_err[idx][idy], 50)
+                    plt.grid(which="both")
+                    plt.pause(0.05)
+
         plt.figure("Distance")
         plt.clf()
 
         for idx in tune.dis_uwb:
             for idy in tune.dis_uwb[idx]:
                 if idx < idy:
-                    plt.plot(tune.dis_uwb[idx][idy], label="Figure {} to {} Error".format(idx, idy))
+                    plt.plot(tune.dis_uwb[idx][idy], label="Figure {} to {}".format(idx, idy))
 
         plt.legend()
         plt.grid(which="both")

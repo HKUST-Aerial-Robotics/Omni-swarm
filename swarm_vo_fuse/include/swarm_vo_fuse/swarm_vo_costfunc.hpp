@@ -52,6 +52,13 @@ class SwarmDistanceResidual : public CostFunction {
 
     }
 
+    inline double bias_ij(int i, int j)
+    {
+
+    }
+
+    // inline double bias_ij(doubl)
+
     inline Matrix3d rho_mat(double th) const
     {
         Matrix3d rho;
@@ -86,6 +93,8 @@ class SwarmDistanceResidual : public CostFunction {
         Zji = rho_inv*(Zjk - Zik);
         thetaji = zthejk - ztheik;
     }
+
+    
 
     inline Eigen::Vector3d partial_Zji_by_Zdelta_k(int j, int i, int delta, int m, double const * Zxyzth) const
     {
@@ -164,6 +173,9 @@ class SwarmDistanceResidual : public CostFunction {
         if (jacobians != NULL && jacobians[0] != NULL) {
             memset(jacobians[0], 0 , sizeof(double) * num_params() * num_residuals());
         }
+
+        int residual_num = drone_num_now * (drone_num_now - 1) / 2;
+
         for (int i = 0; i < drone_num_now; i++)
         {
             for (int j = i + 1; j < drone_num_now ; j++)
@@ -173,7 +185,7 @@ class SwarmDistanceResidual : public CostFunction {
                 Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
                 double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
-                residual[count] = (_rel.norm() - d_bar);
+                residual[count] = (_rel.norm() - d_bar - bias_ij(i, j));
 
                 if (jacobians != NULL && jacobians[0] != NULL) {
                     for (int m =0; m<4 ; m++)
@@ -181,7 +193,7 @@ class SwarmDistanceResidual : public CostFunction {
                         if (param_index(i) >= 0)
                         {
                             double jac_im = Jacobian_y_ij_by_Z_delta_m(i, j, i, m, _rel/_rel.norm(), Zxyzth);
-                            jacobians[0][count*num_params()+ param_index(i)*4+m] = jac_im;
+                            jacobians[0][count*num_params() + param_index(i)*4+m] = jac_im;
                         }
 
                         if (param_index(j) >= 0)
@@ -195,6 +207,15 @@ class SwarmDistanceResidual : public CostFunction {
 
                 count ++;
             }
+        }
+
+
+        //Jacbian for bias is always -1
+        //i array
+        //The question is when drone num changes, we can't still use last Zxyth
+        for (int i = 0; i < residual_num; i++)
+        {
+            jacobians[0][i + (id_to_index.size()-1)*4 + i] = -1;
         }
         return true;
     }
@@ -278,7 +299,7 @@ private:
     std::map<int, int> id_to_index;
     int num_params() const
     {
-        return (id_to_index.size()-1)*4;
+        return (id_to_index.size()-1)*4 + (id_to_index.size()-1) * id_to_index.size() / 2;
     }
     int drone_num() const
     {
