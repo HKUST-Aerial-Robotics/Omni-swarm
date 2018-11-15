@@ -54,7 +54,18 @@ class SwarmDistanceResidual : public CostFunction {
 
     inline double bias_ij(int i, int j)
     {
+        if (i == j)
+            return 0;
+        
+        if (i > j)
+        {
+            int tmp = j;
+            j = i;
+            i = tmp;
+        }
 
+        int no_of_bias = (2*n - 1 - i)*i/2 + j - i - 1;
+        return Zxyzth[drone_num_total +   no_of_bias ]
     }
 
     // inline double bias_ij(doubl)
@@ -215,7 +226,7 @@ class SwarmDistanceResidual : public CostFunction {
         //The question is when drone num changes, we can't still use last Zxyth
         for (int i = 0; i < residual_num; i++)
         {
-            jacobians[0][i + (id_to_index.size()-1)*4 + i] = -1;
+            jacobians[0][(drone_num_total-1)*4 + i] = -1;
         }
         return true;
     }
@@ -226,7 +237,8 @@ public:
                 const quat_array & _self_quat, 
                 const std::vector<unsigned int>& _ids,
                 std::map<int, int> _id2index,
-                Eigen::Vector3d anntena_pos
+                Eigen::Vector3d anntena_pos,
+                int _drone_num_total
                 ): 
             dis_matrix(_dis_matrix), 
             self_vel(_self_vel), 
@@ -234,8 +246,8 @@ public:
             self_quat(_self_quat), 
             id_to_index(_id2index), 
             ids(_ids),
-            Anntenna(anntena_pos)
-
+            Anntenna(anntena_pos),
+            drone_num_total(_drone_num_total)
         {
 
             int drone_num_now = _ids.size();
@@ -297,6 +309,9 @@ private:
 
     std::vector<unsigned int> ids;
     std::map<int, int> id_to_index;
+
+
+    int drone_num_total = -1;
     int num_params() const
     {
         return (id_to_index.size()-1)*4 + (id_to_index.size()-1) * id_to_index.size() / 2;
