@@ -52,21 +52,6 @@ class SwarmDistanceResidual : public CostFunction {
 
     }
 
-    inline double bias_ij(int i, int j)
-    {
-        if (i == j)
-            return 0;
-        
-        if (i > j)
-        {
-            int tmp = j;
-            j = i;
-            i = tmp;
-        }
-
-        int no_of_bias = (2*n - 1 - i)*i/2 + j - i - 1;
-        return Zxyzth[drone_num_total +   no_of_bias ]
-    }
 
     // inline double bias_ij(doubl)
 
@@ -178,7 +163,7 @@ class SwarmDistanceResidual : public CostFunction {
         int count = 0;
         int drone_num_now = this->drone_num();
 
-
+        bool need_jacobians = jacobians != NULL && jacobians[0] != NULL;
         //Set jacobian all zero
         // printf("Jacobian size will be %d of double\n",  num_params() * num_residuals() );
         if (jacobians != NULL && jacobians[0] != NULL) {
@@ -196,9 +181,10 @@ class SwarmDistanceResidual : public CostFunction {
                 Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
                 double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
-                residual[count] = (_rel.norm() - d_bar - bias_ij(i, j));
+                residual[count] = (_rel.norm() - d_bar - bias_ij(i, j, Zxyzth));
+                // residual[count] = (_rel.norm() - d_bar);
 
-                if (jacobians != NULL && jacobians[0] != NULL) {
+                if (need_jacobians) {
                     for (int m =0; m<4 ; m++)
                     {
                         if (param_index(i) >= 0)
@@ -224,9 +210,15 @@ class SwarmDistanceResidual : public CostFunction {
         //Jacbian for bias is always -1
         //i array
         //The question is when drone num changes, we can't still use last Zxyth
-        for (int i = 0; i < residual_num; i++)
-        {
-            jacobians[0][(drone_num_total-1)*4 + i] = -1;
+
+        //TODO:
+        //Has issue when drone_num < drone_num_total
+        if (need_jacobians ) {
+            for (int i = 0; i < drone_num_total * (drone_num_total - 1) /2; i++)
+            {
+                // printf("drone_num %d %d :%d\n",drone_num_total,drone_num_total * (drone_num_total - 1) /2, i);
+                jacobians[0][i*num_params() + (drone_num_total-1)*4 + i] = -1;
+            }
         }
         return true;
     }
@@ -301,6 +293,25 @@ public:
         return _rel;
     }
 
+    inline double bias_ij(int i, int j, double const * Zxyzth) const
+    {
+        if (i == j)
+            return 0;
+        
+        if (i > j)
+        {
+            int tmp = j;
+            j = i;
+            i = tmp;
+        }
+
+        int n = drone_num_total;
+
+        int no_of_bias = (2*n - 1 - i)*i/2 + j - i - 1;
+        return Zxyzth[(drone_num_total -1 )*4+ no_of_bias ];
+    }
+
+
 private:
     Eigen::MatrixXd dis_matrix;
     vec_array self_pos;
@@ -314,7 +325,7 @@ private:
     int drone_num_total = -1;
     int num_params() const
     {
-        return (id_to_index.size()-1)*4 + (id_to_index.size()-1) * id_to_index.size() / 2;
+        return (drone_num_total-1)*4 + (drone_num_total-1) * drone_num_total / 2;
     }
     int drone_num() const
     {

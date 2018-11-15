@@ -42,7 +42,7 @@ class UWBVOFuser
             std::vector<unsigned int> _ids)
     {
         CostFunction* cost_function =
-            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
+            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos, drone_num);
         return cost_function;
     }
 
@@ -96,9 +96,9 @@ public:
        random_init_Zxyz(Zxyzth);
     }
 
-    void random_init_Zxyz(double * _Zxyzth, int start=0)
+    void random_init_Zxyz(double * _Zxyzth, int start=0, int end=100)
     {
-        for (int i=start;i<100;i++)
+        for (int i=start;i<end;i++)
         {
             _Zxyzth[i*4] = rand_FloatRange(-30,30);
             _Zxyzth[i*4+1] = rand_FloatRange(-30,30); 
@@ -114,7 +114,34 @@ public:
             Zxyzth[i*4 + 3] = fmodf(Zxyzth[i*4 +3], 2*M_PI);
         }
     }
+    
+    //If drone num increase, the previous bias should move after
+    void move_bias(int prev_drone_num, int new_drone_num)
+    {
+        //TODO:
+        //Should move from (prev_drone_num - 1) * 4 : (prev_drone_num - 1) * 4 + (prev_drone_num - 1)*prev_drone_num / 2
+        //to (new_drone_num - 1) * 4 : (new_drone_num - 1) * 4 + ???
 
+        if (prev_drone_num == 0)
+        {
+            ROS_INFO("First init with %d drone", new_drone_num);
+
+            for (int i = (new_drone_num - 1)*4; i < (new_drone_num - 1)*4 + (new_drone_num - 1)*new_drone_num/2; i ++)
+            {
+                Zxyzth[i] = 0;
+            }
+        }
+        //Also we should init Zxyz
+        random_init_Zxyz(Zxyzth, prev_drone_num, new_drone_num);
+    }
+
+    bool detect_outlier(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel, const quat_array & self_quat,
+        const std::vector<unsigned int> & _ids)
+    {
+        //Detect if it's outlier
+
+        return false;
+    }
     
     std::vector<unsigned int> judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel,
         const std::vector<unsigned int> & _ids)
@@ -123,6 +150,13 @@ public:
         std::vector<unsigned int> ret(0);
         if (_ids.size() < 2)
             return ret;
+
+        //Temp code
+        if (_ids.size() < drone_num)
+        {
+            return ret;
+        }
+
         if (past_dis_matrix.size() ==0)
         {
             for (auto _id : _ids)
@@ -195,6 +229,12 @@ public:
         const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
     {
         process_frame_clear();
+        if (detect_outlier(dis_matrix, self_pos, self_vel, self_quat, _ids))
+        {
+            ROS_INFO("Outlier detected!");
+            return;
+        }
+
         std::vector<unsigned int> is_kf_list = judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids);
         if (is_kf_list.size() > 0)
         {
@@ -224,6 +264,8 @@ public:
 
         if (_ids.size() > drone_num)
         {
+            //For here the drone num increase
+            move_bias(drone_num, _ids.size());
             drone_num = _ids.size();
         }
     }
@@ -239,7 +281,7 @@ public:
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
-        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
+        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos, drone_num);
 
         int drone_num_now = _ids.size();
 
@@ -280,14 +322,15 @@ public:
         {
             int _id_i = _ids[i];
             int _index_i = id_to_index.at(_id_i);
-            printf("\nE/M%d:\t", _id_i);
+            printf("\nE/M/B%d:\t", _id_i);
             for (int j = 0;j<drone_num_now;j++)
             {
                 int _id_j = _ids[j];
                 int _index_j = id_to_index.at(_id_j);
 
                 double est_d = swarmRes.distance_j_i(j, i, Zxyzth).norm();
-                printf("%3.2f:%3.2f\t", est_d, dis_matrix(i, j));
+                double bias = swarmRes.bias_ij(i, j, Zxyzth);
+                printf("%3.2f:%3.2f:%3.2f\t", est_d, dis_matrix(i, j), bias);
             }
 
         }
@@ -376,6 +419,12 @@ public:
                 NULL,
                 Zxyzth
             );
+        }
+        
+        for (int i = (drone_num - 1 )*4; i < (drone_num - 1)*4 + (drone_num - 1)*drone_num/2 ; i ++)
+        {
+           problem.SetParameterLowerBound(Zxyzth, i, -0.15);
+           problem.SetParameterUpperBound(Zxyzth, i, 0.15);
         }
 
         // std::cout<<"Finish build problem"<<std::endl;
