@@ -21,6 +21,7 @@ using namespace Eigen;
 typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
+// #define USE_BIAS
 
 class SwarmDistanceResidual : public CostFunction {
     Vector3d Anntenna; 
@@ -52,8 +53,6 @@ class SwarmDistanceResidual : public CostFunction {
 
     }
 
-
-    // inline double bias_ij(doubl)
 
     inline Matrix3d rho_mat(double th) const
     {
@@ -181,8 +180,12 @@ class SwarmDistanceResidual : public CostFunction {
                 Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
                 double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
+#ifdef USE_BIAS
                 residual[count] = (_rel.norm() - d_bar - bias_ij(i, j, Zxyzth));
-                // residual[count] = (_rel.norm() - d_bar);
+#else
+                residual[count] = (_rel.norm() - d_bar);
+#endif
+                // printf("Bias %d %d %f\n", i, j, bias_ij(i, j, Zxyzth));
 
                 if (need_jacobians) {
                     for (int m =0; m<4 ; m++)
@@ -205,14 +208,14 @@ class SwarmDistanceResidual : public CostFunction {
                 count ++;
             }
         }
-
-
+        
         //Jacbian for bias is always -1
         //i array
         //The question is when drone num changes, we can't still use last Zxyth
 
         //TODO:
         //Has issue when drone_num < drone_num_total
+#ifdef USE_BIAS
         if (need_jacobians ) {
             for (int i = 0; i < drone_num_total * (drone_num_total - 1) /2; i++)
             {
@@ -220,6 +223,7 @@ class SwarmDistanceResidual : public CostFunction {
                 jacobians[0][i*num_params() + (drone_num_total-1)*4 + i] = -1;
             }
         }
+#endif
         return true;
     }
 public:
@@ -308,6 +312,8 @@ public:
         int n = drone_num_total;
 
         int no_of_bias = (2*n - 1 - i)*i/2 + j - i - 1;
+
+        // printf("bias %d %d index %d:%d\n", i, j,no_of_bias, (drone_num_total -1 )*4+ no_of_bias);
         return Zxyzth[(drone_num_total -1 )*4+ no_of_bias ];
     }
 

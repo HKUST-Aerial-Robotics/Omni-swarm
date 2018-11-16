@@ -16,6 +16,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import threading
 import math
 import matplotlib.pyplot as plt
+import numpy as np
 
 def dis_over_pose(pose1, pose2):
     pos1 = pose1.pose.position
@@ -59,11 +60,22 @@ class SwarmOfflineTune:
         self.dis_err = {}
         self.dis_uwb = {}
 
+        self.vicon_pose = {}
+
+        self.planar_err = {}
+        self.vertical_err = {}
+
         for i in est_ids:
             self.dis_uwb[i] = {}
+            self.dis_vicon[i] = {}
+            self.dis_err[i] = {}
+            self.planar_err[i] = []
+            self.vertical_err[i] = []
             for j in est_ids:
                 self.dis_uwb[i][j]  = []
-        
+                self.dis_vicon[i][j] = []
+                self.dis_err[i][j] = []
+
     
     def on_vicon_pose_0(self, _pose):
         self.on_vicon_pose(0, _pose)
@@ -90,21 +102,10 @@ class SwarmOfflineTune:
             # print(_id_j)
             _dis = dis_over_pose(_pose, self.swarm_vicon_pose[_id_j])
             
-            if _id in self.dis_vicon:
-                self.dis_vicon[_id][_id_j] = _dis
-                if not (_id_j in self.dis_err[_id]):
-                    self.dis_err[_id][_id_j] = []
-            else:
-                self.dis_vicon[_id] = {_id_j : _dis}
-                self.dis_err[_id] = {_id_j : []}
+            self.dis_vicon[_id][_id_j] = _dis
+            self.dis_vicon[_id_j][_id] = _dis
 
-            if _id_j in self.dis_vicon:
-                self.dis_vicon[_id_j][_id] = _dis
-                if not (_id in self.dis_err[_id_j]):
-                    self.dis_err[_id_j][_id] = []
-            else:
-                self.dis_vicon[_id_j] = {_id : _dis}
-                self.dis_err[_id_j] = {_id : []}
+        self.vicon_pose[_id] = _pose
 
         # print(self.dis_vicon)
 
@@ -158,14 +159,22 @@ class SwarmOfflineTune:
             _pose.header.stamp = rospy.Time.now()
 
             yaw_off_set = self.yaw_vicon - self.yaw_odom
-            print("Yaw vicon {} odom {}".format(self.yaw_vicon, self.yaw_odom))
+            # print("Yaw vicon {} odom {}".format(self.yaw_vicon, self.yaw_odom))
             sx = math.sin(yaw_off_set)
             cx = math.cos(yaw_off_set)
-            remote_pose.position.x = main_position.x + rel_pos.x * cx + rel_pos.y * sx
-            remote_pose.position.y = main_position.y + rel_pos.y * cx - rel_pos.x * sx
-            remote_pose.position.z = main_position.z + rel_pos.z
+            posx = remote_pose.position.x = main_position.x + rel_pos.x * cx + rel_pos.y * sx
+            posy = remote_pose.position.y = main_position.y + rel_pos.y * cx - rel_pos.x * sx
+            posz = remote_pose.position.z = main_position.z + rel_pos.z
 
-            remote_pose.orientation.w = 1
+
+            vicon_pos = self.vicon_pose[target_id].pose.position
+            planar_err = math.sqrt((posx - vicon_pos.x)**2 + (posy - vicon_pos.y)**2)
+            vertical_err = (posz - vicon_pos.z)
+            self.planar_err[target_id].append(planar_err)
+            self.vertical_err[target_id].append(vertical_err)
+            # print(self.planar_err)
+
+            # remote_pose.orientation.w = 1
             self.swarm_est_in_vicon[target_id].publish(_pose)
 
 
@@ -179,18 +188,40 @@ if __name__ == "__main__":
         # plt.clf()
 
         for idx in tune.dis_err:
+            plt.figure("Estimation Err {}".format(idx))
+            plt.clf()
+            plt.subplot(221)
+            plt.title("Planar Err {}".format(np.mean(tune.planar_err[idx])))
+            plt.plot(tune.planar_err[idx])
+            
+            plt.subplot(222)
+            plt.title("Vertical Err {}".format(np.mean(tune.vertical_err[idx])))
+            plt.plot(tune.vertical_err[idx])
+
+            plt.subplot(223)
+            plt.title("Planar Err")
+            plt.hist(tune.planar_err[idx], 50)
+            
+            plt.subplot(224)
+            plt.title("Vertical Err")
+            plt.hist(tune.vertical_err[idx], 50)
+
+            plt.pause(0.05)
+
+
             for idy in tune.dis_err[idx]:
                 if idx < idy:
                     plt.figure("Figure {} to {} Error".format(idx, idy))
                     plt.clf()
+
+                    plt.subplot(211)
                     plt.plot(tune.dis_err[idx][idy],'o', label="Figure {} to {} Error".format(idx, idy))
                     plt.legend()
                     plt.grid(which="both")
-                    plt.pause(0.05)
 
-                    plt.figure("Hist Figure {} to {} Error".format(idx, idy))
-                    plt.clf()
+                    plt.subplot(212)
                     plt.hist(tune.dis_err[idx][idy], 50)
+                    plt.title("Dis error {}".format(np.mean(tune.dis_err[idx][idy] )))
                     plt.grid(which="both")
                     plt.pause(0.05)
 

@@ -81,6 +81,8 @@ public:
     std::map<int, Vector3d> est_pos;
     std::map<int, Vector3d> est_vel;
 
+    ros::Time last_est_time_tick = ros::Time::now();
+
     std::map<unsigned int, int> node_kf_count;
 
     
@@ -104,6 +106,10 @@ public:
             _Zxyzth[i*4+1] = rand_FloatRange(-30,30); 
             _Zxyzth[i*4+2] = rand_FloatRange(-30,30); 
             _Zxyzth[i*4 +3] = rand_FloatRange(0,6.28); 
+        }
+
+        for (int i = (end-1)*4; i < (end-1)*4 + drone_num*(drone_num-1)/2; i++) {
+            _Zxyzth[i] = rand_FloatRange(-0.1,0.1);
         }
     }
 
@@ -139,7 +145,8 @@ public:
         const std::vector<unsigned int> & _ids)
     {
         //Detect if it's outlier
-
+        
+        // for (int i = 0; i  < s)
         return false;
     }
     
@@ -226,7 +233,7 @@ public:
 
     void add_new_data_tick(
         Eigen::MatrixXd dis_matrix,const vec_array & self_pos, 
-        const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
+        const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids, ros::Time ts)
     {
         process_frame_clear();
         if (detect_outlier(dis_matrix, self_pos, self_vel, self_quat, _ids))
@@ -260,7 +267,7 @@ public:
         }
         
         if (finish_init)
-            EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, true);
+            EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, ts, true);
 
         if (_ids.size() > drone_num)
         {
@@ -275,9 +282,15 @@ public:
         return est_pos[_id];
     }
 
-    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat, std::vector<unsigned int> _ids, bool call_cb = false)
-    {
+    // Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
 
+    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat,std::vector<unsigned int> _ids,ros::Time ts, bool call_cb = false)
+    {
+        
+        ros::Time ts_now = ros::Time::now();
+        double dt = (ts_now - ts).toSec();
+
+        ROS_INFO("tnow %f, ts %f, dt %f", ts_now.toSec(), ts.toSec(), dt);
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
@@ -301,6 +314,8 @@ public:
             Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
             Eigen::Vector3d vel = swarmRes.est_id_vel_in_k(i, self_ptr, Zxyzth);
             Eigen::Quaterniond quat = swarmRes.est_id_quat_in_k(i, self_ptr, Zxyzth);
+
+            // pos = pos + vel*dt;/
 
             est_pos[_id] = pos;
             est_vel[_id] = vel;
@@ -352,7 +367,7 @@ public:
 
         for (int i = 0; i < max_number; i++)
         {
-            random_init_Zxyz(_ZxyTest, start_drone_num);
+            random_init_Zxyz(_ZxyTest, start_drone_num, drone_num);
             double c = solve_once(_ZxyTest, false);
             ROS_INFO("Got better cost %f", c);
 
@@ -462,8 +477,8 @@ public:
         covariance_blocks.push_back(std::make_pair(Zxyzth, Zxyzth));
         // bool ret = covariance.Compute(covariance_blocks, &problem);
         bool ret = false;
-        EvaluateEstPosition(
-            past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
+        // EvaluateEstPosition(
+            // past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
         if (ret)
         {
             covariance.GetCovarianceBlock(Zxyzth, Zxyzth, covariance_xx);

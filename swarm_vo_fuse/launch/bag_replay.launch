@@ -8,6 +8,6 @@
        <param name="max_accept_cost" value="0.1" type="double" />
        <param name="max_keyframe_num" value="100" type="int" />
        <param name="min_keyframe_num" value="10" type="int" />
-       <param name="thread_num" value="4" type="int" />
+       <param name="thread_num" value="8" type="int" />
     </node>
 </launch>

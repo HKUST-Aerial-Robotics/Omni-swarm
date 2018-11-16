@@ -20,6 +20,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
 
+
 using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
@@ -113,10 +114,12 @@ protected:
         uwbfuse->id_to_index = ids_index_in_arr;
 
         double t_now = rdp.header.stamp.toSec();
+
+        // printf("Tnow %f\n", t_now);
         
         if (t_now - t_last > 1 / force_freq)
         {
-            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids);
+            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids, rdp.header.stamp);
             std_msgs::Float32 cost;
             cost.data = this->uwbfuse->solve();
             t_last = t_now;
@@ -141,6 +144,11 @@ protected:
         pub.publish(odom);
     }
 
+    nav_msgs::Odometry odom_now;
+    void on_drone_odom_recv(nav_msgs::Odometry odom) {
+        odom_now = odom;
+    }
+
     float force_freq = 10;
 public:
     ros::NodeHandle & nh;
@@ -148,6 +156,7 @@ public:
         nh(_nh)
     {
         recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
+        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate",1,&UWBFuserNode::on_drone_odom_recv, this);
         int frame_num = 0, thread_num , min_frame_num;
         float acpt_cost = 0.4;  
 
@@ -177,6 +186,19 @@ public:
             Eigen::Vector3d self_pos = id2vec.at(self_id);
             Eigen::Vector3d self_vel = id2vel.at(self_id);
             Eigen::Quaterniond self_quat = id2quat.at(self_id);
+
+            self_pos.x() = odom_now.pose.pose.position.x;
+            self_pos.y() = odom_now.pose.pose.position.y;
+            self_pos.z() = odom_now.pose.pose.position.z;
+
+            self_vel.x() = odom_now.twist.twist.linear.x;
+            self_vel.y() = odom_now.twist.twist.linear.y;
+            self_vel.z() = odom_now.twist.twist.linear.z;
+
+            self_quat.w() = odom_now.pose.pose.orientation.w;
+            self_quat.x() = odom_now.pose.pose.orientation.x;
+            self_quat.y() = odom_now.pose.pose.orientation.y;
+            self_quat.z() = odom_now.pose.pose.orientation.z;
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
@@ -240,6 +262,7 @@ public:
 private:
 
     ros::Subscriber recv_remote_drones;
+    ros::Subscriber recv_drone_odom_now;
     ros::Publisher fused_drone_data_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
