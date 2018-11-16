@@ -72,6 +72,9 @@ class SwarmOfflineTune:
         self.odom_offset_count = 0
         self.odom_yaw_offset_sum = 0
 
+        self.vicon_ts = {
+        }
+
         for i in est_ids:
             self.dis_uwb[i] = {}
             self.dis_vicon[i] = {}
@@ -115,21 +118,27 @@ class SwarmOfflineTune:
             self.dis_vicon[_id_j][_id] = _dis
 
         self.vicon_pose[_id] = _pose
+        self.vicon_ts[_id] = rospy.get_time()
 
         # print(self.dis_vicon)
 
     def on_vo_odom(self, odom):
+    
+        ts_odom = odom.header.stamp
+        ts_vicon = self.vicon_ts[self.main_id]
+        dt = (ts_vicon - ts_odom.to_sec())
         quat = odom.pose.pose.orientation
         odom_position = odom.pose.pose.position
+        vel = odom.twist.twist.linear
         quaternion = (quat.x, quat.y, quat.z, quat.w)
         roll, pitch, yaw = euler_from_quaternion(quaternion)
         self.yaw_odom = yaw
 
         vicon_main_position = self.vicon_pose[self.main_id].pose.position
 
-        self.odom_offset_sum.x += vicon_main_position.x - odom_position.x
-        self.odom_offset_sum.y += vicon_main_position.y - odom_position.y
-        self.odom_offset_sum.z += vicon_main_position.z - odom_position.z
+        self.odom_offset_sum.x += vicon_main_position.x - (odom_position.x + vel.x*dt)
+        self.odom_offset_sum.y += vicon_main_position.y - (odom_position.y + vel.y*dt)
+        self.odom_offset_sum.z += vicon_main_position.z - (odom_position.z + vel.z*dt)
 
         self.odom_yaw_offset_sum = self.yaw_vicon - self.yaw_odom
         
@@ -162,9 +171,22 @@ class SwarmOfflineTune:
     
     def on_swarm_fused(self, swarm_fused):
         positions = swarm_fused.remote_drone_position
+        vels = swarm_fused.remote_drone_velocity
+        ts_odom = swarm_fused.header.stamp
+
         for i in range(len(swarm_fused.ids)):
             target_id = swarm_fused.ids[i]
+
+            ts_vicon = self.vicon_ts[target_id]
+
+            dt = (ts_vicon - ts_odom.to_sec())
+
             pos_in_odom = positions[i]
+            vel = vels[i]
+
+            pos_in_odom.x = pos_in_odom.x + vel.x * dt
+            pos_in_odom.y = pos_in_odom.y + vel.y * dt
+            pos_in_odom.z = pos_in_odom.z + vel.z * dt
             if target_id not in self.swarm_est_in_vicon:
                 self.swarm_est_in_vicon[target_id] = rospy.Publisher("/swarm_drone/estimate_pose_{}".format(target_id), PoseStamped)
             _pose = PoseStamped()
