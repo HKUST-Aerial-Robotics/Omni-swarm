@@ -188,6 +188,7 @@ class SwarmOfflineTune:
     
     def on_swarm_fused(self, swarm_fused):
         positions = swarm_fused.remote_drone_position
+        quats = swarm_fused.remote_drone_attitude
         vels = swarm_fused.remote_drone_velocity
         ts_odom = swarm_fused.header.stamp.to_sec() 
         
@@ -211,6 +212,8 @@ class SwarmOfflineTune:
             pos_in_odom.x = pos_in_odom.x + vel.x * dt
             pos_in_odom.y = pos_in_odom.y + vel.y * dt
             pos_in_odom.z = pos_in_odom.z + vel.z * dt
+            quat_in_odom = quats[i]
+
             if target_id not in self.swarm_est_in_vicon:
                 self.swarm_est_in_vicon[target_id] = rospy.Publisher("/swarm_drone/estimate_pose_{}".format(target_id), PoseStamped)
             _pose = PoseStamped()
@@ -244,7 +247,7 @@ class SwarmOfflineTune:
             # if target_id == 8:
                 # print("!!!!!!!!!!!!!!!!!err: {:3.2f} {:3.2f} {:3.2f}".format(planar_x_err, planar_y_err, vertical_err))
 
-            # remote_pose.orientation.w = 1
+            remote_pose.orientation = quat_in_odom
             self.swarm_est_in_vicon[target_id].publish(_pose)
 
     

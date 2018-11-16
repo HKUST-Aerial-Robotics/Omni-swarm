@@ -212,9 +212,12 @@ public:
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
+                Quaterniond quat = id2quat.at(it.first);
                 
                 geometry_msgs::Point p, rel_p;
                 geometry_msgs::Vector3 v, rel_v;
+                geometry_msgs::Quaternion q;
+
                 if (it.first == this->self_id)
                 {
                     p.x = self_pos.x();
@@ -232,9 +235,12 @@ public:
                     rel_v.x = 0;
                     rel_v.y = 0;
                     rel_v.z = 0;
+
+                    q = odom_now.pose.pose.orientation;
                 }
 
                 else {
+
                     p.x = it.second.x() + id2vel.at(it.first).x() * dt;
                     p.y = it.second.y() + id2vel.at(it.first).y() * dt;
                     p.z = it.second.z() + id2vel.at(it.first).z() * dt;
@@ -251,15 +257,17 @@ public:
                     rel_v.x = id2vel.at(it.first).x() - self_vel.x();
                     rel_v.y = id2vel.at(it.first).y() - self_vel.y();
                     rel_v.z = id2vel.at(it.first).z() - self_vel.z();
+
+                    q.w = quat.w();
+                    q.x = quat.x();
+                    q.y = quat.y();
+                    q.z = quat.z();
                 }
 
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
                 fused.remote_drone_velocity.push_back(v);
-
-                Quaterniond quat = id2quat.at(it.first);
-                
-
+                fused.remote_drone_attitude.push_back(q);
 
                 Eigen::Quaterniond rel_quat =  self_quat.inverse() * quat;
                 Vector3d euler = rel_quat.toRotationMatrix().eulerAngles(0, 1, 2);
@@ -275,14 +283,12 @@ public:
                 odom.header.stamp = odom_now.header.stamp;
                 odom.pose.pose.position = p;
                 
-                odom.pose.pose.orientation.w = quat.w();
-                odom.pose.pose.orientation.x = quat.x();
-                odom.pose.pose.orientation.y = quat.y();
-                odom.pose.pose.orientation.z = quat.z();
-
+                odom.pose.pose.orientation = q;
                 odom.twist.twist.linear = v;
-                
-                pub_odom_id(it.first, odom);
+                if (it.first != self_id)
+                    pub_odom_id(it.first, odom);
+                else
+                    pub_odom_id(it.first, odom_now);
             }
 
             fused_drone_data_pub.publish(fused);
