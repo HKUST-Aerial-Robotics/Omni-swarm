@@ -5,11 +5,17 @@
     <param name="use_sim_time" value="true" type="bool" />
 
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
-       <param name="force_freq" value="20" type="double" />
-       <param name="max_accept_cost" value="0.1" type="double" />
-       <param name="max_keyframe_num" value="200" type="int" />
-       <param name="min_keyframe_num" value="40" type="int" />
-       <param name="thread_num" value="4" type="int" />
+    <rosparam>
+    force_freq: 20
+    max_accept_cost: 0.1
+    max_keyframe_num: 200
+    min_keyframe_num: 40
+    thread_num: 4
+    anntenna_pos:
+        x: 0
+        y: 0
+        z: 0.27
+    </rosparam>
     </node>
     <node pkg="swarm_station" name="swarm_station" type="swarm_offline_tune.py" output="log">
     </node>
