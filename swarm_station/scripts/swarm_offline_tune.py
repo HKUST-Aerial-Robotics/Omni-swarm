@@ -7,9 +7,9 @@ import rospy
 import pymavlink
 import sys
 import time
-from swarm_msgs.msg import data_buffer, swarm_drone_source_data, remote_uwb_info, swarm_fused_relative
+from swarm_msgs.msg import data_buffer, swarm_drone_source_data, remote_uwb_info, swarm_fused_relative, swarm_fused
 import time
-from geometry_msgs.msg import Pose, PoseStamped
+from geometry_msgs.msg import Pose, PoseStamped, Point
 from nav_msgs.msg import Odometry
 from pyquaternion import Quaternion
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -34,6 +34,7 @@ class SwarmOfflineTune:
         self.main_pose = PoseStamped()
         self.swarm_source_data_sub = rospy.Subscriber("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, self.on_swarm_source_data, queue_size=1)
         self.swarm_relatived_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused_relative", swarm_fused_relative, self.on_swarm_fused_relative, queue_size=1)
+        self.swarm_relatived_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused", swarm_fused, self.on_swarm_fused, queue_size=1)
         self.odom_sub= rospy.Subscriber("/vins_estimator/odometry", Odometry, self.on_vo_odom, queue_size=1)
         
         self.swarm_vicon_pose_sub = {}
@@ -64,6 +65,10 @@ class SwarmOfflineTune:
 
         self.planar_err = {}
         self.vertical_err = {}
+
+        self.odom_offset_sum = Point(0, 0, 0)
+        self.odom_offset_count = 0
+        self.odom_yaw_offset_sum = 0
 
         for i in est_ids:
             self.dis_uwb[i] = {}
@@ -111,9 +116,20 @@ class SwarmOfflineTune:
 
     def on_vo_odom(self, odom):
         quat = odom.pose.pose.orientation
+        odom_position = odom.pose.pose.position
         quaternion = (quat.x, quat.y, quat.z, quat.w)
         roll, pitch, yaw = euler_from_quaternion(quaternion)
         self.yaw_odom = yaw
+
+        vicon_main_position = self.vicon_pose[self.main_id].pose.position
+
+        self.odom_offset_sum.x += vicon_main_position.x - odom_position.x
+        self.odom_offset_sum.y += vicon_main_position.y - odom_position.y
+        self.odom_offset_sum.z += vicon_main_position.z - odom_position.z
+
+        self.odom_yaw_offset_sum = self.yaw_vicon - self.yaw_odom
+        
+        self.odom_offset_count = self.odom_offset_count + 1
 
     def on_swarm_source_data(self, ssd):
         
@@ -141,6 +157,41 @@ class SwarmOfflineTune:
             # print(ssd)
             raise
             exit(0)
+    
+    def on_swarm_fused(self, swarm_fused):
+        positions = swarm_fused.remote_drone_position
+        for i in range(len(swarm_fused.ids)):
+            target_id = swarm_fused.ids[i]
+            pos_in_odom = positions[i]
+            if target_id not in self.swarm_est_in_vicon:
+                self.swarm_est_in_vicon[target_id] = rospy.Publisher("/swarm_drone/estimate_pose_{}".format(target_id), PoseStamped)
+            _pose = PoseStamped()
+            remote_pose = _pose.pose
+            _pose.header.frame_id = "world"
+            _pose.header.stamp = rospy.Time.now()
+
+            yaw_off_set = self.odom_yaw_offset_sum / self.odom_offset_count
+            # print("Yaw vicon {} odom {}".format(self.yaw_vicon, self.yaw_odom))
+            sx = math.sin(yaw_off_set)
+            cx = math.cos(yaw_off_set)
+            posx = remote_pose.position.x = self.odom_offset_sum.x/self.odom_offset_count + pos_in_odom.x * cx + pos_in_odom.y * sx
+            posy = remote_pose.position.y = self.odom_offset_sum.y/self.odom_offset_count + pos_in_odom.y * cx - pos_in_odom.x * sx
+            posz = remote_pose.position.z = self.odom_offset_sum.z/self.odom_offset_count + pos_in_odom.z
+
+            # posx = remote_pose.position.x = self.odom_offset_sum.x/self.odom_offset_count + pos_in_odom.x
+            # posy = remote_pose.position.y = self.odom_offset_sum.y/self.odom_offset_count + pos_in_odom.y
+            # posz = remote_pose.position.z = self.odom_offset_sum.z/self.odom_offset_count + pos_in_odom.z
+
+            vicon_pos = self.vicon_pose[target_id].pose.position
+            planar_err = math.sqrt((posx - vicon_pos.x)**2 + (posy - vicon_pos.y)**2)
+            vertical_err = (posz - vicon_pos.z)
+            self.planar_err[target_id].append(planar_err)
+            self.vertical_err[target_id].append(vertical_err)
+            # print(self.planar_err)
+
+            # remote_pose.orientation.w = 1
+            self.swarm_est_in_vicon[target_id].publish(_pose)
+
     
     def on_swarm_fused_relative(self, swarm_rel):
         rel_poses = swarm_rel.relative_drone_position
@@ -175,7 +226,7 @@ class SwarmOfflineTune:
             # print(self.planar_err)
 
             # remote_pose.orientation.w = 1
-            self.swarm_est_in_vicon[target_id].publish(_pose)
+            # self.swarm_est_in_vicon[target_id].publish(_pose)
 
 
 if __name__ == "__main__":
