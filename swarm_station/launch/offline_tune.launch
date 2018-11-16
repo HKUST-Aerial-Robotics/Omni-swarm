@@ -2,6 +2,8 @@
     <!-- <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
     </node> -->
+    <param name="use_sim_time" value="true" type="bool" />
+
     <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
        <param name="force_freq" value="20" type="double" />
        <param name="max_accept_cost" value="0.1" type="double" />

@@ -188,12 +188,15 @@ class SwarmOfflineTune:
             planar_err = math.sqrt((posx - vicon_pos.x)**2 + (posy - vicon_pos.y)**2)
             planar_x_err = posx - vicon_pos.x
             planar_y_err = posy - vicon_pos.y
-            vertical_err = (posz - vicon_pos.z)
-            self.planar_err[target_id].append(planar_err)
-            self.planar_x_err[target_id].append(planar_x_err)
-            self.planar_y_err[target_id].append(planar_y_err)
-            self.vertical_err[target_id].append(vertical_err)
+            vertical_err = posz - vicon_pos.z
+            self.planar_err[target_id].append(planar_err*100)
+            self.planar_x_err[target_id].append(planar_x_err*100)
+            self.planar_y_err[target_id].append(planar_y_err*100)
+            self.vertical_err[target_id].append(vertical_err*100)
             # print(self.planar_err)
+
+            # if target_id == 8:
+                # print("!!!!!!!!!!!!!!!!!err: {:3.2f} {:3.2f} {:3.2f}".format(planar_x_err, planar_y_err, vertical_err))
 
             # remote_pose.orientation.w = 1
             self.swarm_est_in_vicon[target_id].publish(_pose)
@@ -227,8 +230,8 @@ class SwarmOfflineTune:
             vicon_pos = self.vicon_pose[target_id].pose.position
             planar_err = math.sqrt((posx - vicon_pos.x)**2 + (posy - vicon_pos.y)**2)
             vertical_err = (posz - vicon_pos.z)
-            self.planar_err[target_id].append(planar_err)
-            self.vertical_err[target_id].append(vertical_err)
+            # self.planar_err[target_id].append(planar_err)
+            # self.vertical_err[target_id].append(vertical_err)
             # print(self.planar_err)
 
             # remote_pose.orientation.w = 1
@@ -240,10 +243,6 @@ if __name__ == "__main__":
     # plt.ion()
     tune = SwarmOfflineTune(7, [7, 0, 3, 8], display=True)
     while not rospy.is_shutdown():
-
-        # plt.figure("Distance Error")
-        # plt.clf()
-
         for idx in tune.dis_err:
             if idx == tune.main_id:
                 continue
@@ -264,23 +263,24 @@ if __name__ == "__main__":
             plt.grid(which="both")
 
             plt.subplot(233)
-            plt.title("Planar Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_err[idx]),100* np.var(tune.planar_err[idx]) ))
-            plt.hist(tune.planar_err[idx], 50)
+            plt.title("Planar Err {:3.1f}cm   |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_err[idx]),math.sqrt(np.var(tune.planar_err[idx]))))
+            plt.hist(tune.planar_err[idx], 50, normed=True)
             plt.grid(which="both")
 
+            # print(tune.planar_x_err[idx])
             plt.subplot(234)
-            plt.title("Planar X Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_x_err[idx]),100* np.var(tune.planar_x_err[idx])))
-            plt.hist(tune.planar_x_err[idx], 50)
+            plt.title("Planar X Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_x_err[idx]),math.sqrt(np.var(tune.planar_x_err[idx]))))
+            plt.hist(tune.planar_x_err[idx], 50, normed=True)
             plt.grid(which="both")
 
             plt.subplot(235)
-            plt.title("Planar Y Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_y_err[idx]),100* np.var(tune.planar_y_err[idx])))
-            plt.hist(tune.planar_y_err[idx], 50)
+            plt.title("Planar Y Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_y_err[idx]),math.sqrt(np.var(tune.planar_y_err[idx]))))
+            plt.hist(tune.planar_y_err[idx], 50, normed=True)
             plt.grid(which="both")
             
             plt.subplot(236)
-            plt.title("Vertical Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.vertical_err[idx]),100* np.var(tune.planar_z_err[idx])))
-            plt.hist(tune.vertical_err[idx], 50)
+            plt.title("Vertical Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.vertical_err[idx]),math.sqrt(np.var(tune.vertical_err[idx]))))
+            plt.hist(tune.vertical_err[idx], 50, normed=True)
             plt.grid(which="both")
 
             plt.tight_layout()
