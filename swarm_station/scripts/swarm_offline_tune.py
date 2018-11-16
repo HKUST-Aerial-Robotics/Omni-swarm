@@ -35,7 +35,7 @@ class SwarmOfflineTune:
         self.swarm_source_data_sub = rospy.Subscriber("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, self.on_swarm_source_data, queue_size=1)
         self.swarm_relatived_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused_relative", swarm_fused_relative, self.on_swarm_fused_relative, queue_size=1)
         self.swarm_relatived_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused", swarm_fused, self.on_swarm_fused, queue_size=1)
-        self.odom_sub= rospy.Subscriber("/vins_estimator/odometry", Odometry, self.on_vo_odom, queue_size=1)
+        self.odom_sub= rospy.Subscriber("/vins_estimator/imu_propagate", Odometry, self.on_vo_odom, queue_size=1)
         
         self.swarm_vicon_pose_sub = {}
         self.swarm_vicon_pose = {}
@@ -266,8 +266,6 @@ if __name__ == "__main__":
     tune = SwarmOfflineTune(7, [7, 0, 3, 8], display=True)
     while not rospy.is_shutdown():
         for idx in tune.dis_err:
-            if idx == tune.main_id:
-                continue
             plt.figure("Estimation Err {}".format(idx),figsize=(12,8))
             plt.clf()
             plt.subplot(231)
