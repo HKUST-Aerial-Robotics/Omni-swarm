@@ -212,16 +212,46 @@ public:
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
+                
                 geometry_msgs::Point p, rel_p;
                 geometry_msgs::Vector3 v, rel_v;
-                p.x = it.second.x() + id2vel.at(it.first).x() * dt;
-                p.y = it.second.y() + id2vel.at(it.first).y() * dt;
-                p.z = it.second.z() + id2vel.at(it.first).z() * dt;
+                if (it.first == this->self_id)
+                {
+                    p.x = self_pos.x();
+                    p.y = self_pos.y();
+                    p.z = self_pos.z();
 
-                //May cause error
-                v.x = id2vel.at(it.first).x();
-                v.y = id2vel.at(it.first).y();
-                v.z = id2vel.at(it.first).z();
+                    v.x = self_vel.x();
+                    v.y = self_vel.y();
+                    v.z = self_vel.z();
+
+                    rel_p.x = 0;
+                    rel_p.y = 0;
+                    rel_p.z = 0;
+
+                    rel_v.x = 0;
+                    rel_v.y = 0;
+                    rel_v.z = 0;
+                }
+
+                else {
+                    p.x = it.second.x() + id2vel.at(it.first).x() * dt;
+                    p.y = it.second.y() + id2vel.at(it.first).y() * dt;
+                    p.z = it.second.z() + id2vel.at(it.first).z() * dt;
+
+                    //May cause error
+                    v.x = id2vel.at(it.first).x();
+                    v.y = id2vel.at(it.first).y();
+                    v.z = id2vel.at(it.first).z();
+
+
+                    rel_p.x = it.second.x() - self_pos.x();
+                    rel_p.y = it.second.y() - self_pos.y();
+                    rel_p.z = it.second.z() - self_pos.z();
+                    rel_v.x = id2vel.at(it.first).x() - self_vel.x();
+                    rel_v.y = id2vel.at(it.first).y() - self_vel.y();
+                    rel_v.z = id2vel.at(it.first).z() - self_vel.z();
+                }
 
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
@@ -229,13 +259,7 @@ public:
 
                 Quaterniond quat = id2quat.at(it.first);
                 
-                rel_p.x = it.second.x() - self_pos.x();
-                rel_p.y = it.second.y() - self_pos.y();
-                rel_p.z = it.second.z() - self_pos.z();
 
-                rel_v.x = id2vel.at(it.first).x() - self_vel.x();
-                rel_v.y = id2vel.at(it.first).y() - self_vel.y();
-                rel_v.z = id2vel.at(it.first).z() - self_vel.z();
 
                 Eigen::Quaterniond rel_quat =  self_quat.inverse() * quat;
                 Vector3d euler = rel_quat.toRotationMatrix().eulerAngles(0, 1, 2);

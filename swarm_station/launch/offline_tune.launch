@@ -17,6 +17,6 @@
         z: 0.27
     </rosparam>
     </node>
-    <node pkg="swarm_station" name="swarm_station" type="swarm_offline_tune.py" output="log">
+    <node pkg="swarm_station" name="swarm_station" type="swarm_offline_tune.py" output="screen">
     </node>
 </launch>

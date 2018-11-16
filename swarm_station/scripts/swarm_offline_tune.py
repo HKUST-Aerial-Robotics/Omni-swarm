@@ -17,6 +17,7 @@ import threading
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import copy
 
 def dis_over_pose(pose1, pose2):
     pos1 = pose1.pose.position
@@ -63,6 +64,8 @@ class SwarmOfflineTune:
 
         self.vicon_pose = {}
 
+        self.past_vicon_pose = []
+
         self.planar_err = {}
         self.planar_x_err = {}
         self.planar_y_err = {}
@@ -71,6 +74,8 @@ class SwarmOfflineTune:
         self.odom_offset_sum = Point(0, 0, 0)
         self.odom_offset_count = 0
         self.odom_yaw_offset_sum = 0
+
+        self.vicon_pose_ptr = 0
 
         self.vicon_ts = {
         }
@@ -120,13 +125,16 @@ class SwarmOfflineTune:
         self.vicon_pose[_id] = _pose
         self.vicon_ts[_id] = rospy.get_time()
 
+        pv = copy.deepcopy(self.vicon_pose)
+        pv["ts"] = rospy.get_time()
+        self.past_vicon_pose.append(pv)
+
         # print(self.dis_vicon)
 
     def on_vo_odom(self, odom):
     
-        ts_odom = odom.header.stamp
+        ts_odom = odom.header.stamp.to_sec()
         ts_vicon = self.vicon_ts[self.main_id]
-        dt = (ts_vicon - ts_odom.to_sec())
         quat = odom.pose.pose.orientation
         odom_position = odom.pose.pose.position
         vel = odom.twist.twist.linear
@@ -136,6 +144,13 @@ class SwarmOfflineTune:
 
         vicon_main_position = self.vicon_pose[self.main_id].pose.position
 
+
+        while self.vicon_pose_ptr < len(self.past_vicon_pose) - 1 and self.past_vicon_pose[self.vicon_pose_ptr]["ts"] < ts_odom:
+            self.vicon_pose_ptr = self.vicon_pose_ptr + 1
+
+        ts_vicon = self.past_vicon_pose[self.vicon_pose_ptr]["ts"]
+        dt = (ts_vicon - ts_odom)
+        
         self.odom_offset_sum.x += vicon_main_position.x - (odom_position.x + vel.x*dt)
         self.odom_offset_sum.y += vicon_main_position.y - (odom_position.y + vel.y*dt)
         self.odom_offset_sum.z += vicon_main_position.z - (odom_position.z + vel.z*dt)
@@ -143,6 +158,8 @@ class SwarmOfflineTune:
         self.odom_yaw_offset_sum = self.yaw_vicon - self.yaw_odom
         
         self.odom_offset_count = self.odom_offset_count + 1
+
+
 
     def on_swarm_source_data(self, ssd):
         try:
@@ -172,14 +189,21 @@ class SwarmOfflineTune:
     def on_swarm_fused(self, swarm_fused):
         positions = swarm_fused.remote_drone_position
         vels = swarm_fused.remote_drone_velocity
-        ts_odom = swarm_fused.header.stamp
+        ts_odom = swarm_fused.header.stamp.to_sec() 
+        
+
+        
+        ts_vicon = self.past_vicon_pose[self.vicon_pose_ptr]["ts"]
+
+
 
         for i in range(len(swarm_fused.ids)):
             target_id = swarm_fused.ids[i]
 
-            ts_vicon = self.vicon_ts[target_id]
 
-            dt = (ts_vicon - ts_odom.to_sec())
+            dt = (ts_vicon - ts_odom)
+            
+            print("Dt ", dt)
 
             pos_in_odom = positions[i]
             vel = vels[i]
