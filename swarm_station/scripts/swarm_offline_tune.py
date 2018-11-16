@@ -64,6 +64,8 @@ class SwarmOfflineTune:
         self.vicon_pose = {}
 
         self.planar_err = {}
+        self.planar_x_err = {}
+        self.planar_y_err = {}
         self.vertical_err = {}
 
         self.odom_offset_sum = Point(0, 0, 0)
@@ -75,6 +77,8 @@ class SwarmOfflineTune:
             self.dis_vicon[i] = {}
             self.dis_err[i] = {}
             self.planar_err[i] = []
+            self.planar_x_err[i] = []
+            self.planar_y_err[i] = []
             self.vertical_err[i] = []
             for j in est_ids:
                 self.dis_uwb[i][j]  = []
@@ -132,8 +136,6 @@ class SwarmOfflineTune:
         self.odom_offset_count = self.odom_offset_count + 1
 
     def on_swarm_source_data(self, ssd):
-        
-
         try:
             ids = ssd.ids
             num = len(ssd.ids)
@@ -184,8 +186,12 @@ class SwarmOfflineTune:
 
             vicon_pos = self.vicon_pose[target_id].pose.position
             planar_err = math.sqrt((posx - vicon_pos.x)**2 + (posy - vicon_pos.y)**2)
+            planar_x_err = posx - vicon_pos.x
+            planar_y_err = posy - vicon_pos.y
             vertical_err = (posz - vicon_pos.z)
             self.planar_err[target_id].append(planar_err)
+            self.planar_x_err[target_id].append(planar_x_err)
+            self.planar_y_err[target_id].append(planar_y_err)
             self.vertical_err[target_id].append(vertical_err)
             # print(self.planar_err)
 
@@ -239,23 +245,45 @@ if __name__ == "__main__":
         # plt.clf()
 
         for idx in tune.dis_err:
-            plt.figure("Estimation Err {}".format(idx))
+            if idx == tune.main_id:
+                continue
+            plt.figure("Estimation Err {}".format(idx),figsize=(12,8))
             plt.clf()
-            plt.subplot(221)
-            plt.title("Planar Err {}".format(np.mean(tune.planar_err[idx])))
-            plt.plot(tune.planar_err[idx])
-            
-            plt.subplot(222)
-            plt.title("Vertical Err {}".format(np.mean(tune.vertical_err[idx])))
-            plt.plot(tune.vertical_err[idx])
+            plt.subplot(231)
 
-            plt.subplot(223)
             plt.title("Planar Err")
-            plt.hist(tune.planar_err[idx], 50)
-            
-            plt.subplot(224)
+            plt.plot(tune.planar_err[idx], label="Planar")
+            plt.plot(tune.planar_x_err[idx], label="PlanarErrX")
+            plt.plot(tune.planar_y_err[idx], label="PlanarErrY")
+            plt.legend()
+            plt.grid(which="both")
+
+            plt.subplot(232)
             plt.title("Vertical Err")
+            plt.plot(tune.vertical_err[idx])
+            plt.grid(which="both")
+
+            plt.subplot(233)
+            plt.title("Planar Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_err[idx]),100* np.var(tune.planar_err[idx]) ))
+            plt.hist(tune.planar_err[idx], 50)
+            plt.grid(which="both")
+
+            plt.subplot(234)
+            plt.title("Planar X Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_x_err[idx]),100* np.var(tune.planar_x_err[idx])))
+            plt.hist(tune.planar_x_err[idx], 50)
+            plt.grid(which="both")
+
+            plt.subplot(235)
+            plt.title("Planar Y Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.planar_y_err[idx]),100* np.var(tune.planar_y_err[idx])))
+            plt.hist(tune.planar_y_err[idx], 50)
+            plt.grid(which="both")
+            
+            plt.subplot(236)
+            plt.title("Vertical Err {:3.1f}cm var {:3.1f}cm".format(100*np.mean(tune.vertical_err[idx]),100* np.var(tune.planar_z_err[idx])))
             plt.hist(tune.vertical_err[idx], 50)
+            plt.grid(which="both")
+
+            plt.tight_layout()
 
             plt.pause(0.05)
 
