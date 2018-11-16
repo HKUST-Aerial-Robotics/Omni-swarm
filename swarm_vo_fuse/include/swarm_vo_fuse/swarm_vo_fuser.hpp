@@ -15,7 +15,7 @@
 typedef std::map<unsigned int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<unsigned int, Eigen::Quaterniond> ID2Quat;
 
-typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &, const ID2Quat &)> ID2VecCallback;
+typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &, const ID2Quat &, ros::Time ts)> ID2VecCallback;
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -284,13 +284,8 @@ public:
 
     // Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
 
-    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat,std::vector<unsigned int> _ids,ros::Time ts, bool call_cb = false)
+    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat,std::vector<unsigned int> _ids, ros::Time ts, bool call_cb = false)
     {
-        
-        ros::Time ts_now = ros::Time::now();
-        double dt = (ts_now - ts).toSec();
-
-        ROS_INFO("tnow %f, ts %f, dt %f", ts_now.toSec(), ts.toSec(), dt);
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
@@ -314,8 +309,6 @@ public:
             Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
             Eigen::Vector3d vel = swarmRes.est_id_vel_in_k(i, self_ptr, Zxyzth);
             Eigen::Quaterniond quat = swarmRes.est_id_quat_in_k(i, self_ptr, Zxyzth);
-
-            // pos = pos + vel*dt;/
 
             est_pos[_id] = pos;
             est_vel[_id] = vel;
@@ -353,7 +346,7 @@ public:
         printf("\n\n");
 
         if (callback != nullptr && call_cb)
-            (callback)(id2vec, id2vel, id2quat);
+            (callback)(id2vec, id2vel, id2quat, ts);
     }
     
     

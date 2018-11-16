@@ -180,12 +180,22 @@ public:
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         fused_drone_rel_data_pub = nh.advertise<swarm_fused_relative>("/swarm_drones/swarm_drone_fused_relative", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
-        uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
+        uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat, ros::Time ts) {
             swarm_fused fused;
             swarm_fused_relative relative_fused;
-            Eigen::Vector3d self_pos = id2vec.at(self_id);
-            Eigen::Vector3d self_vel = id2vel.at(self_id);
-            Eigen::Quaterniond self_quat = id2quat.at(self_id);
+
+
+            ros::Time ts_now = odom_now.header.stamp;
+            double dt = (ts_now - ts).toSec();
+
+            fused.header.stamp = ts_now;
+            relative_fused.header.stamp = ts_now;
+            
+            // ROS_INFO("tnow %f, ts %f, dt %f", ts_now.toSec(), ts.toSec(), dt);
+
+            Eigen::Vector3d self_pos;
+            Eigen::Vector3d self_vel;
+            Eigen::Quaterniond self_quat;
 
             self_pos.x() = odom_now.pose.pose.position.x;
             self_pos.y() = odom_now.pose.pose.position.y;
@@ -204,9 +214,9 @@ public:
             {
                 geometry_msgs::Point p, rel_p;
                 geometry_msgs::Vector3 v, rel_v;
-                p.x = it.second.x();
-                p.y = it.second.y();
-                p.z = it.second.z();
+                p.x = it.second.x() + id2vel.at(it.first).x() * dt;
+                p.y = it.second.y() + id2vel.at(it.first).y() * dt;
+                p.z = it.second.z() + id2vel.at(it.first).z() * dt;
 
                 //May cause error
                 v.x = id2vel.at(it.first).x();
@@ -238,6 +248,7 @@ public:
 
                 Odometry odom;
                 odom.header.frame_id = frame_id;
+                odom.header.stamp = odom_now.header.stamp;
                 odom.pose.pose.position = p;
                 
                 odom.pose.pose.orientation.w = quat.w();
