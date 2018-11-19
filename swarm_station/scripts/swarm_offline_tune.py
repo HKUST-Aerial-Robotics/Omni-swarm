@@ -18,6 +18,15 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+import scipy
+from scipy import interpolate
+
+def diff_time_series(t1, x1, t2, x2, t3):
+    if len(t1) == 0 or len(t2) == 0:
+        return []
+    f1 = interpolate.interp1d(t1, x1)
+    f2 = interpolate.interp1d(t2, x2)
+    return f1(t3) - f2(t3)
 
 def dis_over_pose(pose1, pose2):
     pos1 = pose1.pose.position
@@ -71,6 +80,7 @@ class SwarmOfflineTune:
         self.planar_y_err = {}
         self.vertical_err = {}
 
+
         self.odom_offset_sum = Point(0, 0, 0)
         self.odom_offset_count = 0
         self.odom_yaw_offset_sum = 0
@@ -80,7 +90,27 @@ class SwarmOfflineTune:
         self.vicon_ts = {
         }
 
+        self.fuse_ts = {}
+        self.fuse_pos_x = {}
+        self.fuse_pos_y = {}
+        self.fuse_pos_z = {}
+
+        self.vicon_pos_x = {}
+        self.vicon_pos_y = {}
+        self.vicon_pos_z = {}
+        self.vicon_ts_seq = {}
+
+        self.vicon_ts = {}
         for i in est_ids:
+            self.fuse_pos_x[i] = []
+            self.fuse_pos_y[i] = []
+            self.fuse_pos_z[i] = []
+            self.vicon_pos_x[i] = []
+            self.vicon_pos_y[i] = []
+            self.vicon_pos_z[i] = []
+            self.vicon_ts_seq[i] = []
+            self.fuse_ts[i] = []
+            
             self.dis_uwb[i] = {}
             self.dis_vicon[i] = {}
             self.dis_err[i] = {}
@@ -125,9 +155,16 @@ class SwarmOfflineTune:
         self.vicon_pose[_id] = _pose
         self.vicon_ts[_id] = rospy.get_time()
 
+
         pv = copy.deepcopy(self.vicon_pose)
         pv["ts"] = rospy.get_time()
         self.past_vicon_pose.append(pv)
+
+        self.vicon_pos_x[_id].append(_pose.pose.position.x)
+        self.vicon_pos_y[_id].append(_pose.pose.position.y)
+        self.vicon_pos_z[_id].append(_pose.pose.position.z)
+        self.vicon_ts_seq[_id].append(rospy.get_time())
+
 
         # print(self.dis_vicon)
 
@@ -151,13 +188,13 @@ class SwarmOfflineTune:
         ts_vicon = self.past_vicon_pose[self.vicon_pose_ptr]["ts"]
         dt = (ts_vicon - ts_odom)
         
-        self.odom_offset_sum.x += vicon_main_position.x - (odom_position.x + vel.x*dt)
-        self.odom_offset_sum.y += vicon_main_position.y - (odom_position.y + vel.y*dt)
-        self.odom_offset_sum.z += vicon_main_position.z - (odom_position.z + vel.z*dt)
+        self.odom_offset_sum.x = vicon_main_position.x - (odom_position.x + vel.x*dt)
+        self.odom_offset_sum.y = vicon_main_position.y - (odom_position.y + vel.y*dt)
+        self.odom_offset_sum.z = vicon_main_position.z - (odom_position.z + vel.z*dt)
 
         self.odom_yaw_offset_sum = self.yaw_vicon - self.yaw_odom
         
-        self.odom_offset_count = self.odom_offset_count + 1
+        self.odom_offset_count = 1 #self.odom_offset_count + 1
 
 
 
@@ -192,12 +229,7 @@ class SwarmOfflineTune:
         vels = swarm_fused.remote_drone_velocity
         ts_odom = swarm_fused.header.stamp.to_sec() 
         
-
-        
         ts_vicon = self.past_vicon_pose[self.vicon_pose_ptr]["ts"]
-
-
-
         for i in range(len(swarm_fused.ids)):
             target_id = swarm_fused.ids[i]
 
@@ -209,9 +241,13 @@ class SwarmOfflineTune:
             pos_in_odom = positions[i]
             vel = vels[i]
 
-            pos_in_odom.x = pos_in_odom.x + vel.x * dt
-            pos_in_odom.y = pos_in_odom.y + vel.y * dt
-            pos_in_odom.z = pos_in_odom.z + vel.z * dt
+
+
+            self.fuse_ts[target_id].append(ts_odom)
+
+            # pos_in_odom.x = pos_in_odom.x + vel.x * dt
+            # pos_in_odom.y = pos_in_odom.y + vel.y * dt
+            # pos_in_odom.z = pos_in_odom.z + vel.z * dt
             quat_in_odom = quats[i]
 
             if target_id not in self.swarm_est_in_vicon:
@@ -228,6 +264,11 @@ class SwarmOfflineTune:
             posx = remote_pose.position.x = self.odom_offset_sum.x/self.odom_offset_count + pos_in_odom.x * cx + pos_in_odom.y * sx
             posy = remote_pose.position.y = self.odom_offset_sum.y/self.odom_offset_count + pos_in_odom.y * cx - pos_in_odom.x * sx
             posz = remote_pose.position.z = self.odom_offset_sum.z/self.odom_offset_count + pos_in_odom.z
+
+
+            self.fuse_pos_x[target_id].append(posx)
+            self.fuse_pos_y[target_id].append(posy)
+            self.fuse_pos_z[target_id].append(posz)
 
             # posx = remote_pose.position.x = self.odom_offset_sum.x/self.odom_offset_count + pos_in_odom.x
             # posy = remote_pose.position.y = self.odom_offset_sum.y/self.odom_offset_count + pos_in_odom.y
@@ -334,6 +375,43 @@ if __name__ == "__main__":
 
             plt.pause(0.05)
 
+            plt.figure("Estimation Pos {}".format(idx),figsize=(12,8))
+            plt.clf()
+            plt.subplot(321)
+            plt.title("POS X")
+            plt.plot(tune.fuse_ts[idx], tune.fuse_pos_x[idx], label="Fuse")
+            plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_x[idx], label="vicon")
+            plt.legend()
+            plt.grid(which="both")
+
+            plt.subplot(322)
+            plt.title("POS Y")
+            plt.plot(tune.fuse_ts[idx], tune.fuse_pos_y[idx], label="Fuse")
+            plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_y[idx], label="vicon")
+            plt.legend()            
+            plt.grid(which="both")
+
+            plt.subplot(323)
+            plt.title("POS Z")
+            plt.plot(tune.fuse_ts[idx], tune.fuse_pos_z[idx], label="Fuse")
+            plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_z[idx], label="vicon")
+            plt.legend()                        
+            plt.grid(which="both")
+
+
+            err_x = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_x[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_x[idx], tune.fuse_ts[idx])
+            err_y = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_y[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_y[idx], tune.fuse_ts[idx])
+            err_z = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_z[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_z[idx], tune.fuse_ts[idx])
+            # print()
+            plt.subplot(324)
+            plt.title("ERR")
+            plt.plot(err_x, label="errX")
+            plt.plot(err_y, label="errY")
+            plt.plot(err_z, label="errZ")
+            plt.legend()                        
+            plt.grid(which="both")
+            plt.tight_layout()
+            plt.pause(0.05)
 
             for idy in tune.dis_err[idx]:
                 if idx < idy:
