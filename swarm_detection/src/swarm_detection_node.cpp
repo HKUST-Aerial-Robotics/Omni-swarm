@@ -1,12 +1,12 @@
 #include <iostream>
 #include <aruco/aruco.h>
-#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
-#include <opencv2/imgproc.hpp>
 #include <swarm_detection/drone_pose_estimator.h>
+namespace enc = sensor_msgs::image_encodings;
 
 typedef std::vector<aruco::Marker> marker_array;
 class ARMarkerDetectorNode {
@@ -23,8 +23,8 @@ public:
     {
         MDetector.setDictionary("ARUCO_MIP_36h12");
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
-        left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left);
-        right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right);
+        left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left, this);
+        right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right, this);
     }
 
     void read_camera_params(std::string left_camera, std::string right_camera) {
@@ -37,7 +37,8 @@ public:
         //Send to drone pose estimator
     }
 
-    void detect_cv_image(const cv::Mat & img, int camera_id) {
+    void detect_cv_image(const cv::Mat & _img, int camera_id) {
+        cv::Mat img = _img;
         marker_array ma = MDetector.detect(img);
         for(auto m: ma){
             std::cout<<m<<std::endl;    

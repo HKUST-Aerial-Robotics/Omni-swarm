@@ -2,7 +2,12 @@
 #include <eigen3/Eigen/Eigen>
 #include <vector>
 #include <map>
-#include <type_traits>
+#include <assert.h>
+#include "ceres/rotation.h"
+#include "ceres/ceres.h"
+
+using namespace Eigen;
+using namespace ceres;
 
 struct Camera {
     Eigen::Affine3d trans;
@@ -12,26 +17,26 @@ struct Camera {
     int size_h;
 
     template <typename T> inline
-    void project_to_camera(const T point3d[3], T point[2]) {
+    void project_to_camera(const T point3d[3], T point[2])  const {
         point[0] = point3d[0] / point3d[2];
         point[1] = point3d[1] / point3d[2];
 
         T d_u[2];
-        distortion(point, d_u)
+        distortion(point, d_u);
         point[0] = point[0] + d_u[0];
         point[1] = point[1] + d_u[1];
 
-        point[0] = mParameters.fx() * point[0] + mParameters.cx();
-        point[1] = mParameters.fy() * point[1] + mParameters.cy();
+        point[0] = fx * point[0] + cx;
+        point[1] = fy * point[1] + cy;
     }
 
     template <typename T> inline
-    void distortion(const T point[2], T d_u[2]) {
-        mx2_u = point[0] * point[0];
-        my2_u = point[1] * point[1];
-        mxy_u = point[0] * point[1];
-        rho2_u = mx2_u + my2_u;
-        rad_dist_u = k1 * rho2_u + k2 * rho2_u * rho2_u;
+    void distortion(const T point[2], T d_u[2]) const {
+        T mx2_u = point[0] * point[0];
+        T my2_u = point[1] * point[1];
+        T mxy_u = point[0] * point[1];
+        T rho2_u = mx2_u + my2_u;
+        T rad_dist_u = k1 * rho2_u + k2 * rho2_u * rho2_u;
 
         d_u[0] = point[0] * rad_dist_u + 2.0 * p1 * mxy_u + p2 * (rho2_u + 2.0 * mx2_u);
         d_u[1] = point[1] * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
@@ -39,6 +44,14 @@ struct Camera {
 
     Vector3d pos_on_drone;
     Quaterniond att_on_drone;
+
+    Quaterniond att() const {
+        return att_on_drone;
+    }
+
+    Vector3d pos() const {
+        return pos_on_drone;
+    }
 };
 
 struct DroneMarker {
@@ -73,20 +86,28 @@ struct DroneMarker {
 
 };
 
-struct MarkerCornerObervsed {
+typedef std::map<int, DroneMarker*> marker_dict;
+
+class MarkerCornerObervsed {
+public:
     int id;
     int corner_no;
     Eigen::Vector2d observed_point;
     DroneMarker * marker = nullptr;
     Eigen::Vector3d rel_corner_pos() const {
-        static_assert(marker!=nullptr, "Must like corner to a marker before use relative corner position");
+        assert(marker!=nullptr && "Must like corner to a marker before use relative corner position");
         return marker->rel_corner_pos(this->id);
+    }
+
+    MarkerCornerObervsed(int _id, int _corner_no, DroneMarker * _marker):
+        id(_id), corner_no(_corner_no), marker(_marker)
+    {
+
     }
 };
 
-typedef std::vector<Camera> camera_array;
+typedef std::vector<Camera*> camera_array;
 typedef std::vector<MarkerCornerObervsed> corner_array;
-typedef std::map<DroneMarker*> marker_dict;
 
 
 template <typename T>
@@ -111,8 +132,8 @@ inline void AppleTrans2Point(const T pose[7],const T point[3], T p[3]) {
 template <typename T>
 inline void MultiplyTrans(const T posea[7],const T poseb[7], T ret[7]) {
     QuaternionProduct(posea, poseb, ret);
-    T pointb[3] = {0};
-    T respoint[3] = {0};
+    T pointb[3] ;
+    T respoint[3];
     
     pointb[0] = poseb[4];
     pointb[1] = poseb[5];
@@ -125,7 +146,7 @@ inline void MultiplyTrans(const T posea[7],const T poseb[7], T ret[7]) {
 }
 
 template <typename T>
-inline TransFromVecQuat(Vector3d vec, Quaterniond quat,T trans[7]) {
+inline void TransFromVecQuat(const Vector3d vec, const Quaterniond quat,T trans[7]) {
     trans[0] = T(quat.w());
     trans[1] = T(quat.x());
     trans[2] = T(quat.y());
@@ -138,10 +159,10 @@ inline TransFromVecQuat(Vector3d vec, Quaterniond quat,T trans[7]) {
 
 struct DronePoseReprojectionError {
     std::vector<corner_array> point_by_cam;
-    camera_array ca;
+    camera_array cam_array;
 
     DronePoseReprojectionError(std::vector<corner_array> _point_by_cam, camera_array _ca) : 
-        point_by_cam(_point_by_cam), ca(_ca)
+        point_by_cam(_point_by_cam), cam_array(_ca)
     {
 
     }
@@ -154,29 +175,34 @@ struct DronePoseReprojectionError {
         //Pose 4,5,6 position
         int res_count = 0;
         for (int i = 0; i < point_by_cam.size(); i ++) {
-            corner_array & ca = point_by_cam[i];
-            Camera & cam_def = ca[i];
-            for (MarkerCornerObervsed & mco : ca) {
+            const Camera * cam_def = cam_array[i];
+            for (MarkerCornerObervsed mco : point_by_cam[i]) {
                 //Calculate a residual
                 // residuals[res_count] = 
                 //proj(Tcam^-1 * Tik * Pmpni) -Zn
                 //Tik is pose of target drone, i.e pose
-                T cam_pose[7] = {0};
-                TransFromVecQuat(cam_def.att_on_drone, cam_def.pos_on_drone, cam_pose);
+                T cam_pose[7];
+                T _tmp[7];
+                T _tmp2[7];
 
-                T Pmpni[3] = {0};
-                Vector3d pmpni = mco.rel_corner_pos.x();
+                TransFromVecQuat(cam_def->pos(), cam_def->att(), cam_pose);
+
+                T Pmpni[3];
+                Vector3d pmpni = mco.rel_corner_pos();
                 Pmpni[0] = T(pmpni.x());
                 Pmpni[1] = T(pmpni.y());
                 Pmpni[2] = T(pmpni.z());
 
-                T point_to_proj[3] = {0};
+                T point_to_proj[3];
+                
+                InverseTrans(cam_pose, _tmp);
+                MultiplyTrans(_tmp, pose, _tmp2);
 
-                AppleTrans2Point(MultiplyTrans(InverseTrans(cam_pose), pose), Pmpni, point_to_proj);
+                AppleTrans2Point(_tmp2, Pmpni, point_to_proj);
 
                 //Point should on camera
                 T predict_point[2];
-                cam_def.project_to_camera(point_to_proj, predict_point);
+                cam_def->project_to_camera(point_to_proj, predict_point);
 
                 residuals[res_count] = predict_point[0] - mco.observed_point.x();
                 res_count ++;
@@ -189,26 +215,22 @@ struct DronePoseReprojectionError {
 
     // Factory to hide the construction of the CostFunction object from
     // the client code.
-    static ceres::CostFunction* Create(std::vector<corner_array> _point_by_cam, camera_array _ca, marker_dict _mk_dict) {
+    static ceres::CostFunction* Create(std::vector<corner_array> _point_by_cam, camera_array _ca) {
         return (new ceres::AutoDiffCostFunction<
-                DronePoseReprojectionError, DYNAMIC, 7>(
-                    new DronePoseReprojectionError( _point_by_cam, _ca, _mk_dict)));
+                DronePoseReprojectionError, ceres::DYNAMIC, 7>(
+                    new DronePoseReprojectionError( _point_by_cam, _ca)));
     }
 
 };
-
-}  // namespace examples
-}  // namespace ceres
 
 class DronePoseEstimator {
     camera_array cam_defs;
     marker_dict md;
 public:
-
-    
     DronePoseEstimator(camera_array _ca);
 
     //point_by_cam is point corre to camera. length must equal to camera
     //marker is the id of these markers
+    //All this marker must belong to one drone
     Eigen::Affine3d estimation_drone_pose(std::vector<corner_array> point_by_cam);
 };
