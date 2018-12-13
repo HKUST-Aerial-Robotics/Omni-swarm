@@ -3,9 +3,9 @@
 
 DronePoseEstimator::DronePoseEstimator(camera_array _ca):
     cam_defs(_ca){
-    
 }
 
-DronePoseEstimator::estimation_drone_pose(std::vector<corner_array> point_by_cam) {
+Eigen::Affine3d DronePoseEstimator::estimation_drone_pose(std::vector<corner_array> point_by_cam) {
     assert(point_by_cam.size() == cam_defs.size());
+
 }
