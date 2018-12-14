@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   swarm_msgs
   cv_bridge
+  OpenCV
 )
 
 ## System dependencies are found with CMake's conventions
@@ -150,6 +151,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
   aruco
 )
 
