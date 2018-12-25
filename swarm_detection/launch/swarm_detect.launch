@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="swarm_detection" name="swarm_detection_node" type="swarm_detection_node" output="screen"> 
+        <remap from="left_camera" to="/stereo/left/image_raw"/>
+        <remap from="left_camera" to="/stereo/right/image_raw"/>
+    </node>
+</launch>
