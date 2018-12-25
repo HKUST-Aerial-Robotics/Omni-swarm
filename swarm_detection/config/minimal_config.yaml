@@ -1,0 +1,13 @@
+cameras:
+    #0 for main left camera
+    0: "./camera/left.yaml"
+    1: "./camera/right.yaml"
+
+drones:
+    # id config
+    0:
+        "markers":
+            0:
+                "pos": [0, 0, 0]
+                "att": [1, 0, 0, 0]
+                "size": 0.1

@@ -1,8 +1,9 @@
 #pragma once
-#include <eigen3/Eigen/Eigen>
+#include <Eigen/Eigen>
 #include <vector>
 #include <map>
 #include <assert.h>
+#include <aruco/aruco.h>
 
 using namespace Eigen;
 using namespace ceres;
@@ -104,6 +105,27 @@ public:
     }
 };
 
+struct SwarmDroneDefs {
+    int drone_id;
+    std::map<int, DroneMarker> markers;
+};
+
+struct Pose {
+    Eigen::Vector3d pos;
+    Eigen::Vector3d quat;
+
+    void to_vector(double ret[]) {
+        ret[0] = quat.w();
+        ret[1] = quat.x();
+        ret[2] = quat.y();
+        ret[3] = quat.z();
+
+        ret[4] = pos.x();
+        ret[5] = pos.y();
+        ret[6] = pos.z();
+    }
+};
+
 typedef std::vector<Camera*> camera_array;
 typedef std::vector<MarkerCornerObervsed> corner_array;
-
+typedef std::vector<aruco::Marker> aruco_marker_array;

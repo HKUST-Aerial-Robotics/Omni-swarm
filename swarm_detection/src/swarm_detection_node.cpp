@@ -43,7 +43,10 @@ public:
         for(auto m: ma){
             std::cout<<m<<std::endl;    
             m.draw(img);
+            // aruco::CvDrawingUtils::draw3dAxis(im, m, camera);
         }
+
+
         if (camera_id == 0)
             cv::imshow("left", img);
         if (camera_id == 1)

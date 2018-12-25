@@ -53,7 +53,7 @@ struct DronePoseReprojectionError {
     std::vector<corner_array> point_by_cam;
     camera_array cam_array;
 
-    DronePoseReprojectionError(std::vector<corner_array> _point_by_cam, camera_array _ca) : 
+    DronePoseReprojectionError(std::vector<corner_array> _point_by_cam, camera_array & _ca) : 
         point_by_cam(_point_by_cam), cam_array(_ca)
     {
 
