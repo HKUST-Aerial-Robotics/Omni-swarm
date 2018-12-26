@@ -188,13 +188,13 @@ class SwarmOfflineTune:
         ts_vicon = self.past_vicon_pose[self.vicon_pose_ptr]["ts"]
         dt = (ts_vicon - ts_odom)
         
-        self.odom_offset_sum.x = vicon_main_position.x - (odom_position.x + vel.x*dt)
-        self.odom_offset_sum.y = vicon_main_position.y - (odom_position.y + vel.y*dt)
-        self.odom_offset_sum.z = vicon_main_position.z - (odom_position.z + vel.z*dt)
+        self.odom_offset_sum.x += vicon_main_position.x - (odom_position.x + vel.x*dt)
+        self.odom_offset_sum.y += vicon_main_position.y - (odom_position.y + vel.y*dt)
+        self.odom_offset_sum.z += vicon_main_position.z - (odom_position.z + vel.z*dt)
 
-        self.odom_yaw_offset_sum = self.yaw_vicon - self.yaw_odom
+        self.odom_yaw_offset_sum += self.yaw_vicon - self.yaw_odom
         
-        self.odom_offset_count = 1 #self.odom_offset_count + 1
+        self.odom_offset_count = self.odom_offset_count + 1
 
 
 
@@ -302,7 +302,7 @@ class SwarmOfflineTune:
                 print("Dis {}to8 {}".format(self.main_id, math.sqrt(_dis)))
             main_position = self.main_pose.pose.position
             if target_id not in self.swarm_est_in_vicon:
-                self.swarm_est_in_vicon[target_id] = rospy.Publisher("/swarm_drone/estimate_pose_{}".format(target_id), PoseStamped)
+                self.swarm_est_in_vicon[target_id] = rospy.Publisher("/swarm_drone/estimate_pose_{}".format(target_id), PoseStamped, queue_size=10)
             _pose = PoseStamped()
             remote_pose = _pose.pose
             _pose.header.frame_id = "world"
@@ -351,23 +351,34 @@ if __name__ == "__main__":
             plt.grid(which="both")
 
             plt.subplot(233)
-            plt.title("Planar Err {:3.1f}cm   |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_err[idx]),math.sqrt(np.var(tune.planar_err[idx]))))
+
+            rms = math.sqrt(np.mean(np.square(tune.planar_err[idx])))
+
+
+            plt.title("Horizonal Err {:3.1f}cm   |$\sigma$:{:3.1f}cm RMS : {:3.1f}cm".format(np.mean(tune.planar_err[idx]),math.sqrt(np.var(tune.planar_err[idx])), rms ))
             plt.hist(tune.planar_err[idx], 50, normed=True)
             plt.grid(which="both")
 
             # print(tune.planar_x_err[idx])
             plt.subplot(234)
-            plt.title("Planar X Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_x_err[idx]),math.sqrt(np.var(tune.planar_x_err[idx]))))
+
+            rms = math.sqrt(np.mean(np.square(tune.planar_x_err[idx])))
+
+            plt.title("X Err {:3.1f}cm |$\sigma$:{:3.1f}cm RMS : {:3.1f}cm".format(np.mean(tune.planar_x_err[idx]),math.sqrt(np.var(tune.planar_x_err[idx])), rms))
             plt.hist(tune.planar_x_err[idx], 50, normed=True)
             plt.grid(which="both")
 
             plt.subplot(235)
-            plt.title("Planar Y Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.planar_y_err[idx]),math.sqrt(np.var(tune.planar_y_err[idx]))))
+            rms = math.sqrt(np.mean(np.square(tune.planar_y_err[idx])))
+
+            plt.title("Y Err {:3.1f}cm |$\sigma$:{:3.1f}cm RMS : {:3.1f}cm".format(np.mean(tune.planar_y_err[idx]),math.sqrt(np.var(tune.planar_y_err[idx])), rms))
             plt.hist(tune.planar_y_err[idx], 50, normed=True)
             plt.grid(which="both")
             
             plt.subplot(236)
-            plt.title("Vertical Err {:3.1f}cm |$\sigma$:{:3.1f}cm".format(np.mean(tune.vertical_err[idx]),math.sqrt(np.var(tune.vertical_err[idx]))))
+            rms = math.sqrt(np.mean(np.square(tune.vertical_err[idx])))
+
+            plt.title("Vertical Err {:3.1f}cm |$\sigma$:{:3.1f}cm RMS : {:3.1f}cm".format(np.mean(tune.vertical_err[idx]),math.sqrt(np.var(tune.vertical_err[idx])), rms))
             plt.hist(tune.vertical_err[idx], 50, normed=True)
             plt.grid(which="both")
 
@@ -377,42 +388,44 @@ if __name__ == "__main__":
 
             plt.figure("Estimation Pos {}".format(idx),figsize=(12,8))
             plt.clf()
-            plt.subplot(321)
+            plt.subplot(221)
             plt.title("POS X")
             plt.plot(tune.fuse_ts[idx], tune.fuse_pos_x[idx], label="Fuse")
             plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_x[idx], label="vicon")
             plt.legend()
             plt.grid(which="both")
 
-            plt.subplot(322)
+            plt.subplot(222)
             plt.title("POS Y")
             plt.plot(tune.fuse_ts[idx], tune.fuse_pos_y[idx], label="Fuse")
             plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_y[idx], label="vicon")
             plt.legend()            
             plt.grid(which="both")
 
-            plt.subplot(323)
+            plt.subplot(223)
             plt.title("POS Z")
             plt.plot(tune.fuse_ts[idx], tune.fuse_pos_z[idx], label="Fuse")
             plt.plot(tune.vicon_ts_seq[idx], tune.vicon_pos_z[idx], label="vicon")
             plt.legend()                        
             plt.grid(which="both")
 
-
-            err_x = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_x[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_x[idx], tune.fuse_ts[idx])
-            err_y = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_y[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_y[idx], tune.fuse_ts[idx])
-            err_z = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_z[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_z[idx], tune.fuse_ts[idx])
-            # print()
-            plt.subplot(324)
-            plt.title("ERR")
-            plt.plot(err_x, label="errX")
-            plt.plot(err_y, label="errY")
-            plt.plot(err_z, label="errZ")
-            plt.legend()                        
-            plt.grid(which="both")
-            plt.tight_layout()
-            plt.pause(0.05)
-
+            try:
+                err_x = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_x[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_x[idx], tune.fuse_ts[idx])
+                err_y = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_y[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_y[idx], tune.fuse_ts[idx])
+                err_z = diff_time_series(tune.fuse_ts[idx], tune.fuse_pos_z[idx], tune.vicon_ts_seq[idx], tune.vicon_pos_z[idx], tune.fuse_ts[idx])
+                # print()
+                plt.subplot(224)
+                plt.title("ERR")
+                plt.plot(err_x, label="errX")
+                plt.plot(err_y, label="errY")
+                plt.plot(err_z, label="errZ")
+                plt.legend()                        
+                plt.grid(which="both")
+                plt.tight_layout()
+                plt.pause(0.05)
+            except:
+                pass
+            
             for idy in tune.dis_err[idx]:
                 if idx < idy:
                     plt.figure("Figure {} to {} Error".format(idx, idy))

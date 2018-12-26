@@ -4,7 +4,7 @@
     </node> -->
     <param name="use_sim_time" value="true" type="bool" />
 
-    <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
+    <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="log">
     <rosparam>
     force_freq: 20
     max_accept_cost: 0.1
