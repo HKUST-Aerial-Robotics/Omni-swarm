@@ -112,7 +112,7 @@ struct SwarmDroneDefs {
 
 struct Pose {
     Eigen::Vector3d pos;
-    Eigen::Vector3d quat;
+    Eigen::Quaterniond quat;
 
     void to_vector(double ret[]) {
         ret[0] = quat.w();

@@ -21,7 +21,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point_b
         pose.pos.y() = rand_FloatRange(-2, 2);
         pose.pos.z() = rand_FloatRange(3, 3);
 
-        pose.att = Quaterniond(AngleAxisd(
+        pose.quat = Quaterniond(AngleAxisd(
             rand_FloatRange(-3.14, 3.14),
             Vector3d(rand_FloatRange(-1, 1), rand_FloatRange(-1, 1), rand_FloatRange(-1, 1))
         ));

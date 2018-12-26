@@ -87,7 +87,7 @@ int main(int argc,char **argv)
 {
     ros::init(argc, argv, "swarm_detection");
     ros::NodeHandle nh("swarm_detection");
-
+    ROS_INFO("Inited swarm detection");
     ARMarkerDetectorNode ar_node(nh);
     
     ros::spin();
