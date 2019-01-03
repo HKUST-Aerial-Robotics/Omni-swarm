@@ -65,8 +65,7 @@ struct RotorThrustControlParam {
 
 struct RotorPosCtrlParam {
     PIDParam p_x, p_y, p_z;
-    PIDParam v_y, v_z;
-    SchulingPIDParam v_x;
+    PIDParam v_y, v_z, v_x;
     CTRL_FRAME ctrl_frame = CTRL_FRAME::VEL_WORLD_ACC_WORLD;
     RotorThrustControlParam thrust_ctrl;
     FRAME_COOR_SYS coor_sys = NED;
@@ -75,7 +74,7 @@ struct RotorPosCtrlParam {
 struct AttiCtrlOut {
     Eigen::Quaterniond atti_sp = Eigen::Quaterniond(1, 0, 0, 0);
     double roll_sp = 0, pitch_sp = 0, yaw_sp = 0;
-    double abx_sp = 0;
+    double thrust_sp = 0;
 };
 
 inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond & quat) {
@@ -244,8 +243,9 @@ public:
 class RotorPositionControl {
     RotorPosCtrlParam param;
     PIDController px_con, py_con, pz_con;
-    PIDController vy_con, vz_con;
-    SchulingPIDController vx_con;
+    PIDController vx_con, vy_con, vz_con;
+
+    RotorThrustControl thrust_ctrl;
 
     Eigen::Quaterniond yaw_transverse;
 
@@ -268,7 +268,8 @@ public:
     RotorPositionControl(RotorPosCtrlParam _param):
         param(_param),
         px_con(_param.p_x), py_con(_param.p_y), pz_con(_param.p_z),
-        vx_con(_param.v_x), vy_con(_param.v_y), vz_con(_param.v_z) {
+        vx_con(_param.v_x), vy_con(_param.v_y), vz_con(_param.v_z),
+        thrust_ctrl(_param.thrust_ctrl) {
 
     }
 
@@ -286,6 +287,8 @@ public:
 
     virtual void set_body_acc(const Eigen::Vector3d & _acc) {
         acc = _acc;
+
+        thrust_ctrl.set_acc(_acc.z());
 
         if (att_inited)
         {
@@ -345,7 +348,7 @@ public:
     virtual Eigen::Vector3d control_vel(const Eigen::Vector3d & vel_sp, double dt, bool input_body_frame=true, bool output_body_frame=true) {
         Eigen::Vector3d acc_sp(0, 0, 0);
         if (vel_inited) {
-            acc_sp.x() = vx_con.control(vel.x(), vel_sp.x() - vel.x(), dt, true);
+            acc_sp.x() = vx_con.control(vel_sp.x() - vel.x(), dt);
             acc_sp.y() = vy_con.control(vel_sp.y() - vel.y(), dt);
             acc_sp.z() = control_vel_z(vel_sp.z(), dt);
             
@@ -389,7 +392,9 @@ public:
         // TODO:
         // Do not care about aerodynamics drag
         // Only for hover
-        ret.abx_sp = acc_sp.norm();
+        double abx_sp = acc_sp.norm();
+
+        ret.thrust_sp = thrust_ctrl.control(abx_sp, dt);
 
         if (fabs(acc_sp.z()) > 0.1) {
             pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -0.4, 0.4);
@@ -407,7 +412,9 @@ public:
         // printf("accsp %3.2f %3.2f %3.2f\nsp p %3.2f r %3.2f y %3.2f\n",
             // acc_sp.x(), acc_sp.y(), acc_sp.z(),
             // pitch_sp, roll_sp, yaw_sp);
-
+        ret.roll_sp = roll_sp;
+        ret.pitch_sp = pitch_sp;
+        ret.yaw_sp = yaw_sp;
         ret.atti_sp = Eigen::AngleAxisd(yaw_sp, Vector3d::UnitZ()) * Eigen::AngleAxisd(pitch_sp, Vector3d::UnitY()) * Eigen::AngleAxisd(roll_sp, Vector3d::UnitX());
 
         return ret;

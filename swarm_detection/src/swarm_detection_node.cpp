@@ -7,6 +7,27 @@
 #include <sensor_msgs/image_encodings.h>
 #include <swarm_detection/drone_pose_estimator.h>
 namespace enc = sensor_msgs::image_encodings;
+void colorToGrey(cv::Mat& image_in, cv::Mat& image_out )
+{   
+
+    uchar* p_out;
+    cv::Vec3b* p_in;
+    for ( int idx_row = 0; idx_row < image_in.rows; ++idx_row )
+    {
+        p_out = image_out.ptr< uchar >( idx_row );
+        p_in  = image_in.ptr< cv::Vec3b >( idx_row );
+
+        for ( int idx_col = 0; idx_col < image_in.cols; ++idx_col )
+        {
+            // Red * 0.299 + Green * 0.587 + Blue * 0.114
+            int dst = p_in[idx_col][0]   //
+                      + p_in[idx_col][1] //
+                      + p_in[idx_col][2];
+
+            p_out[idx_col] = dst > 255 ? 255 : dst;
+        }
+    }
+}
 
 typedef std::vector<aruco::Marker> marker_array;
 class ARMarkerDetectorNode {
@@ -38,7 +59,11 @@ public:
     }
 
     void detect_cv_image(const cv::Mat & _img, int camera_id) {
-        cv::Mat img = _img;
+        int src_rows = _img.rows;
+        int src_cols = _img.cols;
+        cv::Mat img( src_rows, src_cols, CV_8UC1 );
+        cv::Mat img_source = _img;
+        colorToGrey(img_source, img);
         marker_array ma = MDetector.detect(img);
         for(auto m: ma){
             std::cout<<m<<std::endl;    
