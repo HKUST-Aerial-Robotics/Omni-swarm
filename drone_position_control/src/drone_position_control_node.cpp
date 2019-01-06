@@ -9,23 +9,23 @@
 #include <ctime>
 #include <time.h>
 #include <stdlib.h>
-#include <swarm_msgs/swarm_pos_control_state.h>
-#include <swarm_msgs/swarm_pos_ctrl_cmd.h>
+#include <swarm_msgs/drone_pos_control_state.h>
+#include <swarm_msgs/drone_pos_ctrl_cmd.h>
 #include <sensor_msgs/Joy.h>
 #include <swarm_util.h>
 #include <sensor_msgs/Imu.h>
 
 
-class SwarmPosControl {
+class DronePosControl {
     ros::NodeHandle & nh;
     
     ros::Subscriber odom_sub;
-    ros::Subscriber swarm_pos_cmd_sub;
+    ros::Subscriber drone_pos_cmd_sub;
     ros::Subscriber fc_att_sub;
 
     RotorPositionControl * pos_ctrl = nullptr;
 
-    swarm_msgs::swarm_pos_control_state state;
+    swarm_msgs::drone_pos_control_state state;
 
     Eigen::Vector3d pos_sp = Eigen::Vector3d(0, 0, 0);
     Eigen::Vector3d vel_sp = Eigen::Vector3d(0, 0, 0);
@@ -97,7 +97,7 @@ class SwarmPosControl {
 
 
 public:
-    SwarmPosControl(ros::NodeHandle & _nh):
+    DronePosControl(ros::NodeHandle & _nh):
     nh(_nh) {
         RotorPosCtrlParam ctrlP;
 
@@ -110,17 +110,17 @@ public:
         pos_ctrl = new RotorPositionControl(ctrlP);
         ROS_INFO("Pos control success");
 
-        control_timer = nh.createTimer(ros::Duration(0.005), &SwarmPosControl::control_update, this);
+        control_timer = nh.createTimer(ros::Duration(0.005), &DronePosControl::control_update, this);
         
-        log_path = "/home/dji/swarm_log_lastest";
+        log_path = "/home/dji/drone_log_lastest";
 
         init_log_file();
 
-        state_pub = nh.advertise<swarm_msgs::swarm_pos_control_state>("swarm_pos_control_state", 10);
+        state_pub = nh.advertise<swarm_msgs::drone_pos_control_state>("drone_pos_control_state", 10);
         
-        odom_sub = nh.subscribe("odometry", 1 , &SwarmPosControl::OnVisualOdometry, this);
-        swarm_pos_cmd_sub = nh.subscribe("swarm_pos_cmd", 1 , &SwarmPosControl::OnVisualOdometry, this);
-        fc_att_sub = nh.subscribe("fc_attitude", 1, &SwarmPosControl::onFCAttitude, this);
+        odom_sub = nh.subscribe("odometry", 1 , &DronePosControl::OnVisualOdometry, this);
+        drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnVisualOdometry, this);
+        fc_att_sub = nh.subscribe("fc_attitude", 1, &DronePosControl::onFCAttitude, this);
         control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 10);
     }   
 
@@ -172,16 +172,16 @@ public:
 
     }
 
-    void OnSwarmPosCommand(const swarm_msgs::swarm_pos_ctrl_cmd & _cmd) {
-        if (_cmd.ctrl_mode == swarm_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
+    void OnSwarmPosCommand(const swarm_msgs::drone_pos_ctrl_cmd & _cmd) {
+        if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
             pos_sp.x() = _cmd.pos_sp.x;
             pos_sp.y() = _cmd.pos_sp.y;
             pos_sp.z() = _cmd.pos_sp.z;
-        } else if (_cmd.ctrl_mode == swarm_pos_ctrl_cmd::POS_CTRL_VEL_MODE) {
+        } else if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_VEL_MODE) {
             vel_sp.x() = _cmd.vel_sp.x;
             vel_sp.y() = _cmd.vel_sp.y;
             vel_sp.z() = _cmd.vel_sp.z;
-        } else if (_cmd.ctrl_mode == swarm_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
+        } else if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
 
         }
 
@@ -254,12 +254,12 @@ public:
         
         Eigen::Vector3d acc_sp(0, 0, 0);
 
-        if (state.ctrl_mode == swarm_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
+        if (state.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
             //IDLE
 
             return;
         }
-        if (state.ctrl_mode == swarm_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
+        if (state.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
             vel_sp = pos_ctrl->control_pos(pos_sp, dt);            
         }
         
@@ -310,13 +310,13 @@ public:
 int main(int argc, char** argv)
 {
 
-    ROS_INFO("SCP_POS_CONTROL_INIT\nIniting\n");
+    ROS_INFO("drone_POS_CONTROL_INIT\nIniting\n");
 
-    ros::init(argc, argv, "scp_pos_control");
+    ros::init(argc, argv, "drone_position_control");
 
-    ros::NodeHandle nh("scp_pos_control");
+    ros::NodeHandle nh("drone_position_control");
 
-    SwarmPosControl pos_control(nh);
+    DronePosControl pos_control(nh);
     ros::spin();
 
 }

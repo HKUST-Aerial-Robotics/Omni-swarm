@@ -12,7 +12,7 @@
         cam_cnt: 2
         frameRate:  10
         is_auto_shutter: false
-        is_grey: true
+        is_grey: false
 
         # individual setting for camera 0
         camera0:
