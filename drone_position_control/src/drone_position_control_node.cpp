@@ -15,6 +15,7 @@
 #include <swarm_util.h>
 #include <sensor_msgs/Imu.h>
 
+#define MAX_CMD_LOST_TIME 0.5f
 
 class DronePosControl {
     ros::NodeHandle & nh;
@@ -22,6 +23,7 @@ class DronePosControl {
     ros::Subscriber odom_sub;
     ros::Subscriber drone_pos_cmd_sub;
     ros::Subscriber fc_att_sub;
+    ros::Subscriber imu_data_sub;
 
     RotorPositionControl * pos_ctrl = nullptr;
 
@@ -38,6 +40,8 @@ class DronePosControl {
     double yaw_offset = 0;
 
     double yaw_fc = 0;
+
+    ros::Time last_cmd_ts;
     /*
     void recordCSV() {
         fprintf(
@@ -89,6 +93,7 @@ class DronePosControl {
         nh.param<double>("pid_param/thr/p", ctrlP.thrust_ctrl.abx.p, 0);
         nh.param<double>("pid_param/thr/i", ctrlP.thrust_ctrl.abx.i, 0);
         nh.param<double>("pid_param/thr/d", ctrlP.thrust_ctrl.abx.d, 0);
+        nh.param<double>("pid_param/thr/max_i", ctrlP.thrust_ctrl.abx.max_err_i, 0);
         nh.param<double>("pid_param/thr/level_thrust", ctrlP.thrust_ctrl.level_thrust, 0.5);
 
         
@@ -119,9 +124,12 @@ public:
         state_pub = nh.advertise<swarm_msgs::drone_pos_control_state>("drone_pos_control_state", 10);
         
         odom_sub = nh.subscribe("odometry", 1 , &DronePosControl::OnVisualOdometry, this);
-        drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnVisualOdometry, this);
+        drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnSwarmPosCommand, this);
         fc_att_sub = nh.subscribe("fc_attitude", 1, &DronePosControl::onFCAttitude, this);
+        imu_data_sub = nh.subscribe("fc_imu", 1, &DronePosControl::on_imu_data, this);
         control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 10);
+
+        last_cmd_ts = ros::Time::now();
     }   
 
     void init_log_file() {
@@ -188,6 +196,8 @@ public:
         state.ctrl_mode = _cmd.ctrl_mode;
 
         state.yaw_sp = _cmd.yaw_sp;
+
+        last_cmd_ts = ros::Time::now();
     }
 
     Eigen::Quaterniond yaw_offset_mocap_conversion() {
@@ -235,10 +245,14 @@ public:
         //Use dji ros to set drone attitude target
         sensor_msgs::Joy dji_command_so3; //! @note for dji ros wrapper
         dji_command_so3.header.stamp    = ros::Time::now();
-        dji_command_so3.header.frame_id = std::string("FRD");
+        dji_command_so3.header.frame_id = std::string("FLU");
         uint8_t flag;
         flag = VERTICAL_THRUST | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
 
+        // atti_out.roll_sp = 0.0;
+        // atti_out.pitch_sp = 1.0;
+        // atti_out.yaw_sp = 0 ;
+        yaw_offset = 0;
         dji_command_so3.axes.push_back(atti_out.roll_sp);       // x
         dji_command_so3.axes.push_back(atti_out.pitch_sp);       // y
         dji_command_so3.axes.push_back(atti_out.thrust_sp * 100.0); // z
@@ -254,6 +268,9 @@ public:
         
         Eigen::Vector3d acc_sp(0, 0, 0);
 
+        if ((ros::Time::now() - last_cmd_ts).toSec() > MAX_CMD_LOST_TIME) {
+             state.ctrl_mode = drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE;
+        }
         if (state.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
             //IDLE
 
@@ -279,13 +296,30 @@ public:
 
 
         AttiCtrlOut atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
-
-        ROS_INFO("!!!!Geometry atti out R %4.3f P %4.3f Y %4.3f thr : %3.2f", 
-            atti_out.roll_sp * 57.3,
-            atti_out.pitch_sp * 57.3,
-            atti_out.yaw_sp * 57.3,
-            atti_out.thrust_sp
-        );
+        if (state.count % 50 == 0)
+        {
+            ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
+                pos_sp.x(), pos_sp.y(), pos_sp.z(),
+                pos_ctrl->pos.x(),pos_ctrl->pos.y(),pos_ctrl->pos.z()
+            );
+            ROS_INFO("Velsp/vel %3.2f %3.2f %3.2f / %3.2f %3.2f %3.2f", 
+                vel_sp.x(), vel_sp.y(), vel_sp.z(),
+                pos_ctrl->vel.x(),pos_ctrl->vel.y(),pos_ctrl->vel.z()
+            );
+            ROS_INFO("accsp %3.2f %3.2f %3.2f, abx %3.2f/%3.2f",
+                acc_sp.x(),
+                acc_sp.y(),
+                acc_sp.z(),
+                atti_out.abx_sp,
+                pos_ctrl->thrust_ctrl.acc
+            );
+            ROS_INFO("R %4.3f P %4.3f Y %4.3f thr : %3.2f", 
+                atti_out.roll_sp * 57.3,
+                atti_out.pitch_sp * 57.3,
+                atti_out.yaw_sp * 57.3,
+                atti_out.thrust_sp
+            );
+        }
             
         set_drone_attitude_target(atti_out);
         

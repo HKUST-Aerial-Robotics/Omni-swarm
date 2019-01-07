@@ -8,6 +8,8 @@
 #include <math.h>
 #include <dji_sdk/ControlDevice.h>
 #include <dji_sdk/SDKControlAuthority.h>
+#include <geometry_msgs/Vector3.h>
+#include <eigen3/Eigen/Dense>
 
 using namespace swarm_msgs;
 
@@ -15,7 +17,8 @@ using namespace swarm_msgs;
 #define MAX_LOSS_RC 0.1f
 #define MAX_LOSS_SDK 0.1f
 #define MAX_ODOM_VELOCITY 25.0f
-#define DEBUG_OUTPUT_RC
+#define DEBUG_OUTPUT
+#define DEBUG_HOVER_CTRL
 
 class DroneCommander {
     ros::NodeHandle & nh;
@@ -40,8 +43,13 @@ class DroneCommander {
     ros::Time boot_time;
 
     ros::Publisher commander_state_pub;
+    ros::Publisher ctrl_cmd_pub;
+
 
     ros::ServiceClient control_auth_client;
+
+    Eigen::Vector3d hover_pos = Eigen::Vector3d(0, 0, 0);
+
 public:
     DroneCommander(ros::NodeHandle & _nh):
         nh(_nh) {
@@ -59,7 +67,8 @@ public:
 
         commander_state_pub = nh.advertise<drone_commander_state>("swarm_commander_state", 1);
 
-    
+        ctrl_cmd_pub = nh.advertise<drone_pos_ctrl_cmd>("/drone_position_control/drone_pos_cmd", 1);
+
         control_auth_client = nh.serviceClient<dji_sdk::SDKControlAuthority>("sdk_control_authority");
 
         ROS_INFO("Waitting for services");
@@ -106,6 +115,8 @@ public:
     void try_arm(bool arm);
 
     void try_control_auth(bool auth);
+
+    void process_control();
 };
 
 
@@ -185,7 +196,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
 
     if (count ++ % 50 == 0)
     {
-#ifdef DEBUG_OUTPUT_RC
+#ifdef DEBUG_OUTPUT
         if (rc.axes.size() >= 6)
         ROS_INFO("RC valid %d %3.2f %3.2f %3.2f %3.2f %4.0f %4.0f",
             state.rc_valid,
@@ -196,11 +207,51 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
             rc.axes[4],
             rc.axes[5]
         );
+
+        ROS_INFO("ctrl_input_state %d, flight_status %d\n control_auth %d  ctrl_mode %d, arm_status %d\n rc_valid %d onboard_cmd_valid %d vo_valid%d sdk_valid %d ",
+            state.ctrl_input_state,
+            state.flight_status,
+            state.control_auth,
+            state.commander_ctrl_mode,
+            state.arm_status,
+            state.rc_valid,
+            state.onboard_cmd_valid,
+            state.vo_valid,
+            state.djisdk_valid
+        );
 #endif
     }
 
     check_control_auth();
+
+    process_control();
     commander_state_pub.publish(state);
+}
+
+void DroneCommander::process_control() {
+    if (state.control_auth != drone_commander_state::CTRL_AUTH_THIS 
+        || state.flight_status == drone_commander_state::FLIGHT_STATUS_IDLE)
+        return;
+
+    static int count = 0;
+    count ++;
+    
+#ifndef DEBUG_HOVER_CTRL
+#else
+    drone_pos_ctrl_cmd cmd;
+    cmd.ctrl_mode = drone_pos_ctrl_cmd::POS_CTRL_POS_MODE;
+    cmd.pos_sp.x = hover_pos.x();
+    cmd.pos_sp.y = hover_pos.y();
+    cmd.pos_sp.z = hover_pos.z();
+
+    cmd.vel_sp.x = 0;
+    cmd.vel_sp.y = 0;
+    cmd.vel_sp.z = 0;
+
+    cmd.yaw_sp = 0;
+
+    ctrl_cmd_pub.publish(cmd);
+#endif
 }
 
 bool DroneCommander::is_odom_valid(const nav_msgs::Odometry & _odom) {
@@ -220,7 +271,8 @@ bool DroneCommander::is_odom_valid(const nav_msgs::Odometry & _odom) {
 }
 
 bool DroneCommander::is_rc_valid(const sensor_msgs::Joy & _rc) {
-    //TODO: Test rc vaild function
+    //TODO: Test rc vaild function,
+    // This only works for SBUS!!!!
     if (
         _rc.axes[0] == 0 && 
         _rc.axes[1] == 0 && 
@@ -239,6 +291,18 @@ void DroneCommander::try_control_auth(bool auth) {
     {
         ROS_INFO("Require control auth %d, res %d", auth, srv.response.ack_data);
         state.control_auth = srv.response.ack_data;
+#ifdef DEBUG_HOVER_CTRL
+        if (state.control_auth == 2) {
+            hover_pos.x() = odometry.pose.pose.position.x;
+            hover_pos.y() = odometry.pose.pose.position.y;
+            hover_pos.z() = odometry.pose.pose.position.z;
+            ROS_INFO("Is debug hover mode, will hover at %3.2f %3.2f %3.2f",
+                hover_pos.x(),
+                hover_pos.y(),
+                hover_pos.z()
+            );
+        }
+#endif
     } else {
         ROS_ERROR("Failed to call service control auth");
     }
@@ -249,9 +313,11 @@ void DroneCommander::check_control_auth() {
     if (!state.djisdk_valid)
         return;
     if (state.rc_valid) {
-        //TODO:
-        //Use RC
-        //Depend on button
+        if (rc.axes[4] == 10000 && rc.axes[5] == -10000){
+            require_auth_this = true;
+        } else {
+            require_auth_this = false;
+        }
     }
 
     //If rc still not available, will try to grab auth

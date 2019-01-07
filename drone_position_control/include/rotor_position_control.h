@@ -75,6 +75,7 @@ struct AttiCtrlOut {
     Eigen::Quaterniond atti_sp = Eigen::Quaterniond(1, 0, 0, 0);
     double roll_sp = 0, pitch_sp = 0, yaw_sp = 0;
     double thrust_sp = 0;
+    double abx_sp = 0;
 };
 
 inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond & quat) {
@@ -221,8 +222,9 @@ public:
 class RotorThrustControl {
     RotorThrustControlParam param;
     PIDController con;
-    double acc = 0;
 public:
+    double acc = 0;
+
     RotorThrustControl(RotorThrustControlParam _param):
         param(_param), con(_param.abx) {
         //TODO:
@@ -245,7 +247,6 @@ class RotorPositionControl {
     PIDController px_con, py_con, pz_con;
     PIDController vx_con, vy_con, vz_con;
 
-    RotorThrustControl thrust_ctrl;
 
     Eigen::Quaterniond yaw_transverse;
 
@@ -257,6 +258,8 @@ class RotorPositionControl {
     Eigen::Vector3d euler_rpy = Eigen::Vector3d(0, 0, 0);
 
 public:
+    RotorThrustControl thrust_ctrl;
+
     Eigen::Vector3d pos = Eigen::Vector3d(0, 0, 0);
     Eigen::Vector3d vel = Eigen::Vector3d(0, 0, 0);
     Eigen::Vector3d acc = Eigen::Vector3d(0, 0, 0);
@@ -392,9 +395,9 @@ public:
         // TODO:
         // Do not care about aerodynamics drag
         // Only for hover
-        double abx_sp = acc_sp.norm();
+        ret.abx_sp = acc_sp.norm();
 
-        ret.thrust_sp = thrust_ctrl.control(abx_sp, dt);
+        ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), 0, 1);
 
         if (fabs(acc_sp.z()) > 0.1) {
             pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -0.4, 0.4);
