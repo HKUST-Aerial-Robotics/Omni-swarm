@@ -35,7 +35,7 @@ main(int argc, char** argv)
     nh.advertise<sensor_msgs::Imu>("/dji_sdk_1/dji_sdk/simulation/imu", 10);
   set_local_pos_reference = nh.serviceClient<dji_sdk::SetLocalPosRef>(
     "/dji_sdk_1/dji_sdk/set_local_pos_ref");
-
+  set_local_pos_reference.waitForExistence();
   dji_sdk::SetLocalPosRef localPosReferenceSetter;
   set_local_pos_reference.call(localPosReferenceSetter);
 

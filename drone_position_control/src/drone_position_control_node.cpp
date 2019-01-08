@@ -193,6 +193,8 @@ public:
 
         }
 
+        //TODO:Write attitude
+
         state.ctrl_mode = _cmd.ctrl_mode;
 
         state.yaw_sp = _cmd.yaw_sp;

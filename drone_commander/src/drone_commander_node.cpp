@@ -398,8 +398,8 @@ bool DroneCommander::rc_request_vo() {
 bool DroneCommander::rc_moving_stick () {
     bool if_move =  fabs(rc.axes[0]) > RC_DEADZONE_RPY;
     if_move = if_move || fabs(rc.axes[1]) > RC_DEADZONE_RPY;
-    if_move = if_move || fabs(rc.axes[3]) > RC_DEADZONE_RPY;
-    if_move = if_move || fabs(rc.axes[2]) > RC_DEADZONE_THRUST;
+    if_move = if_move || fabs(rc.axes[2]) > RC_DEADZONE_RPY;
+    if_move = if_move || fabs(rc.axes[3]) > RC_DEADZONE_THRUST;
 
     return if_move;
 }
@@ -407,7 +407,8 @@ bool DroneCommander::rc_moving_stick () {
 void DroneCommander::process_input_source () {
     if (state.ctrl_input_state == DCMD::CTRL_INPUT_NONE) {
         if (state.rc_valid) {
-            state.ctrl_input_state = DCMD::CTRL_AUTH_RC;
+            state.ctrl_input_state = DCMD::CTRL_INPUT_RC;
+            ROS_INFO("Change Source to RC");
         } else if (state.onboard_cmd_valid){
             state.ctrl_input_state = DCMD::CTRL_INPUT_ONBOARD;
         }
@@ -416,11 +417,14 @@ void DroneCommander::process_input_source () {
     if (state.ctrl_input_state == DCMD::CTRL_INPUT_RC) {
         if (!state.rc_valid){
             state.ctrl_input_state = DCMD::CTRL_INPUT_NONE;
+            ROS_INFO("Change Source to None because RC Failure");
             if (state.onboard_cmd_valid) {
-                state.ctrl_input_state = DCMD::CTRL_INPUT_ONBOARD;    
+                state.ctrl_input_state = DCMD::CTRL_INPUT_ONBOARD;
+                ROS_INFO("Change Source to CMD because RC Failure and cmd vaild");
             }
         } else if (this->rc_request_onboard()) {
             state.ctrl_input_state = DCMD::CTRL_INPUT_ONBOARD;
+            ROS_INFO("Change Source to onboard because ctrl require onboard");
         }
     }
 
@@ -435,6 +439,8 @@ void DroneCommander::process_input_source () {
         }
     }
 
+    // ROS_INFO("In state %d", state.ctrl_input_state);
+
     switch (state.ctrl_input_state) {
         case DCMD::CTRL_INPUT_RC:
             process_rc_input();
@@ -442,10 +448,13 @@ void DroneCommander::process_input_source () {
         case DCMD::CTRL_INPUT_ONBOARD:
             process_onboard_input();
             break;
+        default:
         case DCMD::CTRL_INPUT_NONE:
             process_none_input();
             break;
     }
+    // ROS_INFO("In2 state %d", state.ctrl_input_state);
+
 }
 
 
@@ -459,10 +468,17 @@ void DroneCommander::process_rc_input () {
     }
 
     //TODO: Generate command using rc
-    double y = rc.axes[0];
-    double x = rc.axes[1];
-    double r = rc.axes[2];
-    double z = rc.axes[3];
+    double y = 0;
+    double x = 0;
+    double r = 0;
+    double z = 0;
+
+    if (rc_valid) {
+        y = rc.axes[0];
+        x = rc.axes[1];
+        r = rc.axes[2];
+        z = rc.axes[3];
+    }
 
 
     switch (state.commander_ctrl_mode) {
@@ -497,7 +513,7 @@ void DroneCommander::process_rc_input () {
             Quaterniond quat_sp = AngleAxisd(roll, Vector3d::UnitX())
                 * AngleAxisd(pitch, Vector3d::UnitY())
                 * AngleAxisd(yaw, Vector3d::UnitZ());
-                
+            
             ctrl_cmd->att_sp.w = quat_sp.w();
             ctrl_cmd->att_sp.x = quat_sp.x();
             ctrl_cmd->att_sp.y = quat_sp.y();
@@ -656,16 +672,19 @@ void DroneCommander::process_control_landing() {
         ctrl_cmd->att_sp.z = quat_sp.z();
 
         ctrl_cmd->z_sp = LANDING_VEL_Z;
+        ROS_INFO("Sending landing cmd");
+        send_ctrl_cmd();
     }
 
-    send_ctrl_cmd();
 
 }
 
 void DroneCommander::request_ctrl_mode(uint32_t req_ctrl_mode) {
+    // ROS_INFO("Request %d", req_ctrl_mode);
     switch (req_ctrl_mode) {
         case DCMD::CTRL_MODE_LANDING: {
             state.commander_ctrl_mode = req_ctrl_mode;
+            return;
             break;
         }
 
@@ -698,7 +717,7 @@ void DroneCommander::request_ctrl_mode(uint32_t req_ctrl_mode) {
     }
 
     if (state.ctrl_input_state == DCMD::CTRL_INPUT_NONE && state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION) {
-        if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR)
+        if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR && req_ctrl_mode !=DCMD::CTRL_MODE_LANDING)
             request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
     }
 
@@ -715,7 +734,7 @@ void DroneCommander::send_ctrl_cmd() {
 }
 
 void DroneCommander::prepare_control_hover() {
-    if (last_hover_count != control_count - 1) {
+    if (last_hover_count < control_count - 1) {
         //Need to start new hover
 
         hover_pos.x() = odometry.pose.pose.position.x;
@@ -737,6 +756,8 @@ void DroneCommander::prepare_control_hover() {
     ctrl_cmd->vel_sp.z = 0;
 
     ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_POS_MODE;
+
+    last_hover_count = control_count;
 }
 
 

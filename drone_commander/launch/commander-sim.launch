@@ -9,4 +9,6 @@
     </node>
     <node name="gpstoodom" pkg="drone_commander" type="gpstoodom" output="screen">
     </node>
+    <include file="$(find drone_position_control)/launch/pos_control-sim.launch">
+    </include>
 </launch>
