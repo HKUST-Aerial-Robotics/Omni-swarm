@@ -258,6 +258,8 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
 
 void DroneCommander::try_arm(bool arm) {
     dji_sdk::DroneArmControl arm_srv;
+    if (arm==state.arm_status) 
+        return;
     if (state.djisdk_valid && state.flight_status == DCMD::FLIGHT_STATUS_IDLE) {
         // TODO:
         // rosservice call /dji_sdk_1/dji_sdk/drone_arm_control "arm: 0"
@@ -615,6 +617,9 @@ void DroneCommander::process_control_takeoff() {
     //TODO: write takeoff scirpt
     bool is_in_air = state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR;
     bool is_takeoff_finish = false;
+    if (!state.is_armed) {
+        try_arm(true);
+    }
     if (state.vo_valid) {
         is_takeoff_finish = odometry.pose.pose.position.z  > (state.takeoff_target_height - MAX_AUTO_Z_ERROR);
     } else {
