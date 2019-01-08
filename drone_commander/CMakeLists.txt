@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   swarm_msgs
+  dji_sdk
 )
 
 ## System dependencies are found with CMake's conventions
