@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   swarm_msgs
   dji_sdk
+  # drone_position_control
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES swarm_commander
- CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs swarm_msgs
+ CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs swarm_msgs drone_position_control
  DEPENDS system_lib
 )
 
@@ -121,6 +122,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+message(commander!!!!!!!!!!!!!!! ${catkin_INCLUDE_DIRS})
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}

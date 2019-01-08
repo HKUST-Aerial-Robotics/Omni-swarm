@@ -104,7 +104,7 @@ using namespace swarm_msgs;
     STABLE_ENABLE  = 0x01  /*!< Enable the stable mode */
   };
 
-Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q) {
+inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q) {
     q.normalize();
     // Set up convenience variables
 

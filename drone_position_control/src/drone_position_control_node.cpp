@@ -1,5 +1,5 @@
 #include <iostream>
-#include <rotor_position_control.h>
+#include <drone_position_control/rotor_position_control.h>
 #include "ros/ros.h"
 #include "stdio.h"
 #include <geometry_msgs/PoseStamped.h>
@@ -12,7 +12,7 @@
 #include <swarm_msgs/drone_pos_control_state.h>
 #include <swarm_msgs/drone_pos_ctrl_cmd.h>
 #include <sensor_msgs/Joy.h>
-#include <swarm_util.h>
+#include <drone_position_control/swarm_util.h>
 #include <sensor_msgs/Imu.h>
 
 #define MAX_CMD_LOST_TIME 0.5f
@@ -340,6 +340,7 @@ public:
     }
 
 };
+
 
 int main(int argc, char** argv)
 {

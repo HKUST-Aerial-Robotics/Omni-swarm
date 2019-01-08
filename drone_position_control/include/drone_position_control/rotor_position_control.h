@@ -157,7 +157,7 @@ public:
     SchulingPIDController(SchulingPIDParam _param):
         schul_param(_param)
     {
-        printf("schul size %d", schul_param.v_list.size());
+        printf("schul size %ld", schul_param.v_list.size());
         param.p = schul_param.p[0];
         param.i = schul_param.i[0];
         param.d = schul_param.d[0];

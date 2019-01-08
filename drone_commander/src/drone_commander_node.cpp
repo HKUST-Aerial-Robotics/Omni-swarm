@@ -10,7 +10,9 @@
 #include <dji_sdk/SDKControlAuthority.h>
 #include <dji_sdk/DroneArmControl.h>
 #include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/QuaternionStamped.h>
 #include <eigen3/Eigen/Dense>
+
 
 using namespace swarm_msgs;
 using namespace Eigen;
@@ -39,6 +41,7 @@ using namespace Eigen;
 #define DCMD drone_commander_state
 #define DPCL drone_pos_ctrl_cmd
 
+inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q);
 class DroneCommander {
     ros::NodeHandle & nh;
     drone_commander_state state;
@@ -48,6 +51,7 @@ class DroneCommander {
     ros::Subscriber rc_sub;
     ros::Subscriber flight_status_sub;
     ros::Subscriber ctrl_dev_sub;
+    ros::Subscriber fc_att_sub;
 
     ros::Timer loop_timer;
 
@@ -76,6 +80,12 @@ class DroneCommander {
     int control_count = 0;
 
     int last_hover_count = -1;
+
+
+    double yaw_fc = 0;
+    double yaw_vo = 0;
+
+    bool yaw_sp_inited = false;
 
 public:
     DroneCommander(ros::NodeHandle & _nh):
@@ -126,6 +136,7 @@ public:
         flight_status_sub = nh.subscribe("flight_status", 1, &DroneCommander::flight_status_callback, this);
         rc_sub = nh.subscribe("rc", 1, &DroneCommander::rc_callback, this);
         ctrl_dev_sub = nh.subscribe("control_device", 1, &DroneCommander::ctrl_dev_callback, this);
+        fc_att_sub = nh.subscribe("fc_attitude", 1, &DroneCommander::fc_attitude_callback, this);
     }
 
     void vo_callback(const nav_msgs::Odometry & _odom);
@@ -133,7 +144,7 @@ public:
     void flight_status_callback(const std_msgs::UInt8 & _flight_status);
     void onboard_cmd_callback(const drone_onboard_command & _cmd);
     void ctrl_dev_callback(const dji_sdk::ControlDevice & _ctrl_dev);
-
+    void fc_attitude_callback(const geometry_msgs::QuaternionStamped & _quat);
     void loop(const ros::TimerEvent & _e);
 
     bool is_odom_valid(const nav_msgs::Odometry & _odom);
@@ -168,10 +179,14 @@ public:
     void process_none_input();
     void process_onboard_input();
 
+    void reset_ctrl_cmd();
+    void reset_yaw_sp();
+
     void request_ctrl_mode(uint32_t req_ctrl_mode);
     
     void send_ctrl_cmd();
 };
+
 
 
 void DroneCommander::loop(const ros::TimerEvent & _e) {
@@ -219,11 +234,22 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
 #endif
     }
 
+    if (!state.djisdk_valid) {
+        return;
+    }
+    
+    if (!yaw_sp_inited) {
+        reset_yaw_sp();
+    }
+
+    reset_ctrl_cmd();
     process_input_source();
 
     if (check_control_auth()){
         process_control_mode();
         process_control();
+    } else {
+        reset_yaw_sp();
     }
 
     commander_state_pub.publish(state);
@@ -292,11 +318,22 @@ bool DroneCommander::check_control_auth() {
 
 
 void DroneCommander::vo_callback(const nav_msgs::Odometry & _odom) {
-    state.vo_valid = is_odom_valid(_odom);
+    bool vo_valid = is_odom_valid(_odom);
+    if (!state.vo_valid && vo_valid) {
+        //Vo first time come
+        //reset yaw sp use vo yaw
+        reset_yaw_sp();
+    }
+    state.vo_valid = vo_valid;
     if (state.vo_valid) {
         odometry = _odom;
         last_vo_ts = _odom.header.stamp;
     }
+    auto pose = _odom.pose.pose;
+    Eigen::Quaterniond quat(pose.orientation.w, 
+        pose.orientation.x, pose.orientation.y, pose.orientation.z);
+    Eigen::Vector3d pry = quat_to_pry(quat);
+    yaw_vo = pry.z();
 }
 
 
@@ -334,6 +371,14 @@ void DroneCommander::flight_status_callback(const std_msgs::UInt8 & _flight_stat
 
     state.djisdk_valid = true;
     last_flight_status_ts = ros::Time::now();
+}
+
+void DroneCommander::fc_attitude_callback(const geometry_msgs::QuaternionStamped & _quat) {
+    geometry_msgs::Quaternion quat = _quat.quaternion;
+    Eigen::Quaterniond q(quat.w, 
+        quat.x, quat.y, quat.z);
+    Eigen::Vector3d pry = quat_to_pry(q);
+    yaw_fc = pry.z();
 }
 
 
@@ -470,24 +515,24 @@ void DroneCommander::process_none_input () {
         return;
     }
     else {
-        request_ctrl_mode(DCMD::CTRL_MODE_IDLE);
+        request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
     }
 }
 
 void DroneCommander::process_control_idle() {
     //Landing and disarm
     if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR) {
+        request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
         process_control_landing();
     } else {
         if (state.is_armed) {
             this->try_arm(false);
         }
-
     }
 }
 
 void DroneCommander::process_onboard_input () {
-
+    //TODO: writing onboard input
 }
 
 void DroneCommander::process_control() {
@@ -500,6 +545,9 @@ void DroneCommander::process_control() {
     
     switch (state.commander_ctrl_mode) {
         case DCMD::CTRL_MODE_HOVER:
+            prepare_control_hover();
+            process_control_posvel();
+            break;
         case DCMD::CTRL_MODE_POSVEL:
             process_control_posvel();
             break;
@@ -598,7 +646,7 @@ void DroneCommander::process_control_landing() {
     bool is_landing_finish = state.flight_status < DCMD::FLIGHT_STATUS_IN_AIR;
 
     if (is_landing_finish) {
-        request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
+        request_ctrl_mode(DCMD::CTRL_MODE_IDLE);
     } else {
         ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_ATT_VELZ_MODE;
         Eigen::Quaterniond quat_sp = (Eigen::Quaterniond) Eigen::AngleAxisd(ctrl_cmd->yaw_sp, Eigen::Vector3d::UnitZ());
@@ -615,11 +663,51 @@ void DroneCommander::process_control_landing() {
 }
 
 void DroneCommander::request_ctrl_mode(uint32_t req_ctrl_mode) {
+    switch (req_ctrl_mode) {
+        case DCMD::CTRL_MODE_LANDING: {
+            state.commander_ctrl_mode = req_ctrl_mode;
+            break;
+        }
+
+        case DCMD::CTRL_MODE_TAKEOFF: {
+            if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR) {
+                request_ctrl_mode(DCMD::CTRL_MODE_HOVER);       
+            } else {
+                state.commander_ctrl_mode = req_ctrl_mode;
+            }
+            break;
+        }
+        case DCMD::CTRL_MODE_MISSION:
+        case DCMD::CTRL_MODE_HOVER:
+        case DCMD::CTRL_MODE_POSVEL:{
+            if (state.vo_valid) {
+                state.commander_ctrl_mode = req_ctrl_mode;
+            } else {
+                request_ctrl_mode(DCMD::CTRL_MODE_ATT);
+                return;
+            }
+            break;
+        }
+        case DCMD::CTRL_MODE_IDLE:
+            state.commander_ctrl_mode = req_ctrl_mode;
+            break;
+
+        case DCMD::CTRL_MODE_ATT: {
+            state.commander_ctrl_mode = req_ctrl_mode;
+        }
+    }
+
+    if (state.ctrl_input_state == DCMD::CTRL_INPUT_NONE && state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION) {
+        if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR)
+            request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
+    }
+
 
 }
 
 void DroneCommander::process_control_mode() {
-
+    //Request self ctrl mode can check vo vaild
+    request_ctrl_mode(state.commander_ctrl_mode);
 }
 
 void DroneCommander::send_ctrl_cmd() {
@@ -652,6 +740,23 @@ void DroneCommander::prepare_control_hover() {
 }
 
 
+void DroneCommander::reset_ctrl_cmd() {
+    ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_IDLE_MODE;
+    ctrl_cmd->pos_sp.x = 0;
+    ctrl_cmd->pos_sp.y = 0;
+    ctrl_cmd->pos_sp.z = 0;
+
+    ctrl_cmd->vel_sp.x = 0;
+    ctrl_cmd->vel_sp.y = 0;
+    ctrl_cmd->vel_sp.z = 0;
+
+    ctrl_cmd->att_sp.w = 0;
+    ctrl_cmd->att_sp.x = 0;
+    ctrl_cmd->att_sp.y = 0;
+    ctrl_cmd->att_sp.z = 0;
+    
+    ctrl_cmd->z_sp = 0;
+}
 
 
 bool DroneCommander::is_odom_valid(const nav_msgs::Odometry & _odom) {
@@ -702,6 +807,53 @@ void DroneCommander::ctrl_dev_callback(const dji_sdk::ControlDevice & _ctrl_dev)
     }
 
 }
+
+void DroneCommander::reset_yaw_sp() {
+    if (state.djisdk_valid) {
+        if (state.vo_valid) {
+            ctrl_cmd->yaw_sp = yaw_vo;
+        } else {
+            ctrl_cmd->yaw_sp = yaw_fc;
+        }
+        yaw_sp_inited = true;
+    }
+}
+
+inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q) {
+    q.normalize();
+    // Set up convenience variables
+
+    double w = q.w(); 
+    double x = q.x(); 
+    double y = q.y(); 
+    double z = q.z();
+    double w2 = w*w; 
+    double x2 = x*x; 
+    double y2 = y*y; 
+    double z2 = z*z;
+    double xy = x*y; 
+    double xz = x*z; 
+    double yz = y*z;
+    double wx = w*x; 
+    double wy = w*y; 
+    double wz = w*z;
+    Eigen::Matrix3d R = q.toRotationMatrix();
+    // R << w2+x2-y2-z2 , 2*(xy - wz) , 2*(wy + xz) ,
+        //  2*(wz + xy) , w2-x2+y2-z2 , 2*(yz - wx) ,
+        //  2*(xz - wy) , 2*(wx + yz) , w2-x2-y2+z2;
+
+    // std::cout << R << std::endl;
+
+    Eigen::Vector3d pry;      
+    pry.z() = atan2(-R(0,1),R(1,1));//zxy(1)
+    pry.y() = asin(R(2,1));//zxy(2)
+    pry.x() = atan2(-R(2,0),R(2,2));//zxy(3)
+  
+    // printf("q:%4.3f %4.3f %4.3f %4.3f\n", q.w(), q.x(), q.y(), q.z());
+    // printf("pry %4.3f %4.3f %4.3f\n", pry.x(), pry.y(), pry.z());
+
+    return pry;//R.eulerAngles(1, 0, 2);;
+};
 
 int main(int argc, char** argv)
 {
