@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+find_package (Eigen3 3.3 NO_MODULE)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -110,7 +111,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
+ #INCLUDE_DIRS include
  LIBRARIES swarm_commander
  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs swarm_msgs drone_position_control
  DEPENDS system_lib
@@ -126,6 +127,7 @@ message(commander!!!!!!!!!!!!!!! ${catkin_INCLUDE_DIRS})
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
