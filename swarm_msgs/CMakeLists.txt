@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   geometry_msgs
   std_msgs
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -57,6 +58,10 @@ add_message_files(
   swarm_drone_source_data.msg
   swarm_fused.msg
   swarm_fused_relative.msg
+  drone_pos_ctrl_cmd.msg
+  drone_pos_control_state.msg
+  drone_commander_state.msg
+  drone_onboard_command.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -79,6 +84,7 @@ generate_messages(
   nav_msgs 
   geometry_msgs
   std_msgs
+  sensor_msgs
 )
 
 ################################################

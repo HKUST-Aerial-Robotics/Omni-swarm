@@ -15,7 +15,7 @@
 typedef std::map<unsigned int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<unsigned int, Eigen::Quaterniond> ID2Quat;
 
-typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &, const ID2Quat &)> ID2VecCallback;
+typedef std::function<void(const ID2Vector3d &, const ID2Vector3d &, const ID2Quat &, ros::Time ts)> ID2VecCallback;
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -42,7 +42,7 @@ class UWBVOFuser
             std::vector<unsigned int> _ids)
     {
         CostFunction* cost_function =
-            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
+            new SwarmDistanceResidual(dis_mat, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos, drone_num);
         return cost_function;
     }
 
@@ -81,6 +81,8 @@ public:
     std::map<int, Vector3d> est_pos;
     std::map<int, Vector3d> est_vel;
 
+    ros::Time last_est_time_tick = ros::Time::now();
+
     std::map<unsigned int, int> node_kf_count;
 
     
@@ -96,14 +98,18 @@ public:
        random_init_Zxyz(Zxyzth);
     }
 
-    void random_init_Zxyz(double * _Zxyzth, int start=0)
+    void random_init_Zxyz(double * _Zxyzth, int start=0, int end=100)
     {
-        for (int i=start;i<100;i++)
+        for (int i=start;i<end;i++)
         {
             _Zxyzth[i*4] = rand_FloatRange(-30,30);
             _Zxyzth[i*4+1] = rand_FloatRange(-30,30); 
             _Zxyzth[i*4+2] = rand_FloatRange(-30,30); 
             _Zxyzth[i*4 +3] = rand_FloatRange(0,6.28); 
+        }
+
+        for (int i = (end-1)*4; i < (end-1)*4 + drone_num*(drone_num-1)/2; i++) {
+            _Zxyzth[i] = rand_FloatRange(-0.1,0.1);
         }
     }
 
@@ -114,7 +120,35 @@ public:
             Zxyzth[i*4 + 3] = fmodf(Zxyzth[i*4 +3], 2*M_PI);
         }
     }
+    
+    //If drone num increase, the previous bias should move after
+    void move_bias(int prev_drone_num, int new_drone_num)
+    {
+        //TODO:
+        //Should move from (prev_drone_num - 1) * 4 : (prev_drone_num - 1) * 4 + (prev_drone_num - 1)*prev_drone_num / 2
+        //to (new_drone_num - 1) * 4 : (new_drone_num - 1) * 4 + ???
 
+        if (prev_drone_num == 0)
+        {
+            ROS_INFO("First init with %d drone", new_drone_num);
+
+            for (int i = (new_drone_num - 1)*4; i < (new_drone_num - 1)*4 + (new_drone_num - 1)*new_drone_num/2; i ++)
+            {
+                Zxyzth[i] = 0;
+            }
+        }
+        //Also we should init Zxyz
+        random_init_Zxyz(Zxyzth, prev_drone_num, new_drone_num);
+    }
+
+    bool detect_outlier(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel, const quat_array & self_quat,
+        const std::vector<unsigned int> & _ids)
+    {
+        //Detect if it's outlier
+        
+        // for (int i = 0; i  < s)
+        return false;
+    }
     
     std::vector<unsigned int> judge_is_key_frame(const Eigen::MatrixXd & dis_matrix, const vec_array & self_pos, const vec_array & self_vel,
         const std::vector<unsigned int> & _ids)
@@ -123,6 +157,13 @@ public:
         std::vector<unsigned int> ret(0);
         if (_ids.size() < 2)
             return ret;
+
+        //Temp code
+        if (_ids.size() < drone_num)
+        {
+            return ret;
+        }
+
         if (past_dis_matrix.size() ==0)
         {
             for (auto _id : _ids)
@@ -192,9 +233,15 @@ public:
 
     void add_new_data_tick(
         Eigen::MatrixXd dis_matrix,const vec_array & self_pos, 
-        const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids)
+        const vec_array & self_vel, const quat_array & self_quat, std::vector<unsigned int> _ids, ros::Time ts)
     {
         process_frame_clear();
+        if (detect_outlier(dis_matrix, self_pos, self_vel, self_quat, _ids))
+        {
+            ROS_INFO("Outlier detected!");
+            return;
+        }
+
         std::vector<unsigned int> is_kf_list = judge_is_key_frame(dis_matrix, self_pos, self_vel, _ids);
         if (is_kf_list.size() > 0)
         {
@@ -220,10 +267,12 @@ public:
         }
         
         if (finish_init)
-            EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, true);
+            EvaluateEstPosition(dis_matrix, self_pos, self_vel, self_quat, _ids, ts, true);
 
         if (_ids.size() > drone_num)
         {
+            //For here the drone num increase
+            move_bias(drone_num, _ids.size());
             drone_num = _ids.size();
         }
     }
@@ -233,13 +282,14 @@ public:
         return est_pos[_id];
     }
 
-    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat, std::vector<unsigned int> _ids, bool call_cb = false)
-    {
+    // Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
 
+    void EvaluateEstPosition(Eigen::MatrixXd dis_matrix, vec_array self_pos, vec_array self_vel, quat_array self_quat,std::vector<unsigned int> _ids, ros::Time ts, bool call_cb = false)
+    {
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
-        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos);
+        SwarmDistanceResidual swarmRes(dis_matrix, self_pos, self_vel, self_quat, _ids, id_to_index, ann_pos, drone_num);
 
         int drone_num_now = _ids.size();
 
@@ -280,14 +330,15 @@ public:
         {
             int _id_i = _ids[i];
             int _index_i = id_to_index.at(_id_i);
-            printf("\nE/M%d:\t", _id_i);
+            printf("\nE/M/B%d:\t", _id_i);
             for (int j = 0;j<drone_num_now;j++)
             {
                 int _id_j = _ids[j];
                 int _index_j = id_to_index.at(_id_j);
 
                 double est_d = swarmRes.distance_j_i(j, i, Zxyzth).norm();
-                printf("%3.2f:%3.2f\t", est_d, dis_matrix(i, j));
+                double bias = swarmRes.bias_ij(i, j, Zxyzth);
+                printf("%3.2f:%3.2f:%3.2f\t", est_d, dis_matrix(i, j), bias);
             }
 
         }
@@ -295,7 +346,7 @@ public:
         printf("\n\n");
 
         if (callback != nullptr && call_cb)
-            (callback)(id2vec, id2vel, id2quat);
+            (callback)(id2vec, id2vel, id2quat, ts);
     }
     
     
@@ -309,7 +360,7 @@ public:
 
         for (int i = 0; i < max_number; i++)
         {
-            random_init_Zxyz(_ZxyTest, start_drone_num);
+            random_init_Zxyz(_ZxyTest, start_drone_num, drone_num);
             double c = solve_once(_ZxyTest, false);
             ROS_INFO("Got better cost %f", c);
 
@@ -377,6 +428,12 @@ public:
                 Zxyzth
             );
         }
+        
+        for (int i = (drone_num - 1 )*4; i < (drone_num - 1)*4 + (drone_num - 1)*drone_num/2 ; i ++)
+        {
+           problem.SetParameterLowerBound(Zxyzth, i, -0.15);
+           problem.SetParameterUpperBound(Zxyzth, i, 0.15);
+        }
 
         // std::cout<<"Finish build problem"<<std::endl;
         last_problem_ptr = past_dis_matrix.size();
@@ -413,8 +470,8 @@ public:
         covariance_blocks.push_back(std::make_pair(Zxyzth, Zxyzth));
         // bool ret = covariance.Compute(covariance_blocks, &problem);
         bool ret = false;
-        EvaluateEstPosition(
-            past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
+        // EvaluateEstPosition(
+            // past_dis_matrix.back(), past_self_pos.back(),past_self_vel.back(),past_self_quat.back(), past_ids.back(), true);
         if (ret)
         {
             covariance.GetCovarianceBlock(Zxyzth, Zxyzth, covariance_xx);

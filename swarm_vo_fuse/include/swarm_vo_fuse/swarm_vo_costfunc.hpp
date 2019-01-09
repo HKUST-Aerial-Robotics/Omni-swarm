@@ -21,6 +21,7 @@ using namespace Eigen;
 typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
+// #define USE_BIAS
 
 class SwarmDistanceResidual : public CostFunction {
     Vector3d Anntenna; 
@@ -51,6 +52,7 @@ class SwarmDistanceResidual : public CostFunction {
         }
 
     }
+
 
     inline Matrix3d rho_mat(double th) const
     {
@@ -86,6 +88,8 @@ class SwarmDistanceResidual : public CostFunction {
         Zji = rho_inv*(Zjk - Zik);
         thetaji = zthejk - ztheik;
     }
+
+    
 
     inline Eigen::Vector3d partial_Zji_by_Zdelta_k(int j, int i, int delta, int m, double const * Zxyzth) const
     {
@@ -158,12 +162,15 @@ class SwarmDistanceResidual : public CostFunction {
         int count = 0;
         int drone_num_now = this->drone_num();
 
-
+        bool need_jacobians = jacobians != NULL && jacobians[0] != NULL;
         //Set jacobian all zero
         // printf("Jacobian size will be %d of double\n",  num_params() * num_residuals() );
         if (jacobians != NULL && jacobians[0] != NULL) {
             memset(jacobians[0], 0 , sizeof(double) * num_params() * num_residuals());
         }
+
+        int residual_num = drone_num_now * (drone_num_now - 1) / 2;
+
         for (int i = 0; i < drone_num_now; i++)
         {
             for (int j = i + 1; j < drone_num_now ; j++)
@@ -173,15 +180,20 @@ class SwarmDistanceResidual : public CostFunction {
                 Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
                 double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
+#ifdef USE_BIAS
+                residual[count] = (_rel.norm() - d_bar - bias_ij(i, j, Zxyzth));
+#else
                 residual[count] = (_rel.norm() - d_bar);
+#endif
+                // printf("Bias %d %d %f\n", i, j, bias_ij(i, j, Zxyzth));
 
-                if (jacobians != NULL && jacobians[0] != NULL) {
+                if (need_jacobians) {
                     for (int m =0; m<4 ; m++)
                     {
                         if (param_index(i) >= 0)
                         {
                             double jac_im = Jacobian_y_ij_by_Z_delta_m(i, j, i, m, _rel/_rel.norm(), Zxyzth);
-                            jacobians[0][count*num_params()+ param_index(i)*4+m] = jac_im;
+                            jacobians[0][count*num_params() + param_index(i)*4+m] = jac_im;
                         }
 
                         if (param_index(j) >= 0)
@@ -196,6 +208,22 @@ class SwarmDistanceResidual : public CostFunction {
                 count ++;
             }
         }
+        
+        //Jacbian for bias is always -1
+        //i array
+        //The question is when drone num changes, we can't still use last Zxyth
+
+        //TODO:
+        //Has issue when drone_num < drone_num_total
+#ifdef USE_BIAS
+        if (need_jacobians ) {
+            for (int i = 0; i < drone_num_total * (drone_num_total - 1) /2; i++)
+            {
+                // printf("drone_num %d %d :%d\n",drone_num_total,drone_num_total * (drone_num_total - 1) /2, i);
+                jacobians[0][i*num_params() + (drone_num_total-1)*4 + i] = -1;
+            }
+        }
+#endif
         return true;
     }
 public:
@@ -205,7 +233,8 @@ public:
                 const quat_array & _self_quat, 
                 const std::vector<unsigned int>& _ids,
                 std::map<int, int> _id2index,
-                Eigen::Vector3d anntena_pos
+                Eigen::Vector3d anntena_pos,
+                int _drone_num_total
                 ): 
             dis_matrix(_dis_matrix), 
             self_vel(_self_vel), 
@@ -213,8 +242,8 @@ public:
             self_quat(_self_quat), 
             id_to_index(_id2index), 
             ids(_ids),
-            Anntenna(anntena_pos)
-
+            Anntenna(anntena_pos),
+            drone_num_total(_drone_num_total)
         {
 
             int drone_num_now = _ids.size();
@@ -268,6 +297,27 @@ public:
         return _rel;
     }
 
+    inline double bias_ij(int i, int j, double const * Zxyzth) const
+    {
+        if (i == j)
+            return 0;
+        
+        if (i > j)
+        {
+            int tmp = j;
+            j = i;
+            i = tmp;
+        }
+
+        int n = drone_num_total;
+
+        int no_of_bias = (2*n - 1 - i)*i/2 + j - i - 1;
+
+        // printf("bias %d %d index %d:%d\n", i, j,no_of_bias, (drone_num_total -1 )*4+ no_of_bias);
+        return Zxyzth[(drone_num_total -1 )*4+ no_of_bias ];
+    }
+
+
 private:
     Eigen::MatrixXd dis_matrix;
     vec_array self_pos;
@@ -276,9 +326,12 @@ private:
 
     std::vector<unsigned int> ids;
     std::map<int, int> id_to_index;
+
+
+    int drone_num_total = -1;
     int num_params() const
     {
-        return (id_to_index.size()-1)*4;
+        return (drone_num_total-1)*4 + (drone_num_total-1) * drone_num_total / 2;
     }
     int drone_num() const
     {

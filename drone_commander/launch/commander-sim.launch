@@ -1,0 +1,14 @@
+<launch>
+    <node name="drone_commander" pkg="drone_commander" type="drone_commander_node" output="screen">
+        <remap from="/drone_commander/visual_odometry" to="/dji_sdk_1/dji_sdk/simulation/odom"/>
+        <remap from="/drone_commander/flight_status" to="/dji_sdk_1/dji_sdk/flight_status"/>
+        <remap from="/drone_commander/rc" to="/dji_sdk_1/dji_sdk/rc"/>
+        <remap from="/drone_commander/fc_attitude" to="/dji_sdk_1/dji_sdk/attitude"/>
+        <remap from="/drone_commander/control_device" to="/dji_sdk_1/dji_sdk/control_device"/>
+        <remap from="/drone_commander/sdk_control_authority" to="/dji_sdk_1/dji_sdk/sdk_control_authority"/>
+    </node>
+    <node name="gpstoodom" pkg="drone_commander" type="gpstoodom" output="screen">
+    </node>
+    <include file="$(find drone_position_control)/launch/pos_control-sim.launch">
+    </include>
+</launch>

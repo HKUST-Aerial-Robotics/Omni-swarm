@@ -20,6 +20,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
 
+
 using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;
@@ -113,10 +114,12 @@ protected:
         uwbfuse->id_to_index = ids_index_in_arr;
 
         double t_now = rdp.header.stamp.toSec();
+
+        // printf("Tnow %f\n", t_now);
         
         if (t_now - t_last > 1 / force_freq)
         {
-            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids);
+            uwbfuse->add_new_data_tick(dis_mat, self_pos, self_vel, self_quat, ids, rdp.header.stamp);
             std_msgs::Float32 cost;
             cost.data = this->uwbfuse->solve();
             t_last = t_now;
@@ -141,6 +144,11 @@ protected:
         pub.publish(odom);
     }
 
+    nav_msgs::Odometry odom_now;
+    void on_drone_odom_recv(nav_msgs::Odometry odom) {
+        odom_now = odom;
+    }
+
     float force_freq = 10;
 public:
     ros::NodeHandle & nh;
@@ -148,6 +156,7 @@ public:
         nh(_nh)
     {
         recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
+        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate",1,&UWBFuserNode::on_drone_odom_recv, this);
         int frame_num = 0, thread_num , min_frame_num;
         float acpt_cost = 0.4;  
 
@@ -171,39 +180,94 @@ public:
         fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
         fused_drone_rel_data_pub = nh.advertise<swarm_fused_relative>("/swarm_drones/swarm_drone_fused_relative", 1);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
-        uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat) {
+        uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat, ros::Time ts) {
             swarm_fused fused;
             swarm_fused_relative relative_fused;
-            Eigen::Vector3d self_pos = id2vec.at(self_id);
-            Eigen::Vector3d self_vel = id2vel.at(self_id);
-            Eigen::Quaterniond self_quat = id2quat.at(self_id);
+
+
+            ros::Time ts_now = odom_now.header.stamp;
+            double dt = (ts_now - ts).toSec();
+
+            fused.header.stamp = ts_now;
+            relative_fused.header.stamp = ts_now;
+            
+            // ROS_INFO("tnow %f, ts %f, dt %f", ts_now.toSec(), ts.toSec(), dt);
+
+            Eigen::Vector3d self_pos;
+            Eigen::Vector3d self_vel;
+            Eigen::Quaterniond self_quat;
+
+            self_pos.x() = odom_now.pose.pose.position.x;
+            self_pos.y() = odom_now.pose.pose.position.y;
+            self_pos.z() = odom_now.pose.pose.position.z;
+
+            self_vel.x() = odom_now.twist.twist.linear.x;
+            self_vel.y() = odom_now.twist.twist.linear.y;
+            self_vel.z() = odom_now.twist.twist.linear.z;
+
+            self_quat.w() = odom_now.pose.pose.orientation.w;
+            self_quat.x() = odom_now.pose.pose.orientation.x;
+            self_quat.y() = odom_now.pose.pose.orientation.y;
+            self_quat.z() = odom_now.pose.pose.orientation.z;
             // printf("Pubing !\n");
             for (auto it : id2vec)
             {
+                Quaterniond quat = id2quat.at(it.first);
+                
                 geometry_msgs::Point p, rel_p;
                 geometry_msgs::Vector3 v, rel_v;
-                p.x = it.second.x();
-                p.y = it.second.y();
-                p.z = it.second.z();
+                geometry_msgs::Quaternion q;
 
-                //May cause error
-                v.x = id2vel.at(it.first).x();
-                v.y = id2vel.at(it.first).y();
-                v.z = id2vel.at(it.first).z();
+                if (it.first == this->self_id)
+                {
+                    p.x = self_pos.x();
+                    p.y = self_pos.y();
+                    p.z = self_pos.z();
+
+                    v.x = self_vel.x();
+                    v.y = self_vel.y();
+                    v.z = self_vel.z();
+
+                    rel_p.x = 0;
+                    rel_p.y = 0;
+                    rel_p.z = 0;
+
+                    rel_v.x = 0;
+                    rel_v.y = 0;
+                    rel_v.z = 0;
+
+                    q = odom_now.pose.pose.orientation;
+                }
+
+                else {
+
+                    p.x = it.second.x() + id2vel.at(it.first).x() * dt;
+                    p.y = it.second.y() + id2vel.at(it.first).y() * dt;
+                    p.z = it.second.z() + id2vel.at(it.first).z() * dt;
+
+                    //May cause error
+                    v.x = id2vel.at(it.first).x();
+                    v.y = id2vel.at(it.first).y();
+                    v.z = id2vel.at(it.first).z();
+
+
+                    rel_p.x = it.second.x() - self_pos.x();
+                    rel_p.y = it.second.y() - self_pos.y();
+                    rel_p.z = it.second.z() - self_pos.z();
+                    rel_v.x = id2vel.at(it.first).x() - self_vel.x();
+                    rel_v.y = id2vel.at(it.first).y() - self_vel.y();
+                    rel_v.z = id2vel.at(it.first).z() - self_vel.z();
+
+                    q.w = quat.w();
+                    q.x = quat.x();
+                    q.y = quat.y();
+                    q.z = quat.z();
+                }
 
                 fused.ids.push_back(it.first);
                 fused.remote_drone_position.push_back(p);
                 fused.remote_drone_velocity.push_back(v);
-
-                Quaterniond quat = id2quat.at(it.first);
-                
-                rel_p.x = it.second.x() - self_pos.x();
-                rel_p.y = it.second.y() - self_pos.y();
-                rel_p.z = it.second.z() - self_pos.z();
-
-                rel_v.x = id2vel.at(it.first).x() - self_vel.x();
-                rel_v.y = id2vel.at(it.first).y() - self_vel.y();
-                rel_v.z = id2vel.at(it.first).z() - self_vel.z();
+                fused.remote_drone_attitude.push_back(q);
 
                 Eigen::Quaterniond rel_quat =  self_quat.inverse() * quat;
                 Vector3d euler = rel_quat.toRotationMatrix().eulerAngles(0, 1, 2);
@@ -216,16 +280,15 @@ public:
 
                 Odometry odom;
                 odom.header.frame_id = frame_id;
+                odom.header.stamp = odom_now.header.stamp;
                 odom.pose.pose.position = p;
                 
-                odom.pose.pose.orientation.w = quat.w();
-                odom.pose.pose.orientation.x = quat.x();
-                odom.pose.pose.orientation.y = quat.y();
-                odom.pose.pose.orientation.z = quat.z();
-
+                odom.pose.pose.orientation = q;
                 odom.twist.twist.linear = v;
-                
-                pub_odom_id(it.first, odom);
+                if (it.first != self_id)
+                    pub_odom_id(it.first, odom);
+                else
+                    pub_odom_id(it.first, odom_now);
             }
 
             fused_drone_data_pub.publish(fused);
@@ -240,6 +303,7 @@ public:
 private:
 
     ros::Subscriber recv_remote_drones;
+    ros::Subscriber recv_drone_odom_now;
     ros::Publisher fused_drone_data_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
