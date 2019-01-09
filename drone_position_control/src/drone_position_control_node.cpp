@@ -31,6 +31,9 @@ class DronePosControl {
 
     Eigen::Vector3d pos_sp = Eigen::Vector3d(0, 0, 0);
     Eigen::Vector3d vel_sp = Eigen::Vector3d(0, 0, 0);
+    Quaterniond att_sp;
+    float z_sp = 0;
+
 
     ros::Publisher state_pub;
     ros::Publisher control_pub;
@@ -181,16 +184,33 @@ public:
     }
 
     void OnSwarmPosCommand(const swarm_msgs::drone_pos_ctrl_cmd & _cmd) {
-        if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
-            pos_sp.x() = _cmd.pos_sp.x;
-            pos_sp.y() = _cmd.pos_sp.y;
-            pos_sp.z() = _cmd.pos_sp.z;
-        } else if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_VEL_MODE) {
-            vel_sp.x() = _cmd.vel_sp.x;
-            vel_sp.y() = _cmd.vel_sp.y;
-            vel_sp.z() = _cmd.vel_sp.z;
-        } else if (_cmd.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
-
+        switch (_cmd.ctrl_mode) {
+            case drone_pos_ctrl_cmd::CTRL_CMD_POS_MODE: {
+                pos_sp.x() = _cmd.pos_sp.x;
+                pos_sp.y() = _cmd.pos_sp.y;
+                pos_sp.z() = _cmd.pos_sp.z;
+                break;
+            } 
+            case drone_pos_ctrl_cmd::CTRL_CMD_VEL_MODE: {
+                vel_sp.x() = _cmd.vel_sp.x;
+                vel_sp.y() = _cmd.vel_sp.y;
+                vel_sp.z() = _cmd.vel_sp.z;
+                break;
+            }
+            case drone_pos_ctrl_cmd::CTRL_CMD_ATT_THRUST_MODE:
+            case drone_pos_ctrl_cmd::CTRL_CMD_ATT_VELZ_MODE: {
+                att_sp.w() = _cmd.att_sp.w;
+                att_sp.x() = _cmd.att_sp.x;
+                att_sp.y() = _cmd.att_sp.y;
+                att_sp.z() = _cmd.att_sp.z;
+                z_sp = _cmd.z_sp;
+                break;
+            }
+            case drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE: 
+            default: {
+                return;
+                break;
+            }
         }
 
         //TODO:Write attitude
@@ -210,8 +230,8 @@ public:
         geometry_msgs::Quaternion quat = _quat.quaternion;
         Eigen::Quaterniond q(quat.w, 
             quat.x, quat.y, quat.z);
-        Eigen::Vector3d pry = quat_to_pry(q);
-        yaw_fc = pry.z();
+        Eigen::Vector3d rpy = quat2eulers(q);
+        yaw_fc = rpy.z();
     }
 
     void OnVisualOdometry(const nav_msgs::Odometry & odom) {
@@ -237,8 +257,8 @@ public:
         pos_ctrl->set_global_vel(vel);
         set_drone_global_pos_vel(pos, vel);
 
-        Eigen::Vector3d pry = quat_to_pry(quat);
-        double yaw_odom = pry.z();
+        Eigen::Vector3d rpy = quat2eulers(quat);
+        double yaw_odom = rpy.z();
         yaw_offset = constrainAngle(yaw_fc - yaw_odom);
     }
 
@@ -249,7 +269,11 @@ public:
         dji_command_so3.header.stamp    = ros::Time::now();
         dji_command_so3.header.frame_id = std::string("FLU");
         uint8_t flag;
-        flag = VERTICAL_THRUST | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
+        if (atti_out.thrust_mode == AttiCtrlOut::THRUST_MODE_THRUST) {
+            flag = VERTICAL_THRUST | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
+        } else {
+            flag = VERTICAL_VELOCITY  | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
+        }
 
         // atti_out.roll_sp = 0.0;
         // atti_out.pitch_sp = 1.0;
@@ -271,56 +295,72 @@ public:
         Eigen::Vector3d acc_sp(0, 0, 0);
 
         if ((ros::Time::now() - last_cmd_ts).toSec() > MAX_CMD_LOST_TIME) {
-             state.ctrl_mode = drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE;
+             state.ctrl_mode = drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE;
         }
-        if (state.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_IDLE_MODE) {
+        if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE) {
             //IDLE
 
             return;
         }
-        if (state.ctrl_mode == drone_pos_ctrl_cmd::POS_CTRL_POS_MODE) {
-            vel_sp = pos_ctrl->control_pos(pos_sp, dt);            
-        }
-        
-        acc_sp = pos_ctrl->control_vel(vel_sp, dt);
+        AttiCtrlOut atti_out;
+        atti_out.thrust_mode = AttiCtrlOut::THRUST_MODE_THRUST;
+        if (state.ctrl_mode < drone_pos_ctrl_cmd::CTRL_CMD_ATT_THRUST_MODE) {
+            if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_POS_MODE) {
+                vel_sp = pos_ctrl->control_pos(pos_sp, dt);            
+            }
+            
+            acc_sp = pos_ctrl->control_vel(vel_sp, dt);
 
-        acc_sp.z() =  pos_ctrl->control_vel_z(vel_sp.z(), dt);
-
-
-        //Send acc sp to network or
-        YawCMD yaw_cmd;
-        yaw_cmd.yaw_mode = YAW_MODE_LOCK;
-        yaw_cmd.yaw_sp = state.yaw_sp;
-
-        acc_sp.x() = float_constrain(acc_sp.x(), -10, 10);
-        acc_sp.y() = float_constrain(acc_sp.y(), -10, 10);
-        acc_sp.z() = float_constrain(acc_sp.z(), -10, 10);
+            acc_sp.z() =  pos_ctrl->control_vel_z(vel_sp.z(), dt);
 
 
-        AttiCtrlOut atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
-        if (state.count % 50 == 0)
-        {
-            ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
-                pos_sp.x(), pos_sp.y(), pos_sp.z(),
-                pos_ctrl->pos.x(),pos_ctrl->pos.y(),pos_ctrl->pos.z()
-            );
-            ROS_INFO("Velsp/vel %3.2f %3.2f %3.2f / %3.2f %3.2f %3.2f", 
-                vel_sp.x(), vel_sp.y(), vel_sp.z(),
-                pos_ctrl->vel.x(),pos_ctrl->vel.y(),pos_ctrl->vel.z()
-            );
-            ROS_INFO("accsp %3.2f %3.2f %3.2f, abx %3.2f/%3.2f",
-                acc_sp.x(),
-                acc_sp.y(),
-                acc_sp.z(),
-                atti_out.abx_sp,
-                pos_ctrl->thrust_ctrl.acc
-            );
-            ROS_INFO("R %4.3f P %4.3f Y %4.3f thr : %3.2f", 
-                atti_out.roll_sp * 57.3,
-                atti_out.pitch_sp * 57.3,
-                atti_out.yaw_sp * 57.3,
-                atti_out.thrust_sp
-            );
+            //Send acc sp to network or
+            YawCMD yaw_cmd;
+            yaw_cmd.yaw_mode = YAW_MODE_LOCK;
+            yaw_cmd.yaw_sp = state.yaw_sp;
+
+            acc_sp.x() = float_constrain(acc_sp.x(), -10, 10);
+            acc_sp.y() = float_constrain(acc_sp.y(), -10, 10);
+            acc_sp.z() = float_constrain(acc_sp.z(), -10, 10);
+
+
+            atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
+            if (state.count % 50 == 0)
+            {
+                ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
+                    pos_sp.x(), pos_sp.y(), pos_sp.z(),
+                    pos_ctrl->pos.x(),pos_ctrl->pos.y(),pos_ctrl->pos.z()
+                );
+                ROS_INFO("Velsp/vel %3.2f %3.2f %3.2f / %3.2f %3.2f %3.2f", 
+                    vel_sp.x(), vel_sp.y(), vel_sp.z(),
+                    pos_ctrl->vel.x(),pos_ctrl->vel.y(),pos_ctrl->vel.z()
+                );
+                ROS_INFO("accsp %3.2f %3.2f %3.2f, abx %3.2f/%3.2f",
+                    acc_sp.x(),
+                    acc_sp.y(),
+                    acc_sp.z(),
+                    atti_out.abx_sp,
+                    pos_ctrl->thrust_ctrl.acc
+                );
+                ROS_INFO("R %4.3f P %4.3f Y %4.3f thr : %3.2f", 
+                    atti_out.roll_sp * 57.3,
+                    atti_out.pitch_sp * 57.3,
+                    atti_out.yaw_sp * 57.3,
+                    atti_out.thrust_sp
+                );
+            }
+        } else {
+            atti_out.atti_sp = att_sp;
+
+            Eigen::Vector3d rpy = quat2eulers(atti_out.atti_sp);
+            atti_out.roll_sp = rpy.x();
+            atti_out.pitch_sp = rpy.y();
+            atti_out.yaw_sp = rpy.z();
+            atti_out.thrust_sp = z_sp;
+
+            if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_ATT_VELZ_MODE) {
+                atti_out.thrust_mode = AttiCtrlOut::THRUST_MODE_VELZ;
+            }
         }
             
         set_drone_attitude_target(atti_out);

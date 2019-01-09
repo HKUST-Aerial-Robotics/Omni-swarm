@@ -104,41 +104,6 @@ using namespace swarm_msgs;
     STABLE_ENABLE  = 0x01  /*!< Enable the stable mode */
   };
 
-inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q) {
-    q.normalize();
-    // Set up convenience variables
-
-    double w = q.w(); 
-    double x = q.x(); 
-    double y = q.y(); 
-    double z = q.z();
-    double w2 = w*w; 
-    double x2 = x*x; 
-    double y2 = y*y; 
-    double z2 = z*z;
-    double xy = x*y; 
-    double xz = x*z; 
-    double yz = y*z;
-    double wx = w*x; 
-    double wy = w*y; 
-    double wz = w*z;
-    Eigen::Matrix3d R = q.toRotationMatrix();
-    // R << w2+x2-y2-z2 , 2*(xy - wz) , 2*(wy + xz) ,
-        //  2*(wz + xy) , w2-x2+y2-z2 , 2*(yz - wx) ,
-        //  2*(xz - wy) , 2*(wx + yz) , w2-x2-y2+z2;
-
-    // std::cout << R << std::endl;
-
-    Eigen::Vector3d pry;      
-    pry.z() = atan2(-R(0,1),R(1,1));//zxy(1)
-    pry.y() = asin(R(2,1));//zxy(2)
-    pry.x() = atan2(-R(2,0),R(2,2));//zxy(3)
-  
-    // printf("q:%4.3f %4.3f %4.3f %4.3f\n", q.w(), q.x(), q.y(), q.z());
-    // printf("pry %4.3f %4.3f %4.3f\n", pry.x(), pry.y(), pry.z());
-
-    return pry;//R.eulerAngles(1, 0, 2);;
-}
 
 inline Eigen::Vector3d lowpass_filter(Eigen::Vector3d input, double fc, Eigen::Vector3d outputlast, double dt) {
 	double RC = 1.0 / (fc *2 * M_PI);

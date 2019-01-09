@@ -41,7 +41,7 @@ using namespace Eigen;
 #define DCMD drone_commander_state
 #define DPCL drone_pos_ctrl_cmd
 
-inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q);
+inline Eigen::Vector3d quat2eulers(Eigen::Quaterniond quat);
 class DroneCommander {
     ros::NodeHandle & nh;
     drone_commander_state state;
@@ -217,7 +217,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
             rc.axes[2],
             rc.axes[3],
             rc.axes[4],
-            rc.axes[5]
+             rc.axes[5]
         );
 
         ROS_INFO("ctrl_input_state %d, flight_status %d\n control_auth %d  ctrl_mode %d, is_armed %d\n rc_valid %d onboard_cmd_valid %d vo_valid%d sdk_valid %d ",
@@ -258,7 +258,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
 
 void DroneCommander::try_arm(bool arm) {
     dji_sdk::DroneArmControl arm_srv;
-    if (arm==state.arm_status) 
+    if (arm==state.is_armed) 
         return;
     if (state.djisdk_valid && state.flight_status == DCMD::FLIGHT_STATUS_IDLE) {
         // TODO:
@@ -334,8 +334,8 @@ void DroneCommander::vo_callback(const nav_msgs::Odometry & _odom) {
     auto pose = _odom.pose.pose;
     Eigen::Quaterniond quat(pose.orientation.w, 
         pose.orientation.x, pose.orientation.y, pose.orientation.z);
-    Eigen::Vector3d pry = quat_to_pry(quat);
-    yaw_vo = pry.z();
+    Eigen::Vector3d rpy = quat2eulers(quat);
+    yaw_vo = rpy.z();
 }
 
 
@@ -379,8 +379,8 @@ void DroneCommander::fc_attitude_callback(const geometry_msgs::QuaternionStamped
     geometry_msgs::Quaternion quat = _quat.quaternion;
     Eigen::Quaterniond q(quat.w, 
         quat.x, quat.y, quat.z);
-    Eigen::Vector3d pry = quat_to_pry(q);
-    yaw_fc = pry.z();
+    Eigen::Vector3d rpy = quat2eulers(q);
+    yaw_fc = rpy.z();
 }
 
 
@@ -475,7 +475,7 @@ void DroneCommander::process_rc_input () {
     double r = 0;
     double z = 0;
 
-    if (rc_valid) {
+    if (state.rc_valid) {
         y = rc.axes[0];
         x = rc.axes[1];
         r = rc.axes[2];
@@ -489,7 +489,7 @@ void DroneCommander::process_rc_input () {
             ctrl_cmd->vel_sp.x = x * RC_MAX_TILT_VEL;
             ctrl_cmd->vel_sp.y = y * RC_MAX_TILT_VEL;
             ctrl_cmd->vel_sp.z = z * RC_MAX_Z_VEL;
-            ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_VEL_MODE;
+            ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_VEL_MODE;
 
             break;
         }
@@ -505,7 +505,7 @@ void DroneCommander::process_rc_input () {
         case DCMD::CTRL_MODE_IDLE:        
         case DCMD::CTRL_MODE_ATT:
         default: {
-            ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_ATT_VELZ_MODE;
+            ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
             double yaw = ctrl_cmd->yaw_sp = ctrl_cmd->yaw_sp + r * RC_MAX_YAW_RATE * LOOP_DURATION;
             ctrl_cmd->z_sp = z * RC_MAX_Z_VEL;
             
@@ -637,14 +637,14 @@ void DroneCommander::process_control_takeoff() {
 
     if (is_in_air && state.vo_valid) {
         //Already in air, process as a  posvel control
-        ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_POS_MODE;
+        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_POS_MODE;
         ctrl_cmd->pos_sp.x = takeoff_origin.x();
         ctrl_cmd->pos_sp.y = takeoff_origin.y();
         ctrl_cmd->pos_sp.z = state.takeoff_target_height;
 
         
     } else {
-        ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_ATT_VELZ_MODE;
+        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
         Eigen::Quaterniond quat_sp = (Eigen::Quaterniond) Eigen::AngleAxisd(ctrl_cmd->yaw_sp, Eigen::Vector3d::UnitZ());
         ctrl_cmd->att_sp.w = quat_sp.w();
         ctrl_cmd->att_sp.x = quat_sp.x();
@@ -669,7 +669,7 @@ void DroneCommander::process_control_landing() {
     if (is_landing_finish) {
         request_ctrl_mode(DCMD::CTRL_MODE_IDLE);
     } else {
-        ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_ATT_VELZ_MODE;
+        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
         Eigen::Quaterniond quat_sp = (Eigen::Quaterniond) Eigen::AngleAxisd(ctrl_cmd->yaw_sp, Eigen::Vector3d::UnitZ());
         ctrl_cmd->att_sp.w = quat_sp.w();
         ctrl_cmd->att_sp.x = quat_sp.x();
@@ -760,14 +760,14 @@ void DroneCommander::prepare_control_hover() {
     ctrl_cmd->vel_sp.y = 0;
     ctrl_cmd->vel_sp.z = 0;
 
-    ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_POS_MODE;
+    ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_POS_MODE;
 
     last_hover_count = control_count;
 }
 
 
 void DroneCommander::reset_ctrl_cmd() {
-    ctrl_cmd->ctrl_mode = DPCL::POS_CTRL_IDLE_MODE;
+    ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_IDLE_MODE;
     ctrl_cmd->pos_sp.x = 0;
     ctrl_cmd->pos_sp.y = 0;
     ctrl_cmd->pos_sp.z = 0;
@@ -845,41 +845,15 @@ void DroneCommander::reset_yaw_sp() {
     }
 }
 
-inline Eigen::Vector3d quat_to_pry(Eigen::Quaterniond q) {
-    q.normalize();
-    // Set up convenience variables
-
-    double w = q.w(); 
-    double x = q.x(); 
-    double y = q.y(); 
-    double z = q.z();
-    double w2 = w*w; 
-    double x2 = x*x; 
-    double y2 = y*y; 
-    double z2 = z*z;
-    double xy = x*y; 
-    double xz = x*z; 
-    double yz = y*z;
-    double wx = w*x; 
-    double wy = w*y; 
-    double wz = w*z;
-    Eigen::Matrix3d R = q.toRotationMatrix();
-    // R << w2+x2-y2-z2 , 2*(xy - wz) , 2*(wy + xz) ,
-        //  2*(wz + xy) , w2-x2+y2-z2 , 2*(yz - wx) ,
-        //  2*(xz - wy) , 2*(wx + yz) , w2-x2-y2+z2;
-
-    // std::cout << R << std::endl;
-
-    Eigen::Vector3d pry;      
-    pry.z() = atan2(-R(0,1),R(1,1));//zxy(1)
-    pry.y() = asin(R(2,1));//zxy(2)
-    pry.x() = atan2(-R(2,0),R(2,2));//zxy(3)
-  
-    // printf("q:%4.3f %4.3f %4.3f %4.3f\n", q.w(), q.x(), q.y(), q.z());
-    // printf("pry %4.3f %4.3f %4.3f\n", pry.x(), pry.y(), pry.z());
-
-    return pry;//R.eulerAngles(1, 0, 2);;
-};
+inline Eigen::Vector3d quat2eulers(Eigen::Quaterniond quat) {
+    Eigen::Vector3d rpy;
+    rpy.x() = atan2(2 * (quat.w() * quat.x() + quat.y() * quat.z()),
+                    1 - 2 * (quat.x() * quat.x() + quat.y() * quat.y()));
+    rpy.y() = asin(2 * (quat.w() * quat.y() - quat.z() * quat.x()));
+    rpy.z() = atan2(2 * (quat.w() * quat.z() + quat.x() * quat.y()),
+                    1 - 2 * (quat.y() * quat.y() + quat.z() * quat.z()));
+    return rpy;
+}
 
 int main(int argc, char** argv)
 {

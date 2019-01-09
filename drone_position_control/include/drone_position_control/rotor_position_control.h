@@ -72,10 +72,15 @@ struct RotorPosCtrlParam {
 };
 
 struct AttiCtrlOut {
+    enum {
+        THRUST_MODE_THRUST,
+        THRUST_MODE_VELZ
+    };
     Eigen::Quaterniond atti_sp = Eigen::Quaterniond(1, 0, 0, 0);
     double roll_sp = 0, pitch_sp = 0, yaw_sp = 0;
     double thrust_sp = 0;
     double abx_sp = 0;
+    int thrust_mode;
 };
 
 inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond & quat) {
