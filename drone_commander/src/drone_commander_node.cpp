@@ -32,13 +32,19 @@ using namespace Eigen;
 #define TAKEOFF_VEL_Z 2.0
 #define LANDING_VEL_Z -1.0
 #define MAX_AUTO_Z_ERROR 0.05
+#define MIN_TAKEOFF_HEIGHT 0.2
+
+#define MAX_LOSS_ONBOARD_CMD 1.0
 
 #define LOOP_DURATION 0.02
 
 #define DEBUG_OUTPUT
 #define DEBUG_HOVER_CTRL
 
+#define MAGIC_YAW_NAN 666666
+
 #define DCMD drone_commander_state
+#define OCMD drone_onboard_command
 #define DPCL drone_pos_ctrl_cmd
 
 inline Eigen::Vector3d quat2eulers(Eigen::Quaterniond quat);
@@ -185,6 +191,11 @@ public:
     void request_ctrl_mode(uint32_t req_ctrl_mode);
     
     void send_ctrl_cmd();
+
+    void set_att_setpoint(double roll, double pitch, double yawrate, double z, bool z_use_vel=true, bool yaw_use_rate=true);
+    void set_pos_setpoint(double x, double y, double z, double yaw=NAN, double vx_ff=0, double vy_ff=0, double vz_ff=0);
+    void set_vel_setpoint(double vx, double vy, double vz, double yaw=NAN);
+
 };
 
 
@@ -205,6 +216,12 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
         state.rc_valid = false;
         ROS_INFO("RC loss time %3.2f, is invalid", (ros::Time::now() - last_rc_ts).toSec());
     }
+
+    if (state.onboard_cmd_valid&& (ros::Time::now() - last_onboard_cmd_ts).toSec() > MAX_LOSS_ONBOARD_CMD ) {
+        state.onboard_cmd_valid = false;
+        ROS_INFO("ONBOARD loss time %3.2f, is invalid", (ros::Time::now() - last_onboard_cmd_ts).toSec());
+    }
+
 
     if (count ++ % 50 == 0)
     {
@@ -383,9 +400,144 @@ void DroneCommander::fc_attitude_callback(const geometry_msgs::QuaternionStamped
     yaw_fc = rpy.z();
 }
 
+void DroneCommander::set_att_setpoint(double roll, double pitch, double yaw, double z, bool z_use_vel, bool yaw_use_rate) {
+    if (yaw_use_rate) {
+        yaw = ctrl_cmd->yaw_sp = ctrl_cmd->yaw_sp + yaw * LOOP_DURATION;
+    } else {
+        ctrl_cmd->yaw_sp = yaw;
+    }
+    
+    Quaterniond quat_sp = AngleAxisd(roll, Vector3d::UnitX())
+        * AngleAxisd(pitch, Vector3d::UnitY())
+        * AngleAxisd(yaw, Vector3d::UnitZ());
+    
+    ctrl_cmd->att_sp.w = quat_sp.w();
+    ctrl_cmd->att_sp.x = quat_sp.x();
+    ctrl_cmd->att_sp.y = quat_sp.y();
+    ctrl_cmd->att_sp.z = quat_sp.z();
+    ctrl_cmd->z_sp = z;
+
+    if (z_use_vel) {
+        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
+    } else {
+        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_THRUST_MODE;
+    }
+
+}
+
+void DroneCommander::set_pos_setpoint(double x, double y, double z, double yaw, double vx_ff, double vy_ff, double vz_ff) {
+    ctrl_cmd->pos_sp.x = x;
+    ctrl_cmd->pos_sp.y = y;
+    ctrl_cmd->pos_sp.z = z;
+    ctrl_cmd->vel_sp.x = vx_ff;
+    ctrl_cmd->vel_sp.y = vy_ff;
+    ctrl_cmd->vel_sp.z = vz_ff;
+    if (!isnan(yaw)) {
+        ctrl_cmd->yaw_sp = yaw;
+    }
+
+    ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_POS_MODE;
+}
+
+void DroneCommander::set_vel_setpoint(double vx, double vy, double vz, double yaw) {
+    ctrl_cmd->vel_sp.x = vx;
+    ctrl_cmd->vel_sp.y = vy;
+    ctrl_cmd->vel_sp.z = vz;
+    if (!isnan(yaw)) {
+        ctrl_cmd->yaw_sp = yaw;
+    }
+
+    ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_VEL_MODE;
+}
 
 void DroneCommander::onboard_cmd_callback(const drone_onboard_command & _cmd) {
-    //TODO:
+    state.onboard_cmd_valid = true;
+    last_onboard_cmd_ts = ros::Time::now();
+    if (state.ctrl_input_state != DCMD::CTRL_INPUT_ONBOARD) {
+        process_input_source();
+    }
+
+    if (state.ctrl_input_state == DCMD::CTRL_INPUT_ONBOARD) {
+        switch (_cmd.command_type) {
+            case OCMD::CTRL_POS_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_POSVEL);
+                double x = ((double)_cmd.param1) / 10000;
+                double y = ((double)_cmd.param2) / 10000;
+                double z = ((double)_cmd.param3) / 10000;
+                double yaw = ((double) _cmd.param4) / 10000;
+                double vx_ff = ((double)_cmd.param5) / 10000;
+                double vy_ff = ((double)_cmd.param6) / 10000;
+                double vz_ff = ((double)_cmd.param7) / 10000;
+                if (_cmd.param4 == MAGIC_YAW_NAN) {
+                    set_pos_setpoint(x, y, z, NAN, vx_ff, vy_ff, vz_ff);
+                } else {
+                    set_pos_setpoint(x, y, z, yaw, vx_ff, vy_ff, vz_ff);
+                }
+
+                break;
+            }
+
+            case OCMD::CTRL_VEL_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_POSVEL);
+                double x = ((double)_cmd.param1) / 10000;
+                double y = ((double)_cmd.param2) / 10000;
+                double z = ((double)_cmd.param3) / 10000;
+                double yaw = ((double) _cmd.param4) / 10000;
+                if (_cmd.param4 == MAGIC_YAW_NAN) {
+                    set_vel_setpoint(x, y, z);
+                }
+                break;
+            }
+            case OCMD::CTRL_ATT_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_ATT);
+
+                double roll = ((double)_cmd.param1) / 10000;
+                double pitch = ((double)_cmd.param2) / 10000;
+                double yaw_rate = ((double)_cmd.param3) / 10000;
+                double z = ((double)_cmd.param4) / 10000;
+                set_att_setpoint(roll, pitch, yaw_rate, z, _cmd.param5 == 0, _cmd.param6 == 0);
+                break;
+            }
+
+            case OCMD::CTRL_MISSION_LOAD_COMMAND: {
+                
+                request_ctrl_mode(DCMD::CTRL_MODE_MISSION);
+                break;
+            }
+
+            case OCMD::CTRL_MISSION_END_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
+                break;
+            }
+
+            case OCMD::CTRL_TAKEOF_COMMAND: {
+
+                double h = ((double)_cmd.param1) / 10000;
+                if (h < MIN_TAKEOFF_HEIGHT) {
+                    h = MIN_TAKEOFF_HEIGHT;
+                }
+                request_ctrl_mode(DCMD::CTRL_MODE_TAKEOFF);
+                state.takeoff_target_height = h;
+                break;
+            };
+
+            case OCMD::CTRL_LANDING_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
+                break;
+            }
+
+
+            case OCMD::CTRL_HOVER_COMMAND: {
+                request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
+                break;
+            }
+
+            case OCMD::CTRL_ARM_COMMAND: {
+                try_arm(_cmd.param1 > 0);
+                break;
+            }
+        }
+    }
 }
 
 
@@ -413,6 +565,7 @@ void DroneCommander::process_input_source () {
             ROS_INFO("Change Source to RC");
         } else if (state.onboard_cmd_valid){
             state.ctrl_input_state = DCMD::CTRL_INPUT_ONBOARD;
+            ROS_INFO("Change Source to onboard because no RC and onboard vaild");
         }
     }
 
@@ -435,8 +588,10 @@ void DroneCommander::process_input_source () {
         {
             if (state.rc_valid) {
                 state.ctrl_input_state = DCMD::CTRL_INPUT_RC;
+                ROS_INFO("Onboard failed change Source to RC");
             } else {
                 state.ctrl_input_state = DCMD::CTRL_INPUT_NONE;
+                ROS_INFO("Onboard failed change Source to None");
             }
         }
     }
@@ -465,6 +620,7 @@ void DroneCommander::process_rc_input () {
         request_ctrl_mode(DCMD::CTRL_MODE_POSVEL);
     } else {
         if (state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION) {
+            //When no input and not takeoff and not landing, turn to hover
             request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
         }
     }
@@ -505,21 +661,7 @@ void DroneCommander::process_rc_input () {
         case DCMD::CTRL_MODE_IDLE:        
         case DCMD::CTRL_MODE_ATT:
         default: {
-            ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
-            double yaw = ctrl_cmd->yaw_sp = ctrl_cmd->yaw_sp + r * RC_MAX_YAW_RATE * LOOP_DURATION;
-            ctrl_cmd->z_sp = z * RC_MAX_Z_VEL;
-            
-            double roll = x * RC_MAX_TILT_ANGLE;
-            double pitch = x * RC_MAX_TILT_ANGLE;
-
-            Quaterniond quat_sp = AngleAxisd(roll, Vector3d::UnitX())
-                * AngleAxisd(pitch, Vector3d::UnitY())
-                * AngleAxisd(yaw, Vector3d::UnitZ());
-            
-            ctrl_cmd->att_sp.w = quat_sp.w();
-            ctrl_cmd->att_sp.x = quat_sp.x();
-            ctrl_cmd->att_sp.y = quat_sp.y();
-            ctrl_cmd->att_sp.z = quat_sp.z();
+            set_att_setpoint(x * RC_MAX_TILT_ANGLE, y* RC_MAX_TILT_ANGLE, r * RC_MAX_YAW_RATE, z);
             break;
         }
     }
@@ -528,12 +670,11 @@ void DroneCommander::process_rc_input () {
 }
 
 void DroneCommander::process_none_input () {
-    if (state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION)
-    {
-        return;
-    }
-    else {
-        request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
+    if (state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION &&
+        state.commander_ctrl_mode != DCMD::CTRL_MODE_TAKEOFF &&
+        state.commander_ctrl_mode != DCMD::CTRL_MODE_LANDING) {
+        //When no input and not takeoff and not landing, turn to hover
+        request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
     }
 }
 
@@ -551,6 +692,7 @@ void DroneCommander::process_control_idle() {
 
 void DroneCommander::process_onboard_input () {
     //TODO: writing onboard input
+
 }
 
 void DroneCommander::process_control() {
@@ -722,8 +864,12 @@ void DroneCommander::request_ctrl_mode(uint32_t req_ctrl_mode) {
     }
 
     if (state.ctrl_input_state == DCMD::CTRL_INPUT_NONE && state.commander_ctrl_mode != DCMD::CTRL_MODE_MISSION) {
-        if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR && req_ctrl_mode !=DCMD::CTRL_MODE_LANDING)
-            request_ctrl_mode(DCMD::CTRL_MODE_LANDING);
+        if (state.flight_status == DCMD::FLIGHT_STATUS_IN_AIR && req_ctrl_mode !=DCMD::CTRL_MODE_LANDING) {
+            //If no command come in, what to do
+            //now is hover
+            request_ctrl_mode(DCMD::CTRL_MODE_HOVER);
+        }
+
     }
 
 
@@ -753,14 +899,8 @@ void DroneCommander::prepare_control_hover() {
         );
     }
 
-    ctrl_cmd->pos_sp.x = hover_pos.x();
-    ctrl_cmd->pos_sp.y = hover_pos.y();
-    ctrl_cmd->pos_sp.z = hover_pos.z();
-    ctrl_cmd->vel_sp.x = 0;
-    ctrl_cmd->vel_sp.y = 0;
-    ctrl_cmd->vel_sp.z = 0;
+    set_pos_setpoint(hover_pos.x(), hover_pos.y(), hover_pos.z());
 
-    ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_POS_MODE;
 
     last_hover_count = control_count;
 }
