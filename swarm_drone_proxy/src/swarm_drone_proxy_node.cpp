@@ -6,6 +6,7 @@
 #include <swarm_msgs/data_buffer.h>
 #include <swarm_msgs/swarm_fused.h>
 #include <swarm_msgs/swarm_fused_relative.h>
+#include <swarm_msgs/swarm_remote_command.h>
 #include <map>
 #include <eigen3/Eigen/Dense>
 #include <cstdint>
@@ -21,8 +22,10 @@ class SwarmDroneProxy
     ros::Subscriber local_odometry_sub;
     ros::Subscriber swarm_data_sub;
     ros::Subscriber swarm_rel_sub;
+    ros::Subscriber swarm_cmd_sub;
     ros::Publisher swarm_sourcedata_pub;
     ros::Publisher uwb_senddata_pub;
+    ros::Publisher drone_cmd_pub;
 
     uint8_t buf[10000] = {0};
 
@@ -118,6 +121,13 @@ class SwarmDroneProxy
         return false;
     }
 
+    void send_mavlink_message(mavlink_message_t & msg) {
+        int len = mavlink_msg_to_send_buffer(buf , &msg);
+        data_buffer buffer;
+        buffer.data = std::vector<uint8_t>(buf, buf+len);
+        uwb_senddata_pub.publish(buffer);
+    }
+
     void send_swarm_mavlink(const float * dis) 
     {
 
@@ -127,11 +137,7 @@ class SwarmDroneProxy
             quat.w(), quat.x(), quat.y(), quat.z(),
             vel.x(), vel.y(), vel.z(), dis);
 
-        // mavlink_msg_swarm_relative_fused_encode()
-        int len = mavlink_msg_to_send_buffer(buf , &msg);
-        data_buffer buffer;
-        buffer.data = std::vector<uint8_t>(buf, buf+len);
-        uwb_senddata_pub.publish(buffer);
+        send_mavlink_message(msg);
     }
     
     std::vector<float> past_self_dis;
@@ -159,10 +165,7 @@ class SwarmDroneProxy
                     fused.relative_drone_position[i].y,
                     fused.relative_drone_position[i].z,
                     fused.relative_drone_yaw[i]);
-                int len = mavlink_msg_to_send_buffer(buf , &msg);
-                data_buffer buffer;
-                buffer.data = std::vector<uint8_t>(buf, buf+len);
-                uwb_senddata_pub.publish(buffer);
+                send_mavlink_message(msg);
             }
         }
     }
@@ -289,6 +292,41 @@ class SwarmDroneProxy
         }
     }
 
+    void on_send_swarm_commands(swarm_msgs::swarm_remote_command rcmd) {
+        mavlink_message_t msg;
+        swarm_msgs::drone_onboard_command & cmd = rcmd.cmd;
+        // mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(),
+        //     quat.w(), quat.x(), quat.y(), quat.z(),
+        //     vel.x(), vel.y(), vel.z(), dis);
+        mavlink_msg_swarm_remote_command_pack(0, 0, &msg, rcmd.target_id, cmd.command_type, 
+            cmd.param1, cmd.param2, cmd.param3, cmd.param4, cmd.param5, cmd.param6, cmd.param7, cmd.param8);
+
+            send_mavlink_message(msg);
+    }
+
+    void on_mavlink_recv_swarm_command(mavlink_swarm_remote_command_t cmd) {
+        if (cmd.target_id == -1 || cmd.target_id == this->self_id) {
+            //Cmd apply to this
+            drone_onboard_command dcmd;
+            dcmd.command_type = cmd.command_type;
+            dcmd.param1 = cmd.param1;
+            dcmd.param2 = cmd.param2;
+            dcmd.param3 = cmd.param3;
+            dcmd.param4 = cmd.param4;
+            dcmd.param5 = cmd.param5;
+            dcmd.param6 = cmd.param6;
+            dcmd.param7 = cmd.param7;
+            dcmd.param8 = cmd.param8;
+
+            ROS_INFO("Station command target %d type %d", cmd.target_id, dcmd.command_type);
+            ROS_INFO("Param 1-4 %d %d %d %d 5-8 %d %d %d %d", 
+                dcmd.param1, dcmd.param2, dcmd.param3, dcmd.param4,
+                dcmd.param5, dcmd.param6, dcmd.param7, dcmd.param8);
+            drone_cmd_pub.publish(dcmd);
+        } else {
+            return;
+        }
+    }
 public:
     SwarmDroneProxy(ros::NodeHandle & _nh):
         nh(_nh)
@@ -305,7 +343,8 @@ public:
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this);
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
-
+        swarm_cmd_sub = nh.subscribe("/swarm_drones/send_swarm_command", 1, &SwarmDroneProxy::on_send_swarm_commands, this);
+        drone_cmd_pub = nh.advertise<drone_onboard_command>("/drone_commander/onboard_command", 1);
         if (gcs_mode) {
             pos.x() = 0;
             pos.y() = 0;
