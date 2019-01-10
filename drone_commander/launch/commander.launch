@@ -7,4 +7,6 @@
         <remap from="/drone_commander/sdk_control_authority" to="/dji_sdk_1/dji_sdk/sdk_control_authority"/>
         <remap from="/drone_commander/fc_attitude" to="/dji_sdk_1/dji_sdk/attitude"/>
     </node>
+    <include file="$(find drone_position_control)/launch/pos_control-sim.launch">
+    </include>
 </launch>

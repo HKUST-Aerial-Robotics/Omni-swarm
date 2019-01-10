@@ -281,7 +281,11 @@ public:
         yaw_offset = 0;
         dji_command_so3.axes.push_back(atti_out.roll_sp);       // x
         dji_command_so3.axes.push_back(atti_out.pitch_sp);       // y
-        dji_command_so3.axes.push_back(atti_out.thrust_sp * 100.0); // z
+        if (atti_out.thrust_mode == AttiCtrlOut::THRUST_MODE_THRUST) {
+            dji_command_so3.axes.push_back(atti_out.thrust_sp * 100); // z
+        } else {
+            dji_command_so3.axes.push_back(atti_out.thrust_sp); // z
+        }
         dji_command_so3.axes.push_back(atti_out.yaw_sp + yaw_offset);       // w
         dji_command_so3.axes.push_back(flag);
 
@@ -325,6 +329,7 @@ public:
 
 
             atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
+
             if (state.count % 50 == 0)
             {
                 ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
@@ -375,6 +380,8 @@ public:
         state.vel_cmd.x = vel_sp.x();
         state.vel_cmd.y = vel_sp.y();
         state.vel_cmd.z = vel_sp.z();
+
+        state.thrust_cmd = atti_out.thrust_sp;
 
         state_pub.publish(state);
 

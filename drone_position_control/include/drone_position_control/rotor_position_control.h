@@ -402,7 +402,7 @@ public:
         // Only for hover
         ret.abx_sp = acc_sp.norm();
 
-        ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), 0, 1);
+        ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), 0.2, 1);
 
         if (fabs(acc_sp.z()) > 0.1) {
             pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -0.4, 0.4);
@@ -423,6 +423,7 @@ public:
         ret.roll_sp = roll_sp;
         ret.pitch_sp = pitch_sp;
         ret.yaw_sp = yaw_sp;
+        ret.thrust_mode = AttiCtrlOut::THRUST_MODE_THRUST;
         ret.atti_sp = Eigen::AngleAxisd(yaw_sp, Vector3d::UnitZ()) * Eigen::AngleAxisd(pitch_sp, Vector3d::UnitY()) * Eigen::AngleAxisd(roll_sp, Vector3d::UnitX());
 
         return ret;
