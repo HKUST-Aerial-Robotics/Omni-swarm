@@ -7,6 +7,11 @@
 using namespace Eigen;
 
 #define GRAVITY (9.695f)
+#define MAX_HORIZON_VEL 10.0
+#define MAX_VERTICAL_VEL 5.0
+#define MAX_VERTICAL_ACC 10.0
+#define MAX_HORIZON_ACC 10.0
+#define MAX_TILT_ANGLE 0.8
 
 struct PIDParam {
     double p = 0;
@@ -321,8 +326,8 @@ public:
     virtual Eigen::Vector3d control_pos(const Eigen::Vector3d & pos_sp, double dt) {
         Eigen::Vector3d vel_sp(0, 0, 0);
         if (pos_inited) {
-            vel_sp.x() = float_constrain(px_con.control(pos_sp.x() - pos.x(), dt), -20, 20);
-            vel_sp.y() = float_constrain(py_con.control(pos_sp.y() - pos.y(), dt), -20, 20);
+            vel_sp.x() = float_constrain(px_con.control(pos_sp.x() - pos.x(), dt), -MAX_HORIZON_VEL, MAX_HORIZON_VEL);
+            vel_sp.y() = float_constrain(py_con.control(pos_sp.y() - pos.y(), dt), -MAX_HORIZON_VEL, MAX_HORIZON_VEL);
             vel_sp.z() = control_pos_z(pos_sp.z(), dt);
 
             if (param.ctrl_frame == VEL_BODY_ACC_BODY) {
@@ -356,10 +361,10 @@ public:
     virtual Eigen::Vector3d control_vel(const Eigen::Vector3d & vel_sp, double dt, bool input_body_frame=true, bool output_body_frame=true) {
         Eigen::Vector3d acc_sp(0, 0, 0);
         if (vel_inited) {
-            acc_sp.x() = vx_con.control(vel_sp.x() - vel.x(), dt);
-            acc_sp.y() = vy_con.control(vel_sp.y() - vel.y(), dt);
-            acc_sp.z() = control_vel_z(vel_sp.z(), dt);
-            
+            acc_sp.x() = float_constrain(vx_con.control(vel_sp.x() - vel.x(), dt), -MAX_HORIZON_ACC, MAX_HORIZON_ACC);
+            acc_sp.y() = float_constrain(vy_con.control(vel_sp.y() - vel.y(), dt), -MAX_HORIZON_ACC, MAX_HORIZON_ACC);
+            acc_sp.z() = float_constrain(control_vel_z(vel_sp.z(), dt), -MAX_VERTICAL_ACC, MAX_VERTICAL_ACC);
+
             if (param.ctrl_frame == CTRL_FRAME::VEL_WORLD_ACC_BODY) {
                 acc_sp = yaw_transverse.inverse() * acc_sp;
             }
@@ -405,8 +410,8 @@ public:
         ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), 0.2, 1);
 
         if (fabs(acc_sp.z()) > 0.1) {
-            pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -0.4, 0.4);
-            roll_sp = float_constrain(asin(acc_sp.y() /( acc_sp.norm() * cos(pitch_sp))), -0.4, 0.4);
+            pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -MAX_TILT_ANGLE, MAX_TILT_ANGLE);
+            roll_sp = float_constrain(asin(acc_sp.y() /( acc_sp.norm() * cos(pitch_sp))), -MAX_TILT_ANGLE, MAX_TILT_ANGLE);
         }
 
         if (yaw_cmd.yaw_mode == YAW_MODE::YAW_MODE_LOCK) {
