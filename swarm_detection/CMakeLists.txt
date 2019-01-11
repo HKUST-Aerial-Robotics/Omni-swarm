@@ -14,9 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   swarm_msgs
   cv_bridge
-  OpenCV
 )
-
+find_package(OpenCV 3 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -120,6 +119,7 @@ catkin_package(
 ## Build ##
 ###########
 
+message("cv !!!!!!!!!!!!!!!!!" ${OpenCV_INCLUDE_DIRS} ${OpenCV_LIBS})
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
@@ -127,6 +127,7 @@ include_directories(
   ${CERES_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -157,8 +158,9 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
+  ${OpenCV_LIBRARIES}
   ${CERES_LIBRARIES}
+  # opencv_hi
   aruco
 )
 
