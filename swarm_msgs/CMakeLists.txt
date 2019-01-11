@@ -62,6 +62,7 @@ add_message_files(
   drone_pos_control_state.msg
   drone_commander_state.msg
   drone_onboard_command.msg
+  swarm_remote_command.msg
 )
 
 ## Generate services in the 'srv' folder
