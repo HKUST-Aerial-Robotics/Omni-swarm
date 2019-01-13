@@ -231,7 +231,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
     }
 
 
-    // if (count ++ % 20 == 0)
+    if (count ++ % 100 == 0)
     {
 #ifdef DEBUG_OUTPUT
         if (rc.axes.size() >= 6)
