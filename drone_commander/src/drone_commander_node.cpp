@@ -30,7 +30,7 @@ using namespace Eigen;
 #define RC_MAX_YAW_RATE 1.57
 #define RC_MAX_TILT_ANGLE 0.52
 #define TAKEOFF_VEL_Z 2.0
-#define LANDING_VEL_Z -0.5
+#define LANDING_VEL_Z -0.3
 #define MAX_AUTO_Z_ERROR 0.05
 #define MIN_TAKEOFF_HEIGHT 0.5
 #define MIN_TRY_ARM_DURATION 1.0
@@ -867,6 +867,10 @@ void DroneCommander::process_control_landing() {
     bool is_landing_finish = state.flight_status < DCMD::FLIGHT_STATUS_IN_AIR;
 
     if (is_landing_finish) {
+        if (state.flight_status == DCMD::FLIGHT_STATUS_ARMED) {
+            ROS_INFO("Landed, request disarm");
+            try_arm(false);
+        }
         request_ctrl_mode(DCMD::CTRL_MODE_IDLE);
         ROS_INFO("Finsh landing, turn to IDLE");
     } else {
