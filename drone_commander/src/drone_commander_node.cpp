@@ -209,6 +209,7 @@ public:
 
 void DroneCommander::loop(const ros::TimerEvent & _e) {
     static int count = 0; 
+    control_count ++;
     if (state.djisdk_valid && (ros::Time::now() - last_flight_status_ts).toSec() > MAX_LOSS_SDK) {
         ROS_INFO("Flight Status loss time %3.2f, is invalid", (ros::Time::now() - last_flight_status_ts).toSec());        
         state.djisdk_valid = false;
@@ -230,7 +231,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
     }
 
 
-    if (count ++ % 100 == 0)
+    // if (count ++ % 20 == 0)
     {
 #ifdef DEBUG_OUTPUT
         if (rc.axes.size() >= 6)
@@ -244,7 +245,10 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
              rc.axes[5]
         );
 
-        ROS_INFO("ctrl_input_state %d, flight_status %d\n control_auth %d  ctrl_mode %d, is_armed %d\n rc_valid %d onboard_cmd_valid %d vo_valid%d sdk_valid %d ",
+        ROS_INFO("POS     %3.2f      %3.2f     %3.2f \nctrl_input_state %d, flight_status %d\n control_auth %d  ctrl_mode %d, is_armed %d\n rc_valid %d onboard_cmd_valid %d vo_valid%d sdk_valid %d ",
+	    odometry.pose.pose.position.x,
+	    odometry.pose.pose.position.y,
+	    odometry.pose.pose.position.z,
             state.ctrl_input_state,
             state.flight_status,
             state.control_auth,
@@ -276,6 +280,7 @@ void DroneCommander::loop(const ros::TimerEvent & _e) {
         process_control();
     } else {
         reset_yaw_sp();
+        last_hover_count = -1;
     }
 
     commander_state_pub.publish(state);
@@ -421,6 +426,7 @@ void DroneCommander::fc_attitude_callback(const geometry_msgs::QuaternionStamped
     Eigen::Quaterniond q(quat.w, 
         quat.x, quat.y, quat.z);
     Eigen::Vector3d rpy = quat2eulers(q);
+    // ROS_INFO("Fc attitude %3.2f %3.2f %3.2f", rpy.x()*57.3, rpy.y()*57.3, rpy.z()*57.3);
     yaw_fc = rpy.z();
 }
 
@@ -579,7 +585,7 @@ bool DroneCommander::rc_request_onboard() {
 }
 
 bool DroneCommander::rc_request_vo() {
-    return (rc.axes[4] == 10000);
+    return (rc.axes[4] == 10000 && rc.axes[5] == -10000);
 }
 
 bool DroneCommander::rc_moving_stick () {
@@ -671,7 +677,7 @@ void DroneCommander::process_rc_input () {
     double z = 0;
 
     if (state.rc_valid) {
-        y = rc.axes[0];
+        y = - rc.axes[0];
         x = rc.axes[1];
         r = rc.axes[2];
         z = rc.axes[3];
@@ -700,7 +706,7 @@ void DroneCommander::process_rc_input () {
         case DCMD::CTRL_MODE_IDLE:        
         case DCMD::CTRL_MODE_ATT:
         default: {
-            set_att_setpoint(x * RC_MAX_TILT_ANGLE, y* RC_MAX_TILT_ANGLE, r * RC_MAX_YAW_RATE, z);
+            set_att_setpoint(x * RC_MAX_TILT_ANGLE, -y* RC_MAX_TILT_ANGLE, r * RC_MAX_YAW_RATE, z);
             break;
         }
     }
@@ -735,7 +741,7 @@ void DroneCommander::process_onboard_input () {
 }
 
 void DroneCommander::process_control() {
-    control_count ++;
+    //control_count ++;
 
     if (state.control_auth != DCMD::CTRL_AUTH_THIS)
         return;
@@ -947,10 +953,12 @@ void DroneCommander::prepare_control_hover() {
         hover_pos.y() = odometry.pose.pose.position.y;
         hover_pos.z() = odometry.pose.pose.position.z;
 
-        ROS_INFO("Entering hover mode, will hover at %3.2lf %3.2lf %3.2lf",
+        ROS_INFO("Entering hover mode, will hover at %3.2lf %3.2lf %3.2lf h %d c %d",
             hover_pos.x(),
             hover_pos.y(),
-            hover_pos.z()
+            hover_pos.z(),
+            last_hover_count,
+            control_count
         );
     }
 

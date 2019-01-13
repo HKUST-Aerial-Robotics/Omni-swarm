@@ -16,6 +16,7 @@
 #include <sensor_msgs/Imu.h>
 
 #define MAX_CMD_LOST_TIME 0.5f
+#define USE_DJI_THRUST_CTRL
 
 class DronePosControl {
     ros::NodeHandle & nh;
@@ -273,6 +274,7 @@ public:
             flag = VERTICAL_THRUST | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
         } else {
             flag = VERTICAL_VELOCITY  | HORIZONTAL_ANGLE | YAW_ANGLE | HORIZONTAL_BODY | STABLE_DISABLE;
+            // ROS_INFO("Thrust mode vel");
         }
 
         // atti_out.roll_sp = 0.0;
@@ -303,11 +305,13 @@ public:
         }
         if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE) {
             //IDLE
-
+            pos_ctrl->reset();
             return;
-        }
+        } 
         AttiCtrlOut atti_out;
+
         atti_out.thrust_mode = AttiCtrlOut::THRUST_MODE_THRUST;
+        
         if (state.ctrl_mode < drone_pos_ctrl_cmd::CTRL_CMD_ATT_THRUST_MODE) {
             if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_POS_MODE) {
                 vel_sp = pos_ctrl->control_pos(pos_sp, dt);            
@@ -329,7 +333,11 @@ public:
 
 
             atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
-
+#ifdef USE_DJI_THRUST_CTRL
+            // ROS_INFO("Using direct velocity mode");
+            atti_out.thrust_sp = vel_sp.z();
+            atti_out.thrust_mode = AttiCtrlOut::THRUST_MODE_VELZ;
+#endif
             if (state.count % 50 == 0)
             {
                 ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",

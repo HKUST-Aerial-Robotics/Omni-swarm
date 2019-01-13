@@ -12,6 +12,7 @@ using namespace Eigen;
 #define MAX_VERTICAL_ACC 10.0
 #define MAX_HORIZON_ACC 10.0
 #define MAX_TILT_ANGLE 0.8
+#define MIN_THRUST 0.0
 
 struct PIDParam {
     double p = 0;
@@ -128,6 +129,11 @@ public:
     PIDController()
     {}
 
+    void reset() {
+        err_integrate = 0;
+        err_last = 0;
+    }
+
     virtual inline double control(const double & err, double dt, bool report=false) {
         //TODO:
         if (!inited) {
@@ -243,6 +249,10 @@ public:
     //We using NED in our control system
     void set_acc(double _acc) {
         acc = _acc;
+    }
+
+    void reset() {
+        con.reset();
     }
 
     inline double control(const double & abx_sp, double dt) {
@@ -372,6 +382,17 @@ public:
 
         return acc_sp;    
     }
+    virtual void reset() {
+        vx_con.reset();
+        vy_con.reset();
+        vz_con.reset();
+
+        px_con.reset();
+        py_con.reset();
+        pz_con.reset();
+
+        thrust_ctrl.reset();
+    }
 
     virtual AttiCtrlOut control_acc(Eigen::Vector3d acc_sp, YawCMD yaw_cmd, double dt) {
         AttiCtrlOut ret;
@@ -407,7 +428,7 @@ public:
         // Only for hover
         ret.abx_sp = acc_sp.norm();
 
-        ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), 0.2, 1);
+        ret.thrust_sp = float_constrain(thrust_ctrl.control(ret.abx_sp, dt), MIN_THRUST, 1);
 
         if (fabs(acc_sp.z()) > 0.1) {
             pitch_sp = float_constrain(- asin(acc_sp.x() / acc_sp.norm()), -MAX_TILT_ANGLE, MAX_TILT_ANGLE);

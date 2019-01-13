@@ -8,7 +8,7 @@ import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A easy command tool for sending command to swarm drone')
-    parser.add_argument('command_type', metavar='command_type', choices=["takeoff", "landing", "flyto", "arm", "disarm", "joy_control"], nargs=1, help="Type of command to send")
+    parser.add_argument('command_type', metavar='command_type', choices=["takeoff", "landing", "flyto", "arm", "disarm", "joy_control"], help="Type of command to send")
     parser.add_argument("-i", "--node_id", type=int, default=-1,
         help="The node id that pending to control, when default node_id=-1, that is control all UAVs")
     parser.add_argument("-o","--onboard", action="store_true", help="If use this onboard.")
@@ -18,14 +18,14 @@ if __name__ == "__main__":
     print("Will send command {} by id {} with params {}".format(args.command_type, args.node_id, args.params))
 
     if args.onboard:
-        rospy.loginfo("The command will send onboard")
+        print("The command will send onboard!")
     else:
-        rospy.loginfo("The command will send remote")
+        print("The command will send remote!")
 
     try:
         rospy.get_master().getPid()
     except:
-        rospy.loginfo("roscore is offline, exit")
+        print("roscore is offline, exit")
         sys.exit(-1)
 
     rospy.init_node('cmded', anonymous=True)
@@ -72,11 +72,27 @@ if __name__ == "__main__":
             cmd.param8 = 0
 
     if args.onboard:
-        pub = rospy.Publisher("/drone_commander/onboard_command", drone_onboard_command, queue_size=10)
-        pub.publish(cmd)
+        print("Sending to onboard")
+        print(cmd)
+        pub = rospy.Publisher("/drone_commander/onboard_command", drone_onboard_command, queue_size=1)
+        # pub.publish(cmd)
+        
     else:
+        print("Sending to remote")
+        print(scmd)
         scmd = swarm_remote_command()
         scmd.target_id = args.target_id
         scmd.cmd = cmd        
-        pub = rospy.Publisher("/swarm_drones/send_swarm_command", swarm_remote_command, queue_size=10)
-        pub.publish(scmd)
+        pub = rospy.Publisher("/swarm_drones/send_swarm_command", swarm_remote_command, queue_size=1)
+        # pub.publish(scmd)
+        cmd = scmd
+
+    rate = rospy.Rate(10)  # 10hz
+
+    while not rospy.is_shutdown():
+        connections = pub.get_num_connections()
+        print('Connections ', connections)
+        if connections > 0:
+            pub.publish(cmd)
+            break
+        rate.sleep()
