@@ -30,7 +30,7 @@ using namespace Eigen;
 #define RC_MAX_YAW_RATE 1.57
 #define RC_MAX_TILT_ANGLE 0.52
 #define TAKEOFF_VEL_Z 2.0
-#define LANDING_VEL_Z -1.0
+#define LANDING_VEL_Z -0.5
 #define MAX_AUTO_Z_ERROR 0.05
 #define MIN_TAKEOFF_HEIGHT 0.5
 #define MIN_TRY_ARM_DURATION 1.0
@@ -87,6 +87,7 @@ class DroneCommander {
     Eigen::Vector3d takeoff_origin = Eigen::Vector3d(0, 0, 0);
 
     bool takeoff_inited = false;
+    bool landing_inited = false;
 
     int control_count = 0;
 
@@ -869,15 +870,11 @@ void DroneCommander::process_control_landing() {
         request_ctrl_mode(DCMD::CTRL_MODE_IDLE);
         ROS_INFO("Finsh landing, turn to IDLE");
     } else {
-        ctrl_cmd->ctrl_mode = DPCL::CTRL_CMD_ATT_VELZ_MODE;
-        Eigen::Quaterniond quat_sp = (Eigen::Quaterniond) Eigen::AngleAxisd(ctrl_cmd->yaw_sp, Eigen::Vector3d::UnitZ());
-        ctrl_cmd->att_sp.w = quat_sp.w();
-        ctrl_cmd->att_sp.x = quat_sp.x();
-        ctrl_cmd->att_sp.y = quat_sp.y();
-        ctrl_cmd->att_sp.z = quat_sp.z();
-
-        ctrl_cmd->z_sp = LANDING_VEL_Z;
-        // ROS_INFO("Sending landing cmd");
+        if (state.vo_valid) {
+            set_vel_setpoint(0, 0, LANDING_VEL_Z);
+        } else {
+            set_att_setpoint(0 ,0, 0, LANDING_VEL_Z, true, false);
+        }
         send_ctrl_cmd();
     }
 

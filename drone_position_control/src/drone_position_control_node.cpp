@@ -16,7 +16,7 @@
 #include <sensor_msgs/Imu.h>
 
 #define MAX_CMD_LOST_TIME 0.5f
-//#define USE_DJI_THRUST_CTRL
+#define USE_DJI_THRUST_CTRL
 
 class DronePosControl {
     ros::NodeHandle & nh;
