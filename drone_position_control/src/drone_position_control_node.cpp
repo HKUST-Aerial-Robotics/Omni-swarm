@@ -38,6 +38,7 @@ class DronePosControl {
     float z_sp = 0;
 
     Eigen::Vector3d odom_att_rpy;
+    Eigen::Vector3d fc_att_rpy;
 
 
     ros::Publisher state_pub;
@@ -69,7 +70,8 @@ class DronePosControl {
                 vel_sp.x(), vel_sp.y(), vel_sp.z(),//17
                 acc_sp.x(), acc_sp.y(), acc_sp.z(),//20
                 atti_out.roll_sp, atti_out.pitch_sp, atti_out.yaw_sp,//23
-                atti_out.thrust_sp//24
+                atti_out.thrust_sp,//24,
+                fc_att_rpy.x(), fc_att_rpy.y(), fc_att_rpy.z()//27
             );
         fflush(log_file);
         
@@ -130,7 +132,7 @@ public:
         pos_ctrl = new RotorPositionControl(ctrlP);
         ROS_INFO("Pos control success");
 
-        control_timer = nh.createTimer(ros::Duration(0.005), &DronePosControl::control_update, this);
+        control_timer = nh.createTimer(ros::Duration(0.02), &DronePosControl::control_update, this);
         
         log_path = "/home/dji/drone_log_lastest";
 
@@ -142,7 +144,7 @@ public:
         drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnSwarmPosCommand, this);
         fc_att_sub = nh.subscribe("fc_attitude", 1, &DronePosControl::onFCAttitude, this);
         imu_data_sub = nh.subscribe("fc_imu", 1, &DronePosControl::on_imu_data, this);
-        control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 10);
+        control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 1);
 
         start_time = last_cmd_ts = ros::Time::now();
     }   
