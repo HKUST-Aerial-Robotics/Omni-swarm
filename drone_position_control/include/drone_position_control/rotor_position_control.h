@@ -8,7 +8,7 @@ using namespace Eigen;
 
 #define GRAVITY (9.695f)
 #define MAX_HORIZON_VEL 10.0
-#define MAX_VERTICAL_VEL 5.0
+#define MAX_VERTICAL_VEL 3.0
 #define MAX_VERTICAL_ACC 10.0
 #define MAX_HORIZON_ACC 10.0
 #define MAX_TILT_ANGLE 0.8
