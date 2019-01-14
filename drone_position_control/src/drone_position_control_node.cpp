@@ -68,19 +68,21 @@ class DronePosControl {
         nh.param<double>("pid_param/p_x/p", ctrlP.p_x.p, 0);
         nh.param<double>("pid_param/p_x/i", ctrlP.p_x.i, 0);
         nh.param<double>("pid_param/p_x/d", ctrlP.p_x.d, 0);
+        nh.param<double>("pid_param/p_x/max_i", ctrlP.p_x.max_err_i, 30);
 
         nh.param<double>("pid_param/p_y/p", ctrlP.p_y.p, 0);
         nh.param<double>("pid_param/p_y/i", ctrlP.p_y.i, 0);
         nh.param<double>("pid_param/p_y/d", ctrlP.p_y.d, 0);
+        nh.param<double>("pid_param/p_y/max_i", ctrlP.p_y.max_err_i, 30);
 
         nh.param<double>("pid_param/p_z/p", ctrlP.p_z.p, 0);
         nh.param<double>("pid_param/p_z/i", ctrlP.p_z.i, 0);
         nh.param<double>("pid_param/p_z/d", ctrlP.p_z.d, 0);
+        nh.param<double>("pid_param/p_z/max_i", ctrlP.p_z.max_err_i, 30);
 
         nh.param<double>("pid_param/v_x/p", ctrlP.v_x.p, 0);
         nh.param<double>("pid_param/v_x/i", ctrlP.v_x.i, 0);
         nh.param<double>("pid_param/v_x/d", ctrlP.v_x.d, 0);
-
         nh.param<double>("pid_param/v_x/max_i", ctrlP.v_x.max_err_i, 15);
 
         nh.param<double>("pid_param/v_y/p", ctrlP.v_y.p, 0);
@@ -98,9 +100,7 @@ class DronePosControl {
         nh.param<double>("pid_param/thr/i", ctrlP.thrust_ctrl.abx.i, 0);
         nh.param<double>("pid_param/thr/d", ctrlP.thrust_ctrl.abx.d, 0);
         nh.param<double>("pid_param/thr/max_i", ctrlP.thrust_ctrl.abx.max_err_i, 0);
-        nh.param<double>("pid_param/thr/level_thrust", ctrlP.thrust_ctrl.level_thrust, 0.5);
-
-        
+        nh.param<double>("pid_param/thr/level_thrust", ctrlP.thrust_ctrl.level_thrust, 0.3);
     }
     ros::Timer control_timer;
 
