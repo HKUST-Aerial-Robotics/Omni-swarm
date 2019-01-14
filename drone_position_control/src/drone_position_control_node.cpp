@@ -32,8 +32,12 @@ class DronePosControl {
 
     Eigen::Vector3d pos_sp = Eigen::Vector3d(0, 0, 0);
     Eigen::Vector3d vel_sp = Eigen::Vector3d(0, 0, 0);
+    Eigen::Vector3d acc_sp = Eigen::Vector3d(0, 0, 0);
+
     Quaterniond att_sp;
     float z_sp = 0;
+
+    Eigen::Vector3d odom_att_rpy;
 
 
     ros::Publisher state_pub;
@@ -45,24 +49,31 @@ class DronePosControl {
 
     double yaw_fc = 0;
 
-    ros::Time last_cmd_ts;
-    /*
+    ros::Time last_cmd_ts, start_time;
+
+    AttiCtrlOut atti_out;
+
+
+    FILE * log_file;
+
     void recordCSV() {
         fprintf(
                   //0  1 2  3  4  5  6  7   8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
-            log_file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-                state.pose.position.x,state.pose.position.y,state.pose.position.z,//3
-                state.global_vel.x,state.global_vel.y,state.global_vel.z,//6
-                state.pitch, state.roll, state.yaw,//9
-                state.imu_data.linear_acceleration.x, state.imu_data.linear_acceleration.y, state.imu_data.linear_acceleration.z,//12
-                state.pitch_cmd, state.roll_cmd, state.yaw_cmd,state.abx_cmd,//16
-                state.acc_cmd.x, state.acc_cmd.y, state.acc_cmd.z,//19
-                state.vel_cmd.x, state.vel_cmd.y, state.vel_cmd.z,//22
-                state.pos_sp.x, state.pos_sp.y, state.pos_sp.z,//25
-                state.vel_desired.x, state.vel_desired.y, state.vel_desired.z//28
+            log_file, "%f,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+                (ros::Time::now() - start_time).toSec(),//1
+                state.ctrl_mode,//2
+                state.pose.position.x,state.pose.position.y,state.pose.position.z,//5
+                state.global_vel.x,state.global_vel.y,state.global_vel.z,//8
+                odom_att_rpy.x(), odom_att_rpy.y(), odom_att_rpy.z(),//11
+                pos_sp.x(), pos_sp.y(), pos_sp.z(),//14
+                vel_sp.x(), vel_sp.y(), vel_sp.z(),//17
+                acc_sp.x(), acc_sp.y(), acc_sp.z(),//20
+                atti_out.roll_sp, atti_out.pitch_sp, atti_out.yaw_sp,//23
+                atti_out.thrust_sp//24
             );
         fflush(log_file);
-    }*/
+        
+    }
 
     void read_controller_param(RotorPosCtrlParam & ctrlP) {
         nh.param<double>("pid_param/p_x/p", ctrlP.p_x.p, 0);
@@ -133,11 +144,10 @@ public:
         imu_data_sub = nh.subscribe("fc_imu", 1, &DronePosControl::on_imu_data, this);
         control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 10);
 
-        last_cmd_ts = ros::Time::now();
+        start_time = last_cmd_ts = ros::Time::now();
     }   
 
     void init_log_file() {
-        /*
         time_t rawtime;
         struct tm * timeinfo;
         char buffer[80] = {0};
@@ -146,17 +156,17 @@ public:
         int r = rand();  
         char str[100] = {0};
 
-        sprintf(buffer, "/home/nvidia/scp_log/log_%d.csv", r);
-        // strftime(buffer,sizeof(buffer), str, timeinfo);
+        sprintf(buffer, "/home/dji/swarm_log_lastest/log_%d.csv", r);
 
-        FILE* flog_list = fopen("/home/nvidia/scp_log/log_list.txt", "a");
+        FILE* flog_list = fopen("/home/dji/swarm_log_lastest/log_list.txt", "a");
         fprintf(flog_list,"%s\n", buffer);
         fflush(flog_list);
         fclose(flog_list);
         ROS_INFO("opening %s as log", buffer);
 
         log_file = fopen(buffer,"w");
-        */
+
+        ROS_INFO("Log inited");
     }
 
     void on_imu_data(const sensor_msgs::Imu & _imu) {
@@ -258,8 +268,8 @@ public:
         pos_ctrl->set_global_vel(vel);
         set_drone_global_pos_vel(pos, vel);
 
-        Eigen::Vector3d rpy = quat2eulers(quat);
-        double yaw_odom = rpy.z();
+        odom_att_rpy = quat2eulers(quat);
+        double yaw_odom = odom_att_rpy.z();
         yaw_offset = constrainAngle(yaw_fc - yaw_odom);
     }
 
@@ -298,17 +308,17 @@ public:
         state.count ++;
         float dt = (e.current_real - e.last_real).toSec();
         
-        Eigen::Vector3d acc_sp(0, 0, 0);
-
         if ((ros::Time::now() - last_cmd_ts).toSec() > MAX_CMD_LOST_TIME) {
              state.ctrl_mode = drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE;
         }
         if (state.ctrl_mode == drone_pos_ctrl_cmd::CTRL_CMD_IDLE_MODE) {
             //IDLE
+            if (state.count % 50 == 0) {
+                ROS_INFO("Position controller idle mode");
+            }
             pos_ctrl->reset();
             return;
         } 
-        AttiCtrlOut atti_out;
 
         atti_out.thrust_mode = AttiCtrlOut::THRUST_MODE_THRUST;
         
@@ -332,7 +342,7 @@ public:
             acc_sp.z() = float_constrain(acc_sp.z(), -10, 10);
 
 
-            atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt);
+            atti_out =  pos_ctrl->control_acc(acc_sp, yaw_cmd, dt, odom_att_rpy.z());
 #ifdef USE_DJI_THRUST_CTRL
             // ROS_INFO("Using direct velocity mode");
             atti_out.thrust_sp = vel_sp.z();
@@ -340,7 +350,8 @@ public:
 #endif
             if (state.count % 50 == 0)
             {
-                ROS_INFO("Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
+                ROS_INFO("Mode %d Possp/pos %3.2f %3.2f %3.2f/ %3.2f %3.2f %3.2f",
+                    state.ctrl_mode,
                     pos_sp.x(), pos_sp.y(), pos_sp.z(),
                     pos_ctrl->pos.x(),pos_ctrl->pos.y(),pos_ctrl->pos.z()
                 );
@@ -393,7 +404,7 @@ public:
 
         state_pub.publish(state);
 
-        // recordCSV();
+        recordCSV();
     }
 
 };
