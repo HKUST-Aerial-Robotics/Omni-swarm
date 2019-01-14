@@ -394,7 +394,7 @@ public:
         thrust_ctrl.reset();
     }
 
-    virtual AttiCtrlOut control_acc(Eigen::Vector3d acc_sp, YawCMD yaw_cmd, double dt) {
+    virtual AttiCtrlOut control_acc(Eigen::Vector3d acc_sp, YawCMD yaw_cmd, double dt, double yaw_now) {
         AttiCtrlOut ret;
         
         double pitch_sp = 0;
@@ -403,17 +403,8 @@ public:
         
         if (param.ctrl_frame == CTRL_FRAME::VEL_WORLD_ACC_WORLD) {
             //Convert to body frame first
-            if (yaw_cmd.yaw_mode == YAW_MODE::YAW_MODE_LOCK)
-            {
-                Eigen::Quaterniond yaw_transverse(Eigen::AngleAxisd(yaw_cmd.yaw_sp, Vector3d::UnitZ()));
-                //IF USE MOCAP                
-                // acc_sp = yaw_transverse.inverse() * acc_sp;
-            }
-            else
-            {
-                //IF USE MOCAP
-                // acc_sp = yaw_transverse.inverse() * acc_sp;
-            }
+            Eigen::Quaterniond yaw_transverse(Eigen::AngleAxisd(yaw_now, Vector3d::UnitZ()));
+            acc_sp = yaw_transverse.inverse() * acc_sp;
         }
 
         if(param.coor_sys == FRAME_COOR_SYS::FLU) {
