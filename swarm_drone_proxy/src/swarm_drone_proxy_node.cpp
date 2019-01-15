@@ -317,6 +317,8 @@ class SwarmDroneProxy
 
     void on_mavlink_recv_swarm_command(mavlink_message_t & msg) {
         mavlink_swarm_remote_command_t cmd;
+        mavlink_msg_swarm_remote_command_decode(&msg, &cmd);
+        ROS_INFO("Recv swarm remote command to %d", cmd.target_id);        
         if (cmd.target_id == -1 || cmd.target_id == this->self_id) {
             //Cmd apply to this
             drone_onboard_command dcmd;
