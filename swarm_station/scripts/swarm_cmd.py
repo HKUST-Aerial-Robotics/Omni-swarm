@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("-o","--onboard", action="store_true", help="If use this onboard.")
     parser.add_argument("-c","--center", nargs=3, type=float, help="center for circle", default=[0, 0, 1])
     parser.add_argument("-r","--radius", nargs=1, type=float, help="radius for circle", default=0.5)
-    parser.add_argument("-T","--cycle", nargs=1, type=float, help="cycle for circle", default=10)
+    parser.add_argument("-t","--cycle", type=float, help="cycle for circle", default=10)
 
     parser.add_argument("params",nargs="*", type=float, help="parameters for command")
     args = parser.parse_args()
