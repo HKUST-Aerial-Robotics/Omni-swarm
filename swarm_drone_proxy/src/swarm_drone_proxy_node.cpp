@@ -15,6 +15,7 @@ using namespace swarm_msgs;
 using namespace nav_msgs;
 using namespace geometry_msgs;
 
+
 class SwarmDroneProxy
 {
     ros::NodeHandle & nh;
@@ -82,43 +83,52 @@ class SwarmDroneProxy
         odometry_updated = true;
     }
 
-    bool parse_mavlink_data(const std::vector<uint8_t> & buf, nav_msgs::Odometry & odom, std::vector<float>& _dis)
-    {
+    bool on_swarm_info_mavlink_msg_recv(mavlink_message_t&  msg, nav_msgs::Odometry & odom, std::vector<float>& _dis) {
+        mavlink_swarm_info_t swarm_info;
+        
+        mavlink_msg_swarm_info_decode(&msg, &swarm_info);
+
+        if (!swarm_info.odom_vaild)
+            return false;
+        odom.pose.pose.position.x = swarm_info.x;
+        odom.pose.pose.position.y = swarm_info.y;
+        odom.pose.pose.position.z = swarm_info.z;
+        
+        odom.twist.twist.linear.x = swarm_info.vx;
+        odom.twist.twist.linear.y = swarm_info.vy;
+        odom.twist.twist.linear.z = swarm_info.vz;
+
+        odom.pose.pose.orientation.w = swarm_info.q0;
+        odom.pose.pose.orientation.x = swarm_info.q1;
+        odom.pose.pose.orientation.y = swarm_info.q2;
+        odom.pose.pose.orientation.z = swarm_info.q3;
+
+        for (int i = 0; i < 10; i++)
+        {
+            _dis[i] = swarm_info.remote_distance[i];
+            // ROS_INFO("id %d %f", i, _dis[i]);
+        }              
+
+    }
+
+    bool parse_mavlink_data(const std::vector<uint8_t> & buf, nav_msgs::Odometry & odom, std::vector<float>& _dis) {
         // mavlink_msg_swa
         mavlink_message_t msg;
         mavlink_status_t status;
-        mavlink_swarm_info_t swarm_info;
-        for (uint8_t c : buf)
-        {
-            if (mavlink_parse_char(0, c, &msg, &status) && msg.msgid == MAVLINK_MSG_ID_SWARM_INFO)
-            {
-                mavlink_msg_swarm_info_decode(&msg, &swarm_info);
-
-                if (!swarm_info.odom_vaild)
-                    return false;
-                odom.pose.pose.position.x = swarm_info.x;
-                odom.pose.pose.position.y = swarm_info.y;
-                odom.pose.pose.position.z = swarm_info.z;
-                
-                odom.twist.twist.linear.x = swarm_info.vx;
-                odom.twist.twist.linear.y = swarm_info.vy;
-                odom.twist.twist.linear.z = swarm_info.vz;
-
-                odom.pose.pose.orientation.w = swarm_info.q0;
-                odom.pose.pose.orientation.x = swarm_info.q1;
-                odom.pose.pose.orientation.y = swarm_info.q2;
-                odom.pose.pose.orientation.z = swarm_info.q3;
-
-                for (int i = 0; i < 10; i++)
-                {
-                    _dis[i] = swarm_info.remote_distance[i];
-                    // ROS_INFO("id %d %f", i, _dis[i]);
-                }              
-
-                return true;  
+        bool ret = false;
+        for (uint8_t c : buf) {
+            if (mavlink_parse_char(0, c, &msg, &status)) {
+                switch(msg.msgid) {
+                    case  MAVLINK_MSG_ID_SWARM_INFO:
+                        ret = on_swarm_info_mavlink_msg_recv(msg, odom, _dis);
+                        break;
+                    case MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND: 
+                        on_mavlink_recv_swarm_command(msg);
+                        break;
+                }
             }
         }
-        return false;
+        return ret;
     }
 
     void send_mavlink_message(mavlink_message_t & msg) {
@@ -301,10 +311,12 @@ class SwarmDroneProxy
         mavlink_msg_swarm_remote_command_pack(0, 0, &msg, rcmd.target_id, cmd.command_type, 
             cmd.param1, cmd.param2, cmd.param3, cmd.param4, cmd.param5, cmd.param6, cmd.param7, cmd.param8);
 
-            send_mavlink_message(msg);
+        ROS_INFO("Swarm CMD target %d type %d", rcmd.target_id, rcmd.cmd.command_type);
+        send_mavlink_message(msg);
     }
 
-    void on_mavlink_recv_swarm_command(mavlink_swarm_remote_command_t cmd) {
+    void on_mavlink_recv_swarm_command(mavlink_message_t & msg) {
+        mavlink_swarm_remote_command_t cmd;
         if (cmd.target_id == -1 || cmd.target_id == this->self_id) {
             //Cmd apply to this
             drone_onboard_command dcmd;
