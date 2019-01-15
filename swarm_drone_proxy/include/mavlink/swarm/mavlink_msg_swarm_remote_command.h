@@ -13,7 +13,7 @@ typedef struct __mavlink_swarm_remote_command_t {
  uint32_t param6; /*< [m] param6*/
  uint32_t param7; /*< [m] param7*/
  uint32_t param8; /*< [m] param8*/
- uint8_t target_id; /*<  Target ID of drone*/
+ int8_t target_id; /*<  Target ID of drone*/
  uint8_t command_type; /*< [m] Onboard command type*/
 }) mavlink_swarm_remote_command_t;
 
@@ -22,8 +22,8 @@ typedef struct __mavlink_swarm_remote_command_t {
 #define MAVLINK_MSG_ID_402_LEN 34
 #define MAVLINK_MSG_ID_402_MIN_LEN 34
 
-#define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_CRC 50
-#define MAVLINK_MSG_ID_402_CRC 50
+#define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_CRC 159
+#define MAVLINK_MSG_ID_402_CRC 159
 
 
 
@@ -32,7 +32,7 @@ typedef struct __mavlink_swarm_remote_command_t {
     402, \
     "SWARM_REMOTE_COMMAND", \
     10, \
-    {  { "target_id", NULL, MAVLINK_TYPE_UINT8_T, 0, 32, offsetof(mavlink_swarm_remote_command_t, target_id) }, \
+    {  { "target_id", NULL, MAVLINK_TYPE_INT8_T, 0, 32, offsetof(mavlink_swarm_remote_command_t, target_id) }, \
          { "command_type", NULL, MAVLINK_TYPE_UINT8_T, 0, 33, offsetof(mavlink_swarm_remote_command_t, command_type) }, \
          { "param1", NULL, MAVLINK_TYPE_UINT32_T, 0, 0, offsetof(mavlink_swarm_remote_command_t, param1) }, \
          { "param2", NULL, MAVLINK_TYPE_UINT32_T, 0, 4, offsetof(mavlink_swarm_remote_command_t, param2) }, \
@@ -48,7 +48,7 @@ typedef struct __mavlink_swarm_remote_command_t {
 #define MAVLINK_MESSAGE_INFO_SWARM_REMOTE_COMMAND { \
     "SWARM_REMOTE_COMMAND", \
     10, \
-    {  { "target_id", NULL, MAVLINK_TYPE_UINT8_T, 0, 32, offsetof(mavlink_swarm_remote_command_t, target_id) }, \
+    {  { "target_id", NULL, MAVLINK_TYPE_INT8_T, 0, 32, offsetof(mavlink_swarm_remote_command_t, target_id) }, \
          { "command_type", NULL, MAVLINK_TYPE_UINT8_T, 0, 33, offsetof(mavlink_swarm_remote_command_t, command_type) }, \
          { "param1", NULL, MAVLINK_TYPE_UINT32_T, 0, 0, offsetof(mavlink_swarm_remote_command_t, param1) }, \
          { "param2", NULL, MAVLINK_TYPE_UINT32_T, 0, 4, offsetof(mavlink_swarm_remote_command_t, param2) }, \
@@ -81,7 +81,7 @@ typedef struct __mavlink_swarm_remote_command_t {
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_swarm_remote_command_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-                               uint8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
+                               int8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN];
@@ -93,7 +93,7 @@ static inline uint16_t mavlink_msg_swarm_remote_command_pack(uint8_t system_id, 
     _mav_put_uint32_t(buf, 20, param6);
     _mav_put_uint32_t(buf, 24, param7);
     _mav_put_uint32_t(buf, 28, param8);
-    _mav_put_uint8_t(buf, 32, target_id);
+    _mav_put_int8_t(buf, 32, target_id);
     _mav_put_uint8_t(buf, 33, command_type);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN);
@@ -137,7 +137,7 @@ static inline uint16_t mavlink_msg_swarm_remote_command_pack(uint8_t system_id, 
  */
 static inline uint16_t mavlink_msg_swarm_remote_command_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
                                mavlink_message_t* msg,
-                                   uint8_t target_id,uint8_t command_type,uint32_t param1,uint32_t param2,uint32_t param3,uint32_t param4,uint32_t param5,uint32_t param6,uint32_t param7,uint32_t param8)
+                                   int8_t target_id,uint8_t command_type,uint32_t param1,uint32_t param2,uint32_t param3,uint32_t param4,uint32_t param5,uint32_t param6,uint32_t param7,uint32_t param8)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN];
@@ -149,7 +149,7 @@ static inline uint16_t mavlink_msg_swarm_remote_command_pack_chan(uint8_t system
     _mav_put_uint32_t(buf, 20, param6);
     _mav_put_uint32_t(buf, 24, param7);
     _mav_put_uint32_t(buf, 28, param8);
-    _mav_put_uint8_t(buf, 32, target_id);
+    _mav_put_int8_t(buf, 32, target_id);
     _mav_put_uint8_t(buf, 33, command_type);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN);
@@ -217,7 +217,7 @@ static inline uint16_t mavlink_msg_swarm_remote_command_encode_chan(uint8_t syst
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_swarm_remote_command_send(mavlink_channel_t chan, uint8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
+static inline void mavlink_msg_swarm_remote_command_send(mavlink_channel_t chan, int8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN];
@@ -229,7 +229,7 @@ static inline void mavlink_msg_swarm_remote_command_send(mavlink_channel_t chan,
     _mav_put_uint32_t(buf, 20, param6);
     _mav_put_uint32_t(buf, 24, param7);
     _mav_put_uint32_t(buf, 28, param8);
-    _mav_put_uint8_t(buf, 32, target_id);
+    _mav_put_int8_t(buf, 32, target_id);
     _mav_put_uint8_t(buf, 33, command_type);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND, buf, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_MIN_LEN, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_CRC);
@@ -272,7 +272,7 @@ static inline void mavlink_msg_swarm_remote_command_send_struct(mavlink_channel_
   is usually the receive buffer for the channel, and allows a reply to an
   incoming message with minimum stack space usage.
  */
-static inline void mavlink_msg_swarm_remote_command_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  uint8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
+static inline void mavlink_msg_swarm_remote_command_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int8_t target_id, uint8_t command_type, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4, uint32_t param5, uint32_t param6, uint32_t param7, uint32_t param8)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char *buf = (char *)msgbuf;
@@ -284,7 +284,7 @@ static inline void mavlink_msg_swarm_remote_command_send_buf(mavlink_message_t *
     _mav_put_uint32_t(buf, 20, param6);
     _mav_put_uint32_t(buf, 24, param7);
     _mav_put_uint32_t(buf, 28, param8);
-    _mav_put_uint8_t(buf, 32, target_id);
+    _mav_put_int8_t(buf, 32, target_id);
     _mav_put_uint8_t(buf, 33, command_type);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND, buf, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_MIN_LEN, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN, MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_CRC);
@@ -316,9 +316,9 @@ static inline void mavlink_msg_swarm_remote_command_send_buf(mavlink_message_t *
  *
  * @return  Target ID of drone
  */
-static inline uint8_t mavlink_msg_swarm_remote_command_get_target_id(const mavlink_message_t* msg)
+static inline int8_t mavlink_msg_swarm_remote_command_get_target_id(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  32);
+    return _MAV_RETURN_int8_t(msg,  32);
 }
 
 /**
