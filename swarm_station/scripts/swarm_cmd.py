@@ -13,8 +13,9 @@ def send(cmd, args, pub):
         pub.publish(cmd)
     else:
         scmd = swarm_remote_command()
-        scmd.target_id = args.node_id
+        scmd.target_id = int(args.node_id)
         scmd.cmd = cmd        
+        print(scmd)
         pub.publish(scmd)
 
 
