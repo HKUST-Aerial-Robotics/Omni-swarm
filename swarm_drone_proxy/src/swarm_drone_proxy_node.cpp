@@ -333,7 +333,7 @@ class SwarmDroneProxy
             dcmd.param8 = cmd.param8;
 
             ROS_INFO("Station command target %d type %d", cmd.target_id, dcmd.command_type);
-            ROS_INFO("Param 1-4 %d %d %d %d 5-8 %d %d %d %d", 
+            ROS_INFO("Param 1to4 %d %d %d %d 5to8 %d %d %d %d", 
                 dcmd.param1, dcmd.param2, dcmd.param3, dcmd.param4,
                 dcmd.param5, dcmd.param6, dcmd.param7, dcmd.param8);
             drone_cmd_pub.publish(dcmd);
