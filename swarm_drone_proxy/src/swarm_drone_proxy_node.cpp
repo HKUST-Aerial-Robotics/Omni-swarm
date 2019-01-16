@@ -59,6 +59,19 @@ class SwarmDroneProxy
         return ret;
     }
 
+    Odometry naive_predict_dt(const Odometry & odom_now, double dt)
+    {
+        Odometry ret = odom_now;
+        // double now = ros::Time::now().toSec();
+        // ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+        ret.pose.pose.position.x += dt * odom_now.twist.twist.linear.x;
+        ret.pose.pose.position.y += dt * odom_now.twist.twist.linear.y;
+        ret.pose.pose.position.z += dt * odom_now.twist.twist.linear.z;
+        ret.header.stamp = ros::Time::now();
+        return ret;
+    }
+
+
     void on_local_odometry_recv(const nav_msgs::Odometry & odom)
     {
 
@@ -214,13 +227,28 @@ class SwarmDroneProxy
 
             auto s = info.datas[i];
             nav_msgs::Odometry odom;
+
+
             std::vector<float> _dis(10);
             bool ret = parse_mavlink_data(s.data, odom, _dis);
+            ROS_INFO("recv odom   %4.3f", odom.pose.pose.position.x);
+            odom = naive_predict_dt(odom, forward_predict_time);
+            ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
             if (ret)
             {
                 id_n_distance[_id] = _dis;
                 available_id.push_back(_id);
                 id_odoms[_id] = odom;
+
+                if (drone_odom_pubs.find(_id) == drone_odom_pubs.end()) {
+                    char name[20] = {0};
+                    sprintf(name, "/swarm_drone/odom_%d", _id);  
+                    
+                    drone_odom_pubs[_id] = nh.advertise<Odometry>(name, 1);
+                }
+                drone_odom_pubs[_id].publish(odom);
+                ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
+
                 // printf("%d id selfidforce %d\n", _id, force_self_id);
                 if (_id == force_self_id)
                     force_self_id_avail = true;
@@ -246,7 +274,7 @@ class SwarmDroneProxy
         //Using last distances, assume cost 0.02 time offset
         if (!gcs_mode)
         {
-            id_odoms[info.self_id] = naive_predict(self_odom, info.header.stamp.toSec() - 0.02);
+            id_odoms[info.self_id] = naive_predict(self_odom, info.header.stamp.toSec());
         }
         else {
             self_odom.header.stamp = ros::Time::now();
@@ -341,6 +369,10 @@ class SwarmDroneProxy
             return;
         }
     }
+
+    std::map<int, ros::Publisher> drone_odom_pubs;
+    double forward_predict_time = 0.08;
+
 public:
     SwarmDroneProxy(ros::NodeHandle & _nh):
         nh(_nh)
@@ -348,17 +380,18 @@ public:
         ROS_INFO("Start SWARM Drone Proxy");
 
         std::string vins_topic ="";
-        nh.param<std::string>("vins_topic", vins_topic, "/vins_estimator/odometry");
         nh.param<int>("force_self_id", force_self_id, -1);
+        nh.param<double>("forward_predict_time", forward_predict_time , 0.02);
         nh.param<bool>("gcs_mode", gcs_mode, false);
         // read /vins_estimator/odometry and send to uwb by mavlink
-        local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
+        local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this);
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
         swarm_cmd_sub = nh.subscribe("/swarm_drones/send_swarm_command", 1, &SwarmDroneProxy::on_send_swarm_commands, this);
         drone_cmd_pub = nh.advertise<drone_onboard_command>("/drone_commander/onboard_command", 1);
+
         if (gcs_mode) {
             pos.x() = 0;
             pos.y() = 0;

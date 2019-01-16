@@ -10,6 +10,7 @@ from builtins import range
 from builtins import object
 import struct, array, time, json, os, sys, platform
 
+
 '''MAVLink X25 CRC code'''
 
 
@@ -43,7 +44,7 @@ class x25crc(object):
 import hashlib
 
 WIRE_PROTOCOL_VERSION = '2.0'
-DIALECT = 'pymavlink4swarm'
+DIALECT = 'swarm_inc'
 
 PROTOCOL_MARKER_V1 = 0xFE
 PROTOCOL_MARKER_V2 = 0xFD
@@ -171,7 +172,7 @@ class MAVLink_message(object):
         return not self.__eq__(other)
 
     def __eq__(self, other):
-        if other == None:
+        if other is None:
             return False
 
         if self.get_type() != other.get_type():
@@ -185,11 +186,11 @@ class MAVLink_message(object):
             return False
 
         if self.get_srcSystem() != other.get_srcSystem():
-            return False            
+            return False
 
         if self.get_srcComponent() != other.get_srcComponent():
-            return False   
-            
+            return False
+
         for a in self._fieldnames:
             if self.format_attr(a) != other.format_attr(a):
                 return False
@@ -248,7 +249,7 @@ class EnumEntry(object):
         self.name = name
         self.description = description
         self.param = {}
-        
+
 enums = {}
 
 # MAV_AUTOPILOT
@@ -2958,39 +2959,11 @@ enums['RC_TYPE'][1] = EnumEntry('RC_TYPE_SPEKTRUM_DSMX', '''Spektrum DSMX''')
 RC_TYPE_ENUM_END = 2 # 
 enums['RC_TYPE'][2] = EnumEntry('RC_TYPE_ENUM_END', '''''')
 
-# POSITION_TARGET_TYPEMASK
-enums['POSITION_TARGET_TYPEMASK'] = {}
-POSITION_TARGET_TYPEMASK_X_IGNORE = 1 # 0b0000000000000001 Ignore position x
-enums['POSITION_TARGET_TYPEMASK'][1] = EnumEntry('POSITION_TARGET_TYPEMASK_X_IGNORE', '''0b0000000000000001 Ignore position x''')
-POSITION_TARGET_TYPEMASK_Y_IGNORE = 2 # 0b0000000000000010 Ignore position y
-enums['POSITION_TARGET_TYPEMASK'][2] = EnumEntry('POSITION_TARGET_TYPEMASK_Y_IGNORE', '''0b0000000000000010 Ignore position y''')
-POSITION_TARGET_TYPEMASK_Z_IGNORE = 4 # 0b0000000000000100 Ignore position z
-enums['POSITION_TARGET_TYPEMASK'][4] = EnumEntry('POSITION_TARGET_TYPEMASK_Z_IGNORE', '''0b0000000000000100 Ignore position z''')
-POSITION_TARGET_TYPEMASK_VX_IGNORE = 8 # 0b0000000000001000 Ignore velocity x
-enums['POSITION_TARGET_TYPEMASK'][8] = EnumEntry('POSITION_TARGET_TYPEMASK_VX_IGNORE', '''0b0000000000001000 Ignore velocity x''')
-POSITION_TARGET_TYPEMASK_VY_IGNORE = 16 # 0b0000000000010000 Ignore velocity y
-enums['POSITION_TARGET_TYPEMASK'][16] = EnumEntry('POSITION_TARGET_TYPEMASK_VY_IGNORE', '''0b0000000000010000 Ignore velocity y''')
-POSITION_TARGET_TYPEMASK_VZ_IGNORE = 32 # 0b0000000000100000 Ignore velocity z
-enums['POSITION_TARGET_TYPEMASK'][32] = EnumEntry('POSITION_TARGET_TYPEMASK_VZ_IGNORE', '''0b0000000000100000 Ignore velocity z''')
-POSITION_TARGET_TYPEMASK_AX_IGNORE = 64 # 0b0000000001000000 Ignore acceleration x
-enums['POSITION_TARGET_TYPEMASK'][64] = EnumEntry('POSITION_TARGET_TYPEMASK_AX_IGNORE', '''0b0000000001000000 Ignore acceleration x''')
-POSITION_TARGET_TYPEMASK_AY_IGNORE = 128 # 0b0000000010000000 Ignore acceleration y
-enums['POSITION_TARGET_TYPEMASK'][128] = EnumEntry('POSITION_TARGET_TYPEMASK_AY_IGNORE', '''0b0000000010000000 Ignore acceleration y''')
-POSITION_TARGET_TYPEMASK_AZ_IGNORE = 256 # 0b0000000100000000 Ignore acceleration z
-enums['POSITION_TARGET_TYPEMASK'][256] = EnumEntry('POSITION_TARGET_TYPEMASK_AZ_IGNORE', '''0b0000000100000000 Ignore acceleration z''')
-POSITION_TARGET_TYPEMASK_FORCE_SET = 512 # 0b0000001000000000 Use force instead of acceleration
-enums['POSITION_TARGET_TYPEMASK'][512] = EnumEntry('POSITION_TARGET_TYPEMASK_FORCE_SET', '''0b0000001000000000 Use force instead of acceleration''')
-POSITION_TARGET_TYPEMASK_YAW_IGNORE = 1024 # 0b0000010000000000 Ignore yaw
-enums['POSITION_TARGET_TYPEMASK'][1024] = EnumEntry('POSITION_TARGET_TYPEMASK_YAW_IGNORE', '''0b0000010000000000 Ignore yaw''')
-POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE = 2048 # 0b0000100000000000 Ignore yaw rate
-enums['POSITION_TARGET_TYPEMASK'][2048] = EnumEntry('POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE', '''0b0000100000000000 Ignore yaw rate''')
-POSITION_TARGET_TYPEMASK_ENUM_END = 2049 # 
-enums['POSITION_TARGET_TYPEMASK'][2049] = EnumEntry('POSITION_TARGET_TYPEMASK_ENUM_END', '''''')
-
 # message IDs
 MAVLINK_MSG_ID_BAD_DATA = -1
 MAVLINK_MSG_ID_SWARM_INFO = 400
 MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED = 401
+MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND = 402
 MAVLINK_MSG_ID_HEARTBEAT = 0
 MAVLINK_MSG_ID_SYS_STATUS = 1
 MAVLINK_MSG_ID_SYSTEM_TIME = 2
@@ -3156,7 +3129,6 @@ MAVLINK_MSG_ID_OBSTACLE_DISTANCE = 330
 MAVLINK_MSG_ID_ODOMETRY = 331
 MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS = 332
 MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER = 333
-MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY = 350
 
 class MAVLink_swarm_info_message(MAVLink_message):
         '''
@@ -3165,13 +3137,15 @@ class MAVLink_swarm_info_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SWARM_INFO
         name = 'SWARM_INFO'
         fieldnames = ['odom_vaild', 'x', 'y', 'z', 'q0', 'q1', 'q2', 'q3', 'vx', 'vy', 'vz', 'remote_distance']
-        ordered_fieldnames = [ 'x', 'y', 'z', 'q0', 'q1', 'q2', 'q3', 'vx', 'vy', 'vz', 'remote_distance', 'odom_vaild' ]
+        ordered_fieldnames = ['x', 'y', 'z', 'q0', 'q1', 'q2', 'q3', 'vx', 'vy', 'vz', 'remote_distance', 'odom_vaild']
+        fieldtypes = ['uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<ffffffffff10fB'
         native_format = bytearray('<fffffffffffB', 'ascii')
         orders = [11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0]
         crc_extra = 59
+        unpacker = struct.Struct('<ffffffffff10fB')
 
         def __init__(self, odom_vaild, x, y, z, q0, q1, q2, q3, vx, vy, vz, remote_distance):
                 MAVLink_message.__init__(self, MAVLink_swarm_info_message.id, MAVLink_swarm_info_message.name)
@@ -3199,13 +3173,15 @@ class MAVLink_swarm_relative_fused_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED
         name = 'SWARM_RELATIVE_FUSED'
         fieldnames = ['source_id', 'target_id', 'rel_x', 'rel_y', 'rel_z', 'rel_yaw_offset']
-        ordered_fieldnames = [ 'rel_x', 'rel_y', 'rel_z', 'rel_yaw_offset', 'source_id', 'target_id' ]
+        ordered_fieldnames = ['rel_x', 'rel_y', 'rel_z', 'rel_yaw_offset', 'source_id', 'target_id']
+        fieldtypes = ['uint8_t', 'uint8_t', 'float', 'float', 'float', 'float']
         format = '<ffffBB'
         native_format = bytearray('<ffffBB', 'ascii')
         orders = [4, 5, 0, 1, 2, 3]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 63
+        unpacker = struct.Struct('<ffffBB')
 
         def __init__(self, source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset):
                 MAVLink_message.__init__(self, MAVLink_swarm_relative_fused_message.id, MAVLink_swarm_relative_fused_message.name)
@@ -3220,6 +3196,40 @@ class MAVLink_swarm_relative_fused_message(MAVLink_message):
         def pack(self, mav, force_mavlink1=False):
                 return MAVLink_message.pack(self, mav, 63, struct.pack('<ffffBB', self.rel_x, self.rel_y, self.rel_z, self.rel_yaw_offset, self.source_id, self.target_id), force_mavlink1=force_mavlink1)
 
+class MAVLink_swarm_remote_command_message(MAVLink_message):
+        '''
+
+        '''
+        id = MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND
+        name = 'SWARM_REMOTE_COMMAND'
+        fieldnames = ['target_id', 'command_type', 'param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7', 'param8']
+        ordered_fieldnames = ['param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7', 'param8', 'target_id', 'command_type']
+        fieldtypes = ['int8_t', 'uint8_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t']
+        format = '<IIIIIIIIbB'
+        native_format = bytearray('<IIIIIIIIbB', 'ascii')
+        orders = [8, 9, 0, 1, 2, 3, 4, 5, 6, 7]
+        lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        crc_extra = 159
+        unpacker = struct.Struct('<IIIIIIIIbB')
+
+        def __init__(self, target_id, command_type, param1, param2, param3, param4, param5, param6, param7, param8):
+                MAVLink_message.__init__(self, MAVLink_swarm_remote_command_message.id, MAVLink_swarm_remote_command_message.name)
+                self._fieldnames = MAVLink_swarm_remote_command_message.fieldnames
+                self.target_id = target_id
+                self.command_type = command_type
+                self.param1 = param1
+                self.param2 = param2
+                self.param3 = param3
+                self.param4 = param4
+                self.param5 = param5
+                self.param6 = param6
+                self.param7 = param7
+                self.param8 = param8
+
+        def pack(self, mav, force_mavlink1=False):
+                return MAVLink_message.pack(self, mav, 159, struct.pack('<IIIIIIIIbB', self.param1, self.param2, self.param3, self.param4, self.param5, self.param6, self.param7, self.param8, self.target_id, self.command_type), force_mavlink1=force_mavlink1)
+
 class MAVLink_heartbeat_message(MAVLink_message):
         '''
         The heartbeat message shows that a system is present and
@@ -3231,13 +3241,15 @@ class MAVLink_heartbeat_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HEARTBEAT
         name = 'HEARTBEAT'
         fieldnames = ['type', 'autopilot', 'base_mode', 'custom_mode', 'system_status', 'mavlink_version']
-        ordered_fieldnames = [ 'custom_mode', 'type', 'autopilot', 'base_mode', 'system_status', 'mavlink_version' ]
+        ordered_fieldnames = ['custom_mode', 'type', 'autopilot', 'base_mode', 'system_status', 'mavlink_version']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint32_t', 'uint8_t', 'uint8_t']
         format = '<IBBBBB'
         native_format = bytearray('<IBBBBB', 'ascii')
         orders = [1, 2, 3, 0, 4, 5]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 50
+        unpacker = struct.Struct('<IBBBBB')
 
         def __init__(self, type, autopilot, base_mode, custom_mode, system_status, mavlink_version):
                 MAVLink_message.__init__(self, MAVLink_heartbeat_message.id, MAVLink_heartbeat_message.name)
@@ -3274,13 +3286,15 @@ class MAVLink_sys_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SYS_STATUS
         name = 'SYS_STATUS'
         fieldnames = ['onboard_control_sensors_present', 'onboard_control_sensors_enabled', 'onboard_control_sensors_health', 'load', 'voltage_battery', 'current_battery', 'battery_remaining', 'drop_rate_comm', 'errors_comm', 'errors_count1', 'errors_count2', 'errors_count3', 'errors_count4']
-        ordered_fieldnames = [ 'onboard_control_sensors_present', 'onboard_control_sensors_enabled', 'onboard_control_sensors_health', 'load', 'voltage_battery', 'current_battery', 'drop_rate_comm', 'errors_comm', 'errors_count1', 'errors_count2', 'errors_count3', 'errors_count4', 'battery_remaining' ]
+        ordered_fieldnames = ['onboard_control_sensors_present', 'onboard_control_sensors_enabled', 'onboard_control_sensors_health', 'load', 'voltage_battery', 'current_battery', 'drop_rate_comm', 'errors_comm', 'errors_count1', 'errors_count2', 'errors_count3', 'errors_count4', 'battery_remaining']
+        fieldtypes = ['uint32_t', 'uint32_t', 'uint32_t', 'uint16_t', 'uint16_t', 'int16_t', 'int8_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t']
         format = '<IIIHHhHHHHHHb'
         native_format = bytearray('<IIIHHhHHHHHHb', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 12, 6, 7, 8, 9, 10, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 124
+        unpacker = struct.Struct('<IIIHHhHHHHHHb')
 
         def __init__(self, onboard_control_sensors_present, onboard_control_sensors_enabled, onboard_control_sensors_health, load, voltage_battery, current_battery, battery_remaining, drop_rate_comm, errors_comm, errors_count1, errors_count2, errors_count3, errors_count4):
                 MAVLink_message.__init__(self, MAVLink_sys_status_message.id, MAVLink_sys_status_message.name)
@@ -3310,13 +3324,15 @@ class MAVLink_system_time_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SYSTEM_TIME
         name = 'SYSTEM_TIME'
         fieldnames = ['time_unix_usec', 'time_boot_ms']
-        ordered_fieldnames = [ 'time_unix_usec', 'time_boot_ms' ]
+        ordered_fieldnames = ['time_unix_usec', 'time_boot_ms']
+        fieldtypes = ['uint64_t', 'uint32_t']
         format = '<QI'
         native_format = bytearray('<QI', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 137
+        unpacker = struct.Struct('<QI')
 
         def __init__(self, time_unix_usec, time_boot_ms):
                 MAVLink_message.__init__(self, MAVLink_system_time_message.id, MAVLink_system_time_message.name)
@@ -3336,13 +3352,15 @@ class MAVLink_ping_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PING
         name = 'PING'
         fieldnames = ['time_usec', 'seq', 'target_system', 'target_component']
-        ordered_fieldnames = [ 'time_usec', 'seq', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['time_usec', 'seq', 'target_system', 'target_component']
+        fieldtypes = ['uint64_t', 'uint32_t', 'uint8_t', 'uint8_t']
         format = '<QIBB'
         native_format = bytearray('<QIBB', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 237
+        unpacker = struct.Struct('<QIBB')
 
         def __init__(self, time_usec, seq, target_system, target_component):
                 MAVLink_message.__init__(self, MAVLink_ping_message.id, MAVLink_ping_message.name)
@@ -3362,13 +3380,15 @@ class MAVLink_change_operator_control_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CHANGE_OPERATOR_CONTROL
         name = 'CHANGE_OPERATOR_CONTROL'
         fieldnames = ['target_system', 'control_request', 'version', 'passkey']
-        ordered_fieldnames = [ 'target_system', 'control_request', 'version', 'passkey' ]
+        ordered_fieldnames = ['target_system', 'control_request', 'version', 'passkey']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'char']
         format = '<BBB25s'
         native_format = bytearray('<BBBc', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 25]
         crc_extra = 217
+        unpacker = struct.Struct('<BBB25s')
 
         def __init__(self, target_system, control_request, version, passkey):
                 MAVLink_message.__init__(self, MAVLink_change_operator_control_message.id, MAVLink_change_operator_control_message.name)
@@ -3388,13 +3408,15 @@ class MAVLink_change_operator_control_ack_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CHANGE_OPERATOR_CONTROL_ACK
         name = 'CHANGE_OPERATOR_CONTROL_ACK'
         fieldnames = ['gcs_system_id', 'control_request', 'ack']
-        ordered_fieldnames = [ 'gcs_system_id', 'control_request', 'ack' ]
+        ordered_fieldnames = ['gcs_system_id', 'control_request', 'ack']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBB'
         native_format = bytearray('<BBB', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 104
+        unpacker = struct.Struct('<BBB')
 
         def __init__(self, gcs_system_id, control_request, ack):
                 MAVLink_message.__init__(self, MAVLink_change_operator_control_ack_message.id, MAVLink_change_operator_control_ack_message.name)
@@ -3416,13 +3438,15 @@ class MAVLink_auth_key_message(MAVLink_message):
         id = MAVLINK_MSG_ID_AUTH_KEY
         name = 'AUTH_KEY'
         fieldnames = ['key']
-        ordered_fieldnames = [ 'key' ]
+        ordered_fieldnames = ['key']
+        fieldtypes = ['char']
         format = '<32s'
         native_format = bytearray('<c', 'ascii')
         orders = [0]
         lengths = [1]
         array_lengths = [32]
         crc_extra = 119
+        unpacker = struct.Struct('<32s')
 
         def __init__(self, key):
                 MAVLink_message.__init__(self, MAVLink_auth_key_message.id, MAVLink_auth_key_message.name)
@@ -3441,13 +3465,15 @@ class MAVLink_set_mode_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_MODE
         name = 'SET_MODE'
         fieldnames = ['target_system', 'base_mode', 'custom_mode']
-        ordered_fieldnames = [ 'custom_mode', 'target_system', 'base_mode' ]
+        ordered_fieldnames = ['custom_mode', 'target_system', 'base_mode']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint32_t']
         format = '<IBB'
         native_format = bytearray('<IBB', 'ascii')
         orders = [1, 2, 0]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 89
+        unpacker = struct.Struct('<IBB')
 
         def __init__(self, target_system, base_mode, custom_mode):
                 MAVLink_message.__init__(self, MAVLink_set_mode_message.id, MAVLink_set_mode_message.name)
@@ -3473,13 +3499,15 @@ class MAVLink_param_request_read_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_REQUEST_READ
         name = 'PARAM_REQUEST_READ'
         fieldnames = ['target_system', 'target_component', 'param_id', 'param_index']
-        ordered_fieldnames = [ 'param_index', 'target_system', 'target_component', 'param_id' ]
+        ordered_fieldnames = ['param_index', 'target_system', 'target_component', 'param_id']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char', 'int16_t']
         format = '<hBB16s'
         native_format = bytearray('<hBBc', 'ascii')
         orders = [1, 2, 3, 0]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 16]
         crc_extra = 214
+        unpacker = struct.Struct('<hBB16s')
 
         def __init__(self, target_system, target_component, param_id, param_index):
                 MAVLink_message.__init__(self, MAVLink_param_request_read_message.id, MAVLink_param_request_read_message.name)
@@ -3500,13 +3528,15 @@ class MAVLink_param_request_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_REQUEST_LIST
         name = 'PARAM_REQUEST_LIST'
         fieldnames = ['target_system', 'target_component']
-        ordered_fieldnames = [ 'target_system', 'target_component' ]
+        ordered_fieldnames = ['target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t']
         format = '<BB'
         native_format = bytearray('<BB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 159
+        unpacker = struct.Struct('<BB')
 
         def __init__(self, target_system, target_component):
                 MAVLink_message.__init__(self, MAVLink_param_request_list_message.id, MAVLink_param_request_list_message.name)
@@ -3527,13 +3557,15 @@ class MAVLink_param_value_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_VALUE
         name = 'PARAM_VALUE'
         fieldnames = ['param_id', 'param_value', 'param_type', 'param_count', 'param_index']
-        ordered_fieldnames = [ 'param_value', 'param_count', 'param_index', 'param_id', 'param_type' ]
+        ordered_fieldnames = ['param_value', 'param_count', 'param_index', 'param_id', 'param_type']
+        fieldtypes = ['char', 'float', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<fHH16sB'
         native_format = bytearray('<fHHcB', 'ascii')
         orders = [3, 0, 4, 1, 2]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 16, 0]
         crc_extra = 220
+        unpacker = struct.Struct('<fHH16sB')
 
         def __init__(self, param_id, param_value, param_type, param_count, param_index):
                 MAVLink_message.__init__(self, MAVLink_param_value_message.id, MAVLink_param_value_message.name)
@@ -3563,13 +3595,15 @@ class MAVLink_param_set_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_SET
         name = 'PARAM_SET'
         fieldnames = ['target_system', 'target_component', 'param_id', 'param_value', 'param_type']
-        ordered_fieldnames = [ 'param_value', 'target_system', 'target_component', 'param_id', 'param_type' ]
+        ordered_fieldnames = ['param_value', 'target_system', 'target_component', 'param_id', 'param_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char', 'float', 'uint8_t']
         format = '<fBB16sB'
         native_format = bytearray('<fBBcB', 'ascii')
         orders = [1, 2, 3, 0, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 16, 0]
         crc_extra = 168
+        unpacker = struct.Struct('<fBB16sB')
 
         def __init__(self, target_system, target_component, param_id, param_value, param_type):
                 MAVLink_message.__init__(self, MAVLink_param_set_message.id, MAVLink_param_set_message.name)
@@ -3593,13 +3627,15 @@ class MAVLink_gps_raw_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_RAW_INT
         name = 'GPS_RAW_INT'
         fieldnames = ['time_usec', 'fix_type', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'cog', 'satellites_visible', 'alt_ellipsoid', 'h_acc', 'v_acc', 'vel_acc', 'hdg_acc']
-        ordered_fieldnames = [ 'time_usec', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'cog', 'fix_type', 'satellites_visible', 'alt_ellipsoid', 'h_acc', 'v_acc', 'vel_acc', 'hdg_acc' ]
+        ordered_fieldnames = ['time_usec', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'cog', 'fix_type', 'satellites_visible', 'alt_ellipsoid', 'h_acc', 'v_acc', 'vel_acc', 'hdg_acc']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t', 'int32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t']
         format = '<QiiiHHHHBBiIIII'
         native_format = bytearray('<QiiiHHHHBBiIIII', 'ascii')
         orders = [0, 8, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 24
+        unpacker = struct.Struct('<QiiiHHHHBBiIIII')
 
         def __init__(self, time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, alt_ellipsoid=0, h_acc=0, v_acc=0, vel_acc=0, hdg_acc=0):
                 MAVLink_message.__init__(self, MAVLink_gps_raw_int_message.id, MAVLink_gps_raw_int_message.name)
@@ -3634,13 +3670,15 @@ class MAVLink_gps_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_STATUS
         name = 'GPS_STATUS'
         fieldnames = ['satellites_visible', 'satellite_prn', 'satellite_used', 'satellite_elevation', 'satellite_azimuth', 'satellite_snr']
-        ordered_fieldnames = [ 'satellites_visible', 'satellite_prn', 'satellite_used', 'satellite_elevation', 'satellite_azimuth', 'satellite_snr' ]
+        ordered_fieldnames = ['satellites_visible', 'satellite_prn', 'satellite_used', 'satellite_elevation', 'satellite_azimuth', 'satellite_snr']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<B20B20B20B20B20B'
         native_format = bytearray('<BBBBBB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5]
         lengths = [1, 20, 20, 20, 20, 20]
         array_lengths = [0, 20, 20, 20, 20, 20]
         crc_extra = 23
+        unpacker = struct.Struct('<B20B20B20B20B20B')
 
         def __init__(self, satellites_visible, satellite_prn, satellite_used, satellite_elevation, satellite_azimuth, satellite_snr):
                 MAVLink_message.__init__(self, MAVLink_gps_status_message.id, MAVLink_gps_status_message.name)
@@ -3664,13 +3702,15 @@ class MAVLink_scaled_imu_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_IMU
         name = 'SCALED_IMU'
         fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
-        ordered_fieldnames = [ 'time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag' ]
+        ordered_fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
+        fieldtypes = ['uint32_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Ihhhhhhhhh'
         native_format = bytearray('<Ihhhhhhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 170
+        unpacker = struct.Struct('<Ihhhhhhhhh')
 
         def __init__(self, time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag):
                 MAVLink_message.__init__(self, MAVLink_scaled_imu_message.id, MAVLink_scaled_imu_message.name)
@@ -3698,13 +3738,15 @@ class MAVLink_raw_imu_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RAW_IMU
         name = 'RAW_IMU'
         fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
-        ordered_fieldnames = [ 'time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag' ]
+        ordered_fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
+        fieldtypes = ['uint64_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Qhhhhhhhhh'
         native_format = bytearray('<Qhhhhhhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 144
+        unpacker = struct.Struct('<Qhhhhhhhhh')
 
         def __init__(self, time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag):
                 MAVLink_message.__init__(self, MAVLink_raw_imu_message.id, MAVLink_raw_imu_message.name)
@@ -3732,13 +3774,15 @@ class MAVLink_raw_pressure_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RAW_PRESSURE
         name = 'RAW_PRESSURE'
         fieldnames = ['time_usec', 'press_abs', 'press_diff1', 'press_diff2', 'temperature']
-        ordered_fieldnames = [ 'time_usec', 'press_abs', 'press_diff1', 'press_diff2', 'temperature' ]
+        ordered_fieldnames = ['time_usec', 'press_abs', 'press_diff1', 'press_diff2', 'temperature']
+        fieldtypes = ['uint64_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Qhhhh'
         native_format = bytearray('<Qhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 67
+        unpacker = struct.Struct('<Qhhhh')
 
         def __init__(self, time_usec, press_abs, press_diff1, press_diff2, temperature):
                 MAVLink_message.__init__(self, MAVLink_raw_pressure_message.id, MAVLink_raw_pressure_message.name)
@@ -3761,13 +3805,15 @@ class MAVLink_scaled_pressure_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_PRESSURE
         name = 'SCALED_PRESSURE'
         fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
-        ordered_fieldnames = [ 'time_boot_ms', 'press_abs', 'press_diff', 'temperature' ]
+        ordered_fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
+        fieldtypes = ['uint32_t', 'float', 'float', 'int16_t']
         format = '<Iffh'
         native_format = bytearray('<Iffh', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 115
+        unpacker = struct.Struct('<Iffh')
 
         def __init__(self, time_boot_ms, press_abs, press_diff, temperature):
                 MAVLink_message.__init__(self, MAVLink_scaled_pressure_message.id, MAVLink_scaled_pressure_message.name)
@@ -3788,13 +3834,15 @@ class MAVLink_attitude_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ATTITUDE
         name = 'ATTITUDE'
         fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed']
-        ordered_fieldnames = [ 'time_boot_ms', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed' ]
+        ordered_fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Iffffff'
         native_format = bytearray('<Iffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 39
+        unpacker = struct.Struct('<Iffffff')
 
         def __init__(self, time_boot_ms, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed):
                 MAVLink_message.__init__(self, MAVLink_attitude_message.id, MAVLink_attitude_message.name)
@@ -3820,13 +3868,15 @@ class MAVLink_attitude_quaternion_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ATTITUDE_QUATERNION
         name = 'ATTITUDE_QUATERNION'
         fieldnames = ['time_boot_ms', 'q1', 'q2', 'q3', 'q4', 'rollspeed', 'pitchspeed', 'yawspeed']
-        ordered_fieldnames = [ 'time_boot_ms', 'q1', 'q2', 'q3', 'q4', 'rollspeed', 'pitchspeed', 'yawspeed' ]
+        ordered_fieldnames = ['time_boot_ms', 'q1', 'q2', 'q3', 'q4', 'rollspeed', 'pitchspeed', 'yawspeed']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Ifffffff'
         native_format = bytearray('<Ifffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 246
+        unpacker = struct.Struct('<Ifffffff')
 
         def __init__(self, time_boot_ms, q1, q2, q3, q4, rollspeed, pitchspeed, yawspeed):
                 MAVLink_message.__init__(self, MAVLink_attitude_quaternion_message.id, MAVLink_attitude_quaternion_message.name)
@@ -3852,13 +3902,15 @@ class MAVLink_local_position_ned_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOCAL_POSITION_NED
         name = 'LOCAL_POSITION_NED'
         fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz']
-        ordered_fieldnames = [ 'time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz' ]
+        ordered_fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Iffffff'
         native_format = bytearray('<Iffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 185
+        unpacker = struct.Struct('<Iffffff')
 
         def __init__(self, time_boot_ms, x, y, z, vx, vy, vz):
                 MAVLink_message.__init__(self, MAVLink_local_position_ned_message.id, MAVLink_local_position_ned_message.name)
@@ -3884,13 +3936,15 @@ class MAVLink_global_position_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GLOBAL_POSITION_INT
         name = 'GLOBAL_POSITION_INT'
         fieldnames = ['time_boot_ms', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'hdg']
-        ordered_fieldnames = [ 'time_boot_ms', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'hdg' ]
+        ordered_fieldnames = ['time_boot_ms', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'hdg']
+        fieldtypes = ['uint32_t', 'int32_t', 'int32_t', 'int32_t', 'int32_t', 'int16_t', 'int16_t', 'int16_t', 'uint16_t']
         format = '<IiiiihhhH'
         native_format = bytearray('<IiiiihhhH', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 104
+        unpacker = struct.Struct('<IiiiihhhH')
 
         def __init__(self, time_boot_ms, lat, lon, alt, relative_alt, vx, vy, vz, hdg):
                 MAVLink_message.__init__(self, MAVLink_global_position_int_message.id, MAVLink_global_position_int_message.name)
@@ -3917,13 +3971,15 @@ class MAVLink_rc_channels_scaled_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RC_CHANNELS_SCALED
         name = 'RC_CHANNELS_SCALED'
         fieldnames = ['time_boot_ms', 'port', 'chan1_scaled', 'chan2_scaled', 'chan3_scaled', 'chan4_scaled', 'chan5_scaled', 'chan6_scaled', 'chan7_scaled', 'chan8_scaled', 'rssi']
-        ordered_fieldnames = [ 'time_boot_ms', 'chan1_scaled', 'chan2_scaled', 'chan3_scaled', 'chan4_scaled', 'chan5_scaled', 'chan6_scaled', 'chan7_scaled', 'chan8_scaled', 'port', 'rssi' ]
+        ordered_fieldnames = ['time_boot_ms', 'chan1_scaled', 'chan2_scaled', 'chan3_scaled', 'chan4_scaled', 'chan5_scaled', 'chan6_scaled', 'chan7_scaled', 'chan8_scaled', 'port', 'rssi']
+        fieldtypes = ['uint32_t', 'uint8_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'uint8_t']
         format = '<IhhhhhhhhBB'
         native_format = bytearray('<IhhhhhhhhBB', 'ascii')
         orders = [0, 9, 1, 2, 3, 4, 5, 6, 7, 8, 10]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 237
+        unpacker = struct.Struct('<IhhhhhhhhBB')
 
         def __init__(self, time_boot_ms, port, chan1_scaled, chan2_scaled, chan3_scaled, chan4_scaled, chan5_scaled, chan6_scaled, chan7_scaled, chan8_scaled, rssi):
                 MAVLink_message.__init__(self, MAVLink_rc_channels_scaled_message.id, MAVLink_rc_channels_scaled_message.name)
@@ -3954,13 +4010,15 @@ class MAVLink_rc_channels_raw_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RC_CHANNELS_RAW
         name = 'RC_CHANNELS_RAW'
         fieldnames = ['time_boot_ms', 'port', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'rssi']
-        ordered_fieldnames = [ 'time_boot_ms', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'port', 'rssi' ]
+        ordered_fieldnames = ['time_boot_ms', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'port', 'rssi']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t']
         format = '<IHHHHHHHHBB'
         native_format = bytearray('<IHHHHHHHHBB', 'ascii')
         orders = [0, 9, 1, 2, 3, 4, 5, 6, 7, 8, 10]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 244
+        unpacker = struct.Struct('<IHHHHHHHHBB')
 
         def __init__(self, time_boot_ms, port, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, rssi):
                 MAVLink_message.__init__(self, MAVLink_rc_channels_raw_message.id, MAVLink_rc_channels_raw_message.name)
@@ -3990,13 +4048,15 @@ class MAVLink_servo_output_raw_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SERVO_OUTPUT_RAW
         name = 'SERVO_OUTPUT_RAW'
         fieldnames = ['time_usec', 'port', 'servo1_raw', 'servo2_raw', 'servo3_raw', 'servo4_raw', 'servo5_raw', 'servo6_raw', 'servo7_raw', 'servo8_raw', 'servo9_raw', 'servo10_raw', 'servo11_raw', 'servo12_raw', 'servo13_raw', 'servo14_raw', 'servo15_raw', 'servo16_raw']
-        ordered_fieldnames = [ 'time_usec', 'servo1_raw', 'servo2_raw', 'servo3_raw', 'servo4_raw', 'servo5_raw', 'servo6_raw', 'servo7_raw', 'servo8_raw', 'port', 'servo9_raw', 'servo10_raw', 'servo11_raw', 'servo12_raw', 'servo13_raw', 'servo14_raw', 'servo15_raw', 'servo16_raw' ]
+        ordered_fieldnames = ['time_usec', 'servo1_raw', 'servo2_raw', 'servo3_raw', 'servo4_raw', 'servo5_raw', 'servo6_raw', 'servo7_raw', 'servo8_raw', 'port', 'servo9_raw', 'servo10_raw', 'servo11_raw', 'servo12_raw', 'servo13_raw', 'servo14_raw', 'servo15_raw', 'servo16_raw']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t']
         format = '<IHHHHHHHHBHHHHHHHH'
         native_format = bytearray('<IHHHHHHHHBHHHHHHHH', 'ascii')
         orders = [0, 9, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 222
+        unpacker = struct.Struct('<IHHHHHHHHBHHHHHHHH')
 
         def __init__(self, time_usec, port, servo1_raw, servo2_raw, servo3_raw, servo4_raw, servo5_raw, servo6_raw, servo7_raw, servo8_raw, servo9_raw=0, servo10_raw=0, servo11_raw=0, servo12_raw=0, servo13_raw=0, servo14_raw=0, servo15_raw=0, servo16_raw=0):
                 MAVLink_message.__init__(self, MAVLink_servo_output_raw_message.id, MAVLink_servo_output_raw_message.name)
@@ -4032,13 +4092,15 @@ class MAVLink_mission_request_partial_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_REQUEST_PARTIAL_LIST
         name = 'MISSION_REQUEST_PARTIAL_LIST'
         fieldnames = ['target_system', 'target_component', 'start_index', 'end_index', 'mission_type']
-        ordered_fieldnames = [ 'start_index', 'end_index', 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['start_index', 'end_index', 'target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'int16_t', 'int16_t', 'uint8_t']
         format = '<hhBBB'
         native_format = bytearray('<hhBBB', 'ascii')
         orders = [2, 3, 0, 1, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 212
+        unpacker = struct.Struct('<hhBBB')
 
         def __init__(self, target_system, target_component, start_index, end_index, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_request_partial_list_message.id, MAVLink_mission_request_partial_list_message.name)
@@ -4062,13 +4124,15 @@ class MAVLink_mission_write_partial_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_WRITE_PARTIAL_LIST
         name = 'MISSION_WRITE_PARTIAL_LIST'
         fieldnames = ['target_system', 'target_component', 'start_index', 'end_index', 'mission_type']
-        ordered_fieldnames = [ 'start_index', 'end_index', 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['start_index', 'end_index', 'target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'int16_t', 'int16_t', 'uint8_t']
         format = '<hhBBB'
         native_format = bytearray('<hhBBB', 'ascii')
         orders = [2, 3, 0, 1, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 9
+        unpacker = struct.Struct('<hhBBB')
 
         def __init__(self, target_system, target_component, start_index, end_index, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_write_partial_list_message.id, MAVLink_mission_write_partial_list_message.name)
@@ -4095,13 +4159,15 @@ class MAVLink_mission_item_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_ITEM
         name = 'MISSION_ITEM'
         fieldnames = ['target_system', 'target_component', 'seq', 'frame', 'command', 'current', 'autocontinue', 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'mission_type']
-        ordered_fieldnames = [ 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'seq', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue', 'mission_type' ]
+        ordered_fieldnames = ['param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'seq', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint8_t']
         format = '<fffffffHHBBBBBB'
         native_format = bytearray('<fffffffHHBBBBBB', 'ascii')
         orders = [9, 10, 7, 11, 8, 12, 13, 0, 1, 2, 3, 4, 5, 6, 14]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 254
+        unpacker = struct.Struct('<fffffffHHBBBBBB')
 
         def __init__(self, target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_item_message.id, MAVLink_mission_item_message.name)
@@ -4135,13 +4201,15 @@ class MAVLink_mission_request_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_REQUEST
         name = 'MISSION_REQUEST'
         fieldnames = ['target_system', 'target_component', 'seq', 'mission_type']
-        ordered_fieldnames = [ 'seq', 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['seq', 'target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBBB'
         native_format = bytearray('<HBBB', 'ascii')
         orders = [1, 2, 0, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 230
+        unpacker = struct.Struct('<HBBB')
 
         def __init__(self, target_system, target_component, seq, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_request_message.id, MAVLink_mission_request_message.name)
@@ -4164,13 +4232,15 @@ class MAVLink_mission_set_current_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_SET_CURRENT
         name = 'MISSION_SET_CURRENT'
         fieldnames = ['target_system', 'target_component', 'seq']
-        ordered_fieldnames = [ 'seq', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['seq', 'target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t']
         format = '<HBB'
         native_format = bytearray('<HBB', 'ascii')
         orders = [1, 2, 0]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 28
+        unpacker = struct.Struct('<HBB')
 
         def __init__(self, target_system, target_component, seq):
                 MAVLink_message.__init__(self, MAVLink_mission_set_current_message.id, MAVLink_mission_set_current_message.name)
@@ -4191,13 +4261,15 @@ class MAVLink_mission_current_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_CURRENT
         name = 'MISSION_CURRENT'
         fieldnames = ['seq']
-        ordered_fieldnames = [ 'seq' ]
+        ordered_fieldnames = ['seq']
+        fieldtypes = ['uint16_t']
         format = '<H'
         native_format = bytearray('<H', 'ascii')
         orders = [0]
         lengths = [1]
         array_lengths = [0]
         crc_extra = 28
+        unpacker = struct.Struct('<H')
 
         def __init__(self, seq):
                 MAVLink_message.__init__(self, MAVLink_mission_current_message.id, MAVLink_mission_current_message.name)
@@ -4215,13 +4287,15 @@ class MAVLink_mission_request_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_REQUEST_LIST
         name = 'MISSION_REQUEST_LIST'
         fieldnames = ['target_system', 'target_component', 'mission_type']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBB'
         native_format = bytearray('<BBB', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 132
+        unpacker = struct.Struct('<BBB')
 
         def __init__(self, target_system, target_component, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_request_list_message.id, MAVLink_mission_request_list_message.name)
@@ -4243,13 +4317,15 @@ class MAVLink_mission_count_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_COUNT
         name = 'MISSION_COUNT'
         fieldnames = ['target_system', 'target_component', 'count', 'mission_type']
-        ordered_fieldnames = [ 'count', 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['count', 'target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBBB'
         native_format = bytearray('<HBBB', 'ascii')
         orders = [1, 2, 0, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 221
+        unpacker = struct.Struct('<HBBB')
 
         def __init__(self, target_system, target_component, count, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_count_message.id, MAVLink_mission_count_message.name)
@@ -4269,13 +4345,15 @@ class MAVLink_mission_clear_all_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_CLEAR_ALL
         name = 'MISSION_CLEAR_ALL'
         fieldnames = ['target_system', 'target_component', 'mission_type']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBB'
         native_format = bytearray('<BBB', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 232
+        unpacker = struct.Struct('<BBB')
 
         def __init__(self, target_system, target_component, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_clear_all_message.id, MAVLink_mission_clear_all_message.name)
@@ -4296,13 +4374,15 @@ class MAVLink_mission_item_reached_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_ITEM_REACHED
         name = 'MISSION_ITEM_REACHED'
         fieldnames = ['seq']
-        ordered_fieldnames = [ 'seq' ]
+        ordered_fieldnames = ['seq']
+        fieldtypes = ['uint16_t']
         format = '<H'
         native_format = bytearray('<H', 'ascii')
         orders = [0]
         lengths = [1]
         array_lengths = [0]
         crc_extra = 11
+        unpacker = struct.Struct('<H')
 
         def __init__(self, seq):
                 MAVLink_message.__init__(self, MAVLink_mission_item_reached_message.id, MAVLink_mission_item_reached_message.name)
@@ -4321,13 +4401,15 @@ class MAVLink_mission_ack_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_ACK
         name = 'MISSION_ACK'
         fieldnames = ['target_system', 'target_component', 'type', 'mission_type']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'type', 'mission_type' ]
+        ordered_fieldnames = ['target_system', 'target_component', 'type', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBBB'
         native_format = bytearray('<BBBB', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 153
+        unpacker = struct.Struct('<BBBB')
 
         def __init__(self, target_system, target_component, type, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_ack_message.id, MAVLink_mission_ack_message.name)
@@ -4351,13 +4433,15 @@ class MAVLink_set_gps_global_origin_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_GPS_GLOBAL_ORIGIN
         name = 'SET_GPS_GLOBAL_ORIGIN'
         fieldnames = ['target_system', 'latitude', 'longitude', 'altitude', 'time_usec']
-        ordered_fieldnames = [ 'latitude', 'longitude', 'altitude', 'target_system', 'time_usec' ]
+        ordered_fieldnames = ['latitude', 'longitude', 'altitude', 'target_system', 'time_usec']
+        fieldtypes = ['uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint64_t']
         format = '<iiiBQ'
         native_format = bytearray('<iiiBQ', 'ascii')
         orders = [3, 0, 1, 2, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 41
+        unpacker = struct.Struct('<iiiBQ')
 
         def __init__(self, target_system, latitude, longitude, altitude, time_usec=0):
                 MAVLink_message.__init__(self, MAVLink_set_gps_global_origin_message.id, MAVLink_set_gps_global_origin_message.name)
@@ -4379,13 +4463,15 @@ class MAVLink_gps_global_origin_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_GLOBAL_ORIGIN
         name = 'GPS_GLOBAL_ORIGIN'
         fieldnames = ['latitude', 'longitude', 'altitude', 'time_usec']
-        ordered_fieldnames = [ 'latitude', 'longitude', 'altitude', 'time_usec' ]
+        ordered_fieldnames = ['latitude', 'longitude', 'altitude', 'time_usec']
+        fieldtypes = ['int32_t', 'int32_t', 'int32_t', 'uint64_t']
         format = '<iiiQ'
         native_format = bytearray('<iiiQ', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 39
+        unpacker = struct.Struct('<iiiQ')
 
         def __init__(self, latitude, longitude, altitude, time_usec=0):
                 MAVLink_message.__init__(self, MAVLink_gps_global_origin_message.id, MAVLink_gps_global_origin_message.name)
@@ -4406,13 +4492,15 @@ class MAVLink_param_map_rc_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_MAP_RC
         name = 'PARAM_MAP_RC'
         fieldnames = ['target_system', 'target_component', 'param_id', 'param_index', 'parameter_rc_channel_index', 'param_value0', 'scale', 'param_value_min', 'param_value_max']
-        ordered_fieldnames = [ 'param_value0', 'scale', 'param_value_min', 'param_value_max', 'param_index', 'target_system', 'target_component', 'param_id', 'parameter_rc_channel_index' ]
+        ordered_fieldnames = ['param_value0', 'scale', 'param_value_min', 'param_value_max', 'param_index', 'target_system', 'target_component', 'param_id', 'parameter_rc_channel_index']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char', 'int16_t', 'uint8_t', 'float', 'float', 'float', 'float']
         format = '<ffffhBB16sB'
         native_format = bytearray('<ffffhBBcB', 'ascii')
         orders = [5, 6, 7, 4, 8, 0, 1, 2, 3]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 16, 0]
         crc_extra = 78
+        unpacker = struct.Struct('<ffffhBB16sB')
 
         def __init__(self, target_system, target_component, param_id, param_index, parameter_rc_channel_index, param_value0, scale, param_value_min, param_value_max):
                 MAVLink_message.__init__(self, MAVLink_param_map_rc_message.id, MAVLink_param_map_rc_message.name)
@@ -4440,13 +4528,15 @@ class MAVLink_mission_request_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_REQUEST_INT
         name = 'MISSION_REQUEST_INT'
         fieldnames = ['target_system', 'target_component', 'seq', 'mission_type']
-        ordered_fieldnames = [ 'seq', 'target_system', 'target_component', 'mission_type' ]
+        ordered_fieldnames = ['seq', 'target_system', 'target_component', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBBB'
         native_format = bytearray('<HBBB', 'ascii')
         orders = [1, 2, 0, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 196
+        unpacker = struct.Struct('<HBBB')
 
         def __init__(self, target_system, target_component, seq, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_request_int_message.id, MAVLink_mission_request_int_message.name)
@@ -4470,13 +4560,15 @@ class MAVLink_safety_set_allowed_area_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SAFETY_SET_ALLOWED_AREA
         name = 'SAFETY_SET_ALLOWED_AREA'
         fieldnames = ['target_system', 'target_component', 'frame', 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z']
-        ordered_fieldnames = [ 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z', 'target_system', 'target_component', 'frame' ]
+        ordered_fieldnames = ['p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z', 'target_system', 'target_component', 'frame']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<ffffffBBB'
         native_format = bytearray('<ffffffBBB', 'ascii')
         orders = [6, 7, 8, 0, 1, 2, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 15
+        unpacker = struct.Struct('<ffffffBBB')
 
         def __init__(self, target_system, target_component, frame, p1x, p1y, p1z, p2x, p2y, p2z):
                 MAVLink_message.__init__(self, MAVLink_safety_set_allowed_area_message.id, MAVLink_safety_set_allowed_area_message.name)
@@ -4501,13 +4593,15 @@ class MAVLink_safety_allowed_area_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SAFETY_ALLOWED_AREA
         name = 'SAFETY_ALLOWED_AREA'
         fieldnames = ['frame', 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z']
-        ordered_fieldnames = [ 'p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z', 'frame' ]
+        ordered_fieldnames = ['p1x', 'p1y', 'p1z', 'p2x', 'p2y', 'p2z', 'frame']
+        fieldtypes = ['uint8_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<ffffffB'
         native_format = bytearray('<ffffffB', 'ascii')
         orders = [6, 0, 1, 2, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 3
+        unpacker = struct.Struct('<ffffffB')
 
         def __init__(self, frame, p1x, p1y, p1z, p2x, p2y, p2z):
                 MAVLink_message.__init__(self, MAVLink_safety_allowed_area_message.id, MAVLink_safety_allowed_area_message.name)
@@ -4533,13 +4627,15 @@ class MAVLink_attitude_quaternion_cov_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ATTITUDE_QUATERNION_COV
         name = 'ATTITUDE_QUATERNION_COV'
         fieldnames = ['time_usec', 'q', 'rollspeed', 'pitchspeed', 'yawspeed', 'covariance']
-        ordered_fieldnames = [ 'time_usec', 'q', 'rollspeed', 'pitchspeed', 'yawspeed', 'covariance' ]
+        ordered_fieldnames = ['time_usec', 'q', 'rollspeed', 'pitchspeed', 'yawspeed', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float']
         format = '<Q4ffff9f'
         native_format = bytearray('<Qfffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5]
         lengths = [1, 4, 1, 1, 1, 9]
         array_lengths = [0, 4, 0, 0, 0, 9]
         crc_extra = 167
+        unpacker = struct.Struct('<Q4ffff9f')
 
         def __init__(self, time_usec, q, rollspeed, pitchspeed, yawspeed, covariance):
                 MAVLink_message.__init__(self, MAVLink_attitude_quaternion_cov_message.id, MAVLink_attitude_quaternion_cov_message.name)
@@ -4562,13 +4658,15 @@ class MAVLink_nav_controller_output_message(MAVLink_message):
         id = MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT
         name = 'NAV_CONTROLLER_OUTPUT'
         fieldnames = ['nav_roll', 'nav_pitch', 'nav_bearing', 'target_bearing', 'wp_dist', 'alt_error', 'aspd_error', 'xtrack_error']
-        ordered_fieldnames = [ 'nav_roll', 'nav_pitch', 'alt_error', 'aspd_error', 'xtrack_error', 'nav_bearing', 'target_bearing', 'wp_dist' ]
+        ordered_fieldnames = ['nav_roll', 'nav_pitch', 'alt_error', 'aspd_error', 'xtrack_error', 'nav_bearing', 'target_bearing', 'wp_dist']
+        fieldtypes = ['float', 'float', 'int16_t', 'int16_t', 'uint16_t', 'float', 'float', 'float']
         format = '<fffffhhH'
         native_format = bytearray('<fffffhhH', 'ascii')
         orders = [0, 1, 5, 6, 7, 2, 3, 4]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 183
+        unpacker = struct.Struct('<fffffhhH')
 
         def __init__(self, nav_roll, nav_pitch, nav_bearing, target_bearing, wp_dist, alt_error, aspd_error, xtrack_error):
                 MAVLink_message.__init__(self, MAVLink_nav_controller_output_message.id, MAVLink_nav_controller_output_message.name)
@@ -4599,13 +4697,15 @@ class MAVLink_global_position_int_cov_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GLOBAL_POSITION_INT_COV
         name = 'GLOBAL_POSITION_INT_COV'
         fieldnames = ['time_usec', 'estimator_type', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'covariance']
-        ordered_fieldnames = [ 'time_usec', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'covariance', 'estimator_type' ]
+        ordered_fieldnames = ['time_usec', 'lat', 'lon', 'alt', 'relative_alt', 'vx', 'vy', 'vz', 'covariance', 'estimator_type']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float']
         format = '<Qiiiifff36fB'
         native_format = bytearray('<QiiiiffffB', 'ascii')
         orders = [0, 9, 1, 2, 3, 4, 5, 6, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 36, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 36, 0]
         crc_extra = 119
+        unpacker = struct.Struct('<Qiiiifff36fB')
 
         def __init__(self, time_usec, estimator_type, lat, lon, alt, relative_alt, vx, vy, vz, covariance):
                 MAVLink_message.__init__(self, MAVLink_global_position_int_cov_message.id, MAVLink_global_position_int_cov_message.name)
@@ -4633,13 +4733,15 @@ class MAVLink_local_position_ned_cov_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOCAL_POSITION_NED_COV
         name = 'LOCAL_POSITION_NED_COV'
         fieldnames = ['time_usec', 'estimator_type', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'ax', 'ay', 'az', 'covariance']
-        ordered_fieldnames = [ 'time_usec', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'ax', 'ay', 'az', 'covariance', 'estimator_type' ]
+        ordered_fieldnames = ['time_usec', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'ax', 'ay', 'az', 'covariance', 'estimator_type']
+        fieldtypes = ['uint64_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qfffffffff45fB'
         native_format = bytearray('<QffffffffffB', 'ascii')
         orders = [0, 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 45, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0]
         crc_extra = 191
+        unpacker = struct.Struct('<Qfffffffff45fB')
 
         def __init__(self, time_usec, estimator_type, x, y, z, vx, vy, vz, ax, ay, az, covariance):
                 MAVLink_message.__init__(self, MAVLink_local_position_ned_cov_message.id, MAVLink_local_position_ned_cov_message.name)
@@ -4671,13 +4773,15 @@ class MAVLink_rc_channels_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RC_CHANNELS
         name = 'RC_CHANNELS'
         fieldnames = ['time_boot_ms', 'chancount', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw', 'rssi']
-        ordered_fieldnames = [ 'time_boot_ms', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw', 'chancount', 'rssi' ]
+        ordered_fieldnames = ['time_boot_ms', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw', 'chancount', 'rssi']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t']
         format = '<IHHHHHHHHHHHHHHHHHHBB'
         native_format = bytearray('<IHHHHHHHHHHHHHHHHHHBB', 'ascii')
         orders = [0, 19, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 118
+        unpacker = struct.Struct('<IHHHHHHHHHHHHHHHHHHBB')
 
         def __init__(self, time_boot_ms, chancount, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, chan13_raw, chan14_raw, chan15_raw, chan16_raw, chan17_raw, chan18_raw, rssi):
                 MAVLink_message.__init__(self, MAVLink_rc_channels_message.id, MAVLink_rc_channels_message.name)
@@ -4714,13 +4818,15 @@ class MAVLink_request_data_stream_message(MAVLink_message):
         id = MAVLINK_MSG_ID_REQUEST_DATA_STREAM
         name = 'REQUEST_DATA_STREAM'
         fieldnames = ['target_system', 'target_component', 'req_stream_id', 'req_message_rate', 'start_stop']
-        ordered_fieldnames = [ 'req_message_rate', 'target_system', 'target_component', 'req_stream_id', 'start_stop' ]
+        ordered_fieldnames = ['req_message_rate', 'target_system', 'target_component', 'req_stream_id', 'start_stop']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBBBB'
         native_format = bytearray('<HBBBB', 'ascii')
         orders = [1, 2, 3, 0, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 148
+        unpacker = struct.Struct('<HBBBB')
 
         def __init__(self, target_system, target_component, req_stream_id, req_message_rate, start_stop):
                 MAVLink_message.__init__(self, MAVLink_request_data_stream_message.id, MAVLink_request_data_stream_message.name)
@@ -4741,13 +4847,15 @@ class MAVLink_data_stream_message(MAVLink_message):
         id = MAVLINK_MSG_ID_DATA_STREAM
         name = 'DATA_STREAM'
         fieldnames = ['stream_id', 'message_rate', 'on_off']
-        ordered_fieldnames = [ 'message_rate', 'stream_id', 'on_off' ]
+        ordered_fieldnames = ['message_rate', 'stream_id', 'on_off']
+        fieldtypes = ['uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBB'
         native_format = bytearray('<HBB', 'ascii')
         orders = [1, 0, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 21
+        unpacker = struct.Struct('<HBB')
 
         def __init__(self, stream_id, message_rate, on_off):
                 MAVLink_message.__init__(self, MAVLink_data_stream_message.id, MAVLink_data_stream_message.name)
@@ -4769,13 +4877,15 @@ class MAVLink_manual_control_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MANUAL_CONTROL
         name = 'MANUAL_CONTROL'
         fieldnames = ['target', 'x', 'y', 'z', 'r', 'buttons']
-        ordered_fieldnames = [ 'x', 'y', 'z', 'r', 'buttons', 'target' ]
+        ordered_fieldnames = ['x', 'y', 'z', 'r', 'buttons', 'target']
+        fieldtypes = ['uint8_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'uint16_t']
         format = '<hhhhHB'
         native_format = bytearray('<hhhhHB', 'ascii')
         orders = [5, 0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 243
+        unpacker = struct.Struct('<hhhhHB')
 
         def __init__(self, target, x, y, z, r, buttons):
                 MAVLink_message.__init__(self, MAVLink_manual_control_message.id, MAVLink_manual_control_message.name)
@@ -4803,13 +4913,15 @@ class MAVLink_rc_channels_override_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE
         name = 'RC_CHANNELS_OVERRIDE'
         fieldnames = ['target_system', 'target_component', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw']
-        ordered_fieldnames = [ 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'target_system', 'target_component', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw' ]
+        ordered_fieldnames = ['chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'target_system', 'target_component', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'chan13_raw', 'chan14_raw', 'chan15_raw', 'chan16_raw', 'chan17_raw', 'chan18_raw']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t']
         format = '<HHHHHHHHBBHHHHHHHHHH'
         native_format = bytearray('<HHHHHHHHBBHHHHHHHHHH', 'ascii')
         orders = [8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 124
+        unpacker = struct.Struct('<HHHHHHHHBBHHHHHHHHHH')
 
         def __init__(self, target_system, target_component, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw=0, chan10_raw=0, chan11_raw=0, chan12_raw=0, chan13_raw=0, chan14_raw=0, chan15_raw=0, chan16_raw=0, chan17_raw=0, chan18_raw=0):
                 MAVLink_message.__init__(self, MAVLink_rc_channels_override_message.id, MAVLink_rc_channels_override_message.name)
@@ -4851,13 +4963,15 @@ class MAVLink_mission_item_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MISSION_ITEM_INT
         name = 'MISSION_ITEM_INT'
         fieldnames = ['target_system', 'target_component', 'seq', 'frame', 'command', 'current', 'autocontinue', 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'mission_type']
-        ordered_fieldnames = [ 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'seq', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue', 'mission_type' ]
+        ordered_fieldnames = ['param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'seq', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue', 'mission_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'int32_t', 'int32_t', 'float', 'uint8_t']
         format = '<ffffiifHHBBBBBB'
         native_format = bytearray('<ffffiifHHBBBBBB', 'ascii')
         orders = [9, 10, 7, 11, 8, 12, 13, 0, 1, 2, 3, 4, 5, 6, 14]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 38
+        unpacker = struct.Struct('<ffffiifHHBBBBBB')
 
         def __init__(self, target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type=0):
                 MAVLink_message.__init__(self, MAVLink_mission_item_int_message.id, MAVLink_mission_item_int_message.name)
@@ -4888,13 +5002,15 @@ class MAVLink_vfr_hud_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VFR_HUD
         name = 'VFR_HUD'
         fieldnames = ['airspeed', 'groundspeed', 'heading', 'throttle', 'alt', 'climb']
-        ordered_fieldnames = [ 'airspeed', 'groundspeed', 'alt', 'climb', 'heading', 'throttle' ]
+        ordered_fieldnames = ['airspeed', 'groundspeed', 'alt', 'climb', 'heading', 'throttle']
+        fieldtypes = ['float', 'float', 'int16_t', 'uint16_t', 'float', 'float']
         format = '<ffffhH'
         native_format = bytearray('<ffffhH', 'ascii')
         orders = [0, 1, 4, 5, 2, 3]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 20
+        unpacker = struct.Struct('<ffffhH')
 
         def __init__(self, airspeed, groundspeed, heading, throttle, alt, climb):
                 MAVLink_message.__init__(self, MAVLink_vfr_hud_message.id, MAVLink_vfr_hud_message.name)
@@ -4917,13 +5033,15 @@ class MAVLink_command_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_COMMAND_INT
         name = 'COMMAND_INT'
         fieldnames = ['target_system', 'target_component', 'frame', 'command', 'current', 'autocontinue', 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z']
-        ordered_fieldnames = [ 'param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue' ]
+        ordered_fieldnames = ['param1', 'param2', 'param3', 'param4', 'x', 'y', 'z', 'command', 'target_system', 'target_component', 'frame', 'current', 'autocontinue']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'int32_t', 'int32_t', 'float']
         format = '<ffffiifHBBBBB'
         native_format = bytearray('<ffffiifHBBBBB', 'ascii')
         orders = [8, 9, 10, 7, 11, 12, 0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 158
+        unpacker = struct.Struct('<ffffiifHBBBBB')
 
         def __init__(self, target_system, target_component, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z):
                 MAVLink_message.__init__(self, MAVLink_command_int_message.id, MAVLink_command_int_message.name)
@@ -4952,13 +5070,15 @@ class MAVLink_command_long_message(MAVLink_message):
         id = MAVLINK_MSG_ID_COMMAND_LONG
         name = 'COMMAND_LONG'
         fieldnames = ['target_system', 'target_component', 'command', 'confirmation', 'param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7']
-        ordered_fieldnames = [ 'param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7', 'command', 'target_system', 'target_component', 'confirmation' ]
+        ordered_fieldnames = ['param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7', 'command', 'target_system', 'target_component', 'confirmation']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<fffffffHBBB'
         native_format = bytearray('<fffffffHBBB', 'ascii')
         orders = [8, 9, 7, 10, 0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 152
+        unpacker = struct.Struct('<fffffffHBBB')
 
         def __init__(self, target_system, target_component, command, confirmation, param1, param2, param3, param4, param5, param6, param7):
                 MAVLink_message.__init__(self, MAVLink_command_long_message.id, MAVLink_command_long_message.name)
@@ -4986,13 +5106,15 @@ class MAVLink_command_ack_message(MAVLink_message):
         id = MAVLINK_MSG_ID_COMMAND_ACK
         name = 'COMMAND_ACK'
         fieldnames = ['command', 'result', 'progress', 'result_param2', 'target_system', 'target_component']
-        ordered_fieldnames = [ 'command', 'result', 'progress', 'result_param2', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['command', 'result', 'progress', 'result_param2', 'target_system', 'target_component']
+        fieldtypes = ['uint16_t', 'uint8_t', 'uint8_t', 'int32_t', 'uint8_t', 'uint8_t']
         format = '<HBBiBB'
         native_format = bytearray('<HBBiBB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 143
+        unpacker = struct.Struct('<HBBiBB')
 
         def __init__(self, command, result, progress=0, result_param2=0, target_system=0, target_component=0):
                 MAVLink_message.__init__(self, MAVLink_command_ack_message.id, MAVLink_command_ack_message.name)
@@ -5014,13 +5136,15 @@ class MAVLink_manual_setpoint_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MANUAL_SETPOINT
         name = 'MANUAL_SETPOINT'
         fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'thrust', 'mode_switch', 'manual_override_switch']
-        ordered_fieldnames = [ 'time_boot_ms', 'roll', 'pitch', 'yaw', 'thrust', 'mode_switch', 'manual_override_switch' ]
+        ordered_fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'thrust', 'mode_switch', 'manual_override_switch']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float', 'uint8_t', 'uint8_t']
         format = '<IffffBB'
         native_format = bytearray('<IffffBB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 106
+        unpacker = struct.Struct('<IffffBB')
 
         def __init__(self, time_boot_ms, roll, pitch, yaw, thrust, mode_switch, manual_override_switch):
                 MAVLink_message.__init__(self, MAVLink_manual_setpoint_message.id, MAVLink_manual_setpoint_message.name)
@@ -5045,13 +5169,15 @@ class MAVLink_set_attitude_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_ATTITUDE_TARGET
         name = 'SET_ATTITUDE_TARGET'
         fieldnames = ['time_boot_ms', 'target_system', 'target_component', 'type_mask', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust']
-        ordered_fieldnames = [ 'time_boot_ms', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust', 'target_system', 'target_component', 'type_mask' ]
+        ordered_fieldnames = ['time_boot_ms', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust', 'target_system', 'target_component', 'type_mask']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float']
         format = '<I4fffffBBB'
         native_format = bytearray('<IfffffBBB', 'ascii')
         orders = [0, 6, 7, 8, 1, 2, 3, 4, 5]
         lengths = [1, 4, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 4, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 49
+        unpacker = struct.Struct('<I4fffffBBB')
 
         def __init__(self, time_boot_ms, target_system, target_component, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust):
                 MAVLink_message.__init__(self, MAVLink_set_attitude_target_message.id, MAVLink_set_attitude_target_message.name)
@@ -5079,13 +5205,15 @@ class MAVLink_attitude_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ATTITUDE_TARGET
         name = 'ATTITUDE_TARGET'
         fieldnames = ['time_boot_ms', 'type_mask', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust']
-        ordered_fieldnames = [ 'time_boot_ms', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust', 'type_mask' ]
+        ordered_fieldnames = ['time_boot_ms', 'q', 'body_roll_rate', 'body_pitch_rate', 'body_yaw_rate', 'thrust', 'type_mask']
+        fieldtypes = ['uint32_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float']
         format = '<I4fffffB'
         native_format = bytearray('<IfffffB', 'ascii')
         orders = [0, 6, 1, 2, 3, 4, 5]
         lengths = [1, 4, 1, 1, 1, 1, 1]
         array_lengths = [0, 4, 0, 0, 0, 0, 0]
         crc_extra = 22
+        unpacker = struct.Struct('<I4fffffB')
 
         def __init__(self, time_boot_ms, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust):
                 MAVLink_message.__init__(self, MAVLink_attitude_target_message.id, MAVLink_attitude_target_message.name)
@@ -5110,13 +5238,15 @@ class MAVLink_set_position_target_local_ned_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_POSITION_TARGET_LOCAL_NED
         name = 'SET_POSITION_TARGET_LOCAL_NED'
         fieldnames = ['time_boot_ms', 'target_system', 'target_component', 'coordinate_frame', 'type_mask', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate']
-        ordered_fieldnames = [ 'time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'target_system', 'target_component', 'coordinate_frame' ]
+        ordered_fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'target_system', 'target_component', 'coordinate_frame']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<IfffffffffffHBBB'
         native_format = bytearray('<IfffffffffffHBBB', 'ascii')
         orders = [0, 13, 14, 15, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 143
+        unpacker = struct.Struct('<IfffffffffffHBBB')
 
         def __init__(self, time_boot_ms, target_system, target_component, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate):
                 MAVLink_message.__init__(self, MAVLink_set_position_target_local_ned_message.id, MAVLink_set_position_target_local_ned_message.name)
@@ -5151,13 +5281,15 @@ class MAVLink_position_target_local_ned_message(MAVLink_message):
         id = MAVLINK_MSG_ID_POSITION_TARGET_LOCAL_NED
         name = 'POSITION_TARGET_LOCAL_NED'
         fieldnames = ['time_boot_ms', 'coordinate_frame', 'type_mask', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate']
-        ordered_fieldnames = [ 'time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'coordinate_frame' ]
+        ordered_fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'coordinate_frame']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<IfffffffffffHB'
         native_format = bytearray('<IfffffffffffHB', 'ascii')
         orders = [0, 13, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 140
+        unpacker = struct.Struct('<IfffffffffffHB')
 
         def __init__(self, time_boot_ms, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate):
                 MAVLink_message.__init__(self, MAVLink_position_target_local_ned_message.id, MAVLink_position_target_local_ned_message.name)
@@ -5190,13 +5322,15 @@ class MAVLink_set_position_target_global_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_POSITION_TARGET_GLOBAL_INT
         name = 'SET_POSITION_TARGET_GLOBAL_INT'
         fieldnames = ['time_boot_ms', 'target_system', 'target_component', 'coordinate_frame', 'type_mask', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate']
-        ordered_fieldnames = [ 'time_boot_ms', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'target_system', 'target_component', 'coordinate_frame' ]
+        ordered_fieldnames = ['time_boot_ms', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'target_system', 'target_component', 'coordinate_frame']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<IiifffffffffHBBB'
         native_format = bytearray('<IiifffffffffHBBB', 'ascii')
         orders = [0, 13, 14, 15, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 5
+        unpacker = struct.Struct('<IiifffffffffHBBB')
 
         def __init__(self, time_boot_ms, target_system, target_component, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate):
                 MAVLink_message.__init__(self, MAVLink_set_position_target_global_int_message.id, MAVLink_set_position_target_global_int_message.name)
@@ -5231,13 +5365,15 @@ class MAVLink_position_target_global_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_POSITION_TARGET_GLOBAL_INT
         name = 'POSITION_TARGET_GLOBAL_INT'
         fieldnames = ['time_boot_ms', 'coordinate_frame', 'type_mask', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate']
-        ordered_fieldnames = [ 'time_boot_ms', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'coordinate_frame' ]
+        ordered_fieldnames = ['time_boot_ms', 'lat_int', 'lon_int', 'alt', 'vx', 'vy', 'vz', 'afx', 'afy', 'afz', 'yaw', 'yaw_rate', 'type_mask', 'coordinate_frame']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<IiifffffffffHB'
         native_format = bytearray('<IiifffffffffHB', 'ascii')
         orders = [0, 13, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 150
+        unpacker = struct.Struct('<IiifffffffffHB')
 
         def __init__(self, time_boot_ms, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate):
                 MAVLink_message.__init__(self, MAVLink_position_target_global_int_message.id, MAVLink_position_target_global_int_message.name)
@@ -5270,13 +5406,15 @@ class MAVLink_local_position_ned_system_global_offset_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOCAL_POSITION_NED_SYSTEM_GLOBAL_OFFSET
         name = 'LOCAL_POSITION_NED_SYSTEM_GLOBAL_OFFSET'
         fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'roll', 'pitch', 'yaw']
-        ordered_fieldnames = [ 'time_boot_ms', 'x', 'y', 'z', 'roll', 'pitch', 'yaw' ]
+        ordered_fieldnames = ['time_boot_ms', 'x', 'y', 'z', 'roll', 'pitch', 'yaw']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Iffffff'
         native_format = bytearray('<Iffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 231
+        unpacker = struct.Struct('<Iffffff')
 
         def __init__(self, time_boot_ms, x, y, z, roll, pitch, yaw):
                 MAVLink_message.__init__(self, MAVLink_local_position_ned_system_global_offset_message.id, MAVLink_local_position_ned_system_global_offset_message.name)
@@ -5301,13 +5439,15 @@ class MAVLink_hil_state_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_STATE
         name = 'HIL_STATE'
         fieldnames = ['time_usec', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'xacc', 'yacc', 'zacc']
-        ordered_fieldnames = [ 'time_usec', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'xacc', 'yacc', 'zacc' ]
+        ordered_fieldnames = ['time_usec', 'roll', 'pitch', 'yaw', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'xacc', 'yacc', 'zacc']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'int32_t', 'int32_t', 'int32_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Qffffffiiihhhhhh'
         native_format = bytearray('<Qffffffiiihhhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 183
+        unpacker = struct.Struct('<Qffffffiiihhhhhh')
 
         def __init__(self, time_usec, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, xacc, yacc, zacc):
                 MAVLink_message.__init__(self, MAVLink_hil_state_message.id, MAVLink_hil_state_message.name)
@@ -5340,13 +5480,15 @@ class MAVLink_hil_controls_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_CONTROLS
         name = 'HIL_CONTROLS'
         fieldnames = ['time_usec', 'roll_ailerons', 'pitch_elevator', 'yaw_rudder', 'throttle', 'aux1', 'aux2', 'aux3', 'aux4', 'mode', 'nav_mode']
-        ordered_fieldnames = [ 'time_usec', 'roll_ailerons', 'pitch_elevator', 'yaw_rudder', 'throttle', 'aux1', 'aux2', 'aux3', 'aux4', 'mode', 'nav_mode' ]
+        ordered_fieldnames = ['time_usec', 'roll_ailerons', 'pitch_elevator', 'yaw_rudder', 'throttle', 'aux1', 'aux2', 'aux3', 'aux4', 'mode', 'nav_mode']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint8_t', 'uint8_t']
         format = '<QffffffffBB'
         native_format = bytearray('<QffffffffBB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 63
+        unpacker = struct.Struct('<QffffffffBB')
 
         def __init__(self, time_usec, roll_ailerons, pitch_elevator, yaw_rudder, throttle, aux1, aux2, aux3, aux4, mode, nav_mode):
                 MAVLink_message.__init__(self, MAVLink_hil_controls_message.id, MAVLink_hil_controls_message.name)
@@ -5376,13 +5518,15 @@ class MAVLink_hil_rc_inputs_raw_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_RC_INPUTS_RAW
         name = 'HIL_RC_INPUTS_RAW'
         fieldnames = ['time_usec', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'rssi']
-        ordered_fieldnames = [ 'time_usec', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'rssi' ]
+        ordered_fieldnames = ['time_usec', 'chan1_raw', 'chan2_raw', 'chan3_raw', 'chan4_raw', 'chan5_raw', 'chan6_raw', 'chan7_raw', 'chan8_raw', 'chan9_raw', 'chan10_raw', 'chan11_raw', 'chan12_raw', 'rssi']
+        fieldtypes = ['uint64_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t']
         format = '<QHHHHHHHHHHHHB'
         native_format = bytearray('<QHHHHHHHHHHHHB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 54
+        unpacker = struct.Struct('<QHHHHHHHHHHHHB')
 
         def __init__(self, time_usec, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, rssi):
                 MAVLink_message.__init__(self, MAVLink_hil_rc_inputs_raw_message.id, MAVLink_hil_rc_inputs_raw_message.name)
@@ -5413,13 +5557,15 @@ class MAVLink_hil_actuator_controls_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS
         name = 'HIL_ACTUATOR_CONTROLS'
         fieldnames = ['time_usec', 'controls', 'mode', 'flags']
-        ordered_fieldnames = [ 'time_usec', 'flags', 'controls', 'mode' ]
+        ordered_fieldnames = ['time_usec', 'flags', 'controls', 'mode']
+        fieldtypes = ['uint64_t', 'float', 'uint8_t', 'uint64_t']
         format = '<QQ16fB'
         native_format = bytearray('<QQfB', 'ascii')
         orders = [0, 2, 3, 1]
         lengths = [1, 1, 16, 1]
         array_lengths = [0, 0, 16, 0]
         crc_extra = 47
+        unpacker = struct.Struct('<QQ16fB')
 
         def __init__(self, time_usec, controls, mode, flags):
                 MAVLink_message.__init__(self, MAVLink_hil_actuator_controls_message.id, MAVLink_hil_actuator_controls_message.name)
@@ -5439,13 +5585,15 @@ class MAVLink_optical_flow_message(MAVLink_message):
         id = MAVLINK_MSG_ID_OPTICAL_FLOW
         name = 'OPTICAL_FLOW'
         fieldnames = ['time_usec', 'sensor_id', 'flow_x', 'flow_y', 'flow_comp_m_x', 'flow_comp_m_y', 'quality', 'ground_distance', 'flow_rate_x', 'flow_rate_y']
-        ordered_fieldnames = [ 'time_usec', 'flow_comp_m_x', 'flow_comp_m_y', 'ground_distance', 'flow_x', 'flow_y', 'sensor_id', 'quality', 'flow_rate_x', 'flow_rate_y' ]
+        ordered_fieldnames = ['time_usec', 'flow_comp_m_x', 'flow_comp_m_y', 'ground_distance', 'flow_x', 'flow_y', 'sensor_id', 'quality', 'flow_rate_x', 'flow_rate_y']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int16_t', 'int16_t', 'float', 'float', 'uint8_t', 'float', 'float', 'float']
         format = '<QfffhhBBff'
         native_format = bytearray('<QfffhhBBff', 'ascii')
         orders = [0, 6, 4, 5, 1, 2, 7, 3, 8, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 175
+        unpacker = struct.Struct('<QfffhhBBff')
 
         def __init__(self, time_usec, sensor_id, flow_x, flow_y, flow_comp_m_x, flow_comp_m_y, quality, ground_distance, flow_rate_x=0, flow_rate_y=0):
                 MAVLink_message.__init__(self, MAVLink_optical_flow_message.id, MAVLink_optical_flow_message.name)
@@ -5471,15 +5619,17 @@ class MAVLink_global_vision_position_estimate_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GLOBAL_VISION_POSITION_ESTIMATE
         name = 'GLOBAL_VISION_POSITION_ESTIMATE'
         fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
-        ordered_fieldnames = [ 'usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance' ]
+        ordered_fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffff21f'
         native_format = bytearray('<Qfffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 21]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 21]
         crc_extra = 102
+        unpacker = struct.Struct('<Qffffff21f')
 
-        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_global_vision_position_estimate_message.id, MAVLink_global_vision_position_estimate_message.name)
                 self._fieldnames = MAVLink_global_vision_position_estimate_message.fieldnames
                 self.usec = usec
@@ -5501,15 +5651,17 @@ class MAVLink_vision_position_estimate_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VISION_POSITION_ESTIMATE
         name = 'VISION_POSITION_ESTIMATE'
         fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
-        ordered_fieldnames = [ 'usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance' ]
+        ordered_fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffff21f'
         native_format = bytearray('<Qfffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 21]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 21]
         crc_extra = 158
+        unpacker = struct.Struct('<Qffffff21f')
 
-        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_vision_position_estimate_message.id, MAVLink_vision_position_estimate_message.name)
                 self._fieldnames = MAVLink_vision_position_estimate_message.fieldnames
                 self.usec = usec
@@ -5531,15 +5683,17 @@ class MAVLink_vision_speed_estimate_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE
         name = 'VISION_SPEED_ESTIMATE'
         fieldnames = ['usec', 'x', 'y', 'z', 'covariance']
-        ordered_fieldnames = [ 'usec', 'x', 'y', 'z', 'covariance' ]
+        ordered_fieldnames = ['usec', 'x', 'y', 'z', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float']
         format = '<Qfff9f'
         native_format = bytearray('<Qffff', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 1, 9]
         array_lengths = [0, 0, 0, 0, 9]
         crc_extra = 208
+        unpacker = struct.Struct('<Qfff9f')
 
-        def __init__(self, usec, x, y, z, covariance=0):
+        def __init__(self, usec, x, y, z, covariance=[0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_vision_speed_estimate_message.id, MAVLink_vision_speed_estimate_message.name)
                 self._fieldnames = MAVLink_vision_speed_estimate_message.fieldnames
                 self.usec = usec
@@ -5558,15 +5712,17 @@ class MAVLink_vicon_position_estimate_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VICON_POSITION_ESTIMATE
         name = 'VICON_POSITION_ESTIMATE'
         fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
-        ordered_fieldnames = [ 'usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance' ]
+        ordered_fieldnames = ['usec', 'x', 'y', 'z', 'roll', 'pitch', 'yaw', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffff21f'
         native_format = bytearray('<Qfffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 21]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 21]
         crc_extra = 56
+        unpacker = struct.Struct('<Qffffff21f')
 
-        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def __init__(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_vicon_position_estimate_message.id, MAVLink_vicon_position_estimate_message.name)
                 self._fieldnames = MAVLink_vicon_position_estimate_message.fieldnames
                 self.usec = usec
@@ -5588,13 +5744,15 @@ class MAVLink_highres_imu_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIGHRES_IMU
         name = 'HIGHRES_IMU'
         fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated']
-        ordered_fieldnames = [ 'time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated' ]
+        ordered_fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint16_t']
         format = '<QfffffffffffffH'
         native_format = bytearray('<QfffffffffffffH', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 93
+        unpacker = struct.Struct('<QfffffffffffffH')
 
         def __init__(self, time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated):
                 MAVLink_message.__init__(self, MAVLink_highres_imu_message.id, MAVLink_highres_imu_message.name)
@@ -5626,13 +5784,15 @@ class MAVLink_optical_flow_rad_message(MAVLink_message):
         id = MAVLINK_MSG_ID_OPTICAL_FLOW_RAD
         name = 'OPTICAL_FLOW_RAD'
         fieldnames = ['time_usec', 'sensor_id', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'temperature', 'quality', 'time_delta_distance_us', 'distance']
-        ordered_fieldnames = [ 'time_usec', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'time_delta_distance_us', 'distance', 'temperature', 'sensor_id', 'quality' ]
+        ordered_fieldnames = ['time_usec', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'time_delta_distance_us', 'distance', 'temperature', 'sensor_id', 'quality']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint32_t', 'float', 'float', 'float', 'float', 'float', 'int16_t', 'uint8_t', 'uint32_t', 'float']
         format = '<QIfffffIfhBB'
         native_format = bytearray('<QIfffffIfhBB', 'ascii')
         orders = [0, 10, 1, 2, 3, 4, 5, 6, 9, 11, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 138
+        unpacker = struct.Struct('<QIfffffIfhBB')
 
         def __init__(self, time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance):
                 MAVLink_message.__init__(self, MAVLink_optical_flow_rad_message.id, MAVLink_optical_flow_rad_message.name)
@@ -5660,13 +5820,15 @@ class MAVLink_hil_sensor_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_SENSOR
         name = 'HIL_SENSOR'
         fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated']
-        ordered_fieldnames = [ 'time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated' ]
+        ordered_fieldnames = ['time_usec', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag', 'abs_pressure', 'diff_pressure', 'pressure_alt', 'temperature', 'fields_updated']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint32_t']
         format = '<QfffffffffffffI'
         native_format = bytearray('<QfffffffffffffI', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 108
+        unpacker = struct.Struct('<QfffffffffffffI')
 
         def __init__(self, time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated):
                 MAVLink_message.__init__(self, MAVLink_hil_sensor_message.id, MAVLink_hil_sensor_message.name)
@@ -5697,13 +5859,15 @@ class MAVLink_sim_state_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SIM_STATE
         name = 'SIM_STATE'
         fieldnames = ['q1', 'q2', 'q3', 'q4', 'roll', 'pitch', 'yaw', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'lat', 'lon', 'alt', 'std_dev_horz', 'std_dev_vert', 'vn', 've', 'vd']
-        ordered_fieldnames = [ 'q1', 'q2', 'q3', 'q4', 'roll', 'pitch', 'yaw', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'lat', 'lon', 'alt', 'std_dev_horz', 'std_dev_vert', 'vn', 've', 'vd' ]
+        ordered_fieldnames = ['q1', 'q2', 'q3', 'q4', 'roll', 'pitch', 'yaw', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'lat', 'lon', 'alt', 'std_dev_horz', 'std_dev_vert', 'vn', 've', 'vd']
+        fieldtypes = ['float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<fffffffffffffffffffff'
         native_format = bytearray('<fffffffffffffffffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 32
+        unpacker = struct.Struct('<fffffffffffffffffffff')
 
         def __init__(self, q1, q2, q3, q4, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, std_dev_horz, std_dev_vert, vn, ve, vd):
                 MAVLink_message.__init__(self, MAVLink_sim_state_message.id, MAVLink_sim_state_message.name)
@@ -5740,13 +5904,15 @@ class MAVLink_radio_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RADIO_STATUS
         name = 'RADIO_STATUS'
         fieldnames = ['rssi', 'remrssi', 'txbuf', 'noise', 'remnoise', 'rxerrors', 'fixed']
-        ordered_fieldnames = [ 'rxerrors', 'fixed', 'rssi', 'remrssi', 'txbuf', 'noise', 'remnoise' ]
+        ordered_fieldnames = ['rxerrors', 'fixed', 'rssi', 'remrssi', 'txbuf', 'noise', 'remnoise']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<HHBBBBB'
         native_format = bytearray('<HHBBBBB', 'ascii')
         orders = [2, 3, 4, 5, 6, 0, 1]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 185
+        unpacker = struct.Struct('<HHBBBBB')
 
         def __init__(self, rssi, remrssi, txbuf, noise, remnoise, rxerrors, fixed):
                 MAVLink_message.__init__(self, MAVLink_radio_status_message.id, MAVLink_radio_status_message.name)
@@ -5769,13 +5935,15 @@ class MAVLink_file_transfer_protocol_message(MAVLink_message):
         id = MAVLINK_MSG_ID_FILE_TRANSFER_PROTOCOL
         name = 'FILE_TRANSFER_PROTOCOL'
         fieldnames = ['target_network', 'target_system', 'target_component', 'payload']
-        ordered_fieldnames = [ 'target_network', 'target_system', 'target_component', 'payload' ]
+        ordered_fieldnames = ['target_network', 'target_system', 'target_component', 'payload']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBB251B'
         native_format = bytearray('<BBBB', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 251]
         array_lengths = [0, 0, 0, 251]
         crc_extra = 84
+        unpacker = struct.Struct('<BBB251B')
 
         def __init__(self, target_network, target_system, target_component, payload):
                 MAVLink_message.__init__(self, MAVLink_file_transfer_protocol_message.id, MAVLink_file_transfer_protocol_message.name)
@@ -5795,13 +5963,15 @@ class MAVLink_timesync_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TIMESYNC
         name = 'TIMESYNC'
         fieldnames = ['tc1', 'ts1']
-        ordered_fieldnames = [ 'tc1', 'ts1' ]
+        ordered_fieldnames = ['tc1', 'ts1']
+        fieldtypes = ['int64_t', 'int64_t']
         format = '<qq'
         native_format = bytearray('<qq', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 34
+        unpacker = struct.Struct('<qq')
 
         def __init__(self, tc1, ts1):
                 MAVLink_message.__init__(self, MAVLink_timesync_message.id, MAVLink_timesync_message.name)
@@ -5819,13 +5989,15 @@ class MAVLink_camera_trigger_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CAMERA_TRIGGER
         name = 'CAMERA_TRIGGER'
         fieldnames = ['time_usec', 'seq']
-        ordered_fieldnames = [ 'time_usec', 'seq' ]
+        ordered_fieldnames = ['time_usec', 'seq']
+        fieldtypes = ['uint64_t', 'uint32_t']
         format = '<QI'
         native_format = bytearray('<QI', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 174
+        unpacker = struct.Struct('<QI')
 
         def __init__(self, time_usec, seq):
                 MAVLink_message.__init__(self, MAVLink_camera_trigger_message.id, MAVLink_camera_trigger_message.name)
@@ -5846,13 +6018,15 @@ class MAVLink_hil_gps_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_GPS
         name = 'HIL_GPS'
         fieldnames = ['time_usec', 'fix_type', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'vn', 've', 'vd', 'cog', 'satellites_visible']
-        ordered_fieldnames = [ 'time_usec', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'vn', 've', 'vd', 'cog', 'fix_type', 'satellites_visible' ]
+        ordered_fieldnames = ['time_usec', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'vn', 've', 'vd', 'cog', 'fix_type', 'satellites_visible']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint16_t', 'uint16_t', 'uint16_t', 'int16_t', 'int16_t', 'int16_t', 'uint16_t', 'uint8_t']
         format = '<QiiiHHHhhhHBB'
         native_format = bytearray('<QiiiHHHhhhHBB', 'ascii')
         orders = [0, 11, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 124
+        unpacker = struct.Struct('<QiiiHHHhhhHBB')
 
         def __init__(self, time_usec, fix_type, lat, lon, alt, eph, epv, vel, vn, ve, vd, cog, satellites_visible):
                 MAVLink_message.__init__(self, MAVLink_hil_gps_message.id, MAVLink_hil_gps_message.name)
@@ -5882,13 +6056,15 @@ class MAVLink_hil_optical_flow_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_OPTICAL_FLOW
         name = 'HIL_OPTICAL_FLOW'
         fieldnames = ['time_usec', 'sensor_id', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'temperature', 'quality', 'time_delta_distance_us', 'distance']
-        ordered_fieldnames = [ 'time_usec', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'time_delta_distance_us', 'distance', 'temperature', 'sensor_id', 'quality' ]
+        ordered_fieldnames = ['time_usec', 'integration_time_us', 'integrated_x', 'integrated_y', 'integrated_xgyro', 'integrated_ygyro', 'integrated_zgyro', 'time_delta_distance_us', 'distance', 'temperature', 'sensor_id', 'quality']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint32_t', 'float', 'float', 'float', 'float', 'float', 'int16_t', 'uint8_t', 'uint32_t', 'float']
         format = '<QIfffffIfhBB'
         native_format = bytearray('<QIfffffIfhBB', 'ascii')
         orders = [0, 10, 1, 2, 3, 4, 5, 6, 9, 11, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 237
+        unpacker = struct.Struct('<QIfffffIfhBB')
 
         def __init__(self, time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance):
                 MAVLink_message.__init__(self, MAVLink_hil_optical_flow_message.id, MAVLink_hil_optical_flow_message.name)
@@ -5919,13 +6095,15 @@ class MAVLink_hil_state_quaternion_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIL_STATE_QUATERNION
         name = 'HIL_STATE_QUATERNION'
         fieldnames = ['time_usec', 'attitude_quaternion', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'ind_airspeed', 'true_airspeed', 'xacc', 'yacc', 'zacc']
-        ordered_fieldnames = [ 'time_usec', 'attitude_quaternion', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'ind_airspeed', 'true_airspeed', 'xacc', 'yacc', 'zacc' ]
+        ordered_fieldnames = ['time_usec', 'attitude_quaternion', 'rollspeed', 'pitchspeed', 'yawspeed', 'lat', 'lon', 'alt', 'vx', 'vy', 'vz', 'ind_airspeed', 'true_airspeed', 'xacc', 'yacc', 'zacc']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'int32_t', 'int32_t', 'int32_t', 'int16_t', 'int16_t', 'int16_t', 'uint16_t', 'uint16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Q4ffffiiihhhHHhhh'
         native_format = bytearray('<QffffiiihhhHHhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         lengths = [1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 4
+        unpacker = struct.Struct('<Q4ffffiiihhhHHhhh')
 
         def __init__(self, time_usec, attitude_quaternion, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, ind_airspeed, true_airspeed, xacc, yacc, zacc):
                 MAVLink_message.__init__(self, MAVLink_hil_state_quaternion_message.id, MAVLink_hil_state_quaternion_message.name)
@@ -5959,13 +6137,15 @@ class MAVLink_scaled_imu2_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_IMU2
         name = 'SCALED_IMU2'
         fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
-        ordered_fieldnames = [ 'time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag' ]
+        ordered_fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
+        fieldtypes = ['uint32_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Ihhhhhhhhh'
         native_format = bytearray('<Ihhhhhhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 76
+        unpacker = struct.Struct('<Ihhhhhhhhh')
 
         def __init__(self, time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag):
                 MAVLink_message.__init__(self, MAVLink_scaled_imu2_message.id, MAVLink_scaled_imu2_message.name)
@@ -5992,13 +6172,15 @@ class MAVLink_log_request_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_REQUEST_LIST
         name = 'LOG_REQUEST_LIST'
         fieldnames = ['target_system', 'target_component', 'start', 'end']
-        ordered_fieldnames = [ 'start', 'end', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['start', 'end', 'target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<HHBB'
         native_format = bytearray('<HHBB', 'ascii')
         orders = [2, 3, 0, 1]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 128
+        unpacker = struct.Struct('<HHBB')
 
         def __init__(self, target_system, target_component, start, end):
                 MAVLink_message.__init__(self, MAVLink_log_request_list_message.id, MAVLink_log_request_list_message.name)
@@ -6018,13 +6200,15 @@ class MAVLink_log_entry_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_ENTRY
         name = 'LOG_ENTRY'
         fieldnames = ['id', 'num_logs', 'last_log_num', 'time_utc', 'size']
-        ordered_fieldnames = [ 'time_utc', 'size', 'id', 'num_logs', 'last_log_num' ]
+        ordered_fieldnames = ['time_utc', 'size', 'id', 'num_logs', 'last_log_num']
+        fieldtypes = ['uint16_t', 'uint16_t', 'uint16_t', 'uint32_t', 'uint32_t']
         format = '<IIHHH'
         native_format = bytearray('<IIHHH', 'ascii')
         orders = [2, 3, 4, 0, 1]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 56
+        unpacker = struct.Struct('<IIHHH')
 
         def __init__(self, id, num_logs, last_log_num, time_utc, size):
                 MAVLink_message.__init__(self, MAVLink_log_entry_message.id, MAVLink_log_entry_message.name)
@@ -6045,13 +6229,15 @@ class MAVLink_log_request_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_REQUEST_DATA
         name = 'LOG_REQUEST_DATA'
         fieldnames = ['target_system', 'target_component', 'id', 'ofs', 'count']
-        ordered_fieldnames = [ 'ofs', 'count', 'id', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['ofs', 'count', 'id', 'target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint32_t']
         format = '<IIHBB'
         native_format = bytearray('<IIHBB', 'ascii')
         orders = [3, 4, 2, 0, 1]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 116
+        unpacker = struct.Struct('<IIHBB')
 
         def __init__(self, target_system, target_component, id, ofs, count):
                 MAVLink_message.__init__(self, MAVLink_log_request_data_message.id, MAVLink_log_request_data_message.name)
@@ -6072,13 +6258,15 @@ class MAVLink_log_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_DATA
         name = 'LOG_DATA'
         fieldnames = ['id', 'ofs', 'count', 'data']
-        ordered_fieldnames = [ 'ofs', 'id', 'count', 'data' ]
+        ordered_fieldnames = ['ofs', 'id', 'count', 'data']
+        fieldtypes = ['uint16_t', 'uint32_t', 'uint8_t', 'uint8_t']
         format = '<IHB90B'
         native_format = bytearray('<IHBB', 'ascii')
         orders = [1, 0, 2, 3]
         lengths = [1, 1, 1, 90]
         array_lengths = [0, 0, 0, 90]
         crc_extra = 134
+        unpacker = struct.Struct('<IHB90B')
 
         def __init__(self, id, ofs, count, data):
                 MAVLink_message.__init__(self, MAVLink_log_data_message.id, MAVLink_log_data_message.name)
@@ -6098,13 +6286,15 @@ class MAVLink_log_erase_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_ERASE
         name = 'LOG_ERASE'
         fieldnames = ['target_system', 'target_component']
-        ordered_fieldnames = [ 'target_system', 'target_component' ]
+        ordered_fieldnames = ['target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t']
         format = '<BB'
         native_format = bytearray('<BB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 237
+        unpacker = struct.Struct('<BB')
 
         def __init__(self, target_system, target_component):
                 MAVLink_message.__init__(self, MAVLink_log_erase_message.id, MAVLink_log_erase_message.name)
@@ -6122,13 +6312,15 @@ class MAVLink_log_request_end_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOG_REQUEST_END
         name = 'LOG_REQUEST_END'
         fieldnames = ['target_system', 'target_component']
-        ordered_fieldnames = [ 'target_system', 'target_component' ]
+        ordered_fieldnames = ['target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t']
         format = '<BB'
         native_format = bytearray('<BB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 203
+        unpacker = struct.Struct('<BB')
 
         def __init__(self, target_system, target_component):
                 MAVLink_message.__init__(self, MAVLink_log_request_end_message.id, MAVLink_log_request_end_message.name)
@@ -6146,13 +6338,15 @@ class MAVLink_gps_inject_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_INJECT_DATA
         name = 'GPS_INJECT_DATA'
         fieldnames = ['target_system', 'target_component', 'len', 'data']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'len', 'data' ]
+        ordered_fieldnames = ['target_system', 'target_component', 'len', 'data']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<BBB110B'
         native_format = bytearray('<BBBB', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 110]
         array_lengths = [0, 0, 0, 110]
         crc_extra = 250
+        unpacker = struct.Struct('<BBB110B')
 
         def __init__(self, target_system, target_component, len, data):
                 MAVLink_message.__init__(self, MAVLink_gps_inject_data_message.id, MAVLink_gps_inject_data_message.name)
@@ -6172,13 +6366,15 @@ class MAVLink_gps2_raw_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS2_RAW
         name = 'GPS2_RAW'
         fieldnames = ['time_usec', 'fix_type', 'lat', 'lon', 'alt', 'eph', 'epv', 'vel', 'cog', 'satellites_visible', 'dgps_numch', 'dgps_age']
-        ordered_fieldnames = [ 'time_usec', 'lat', 'lon', 'alt', 'dgps_age', 'eph', 'epv', 'vel', 'cog', 'fix_type', 'satellites_visible', 'dgps_numch' ]
+        ordered_fieldnames = ['time_usec', 'lat', 'lon', 'alt', 'dgps_age', 'eph', 'epv', 'vel', 'cog', 'fix_type', 'satellites_visible', 'dgps_numch']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t', 'uint8_t', 'uint32_t']
         format = '<QiiiIHHHHBBB'
         native_format = bytearray('<QiiiIHHHHBBB', 'ascii')
         orders = [0, 9, 1, 2, 3, 5, 6, 7, 8, 10, 11, 4]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 87
+        unpacker = struct.Struct('<QiiiIHHHHBBB')
 
         def __init__(self, time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, dgps_numch, dgps_age):
                 MAVLink_message.__init__(self, MAVLink_gps2_raw_message.id, MAVLink_gps2_raw_message.name)
@@ -6206,13 +6402,15 @@ class MAVLink_power_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_POWER_STATUS
         name = 'POWER_STATUS'
         fieldnames = ['Vcc', 'Vservo', 'flags']
-        ordered_fieldnames = [ 'Vcc', 'Vservo', 'flags' ]
+        ordered_fieldnames = ['Vcc', 'Vservo', 'flags']
+        fieldtypes = ['uint16_t', 'uint16_t', 'uint16_t']
         format = '<HHH'
         native_format = bytearray('<HHH', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 203
+        unpacker = struct.Struct('<HHH')
 
         def __init__(self, Vcc, Vservo, flags):
                 MAVLink_message.__init__(self, MAVLink_power_status_message.id, MAVLink_power_status_message.name)
@@ -6235,13 +6433,15 @@ class MAVLink_serial_control_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SERIAL_CONTROL
         name = 'SERIAL_CONTROL'
         fieldnames = ['device', 'flags', 'timeout', 'baudrate', 'count', 'data']
-        ordered_fieldnames = [ 'baudrate', 'timeout', 'device', 'flags', 'count', 'data' ]
+        ordered_fieldnames = ['baudrate', 'timeout', 'device', 'flags', 'count', 'data']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint8_t', 'uint8_t']
         format = '<IHBBB70B'
         native_format = bytearray('<IHBBBB', 'ascii')
         orders = [2, 3, 1, 0, 4, 5]
         lengths = [1, 1, 1, 1, 1, 70]
         array_lengths = [0, 0, 0, 0, 0, 70]
         crc_extra = 220
+        unpacker = struct.Struct('<IHBBB70B')
 
         def __init__(self, device, flags, timeout, baudrate, count, data):
                 MAVLink_message.__init__(self, MAVLink_serial_control_message.id, MAVLink_serial_control_message.name)
@@ -6264,13 +6464,15 @@ class MAVLink_gps_rtk_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_RTK
         name = 'GPS_RTK'
         fieldnames = ['time_last_baseline_ms', 'rtk_receiver_id', 'wn', 'tow', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses']
-        ordered_fieldnames = [ 'time_last_baseline_ms', 'tow', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses', 'wn', 'rtk_receiver_id', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type' ]
+        ordered_fieldnames = ['time_last_baseline_ms', 'tow', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses', 'wn', 'rtk_receiver_id', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint32_t', 'int32_t']
         format = '<IIiiiIiHBBBBB'
         native_format = bytearray('<IIiiiIiHBBBBB', 'ascii')
         orders = [0, 8, 7, 1, 9, 10, 11, 12, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 25
+        unpacker = struct.Struct('<IIiiiIiHBBBBB')
 
         def __init__(self, time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses):
                 MAVLink_message.__init__(self, MAVLink_gps_rtk_message.id, MAVLink_gps_rtk_message.name)
@@ -6300,13 +6502,15 @@ class MAVLink_gps2_rtk_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS2_RTK
         name = 'GPS2_RTK'
         fieldnames = ['time_last_baseline_ms', 'rtk_receiver_id', 'wn', 'tow', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses']
-        ordered_fieldnames = [ 'time_last_baseline_ms', 'tow', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses', 'wn', 'rtk_receiver_id', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type' ]
+        ordered_fieldnames = ['time_last_baseline_ms', 'tow', 'baseline_a_mm', 'baseline_b_mm', 'baseline_c_mm', 'accuracy', 'iar_num_hypotheses', 'wn', 'rtk_receiver_id', 'rtk_health', 'rtk_rate', 'nsats', 'baseline_coords_type']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'uint32_t', 'int32_t']
         format = '<IIiiiIiHBBBBB'
         native_format = bytearray('<IIiiiIiHBBBBB', 'ascii')
         orders = [0, 8, 7, 1, 9, 10, 11, 12, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 226
+        unpacker = struct.Struct('<IIiiiIiHBBBBB')
 
         def __init__(self, time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses):
                 MAVLink_message.__init__(self, MAVLink_gps2_rtk_message.id, MAVLink_gps2_rtk_message.name)
@@ -6336,13 +6540,15 @@ class MAVLink_scaled_imu3_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_IMU3
         name = 'SCALED_IMU3'
         fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
-        ordered_fieldnames = [ 'time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag' ]
+        ordered_fieldnames = ['time_boot_ms', 'xacc', 'yacc', 'zacc', 'xgyro', 'ygyro', 'zgyro', 'xmag', 'ymag', 'zmag']
+        fieldtypes = ['uint32_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t', 'int16_t']
         format = '<Ihhhhhhhhh'
         native_format = bytearray('<Ihhhhhhhhh', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 46
+        unpacker = struct.Struct('<Ihhhhhhhhh')
 
         def __init__(self, time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag):
                 MAVLink_message.__init__(self, MAVLink_scaled_imu3_message.id, MAVLink_scaled_imu3_message.name)
@@ -6368,13 +6574,15 @@ class MAVLink_data_transmission_handshake_message(MAVLink_message):
         id = MAVLINK_MSG_ID_DATA_TRANSMISSION_HANDSHAKE
         name = 'DATA_TRANSMISSION_HANDSHAKE'
         fieldnames = ['type', 'size', 'width', 'height', 'packets', 'payload', 'jpg_quality']
-        ordered_fieldnames = [ 'size', 'width', 'height', 'packets', 'type', 'payload', 'jpg_quality' ]
+        ordered_fieldnames = ['size', 'width', 'height', 'packets', 'type', 'payload', 'jpg_quality']
+        fieldtypes = ['uint8_t', 'uint32_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t', 'uint8_t']
         format = '<IHHHBBB'
         native_format = bytearray('<IHHHBBB', 'ascii')
         orders = [4, 0, 1, 2, 3, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 29
+        unpacker = struct.Struct('<IHHHBBB')
 
         def __init__(self, type, size, width, height, packets, payload, jpg_quality):
                 MAVLink_message.__init__(self, MAVLink_data_transmission_handshake_message.id, MAVLink_data_transmission_handshake_message.name)
@@ -6397,13 +6605,15 @@ class MAVLink_encapsulated_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ENCAPSULATED_DATA
         name = 'ENCAPSULATED_DATA'
         fieldnames = ['seqnr', 'data']
-        ordered_fieldnames = [ 'seqnr', 'data' ]
+        ordered_fieldnames = ['seqnr', 'data']
+        fieldtypes = ['uint16_t', 'uint8_t']
         format = '<H253B'
         native_format = bytearray('<HB', 'ascii')
         orders = [0, 1]
         lengths = [1, 253]
         array_lengths = [0, 253]
         crc_extra = 223
+        unpacker = struct.Struct('<H253B')
 
         def __init__(self, seqnr, data):
                 MAVLink_message.__init__(self, MAVLink_encapsulated_data_message.id, MAVLink_encapsulated_data_message.name)
@@ -6421,13 +6631,15 @@ class MAVLink_distance_sensor_message(MAVLink_message):
         id = MAVLINK_MSG_ID_DISTANCE_SENSOR
         name = 'DISTANCE_SENSOR'
         fieldnames = ['time_boot_ms', 'min_distance', 'max_distance', 'current_distance', 'type', 'id', 'orientation', 'covariance']
-        ordered_fieldnames = [ 'time_boot_ms', 'min_distance', 'max_distance', 'current_distance', 'type', 'id', 'orientation', 'covariance' ]
+        ordered_fieldnames = ['time_boot_ms', 'min_distance', 'max_distance', 'current_distance', 'type', 'id', 'orientation', 'covariance']
+        fieldtypes = ['uint32_t', 'uint16_t', 'uint16_t', 'uint16_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<IHHHBBBB'
         native_format = bytearray('<IHHHBBBB', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 85
+        unpacker = struct.Struct('<IHHHBBBB')
 
         def __init__(self, time_boot_ms, min_distance, max_distance, current_distance, type, id, orientation, covariance):
                 MAVLink_message.__init__(self, MAVLink_distance_sensor_message.id, MAVLink_distance_sensor_message.name)
@@ -6451,13 +6663,15 @@ class MAVLink_terrain_request_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TERRAIN_REQUEST
         name = 'TERRAIN_REQUEST'
         fieldnames = ['lat', 'lon', 'grid_spacing', 'mask']
-        ordered_fieldnames = [ 'mask', 'lat', 'lon', 'grid_spacing' ]
+        ordered_fieldnames = ['mask', 'lat', 'lon', 'grid_spacing']
+        fieldtypes = ['int32_t', 'int32_t', 'uint16_t', 'uint64_t']
         format = '<QiiH'
         native_format = bytearray('<QiiH', 'ascii')
         orders = [1, 2, 3, 0]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 6
+        unpacker = struct.Struct('<QiiH')
 
         def __init__(self, lat, lon, grid_spacing, mask):
                 MAVLink_message.__init__(self, MAVLink_terrain_request_message.id, MAVLink_terrain_request_message.name)
@@ -6478,13 +6692,15 @@ class MAVLink_terrain_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TERRAIN_DATA
         name = 'TERRAIN_DATA'
         fieldnames = ['lat', 'lon', 'grid_spacing', 'gridbit', 'data']
-        ordered_fieldnames = [ 'lat', 'lon', 'grid_spacing', 'data', 'gridbit' ]
+        ordered_fieldnames = ['lat', 'lon', 'grid_spacing', 'data', 'gridbit']
+        fieldtypes = ['int32_t', 'int32_t', 'uint16_t', 'uint8_t', 'int16_t']
         format = '<iiH16hB'
         native_format = bytearray('<iiHhB', 'ascii')
         orders = [0, 1, 2, 4, 3]
         lengths = [1, 1, 1, 16, 1]
         array_lengths = [0, 0, 0, 16, 0]
         crc_extra = 229
+        unpacker = struct.Struct('<iiH16hB')
 
         def __init__(self, lat, lon, grid_spacing, gridbit, data):
                 MAVLink_message.__init__(self, MAVLink_terrain_data_message.id, MAVLink_terrain_data_message.name)
@@ -6507,13 +6723,15 @@ class MAVLink_terrain_check_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TERRAIN_CHECK
         name = 'TERRAIN_CHECK'
         fieldnames = ['lat', 'lon']
-        ordered_fieldnames = [ 'lat', 'lon' ]
+        ordered_fieldnames = ['lat', 'lon']
+        fieldtypes = ['int32_t', 'int32_t']
         format = '<ii'
         native_format = bytearray('<ii', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 203
+        unpacker = struct.Struct('<ii')
 
         def __init__(self, lat, lon):
                 MAVLink_message.__init__(self, MAVLink_terrain_check_message.id, MAVLink_terrain_check_message.name)
@@ -6531,13 +6749,15 @@ class MAVLink_terrain_report_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TERRAIN_REPORT
         name = 'TERRAIN_REPORT'
         fieldnames = ['lat', 'lon', 'spacing', 'terrain_height', 'current_height', 'pending', 'loaded']
-        ordered_fieldnames = [ 'lat', 'lon', 'terrain_height', 'current_height', 'spacing', 'pending', 'loaded' ]
+        ordered_fieldnames = ['lat', 'lon', 'terrain_height', 'current_height', 'spacing', 'pending', 'loaded']
+        fieldtypes = ['int32_t', 'int32_t', 'uint16_t', 'float', 'float', 'uint16_t', 'uint16_t']
         format = '<iiffHHH'
         native_format = bytearray('<iiffHHH', 'ascii')
         orders = [0, 1, 4, 2, 3, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 1
+        unpacker = struct.Struct('<iiffHHH')
 
         def __init__(self, lat, lon, spacing, terrain_height, current_height, pending, loaded):
                 MAVLink_message.__init__(self, MAVLink_terrain_report_message.id, MAVLink_terrain_report_message.name)
@@ -6560,13 +6780,15 @@ class MAVLink_scaled_pressure2_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_PRESSURE2
         name = 'SCALED_PRESSURE2'
         fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
-        ordered_fieldnames = [ 'time_boot_ms', 'press_abs', 'press_diff', 'temperature' ]
+        ordered_fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
+        fieldtypes = ['uint32_t', 'float', 'float', 'int16_t']
         format = '<Iffh'
         native_format = bytearray('<Iffh', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 195
+        unpacker = struct.Struct('<Iffh')
 
         def __init__(self, time_boot_ms, press_abs, press_diff, temperature):
                 MAVLink_message.__init__(self, MAVLink_scaled_pressure2_message.id, MAVLink_scaled_pressure2_message.name)
@@ -6586,15 +6808,17 @@ class MAVLink_att_pos_mocap_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ATT_POS_MOCAP
         name = 'ATT_POS_MOCAP'
         fieldnames = ['time_usec', 'q', 'x', 'y', 'z', 'covariance']
-        ordered_fieldnames = [ 'time_usec', 'q', 'x', 'y', 'z', 'covariance' ]
+        ordered_fieldnames = ['time_usec', 'q', 'x', 'y', 'z', 'covariance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float']
         format = '<Q4ffff21f'
         native_format = bytearray('<Qfffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5]
         lengths = [1, 4, 1, 1, 1, 21]
         array_lengths = [0, 4, 0, 0, 0, 21]
         crc_extra = 109
+        unpacker = struct.Struct('<Q4ffff21f')
 
-        def __init__(self, time_usec, q, x, y, z, covariance=0):
+        def __init__(self, time_usec, q, x, y, z, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_att_pos_mocap_message.id, MAVLink_att_pos_mocap_message.name)
                 self._fieldnames = MAVLink_att_pos_mocap_message.fieldnames
                 self.time_usec = time_usec
@@ -6614,13 +6838,15 @@ class MAVLink_set_actuator_control_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_ACTUATOR_CONTROL_TARGET
         name = 'SET_ACTUATOR_CONTROL_TARGET'
         fieldnames = ['time_usec', 'group_mlx', 'target_system', 'target_component', 'controls']
-        ordered_fieldnames = [ 'time_usec', 'controls', 'group_mlx', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['time_usec', 'controls', 'group_mlx', 'target_system', 'target_component']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint8_t', 'uint8_t', 'float']
         format = '<Q8fBBB'
         native_format = bytearray('<QfBBB', 'ascii')
         orders = [0, 2, 3, 4, 1]
         lengths = [1, 8, 1, 1, 1]
         array_lengths = [0, 8, 0, 0, 0]
         crc_extra = 168
+        unpacker = struct.Struct('<Q8fBBB')
 
         def __init__(self, time_usec, group_mlx, target_system, target_component, controls):
                 MAVLink_message.__init__(self, MAVLink_set_actuator_control_target_message.id, MAVLink_set_actuator_control_target_message.name)
@@ -6641,13 +6867,15 @@ class MAVLink_actuator_control_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ACTUATOR_CONTROL_TARGET
         name = 'ACTUATOR_CONTROL_TARGET'
         fieldnames = ['time_usec', 'group_mlx', 'controls']
-        ordered_fieldnames = [ 'time_usec', 'controls', 'group_mlx' ]
+        ordered_fieldnames = ['time_usec', 'controls', 'group_mlx']
+        fieldtypes = ['uint64_t', 'uint8_t', 'float']
         format = '<Q8fB'
         native_format = bytearray('<QfB', 'ascii')
         orders = [0, 2, 1]
         lengths = [1, 8, 1]
         array_lengths = [0, 8, 0]
         crc_extra = 181
+        unpacker = struct.Struct('<Q8fB')
 
         def __init__(self, time_usec, group_mlx, controls):
                 MAVLink_message.__init__(self, MAVLink_actuator_control_target_message.id, MAVLink_actuator_control_target_message.name)
@@ -6666,13 +6894,15 @@ class MAVLink_altitude_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ALTITUDE
         name = 'ALTITUDE'
         fieldnames = ['time_usec', 'altitude_monotonic', 'altitude_amsl', 'altitude_local', 'altitude_relative', 'altitude_terrain', 'bottom_clearance']
-        ordered_fieldnames = [ 'time_usec', 'altitude_monotonic', 'altitude_amsl', 'altitude_local', 'altitude_relative', 'altitude_terrain', 'bottom_clearance' ]
+        ordered_fieldnames = ['time_usec', 'altitude_monotonic', 'altitude_amsl', 'altitude_local', 'altitude_relative', 'altitude_terrain', 'bottom_clearance']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffff'
         native_format = bytearray('<Qffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 47
+        unpacker = struct.Struct('<Qffffff')
 
         def __init__(self, time_usec, altitude_monotonic, altitude_amsl, altitude_local, altitude_relative, altitude_terrain, bottom_clearance):
                 MAVLink_message.__init__(self, MAVLink_altitude_message.id, MAVLink_altitude_message.name)
@@ -6696,13 +6926,15 @@ class MAVLink_resource_request_message(MAVLink_message):
         id = MAVLINK_MSG_ID_RESOURCE_REQUEST
         name = 'RESOURCE_REQUEST'
         fieldnames = ['request_id', 'uri_type', 'uri', 'transfer_type', 'storage']
-        ordered_fieldnames = [ 'request_id', 'uri_type', 'uri', 'transfer_type', 'storage' ]
+        ordered_fieldnames = ['request_id', 'uri_type', 'uri', 'transfer_type', 'storage']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<BB120BB120B'
         native_format = bytearray('<BBBBB', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 120, 1, 120]
         array_lengths = [0, 0, 120, 0, 120]
         crc_extra = 72
+        unpacker = struct.Struct('<BB120BB120B')
 
         def __init__(self, request_id, uri_type, uri, transfer_type, storage):
                 MAVLink_message.__init__(self, MAVLink_resource_request_message.id, MAVLink_resource_request_message.name)
@@ -6723,13 +6955,15 @@ class MAVLink_scaled_pressure3_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SCALED_PRESSURE3
         name = 'SCALED_PRESSURE3'
         fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
-        ordered_fieldnames = [ 'time_boot_ms', 'press_abs', 'press_diff', 'temperature' ]
+        ordered_fieldnames = ['time_boot_ms', 'press_abs', 'press_diff', 'temperature']
+        fieldtypes = ['uint32_t', 'float', 'float', 'int16_t']
         format = '<Iffh'
         native_format = bytearray('<Iffh', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 131
+        unpacker = struct.Struct('<Iffh')
 
         def __init__(self, time_boot_ms, press_abs, press_diff, temperature):
                 MAVLink_message.__init__(self, MAVLink_scaled_pressure3_message.id, MAVLink_scaled_pressure3_message.name)
@@ -6749,13 +6983,15 @@ class MAVLink_follow_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_FOLLOW_TARGET
         name = 'FOLLOW_TARGET'
         fieldnames = ['timestamp', 'est_capabilities', 'lat', 'lon', 'alt', 'vel', 'acc', 'attitude_q', 'rates', 'position_cov', 'custom_state']
-        ordered_fieldnames = [ 'timestamp', 'custom_state', 'lat', 'lon', 'alt', 'vel', 'acc', 'attitude_q', 'rates', 'position_cov', 'est_capabilities' ]
+        ordered_fieldnames = ['timestamp', 'custom_state', 'lat', 'lon', 'alt', 'vel', 'acc', 'attitude_q', 'rates', 'position_cov', 'est_capabilities']
+        fieldtypes = ['uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'uint64_t']
         format = '<QQiif3f3f4f3f3fB'
         native_format = bytearray('<QQiiffffffB', 'ascii')
         orders = [0, 10, 2, 3, 4, 5, 6, 7, 8, 9, 1]
         lengths = [1, 1, 1, 1, 1, 3, 3, 4, 3, 3, 1]
         array_lengths = [0, 0, 0, 0, 0, 3, 3, 4, 3, 3, 0]
         crc_extra = 127
+        unpacker = struct.Struct('<QQiif3f3f4f3f3fB')
 
         def __init__(self, timestamp, est_capabilities, lat, lon, alt, vel, acc, attitude_q, rates, position_cov, custom_state):
                 MAVLink_message.__init__(self, MAVLink_follow_target_message.id, MAVLink_follow_target_message.name)
@@ -6783,13 +7019,15 @@ class MAVLink_control_system_state_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CONTROL_SYSTEM_STATE
         name = 'CONTROL_SYSTEM_STATE'
         fieldnames = ['time_usec', 'x_acc', 'y_acc', 'z_acc', 'x_vel', 'y_vel', 'z_vel', 'x_pos', 'y_pos', 'z_pos', 'airspeed', 'vel_variance', 'pos_variance', 'q', 'roll_rate', 'pitch_rate', 'yaw_rate']
-        ordered_fieldnames = [ 'time_usec', 'x_acc', 'y_acc', 'z_acc', 'x_vel', 'y_vel', 'z_vel', 'x_pos', 'y_pos', 'z_pos', 'airspeed', 'vel_variance', 'pos_variance', 'q', 'roll_rate', 'pitch_rate', 'yaw_rate' ]
+        ordered_fieldnames = ['time_usec', 'x_acc', 'y_acc', 'z_acc', 'x_vel', 'y_vel', 'z_vel', 'x_pos', 'y_pos', 'z_pos', 'airspeed', 'vel_variance', 'pos_variance', 'q', 'roll_rate', 'pitch_rate', 'yaw_rate']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffffffff3f3f4ffff'
         native_format = bytearray('<Qffffffffffffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 4, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 4, 0, 0, 0]
         crc_extra = 103
+        unpacker = struct.Struct('<Qffffffffff3f3f4ffff')
 
         def __init__(self, time_usec, x_acc, y_acc, z_acc, x_vel, y_vel, z_vel, x_pos, y_pos, z_pos, airspeed, vel_variance, pos_variance, q, roll_rate, pitch_rate, yaw_rate):
                 MAVLink_message.__init__(self, MAVLink_control_system_state_message.id, MAVLink_control_system_state_message.name)
@@ -6822,13 +7060,15 @@ class MAVLink_battery_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_BATTERY_STATUS
         name = 'BATTERY_STATUS'
         fieldnames = ['id', 'battery_function', 'type', 'temperature', 'voltages', 'current_battery', 'current_consumed', 'energy_consumed', 'battery_remaining', 'time_remaining', 'charge_state']
-        ordered_fieldnames = [ 'current_consumed', 'energy_consumed', 'temperature', 'voltages', 'current_battery', 'id', 'battery_function', 'type', 'battery_remaining', 'time_remaining', 'charge_state' ]
+        ordered_fieldnames = ['current_consumed', 'energy_consumed', 'temperature', 'voltages', 'current_battery', 'id', 'battery_function', 'type', 'battery_remaining', 'time_remaining', 'charge_state']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'int16_t', 'uint16_t', 'int16_t', 'int32_t', 'int32_t', 'int8_t', 'int32_t', 'uint8_t']
         format = '<iih10HhBBBbiB'
         native_format = bytearray('<iihHhBBBbiB', 'ascii')
         orders = [5, 6, 7, 2, 3, 4, 0, 1, 8, 9, 10]
         lengths = [1, 1, 1, 10, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 154
+        unpacker = struct.Struct('<iih10HhBBBbiB')
 
         def __init__(self, id, battery_function, type, temperature, voltages, current_battery, current_consumed, energy_consumed, battery_remaining, time_remaining=0, charge_state=0):
                 MAVLink_message.__init__(self, MAVLink_battery_status_message.id, MAVLink_battery_status_message.name)
@@ -6855,15 +7095,17 @@ class MAVLink_autopilot_version_message(MAVLink_message):
         id = MAVLINK_MSG_ID_AUTOPILOT_VERSION
         name = 'AUTOPILOT_VERSION'
         fieldnames = ['capabilities', 'flight_sw_version', 'middleware_sw_version', 'os_sw_version', 'board_version', 'flight_custom_version', 'middleware_custom_version', 'os_custom_version', 'vendor_id', 'product_id', 'uid', 'uid2']
-        ordered_fieldnames = [ 'capabilities', 'uid', 'flight_sw_version', 'middleware_sw_version', 'os_sw_version', 'board_version', 'vendor_id', 'product_id', 'flight_custom_version', 'middleware_custom_version', 'os_custom_version', 'uid2' ]
+        ordered_fieldnames = ['capabilities', 'uid', 'flight_sw_version', 'middleware_sw_version', 'os_sw_version', 'board_version', 'vendor_id', 'product_id', 'flight_custom_version', 'middleware_custom_version', 'os_custom_version', 'uid2']
+        fieldtypes = ['uint64_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint16_t', 'uint64_t', 'uint8_t']
         format = '<QQIIIIHH8B8B8B18B'
         native_format = bytearray('<QQIIIIHHBBBB', 'ascii')
         orders = [0, 2, 3, 4, 5, 8, 9, 10, 6, 7, 1, 11]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 8, 8, 8, 18]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 18]
         crc_extra = 178
+        unpacker = struct.Struct('<QQIIIIHH8B8B8B18B')
 
-        def __init__(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=0):
+        def __init__(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 MAVLink_message.__init__(self, MAVLink_autopilot_version_message.id, MAVLink_autopilot_version_message.name)
                 self._fieldnames = MAVLink_autopilot_version_message.fieldnames
                 self.capabilities = capabilities
@@ -6890,15 +7132,17 @@ class MAVLink_landing_target_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LANDING_TARGET
         name = 'LANDING_TARGET'
         fieldnames = ['time_usec', 'target_num', 'frame', 'angle_x', 'angle_y', 'distance', 'size_x', 'size_y', 'x', 'y', 'z', 'q', 'type', 'position_valid']
-        ordered_fieldnames = [ 'time_usec', 'angle_x', 'angle_y', 'distance', 'size_x', 'size_y', 'target_num', 'frame', 'x', 'y', 'z', 'q', 'type', 'position_valid' ]
+        ordered_fieldnames = ['time_usec', 'angle_x', 'angle_y', 'distance', 'size_x', 'size_y', 'target_num', 'frame', 'x', 'y', 'z', 'q', 'type', 'position_valid']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint8_t', 'uint8_t']
         format = '<QfffffBBfff4fBB'
         native_format = bytearray('<QfffffBBffffBB', 'ascii')
         orders = [0, 6, 7, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0]
         crc_extra = 200
+        unpacker = struct.Struct('<QfffffBBfff4fBB')
 
-        def __init__(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=0, type=0, position_valid=0):
+        def __init__(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=[0,0,0,0], type=0, position_valid=0):
                 MAVLink_message.__init__(self, MAVLink_landing_target_message.id, MAVLink_landing_target_message.name)
                 self._fieldnames = MAVLink_landing_target_message.fieldnames
                 self.time_usec = time_usec
@@ -6939,13 +7183,15 @@ class MAVLink_estimator_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ESTIMATOR_STATUS
         name = 'ESTIMATOR_STATUS'
         fieldnames = ['time_usec', 'flags', 'vel_ratio', 'pos_horiz_ratio', 'pos_vert_ratio', 'mag_ratio', 'hagl_ratio', 'tas_ratio', 'pos_horiz_accuracy', 'pos_vert_accuracy']
-        ordered_fieldnames = [ 'time_usec', 'vel_ratio', 'pos_horiz_ratio', 'pos_vert_ratio', 'mag_ratio', 'hagl_ratio', 'tas_ratio', 'pos_horiz_accuracy', 'pos_vert_accuracy', 'flags' ]
+        ordered_fieldnames = ['time_usec', 'vel_ratio', 'pos_horiz_ratio', 'pos_vert_ratio', 'mag_ratio', 'hagl_ratio', 'tas_ratio', 'pos_horiz_accuracy', 'pos_vert_accuracy', 'flags']
+        fieldtypes = ['uint64_t', 'uint16_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<QffffffffH'
         native_format = bytearray('<QffffffffH', 'ascii')
         orders = [0, 9, 1, 2, 3, 4, 5, 6, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 163
+        unpacker = struct.Struct('<QffffffffH')
 
         def __init__(self, time_usec, flags, vel_ratio, pos_horiz_ratio, pos_vert_ratio, mag_ratio, hagl_ratio, tas_ratio, pos_horiz_accuracy, pos_vert_accuracy):
                 MAVLink_message.__init__(self, MAVLink_estimator_status_message.id, MAVLink_estimator_status_message.name)
@@ -6971,13 +7217,15 @@ class MAVLink_wind_cov_message(MAVLink_message):
         id = MAVLINK_MSG_ID_WIND_COV
         name = 'WIND_COV'
         fieldnames = ['time_usec', 'wind_x', 'wind_y', 'wind_z', 'var_horiz', 'var_vert', 'wind_alt', 'horiz_accuracy', 'vert_accuracy']
-        ordered_fieldnames = [ 'time_usec', 'wind_x', 'wind_y', 'wind_z', 'var_horiz', 'var_vert', 'wind_alt', 'horiz_accuracy', 'vert_accuracy' ]
+        ordered_fieldnames = ['time_usec', 'wind_x', 'wind_y', 'wind_z', 'var_horiz', 'var_vert', 'wind_alt', 'horiz_accuracy', 'vert_accuracy']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qffffffff'
         native_format = bytearray('<Qffffffff', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 105
+        unpacker = struct.Struct('<Qffffffff')
 
         def __init__(self, time_usec, wind_x, wind_y, wind_z, var_horiz, var_vert, wind_alt, horiz_accuracy, vert_accuracy):
                 MAVLink_message.__init__(self, MAVLink_wind_cov_message.id, MAVLink_wind_cov_message.name)
@@ -7004,13 +7252,15 @@ class MAVLink_gps_input_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_INPUT
         name = 'GPS_INPUT'
         fieldnames = ['time_usec', 'gps_id', 'ignore_flags', 'time_week_ms', 'time_week', 'fix_type', 'lat', 'lon', 'alt', 'hdop', 'vdop', 'vn', 've', 'vd', 'speed_accuracy', 'horiz_accuracy', 'vert_accuracy', 'satellites_visible']
-        ordered_fieldnames = [ 'time_usec', 'time_week_ms', 'lat', 'lon', 'alt', 'hdop', 'vdop', 'vn', 've', 'vd', 'speed_accuracy', 'horiz_accuracy', 'vert_accuracy', 'ignore_flags', 'time_week', 'gps_id', 'fix_type', 'satellites_visible' ]
+        ordered_fieldnames = ['time_usec', 'time_week_ms', 'lat', 'lon', 'alt', 'hdop', 'vdop', 'vn', 've', 'vd', 'speed_accuracy', 'horiz_accuracy', 'vert_accuracy', 'ignore_flags', 'time_week', 'gps_id', 'fix_type', 'satellites_visible']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint16_t', 'uint8_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint8_t']
         format = '<QIiifffffffffHHBBB'
         native_format = bytearray('<QIiifffffffffHHBBB', 'ascii')
         orders = [0, 15, 13, 1, 14, 16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 17]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 151
+        unpacker = struct.Struct('<QIiifffffffffHHBBB')
 
         def __init__(self, time_usec, gps_id, ignore_flags, time_week_ms, time_week, fix_type, lat, lon, alt, hdop, vdop, vn, ve, vd, speed_accuracy, horiz_accuracy, vert_accuracy, satellites_visible):
                 MAVLink_message.__init__(self, MAVLink_gps_input_message.id, MAVLink_gps_input_message.name)
@@ -7045,13 +7295,15 @@ class MAVLink_gps_rtcm_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_GPS_RTCM_DATA
         name = 'GPS_RTCM_DATA'
         fieldnames = ['flags', 'len', 'data']
-        ordered_fieldnames = [ 'flags', 'len', 'data' ]
+        ordered_fieldnames = ['flags', 'len', 'data']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t']
         format = '<BB180B'
         native_format = bytearray('<BBB', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 180]
         array_lengths = [0, 0, 180]
         crc_extra = 35
+        unpacker = struct.Struct('<BB180B')
 
         def __init__(self, flags, len, data):
                 MAVLink_message.__init__(self, MAVLink_gps_rtcm_data_message.id, MAVLink_gps_rtcm_data_message.name)
@@ -7070,13 +7322,15 @@ class MAVLink_high_latency_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIGH_LATENCY
         name = 'HIGH_LATENCY'
         fieldnames = ['base_mode', 'custom_mode', 'landed_state', 'roll', 'pitch', 'heading', 'throttle', 'heading_sp', 'latitude', 'longitude', 'altitude_amsl', 'altitude_sp', 'airspeed', 'airspeed_sp', 'groundspeed', 'climb_rate', 'gps_nsat', 'gps_fix_type', 'battery_remaining', 'temperature', 'temperature_air', 'failsafe', 'wp_num', 'wp_distance']
-        ordered_fieldnames = [ 'custom_mode', 'latitude', 'longitude', 'roll', 'pitch', 'heading', 'heading_sp', 'altitude_amsl', 'altitude_sp', 'wp_distance', 'base_mode', 'landed_state', 'throttle', 'airspeed', 'airspeed_sp', 'groundspeed', 'climb_rate', 'gps_nsat', 'gps_fix_type', 'battery_remaining', 'temperature', 'temperature_air', 'failsafe', 'wp_num' ]
+        ordered_fieldnames = ['custom_mode', 'latitude', 'longitude', 'roll', 'pitch', 'heading', 'heading_sp', 'altitude_amsl', 'altitude_sp', 'wp_distance', 'base_mode', 'landed_state', 'throttle', 'airspeed', 'airspeed_sp', 'groundspeed', 'climb_rate', 'gps_nsat', 'gps_fix_type', 'battery_remaining', 'temperature', 'temperature_air', 'failsafe', 'wp_num']
+        fieldtypes = ['uint8_t', 'uint32_t', 'uint8_t', 'int16_t', 'int16_t', 'uint16_t', 'int8_t', 'int16_t', 'int32_t', 'int32_t', 'int16_t', 'int16_t', 'uint8_t', 'uint8_t', 'uint8_t', 'int8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'int8_t', 'int8_t', 'uint8_t', 'uint8_t', 'uint16_t']
         format = '<IiihhHhhhHBBbBBBbBBBbbBB'
         native_format = bytearray('<IiihhHhhhHBBbBBBbBBBbbBB', 'ascii')
         orders = [10, 0, 11, 3, 4, 5, 12, 6, 1, 2, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 9]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 150
+        unpacker = struct.Struct('<IiihhHhhhHBBbBBBbBBBbbBB')
 
         def __init__(self, base_mode, custom_mode, landed_state, roll, pitch, heading, throttle, heading_sp, latitude, longitude, altitude_amsl, altitude_sp, airspeed, airspeed_sp, groundspeed, climb_rate, gps_nsat, gps_fix_type, battery_remaining, temperature, temperature_air, failsafe, wp_num, wp_distance):
                 MAVLink_message.__init__(self, MAVLink_high_latency_message.id, MAVLink_high_latency_message.name)
@@ -7117,13 +7371,15 @@ class MAVLink_high_latency2_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HIGH_LATENCY2
         name = 'HIGH_LATENCY2'
         fieldnames = ['timestamp', 'type', 'autopilot', 'custom_mode', 'latitude', 'longitude', 'altitude', 'target_altitude', 'heading', 'target_heading', 'target_distance', 'throttle', 'airspeed', 'airspeed_sp', 'groundspeed', 'windspeed', 'wind_heading', 'eph', 'epv', 'temperature_air', 'climb_rate', 'battery', 'wp_num', 'failure_flags', 'custom0', 'custom1', 'custom2']
-        ordered_fieldnames = [ 'timestamp', 'latitude', 'longitude', 'custom_mode', 'altitude', 'target_altitude', 'target_distance', 'wp_num', 'failure_flags', 'type', 'autopilot', 'heading', 'target_heading', 'throttle', 'airspeed', 'airspeed_sp', 'groundspeed', 'windspeed', 'wind_heading', 'eph', 'epv', 'temperature_air', 'climb_rate', 'battery', 'custom0', 'custom1', 'custom2' ]
+        ordered_fieldnames = ['timestamp', 'latitude', 'longitude', 'custom_mode', 'altitude', 'target_altitude', 'target_distance', 'wp_num', 'failure_flags', 'type', 'autopilot', 'heading', 'target_heading', 'throttle', 'airspeed', 'airspeed_sp', 'groundspeed', 'windspeed', 'wind_heading', 'eph', 'epv', 'temperature_air', 'climb_rate', 'battery', 'custom0', 'custom1', 'custom2']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint16_t', 'int32_t', 'int32_t', 'int16_t', 'int16_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'int8_t', 'int8_t', 'int8_t', 'uint16_t', 'uint16_t', 'int8_t', 'int8_t', 'int8_t']
         format = '<IiiHhhHHHBBBBBBBBBBBBbbbbbb'
         native_format = bytearray('<IiiHhhHHHBBBBBBBBBBBBbbbbbb', 'ascii')
         orders = [0, 9, 10, 3, 1, 2, 4, 5, 11, 12, 6, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 7, 8, 24, 25, 26]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 179
+        unpacker = struct.Struct('<IiiHhhHHHBBBBBBBBBBBBbbbbbb')
 
         def __init__(self, timestamp, type, autopilot, custom_mode, latitude, longitude, altitude, target_altitude, heading, target_heading, target_distance, throttle, airspeed, airspeed_sp, groundspeed, windspeed, wind_heading, eph, epv, temperature_air, climb_rate, battery, wp_num, failure_flags, custom0, custom1, custom2):
                 MAVLink_message.__init__(self, MAVLink_high_latency2_message.id, MAVLink_high_latency2_message.name)
@@ -7166,13 +7422,15 @@ class MAVLink_vibration_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VIBRATION
         name = 'VIBRATION'
         fieldnames = ['time_usec', 'vibration_x', 'vibration_y', 'vibration_z', 'clipping_0', 'clipping_1', 'clipping_2']
-        ordered_fieldnames = [ 'time_usec', 'vibration_x', 'vibration_y', 'vibration_z', 'clipping_0', 'clipping_1', 'clipping_2' ]
+        ordered_fieldnames = ['time_usec', 'vibration_x', 'vibration_y', 'vibration_z', 'clipping_0', 'clipping_1', 'clipping_2']
+        fieldtypes = ['uint64_t', 'float', 'float', 'float', 'uint32_t', 'uint32_t', 'uint32_t']
         format = '<QfffIII'
         native_format = bytearray('<QfffIII', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 90
+        unpacker = struct.Struct('<QfffIII')
 
         def __init__(self, time_usec, vibration_x, vibration_y, vibration_z, clipping_0, clipping_1, clipping_2):
                 MAVLink_message.__init__(self, MAVLink_vibration_message.id, MAVLink_vibration_message.name)
@@ -7207,13 +7465,15 @@ class MAVLink_home_position_message(MAVLink_message):
         id = MAVLINK_MSG_ID_HOME_POSITION
         name = 'HOME_POSITION'
         fieldnames = ['latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'time_usec']
-        ordered_fieldnames = [ 'latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'time_usec' ]
+        ordered_fieldnames = ['latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'time_usec']
+        fieldtypes = ['int32_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint64_t']
         format = '<iiifff4ffffQ'
         native_format = bytearray('<iiifffffffQ', 'ascii')
         orders = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         lengths = [1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0]
         crc_extra = 104
+        unpacker = struct.Struct('<iiifff4ffffQ')
 
         def __init__(self, latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec=0):
                 MAVLink_message.__init__(self, MAVLink_home_position_message.id, MAVLink_home_position_message.name)
@@ -7250,13 +7510,15 @@ class MAVLink_set_home_position_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_HOME_POSITION
         name = 'SET_HOME_POSITION'
         fieldnames = ['target_system', 'latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'time_usec']
-        ordered_fieldnames = [ 'latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'target_system', 'time_usec' ]
+        ordered_fieldnames = ['latitude', 'longitude', 'altitude', 'x', 'y', 'z', 'q', 'approach_x', 'approach_y', 'approach_z', 'target_system', 'time_usec']
+        fieldtypes = ['uint8_t', 'int32_t', 'int32_t', 'int32_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'uint64_t']
         format = '<iiifff4ffffBQ'
         native_format = bytearray('<iiifffffffBQ', 'ascii')
         orders = [10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11]
         lengths = [1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0]
         crc_extra = 85
+        unpacker = struct.Struct('<iiifff4ffffBQ')
 
         def __init__(self, target_system, latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec=0):
                 MAVLink_message.__init__(self, MAVLink_set_home_position_message.id, MAVLink_set_home_position_message.name)
@@ -7285,13 +7547,15 @@ class MAVLink_message_interval_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MESSAGE_INTERVAL
         name = 'MESSAGE_INTERVAL'
         fieldnames = ['message_id', 'interval_us']
-        ordered_fieldnames = [ 'interval_us', 'message_id' ]
+        ordered_fieldnames = ['interval_us', 'message_id']
+        fieldtypes = ['uint16_t', 'int32_t']
         format = '<iH'
         native_format = bytearray('<iH', 'ascii')
         orders = [1, 0]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 95
+        unpacker = struct.Struct('<iH')
 
         def __init__(self, message_id, interval_us):
                 MAVLink_message.__init__(self, MAVLink_message_interval_message.id, MAVLink_message_interval_message.name)
@@ -7309,13 +7573,15 @@ class MAVLink_extended_sys_state_message(MAVLink_message):
         id = MAVLINK_MSG_ID_EXTENDED_SYS_STATE
         name = 'EXTENDED_SYS_STATE'
         fieldnames = ['vtol_state', 'landed_state']
-        ordered_fieldnames = [ 'vtol_state', 'landed_state' ]
+        ordered_fieldnames = ['vtol_state', 'landed_state']
+        fieldtypes = ['uint8_t', 'uint8_t']
         format = '<BB'
         native_format = bytearray('<BB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 130
+        unpacker = struct.Struct('<BB')
 
         def __init__(self, vtol_state, landed_state):
                 MAVLink_message.__init__(self, MAVLink_extended_sys_state_message.id, MAVLink_extended_sys_state_message.name)
@@ -7333,13 +7599,15 @@ class MAVLink_adsb_vehicle_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ADSB_VEHICLE
         name = 'ADSB_VEHICLE'
         fieldnames = ['ICAO_address', 'lat', 'lon', 'altitude_type', 'altitude', 'heading', 'hor_velocity', 'ver_velocity', 'callsign', 'emitter_type', 'tslc', 'flags', 'squawk']
-        ordered_fieldnames = [ 'ICAO_address', 'lat', 'lon', 'altitude', 'heading', 'hor_velocity', 'ver_velocity', 'flags', 'squawk', 'altitude_type', 'callsign', 'emitter_type', 'tslc' ]
+        ordered_fieldnames = ['ICAO_address', 'lat', 'lon', 'altitude', 'heading', 'hor_velocity', 'ver_velocity', 'flags', 'squawk', 'altitude_type', 'callsign', 'emitter_type', 'tslc']
+        fieldtypes = ['uint32_t', 'int32_t', 'int32_t', 'uint8_t', 'int32_t', 'uint16_t', 'uint16_t', 'int16_t', 'char', 'uint8_t', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<IiiiHHhHHB9sBB'
         native_format = bytearray('<IiiiHHhHHBcBB', 'ascii')
         orders = [0, 1, 2, 9, 3, 4, 5, 6, 10, 11, 12, 7, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0]
         crc_extra = 184
+        unpacker = struct.Struct('<IiiiHHhHHB9sBB')
 
         def __init__(self, ICAO_address, lat, lon, altitude_type, altitude, heading, hor_velocity, ver_velocity, callsign, emitter_type, tslc, flags, squawk):
                 MAVLink_message.__init__(self, MAVLink_adsb_vehicle_message.id, MAVLink_adsb_vehicle_message.name)
@@ -7368,13 +7636,15 @@ class MAVLink_collision_message(MAVLink_message):
         id = MAVLINK_MSG_ID_COLLISION
         name = 'COLLISION'
         fieldnames = ['src', 'id', 'action', 'threat_level', 'time_to_minimum_delta', 'altitude_minimum_delta', 'horizontal_minimum_delta']
-        ordered_fieldnames = [ 'id', 'time_to_minimum_delta', 'altitude_minimum_delta', 'horizontal_minimum_delta', 'src', 'action', 'threat_level' ]
+        ordered_fieldnames = ['id', 'time_to_minimum_delta', 'altitude_minimum_delta', 'horizontal_minimum_delta', 'src', 'action', 'threat_level']
+        fieldtypes = ['uint8_t', 'uint32_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float']
         format = '<IfffBBB'
         native_format = bytearray('<IfffBBB', 'ascii')
         orders = [4, 0, 5, 6, 1, 2, 3]
         lengths = [1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0]
         crc_extra = 81
+        unpacker = struct.Struct('<IfffBBB')
 
         def __init__(self, src, id, action, threat_level, time_to_minimum_delta, altitude_minimum_delta, horizontal_minimum_delta):
                 MAVLink_message.__init__(self, MAVLink_collision_message.id, MAVLink_collision_message.name)
@@ -7398,13 +7668,15 @@ class MAVLink_v2_extension_message(MAVLink_message):
         id = MAVLINK_MSG_ID_V2_EXTENSION
         name = 'V2_EXTENSION'
         fieldnames = ['target_network', 'target_system', 'target_component', 'message_type', 'payload']
-        ordered_fieldnames = [ 'message_type', 'target_network', 'target_system', 'target_component', 'payload' ]
+        ordered_fieldnames = ['message_type', 'target_network', 'target_system', 'target_component', 'payload']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint16_t', 'uint8_t']
         format = '<HBBB249B'
         native_format = bytearray('<HBBBB', 'ascii')
         orders = [1, 2, 3, 0, 4]
         lengths = [1, 1, 1, 1, 249]
         array_lengths = [0, 0, 0, 0, 249]
         crc_extra = 8
+        unpacker = struct.Struct('<HBBB249B')
 
         def __init__(self, target_network, target_system, target_component, message_type, payload):
                 MAVLink_message.__init__(self, MAVLink_v2_extension_message.id, MAVLink_v2_extension_message.name)
@@ -7427,13 +7699,15 @@ class MAVLink_memory_vect_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MEMORY_VECT
         name = 'MEMORY_VECT'
         fieldnames = ['address', 'ver', 'type', 'value']
-        ordered_fieldnames = [ 'address', 'ver', 'type', 'value' ]
+        ordered_fieldnames = ['address', 'ver', 'type', 'value']
+        fieldtypes = ['uint16_t', 'uint8_t', 'uint8_t', 'int8_t']
         format = '<HBB32b'
         native_format = bytearray('<HBBb', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 32]
         array_lengths = [0, 0, 0, 32]
         crc_extra = 204
+        unpacker = struct.Struct('<HBB32b')
 
         def __init__(self, address, ver, type, value):
                 MAVLink_message.__init__(self, MAVLink_memory_vect_message.id, MAVLink_memory_vect_message.name)
@@ -7453,13 +7727,15 @@ class MAVLink_debug_vect_message(MAVLink_message):
         id = MAVLINK_MSG_ID_DEBUG_VECT
         name = 'DEBUG_VECT'
         fieldnames = ['name', 'time_usec', 'x', 'y', 'z']
-        ordered_fieldnames = [ 'time_usec', 'x', 'y', 'z', 'name' ]
+        ordered_fieldnames = ['time_usec', 'x', 'y', 'z', 'name']
+        fieldtypes = ['char', 'uint64_t', 'float', 'float', 'float']
         format = '<Qfff10s'
         native_format = bytearray('<Qfffc', 'ascii')
         orders = [4, 0, 1, 2, 3]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 10]
         crc_extra = 49
+        unpacker = struct.Struct('<Qfff10s')
 
         def __init__(self, name, time_usec, x, y, z):
                 MAVLink_message.__init__(self, MAVLink_debug_vect_message.id, MAVLink_debug_vect_message.name)
@@ -7482,13 +7758,15 @@ class MAVLink_named_value_float_message(MAVLink_message):
         id = MAVLINK_MSG_ID_NAMED_VALUE_FLOAT
         name = 'NAMED_VALUE_FLOAT'
         fieldnames = ['time_boot_ms', 'name', 'value']
-        ordered_fieldnames = [ 'time_boot_ms', 'value', 'name' ]
+        ordered_fieldnames = ['time_boot_ms', 'value', 'name']
+        fieldtypes = ['uint32_t', 'char', 'float']
         format = '<If10s'
         native_format = bytearray('<Ifc', 'ascii')
         orders = [0, 2, 1]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 10]
         crc_extra = 170
+        unpacker = struct.Struct('<If10s')
 
         def __init__(self, time_boot_ms, name, value):
                 MAVLink_message.__init__(self, MAVLink_named_value_float_message.id, MAVLink_named_value_float_message.name)
@@ -7509,13 +7787,15 @@ class MAVLink_named_value_int_message(MAVLink_message):
         id = MAVLINK_MSG_ID_NAMED_VALUE_INT
         name = 'NAMED_VALUE_INT'
         fieldnames = ['time_boot_ms', 'name', 'value']
-        ordered_fieldnames = [ 'time_boot_ms', 'value', 'name' ]
+        ordered_fieldnames = ['time_boot_ms', 'value', 'name']
+        fieldtypes = ['uint32_t', 'char', 'int32_t']
         format = '<Ii10s'
         native_format = bytearray('<Iic', 'ascii')
         orders = [0, 2, 1]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 10]
         crc_extra = 44
+        unpacker = struct.Struct('<Ii10s')
 
         def __init__(self, time_boot_ms, name, value):
                 MAVLink_message.__init__(self, MAVLink_named_value_int_message.id, MAVLink_named_value_int_message.name)
@@ -7539,13 +7819,15 @@ class MAVLink_statustext_message(MAVLink_message):
         id = MAVLINK_MSG_ID_STATUSTEXT
         name = 'STATUSTEXT'
         fieldnames = ['severity', 'text']
-        ordered_fieldnames = [ 'severity', 'text' ]
+        ordered_fieldnames = ['severity', 'text']
+        fieldtypes = ['uint8_t', 'char']
         format = '<B50s'
         native_format = bytearray('<Bc', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 50]
         crc_extra = 83
+        unpacker = struct.Struct('<B50s')
 
         def __init__(self, severity, text):
                 MAVLink_message.__init__(self, MAVLink_statustext_message.id, MAVLink_statustext_message.name)
@@ -7565,13 +7847,15 @@ class MAVLink_debug_message(MAVLink_message):
         id = MAVLINK_MSG_ID_DEBUG
         name = 'DEBUG'
         fieldnames = ['time_boot_ms', 'ind', 'value']
-        ordered_fieldnames = [ 'time_boot_ms', 'value', 'ind' ]
+        ordered_fieldnames = ['time_boot_ms', 'value', 'ind']
+        fieldtypes = ['uint32_t', 'uint8_t', 'float']
         format = '<IfB'
         native_format = bytearray('<IfB', 'ascii')
         orders = [0, 2, 1]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 46
+        unpacker = struct.Struct('<IfB')
 
         def __init__(self, time_boot_ms, ind, value):
                 MAVLink_message.__init__(self, MAVLink_debug_message.id, MAVLink_debug_message.name)
@@ -7591,13 +7875,15 @@ class MAVLink_setup_signing_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SETUP_SIGNING
         name = 'SETUP_SIGNING'
         fieldnames = ['target_system', 'target_component', 'secret_key', 'initial_timestamp']
-        ordered_fieldnames = [ 'initial_timestamp', 'target_system', 'target_component', 'secret_key' ]
+        ordered_fieldnames = ['initial_timestamp', 'target_system', 'target_component', 'secret_key']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'uint64_t']
         format = '<QBB32B'
         native_format = bytearray('<QBBB', 'ascii')
         orders = [1, 2, 3, 0]
         lengths = [1, 1, 1, 32]
         array_lengths = [0, 0, 0, 32]
         crc_extra = 71
+        unpacker = struct.Struct('<QBB32B')
 
         def __init__(self, target_system, target_component, secret_key, initial_timestamp):
                 MAVLink_message.__init__(self, MAVLink_setup_signing_message.id, MAVLink_setup_signing_message.name)
@@ -7617,13 +7903,15 @@ class MAVLink_button_change_message(MAVLink_message):
         id = MAVLINK_MSG_ID_BUTTON_CHANGE
         name = 'BUTTON_CHANGE'
         fieldnames = ['time_boot_ms', 'last_change_ms', 'state']
-        ordered_fieldnames = [ 'time_boot_ms', 'last_change_ms', 'state' ]
+        ordered_fieldnames = ['time_boot_ms', 'last_change_ms', 'state']
+        fieldtypes = ['uint32_t', 'uint32_t', 'uint8_t']
         format = '<IIB'
         native_format = bytearray('<IIB', 'ascii')
         orders = [0, 1, 2]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 131
+        unpacker = struct.Struct('<IIB')
 
         def __init__(self, time_boot_ms, last_change_ms, state):
                 MAVLink_message.__init__(self, MAVLink_button_change_message.id, MAVLink_button_change_message.name)
@@ -7641,25 +7929,26 @@ class MAVLink_play_tune_message(MAVLink_message):
         '''
         id = MAVLINK_MSG_ID_PLAY_TUNE
         name = 'PLAY_TUNE'
-        fieldnames = ['target_system', 'target_component', 'tune', 'tune2']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'tune', 'tune2' ]
-        format = '<BB30s200s'
-        native_format = bytearray('<BBcc', 'ascii')
-        orders = [0, 1, 2, 3]
-        lengths = [1, 1, 1, 1]
-        array_lengths = [0, 0, 30, 200]
+        fieldnames = ['target_system', 'target_component', 'tune']
+        ordered_fieldnames = ['target_system', 'target_component', 'tune']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char']
+        format = '<BB30s'
+        native_format = bytearray('<BBc', 'ascii')
+        orders = [0, 1, 2]
+        lengths = [1, 1, 1]
+        array_lengths = [0, 0, 30]
         crc_extra = 187
+        unpacker = struct.Struct('<BB30s')
 
-        def __init__(self, target_system, target_component, tune, tune2=0):
+        def __init__(self, target_system, target_component, tune):
                 MAVLink_message.__init__(self, MAVLink_play_tune_message.id, MAVLink_play_tune_message.name)
                 self._fieldnames = MAVLink_play_tune_message.fieldnames
                 self.target_system = target_system
                 self.target_component = target_component
                 self.tune = tune
-                self.tune2 = tune2
 
         def pack(self, mav, force_mavlink1=False):
-                return MAVLink_message.pack(self, mav, 187, struct.pack('<BB30s200s', self.target_system, self.target_component, self.tune, self.tune2), force_mavlink1=force_mavlink1)
+                return MAVLink_message.pack(self, mav, 187, struct.pack('<BB30s', self.target_system, self.target_component, self.tune), force_mavlink1=force_mavlink1)
 
 class MAVLink_camera_information_message(MAVLink_message):
         '''
@@ -7668,13 +7957,15 @@ class MAVLink_camera_information_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CAMERA_INFORMATION
         name = 'CAMERA_INFORMATION'
         fieldnames = ['time_boot_ms', 'vendor_name', 'model_name', 'firmware_version', 'focal_length', 'sensor_size_h', 'sensor_size_v', 'resolution_h', 'resolution_v', 'lens_id', 'flags', 'cam_definition_version', 'cam_definition_uri']
-        ordered_fieldnames = [ 'time_boot_ms', 'firmware_version', 'focal_length', 'sensor_size_h', 'sensor_size_v', 'flags', 'resolution_h', 'resolution_v', 'cam_definition_version', 'vendor_name', 'model_name', 'lens_id', 'cam_definition_uri' ]
+        ordered_fieldnames = ['time_boot_ms', 'firmware_version', 'focal_length', 'sensor_size_h', 'sensor_size_v', 'flags', 'resolution_h', 'resolution_v', 'cam_definition_version', 'vendor_name', 'model_name', 'lens_id', 'cam_definition_uri']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint32_t', 'float', 'float', 'float', 'uint16_t', 'uint16_t', 'uint8_t', 'uint32_t', 'uint16_t', 'char']
         format = '<IIfffIHHH32B32BB140s'
         native_format = bytearray('<IIfffIHHHBBBc', 'ascii')
         orders = [0, 9, 10, 1, 2, 3, 4, 6, 7, 11, 5, 8, 12]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1, 32, 32, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 32, 0, 140]
         crc_extra = 92
+        unpacker = struct.Struct('<IIfffIHHH32B32BB140s')
 
         def __init__(self, time_boot_ms, vendor_name, model_name, firmware_version, focal_length, sensor_size_h, sensor_size_v, resolution_h, resolution_v, lens_id, flags, cam_definition_version, cam_definition_uri):
                 MAVLink_message.__init__(self, MAVLink_camera_information_message.id, MAVLink_camera_information_message.name)
@@ -7704,13 +7995,15 @@ class MAVLink_camera_settings_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CAMERA_SETTINGS
         name = 'CAMERA_SETTINGS'
         fieldnames = ['time_boot_ms', 'mode_id']
-        ordered_fieldnames = [ 'time_boot_ms', 'mode_id' ]
+        ordered_fieldnames = ['time_boot_ms', 'mode_id']
+        fieldtypes = ['uint32_t', 'uint8_t']
         format = '<IB'
         native_format = bytearray('<IB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 146
+        unpacker = struct.Struct('<IB')
 
         def __init__(self, time_boot_ms, mode_id):
                 MAVLink_message.__init__(self, MAVLink_camera_settings_message.id, MAVLink_camera_settings_message.name)
@@ -7728,13 +8021,15 @@ class MAVLink_storage_information_message(MAVLink_message):
         id = MAVLINK_MSG_ID_STORAGE_INFORMATION
         name = 'STORAGE_INFORMATION'
         fieldnames = ['time_boot_ms', 'storage_id', 'storage_count', 'status', 'total_capacity', 'used_capacity', 'available_capacity', 'read_speed', 'write_speed']
-        ordered_fieldnames = [ 'time_boot_ms', 'total_capacity', 'used_capacity', 'available_capacity', 'read_speed', 'write_speed', 'storage_id', 'storage_count', 'status' ]
+        ordered_fieldnames = ['time_boot_ms', 'total_capacity', 'used_capacity', 'available_capacity', 'read_speed', 'write_speed', 'storage_id', 'storage_count', 'status']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float']
         format = '<IfffffBBB'
         native_format = bytearray('<IfffffBBB', 'ascii')
         orders = [0, 6, 7, 8, 1, 2, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 0]
         crc_extra = 179
+        unpacker = struct.Struct('<IfffffBBB')
 
         def __init__(self, time_boot_ms, storage_id, storage_count, status, total_capacity, used_capacity, available_capacity, read_speed, write_speed):
                 MAVLink_message.__init__(self, MAVLink_storage_information_message.id, MAVLink_storage_information_message.name)
@@ -7759,13 +8054,15 @@ class MAVLink_camera_capture_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CAMERA_CAPTURE_STATUS
         name = 'CAMERA_CAPTURE_STATUS'
         fieldnames = ['time_boot_ms', 'image_status', 'video_status', 'image_interval', 'recording_time_ms', 'available_capacity']
-        ordered_fieldnames = [ 'time_boot_ms', 'image_interval', 'recording_time_ms', 'available_capacity', 'image_status', 'video_status' ]
+        ordered_fieldnames = ['time_boot_ms', 'image_interval', 'recording_time_ms', 'available_capacity', 'image_status', 'video_status']
+        fieldtypes = ['uint32_t', 'uint8_t', 'uint8_t', 'float', 'uint32_t', 'float']
         format = '<IfIfBB'
         native_format = bytearray('<IfIfBB', 'ascii')
         orders = [0, 4, 5, 1, 2, 3]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 12
+        unpacker = struct.Struct('<IfIfBB')
 
         def __init__(self, time_boot_ms, image_status, video_status, image_interval, recording_time_ms, available_capacity):
                 MAVLink_message.__init__(self, MAVLink_camera_capture_status_message.id, MAVLink_camera_capture_status_message.name)
@@ -7787,13 +8084,15 @@ class MAVLink_camera_image_captured_message(MAVLink_message):
         id = MAVLINK_MSG_ID_CAMERA_IMAGE_CAPTURED
         name = 'CAMERA_IMAGE_CAPTURED'
         fieldnames = ['time_boot_ms', 'time_utc', 'camera_id', 'lat', 'lon', 'alt', 'relative_alt', 'q', 'image_index', 'capture_result', 'file_url']
-        ordered_fieldnames = [ 'time_utc', 'time_boot_ms', 'lat', 'lon', 'alt', 'relative_alt', 'q', 'image_index', 'camera_id', 'capture_result', 'file_url' ]
+        ordered_fieldnames = ['time_utc', 'time_boot_ms', 'lat', 'lon', 'alt', 'relative_alt', 'q', 'image_index', 'camera_id', 'capture_result', 'file_url']
+        fieldtypes = ['uint32_t', 'uint64_t', 'uint8_t', 'int32_t', 'int32_t', 'int32_t', 'int32_t', 'float', 'int32_t', 'int8_t', 'char']
         format = '<QIiiii4fiBb205s'
         native_format = bytearray('<QIiiiifiBbc', 'ascii')
         orders = [1, 0, 8, 2, 3, 4, 5, 6, 7, 9, 10]
         lengths = [1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 205]
         crc_extra = 133
+        unpacker = struct.Struct('<QIiiii4fiBb205s')
 
         def __init__(self, time_boot_ms, time_utc, camera_id, lat, lon, alt, relative_alt, q, image_index, capture_result, file_url):
                 MAVLink_message.__init__(self, MAVLink_camera_image_captured_message.id, MAVLink_camera_image_captured_message.name)
@@ -7820,13 +8119,15 @@ class MAVLink_flight_information_message(MAVLink_message):
         id = MAVLINK_MSG_ID_FLIGHT_INFORMATION
         name = 'FLIGHT_INFORMATION'
         fieldnames = ['time_boot_ms', 'arming_time_utc', 'takeoff_time_utc', 'flight_uuid']
-        ordered_fieldnames = [ 'arming_time_utc', 'takeoff_time_utc', 'flight_uuid', 'time_boot_ms' ]
+        ordered_fieldnames = ['arming_time_utc', 'takeoff_time_utc', 'flight_uuid', 'time_boot_ms']
+        fieldtypes = ['uint32_t', 'uint64_t', 'uint64_t', 'uint64_t']
         format = '<QQQI'
         native_format = bytearray('<QQQI', 'ascii')
         orders = [3, 0, 1, 2]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0]
         crc_extra = 49
+        unpacker = struct.Struct('<QQQI')
 
         def __init__(self, time_boot_ms, arming_time_utc, takeoff_time_utc, flight_uuid):
                 MAVLink_message.__init__(self, MAVLink_flight_information_message.id, MAVLink_flight_information_message.name)
@@ -7846,13 +8147,15 @@ class MAVLink_mount_orientation_message(MAVLink_message):
         id = MAVLINK_MSG_ID_MOUNT_ORIENTATION
         name = 'MOUNT_ORIENTATION'
         fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'yaw_absolute']
-        ordered_fieldnames = [ 'time_boot_ms', 'roll', 'pitch', 'yaw', 'yaw_absolute' ]
+        ordered_fieldnames = ['time_boot_ms', 'roll', 'pitch', 'yaw', 'yaw_absolute']
+        fieldtypes = ['uint32_t', 'float', 'float', 'float', 'float']
         format = '<Iffff'
         native_format = bytearray('<Iffff', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0]
         crc_extra = 26
+        unpacker = struct.Struct('<Iffff')
 
         def __init__(self, time_boot_ms, roll, pitch, yaw, yaw_absolute=0):
                 MAVLink_message.__init__(self, MAVLink_mount_orientation_message.id, MAVLink_mount_orientation_message.name)
@@ -7874,13 +8177,15 @@ class MAVLink_logging_data_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOGGING_DATA
         name = 'LOGGING_DATA'
         fieldnames = ['target_system', 'target_component', 'sequence', 'length', 'first_message_offset', 'data']
-        ordered_fieldnames = [ 'sequence', 'target_system', 'target_component', 'length', 'first_message_offset', 'data' ]
+        ordered_fieldnames = ['sequence', 'target_system', 'target_component', 'length', 'first_message_offset', 'data']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<HBBBB249B'
         native_format = bytearray('<HBBBBB', 'ascii')
         orders = [1, 2, 0, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 249]
         array_lengths = [0, 0, 0, 0, 0, 249]
         crc_extra = 193
+        unpacker = struct.Struct('<HBBBB249B')
 
         def __init__(self, target_system, target_component, sequence, length, first_message_offset, data):
                 MAVLink_message.__init__(self, MAVLink_logging_data_message.id, MAVLink_logging_data_message.name)
@@ -7903,13 +8208,15 @@ class MAVLink_logging_data_acked_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOGGING_DATA_ACKED
         name = 'LOGGING_DATA_ACKED'
         fieldnames = ['target_system', 'target_component', 'sequence', 'length', 'first_message_offset', 'data']
-        ordered_fieldnames = [ 'sequence', 'target_system', 'target_component', 'length', 'first_message_offset', 'data' ]
+        ordered_fieldnames = ['sequence', 'target_system', 'target_component', 'length', 'first_message_offset', 'data']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint8_t', 'uint8_t']
         format = '<HBBBB249B'
         native_format = bytearray('<HBBBBB', 'ascii')
         orders = [1, 2, 0, 3, 4, 5]
         lengths = [1, 1, 1, 1, 1, 249]
         array_lengths = [0, 0, 0, 0, 0, 249]
         crc_extra = 35
+        unpacker = struct.Struct('<HBBBB249B')
 
         def __init__(self, target_system, target_component, sequence, length, first_message_offset, data):
                 MAVLink_message.__init__(self, MAVLink_logging_data_acked_message.id, MAVLink_logging_data_acked_message.name)
@@ -7931,13 +8238,15 @@ class MAVLink_logging_ack_message(MAVLink_message):
         id = MAVLINK_MSG_ID_LOGGING_ACK
         name = 'LOGGING_ACK'
         fieldnames = ['target_system', 'target_component', 'sequence']
-        ordered_fieldnames = [ 'sequence', 'target_system', 'target_component' ]
+        ordered_fieldnames = ['sequence', 'target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint16_t']
         format = '<HBB'
         native_format = bytearray('<HBB', 'ascii')
         orders = [1, 2, 0]
         lengths = [1, 1, 1]
         array_lengths = [0, 0, 0]
         crc_extra = 14
+        unpacker = struct.Struct('<HBB')
 
         def __init__(self, target_system, target_component, sequence):
                 MAVLink_message.__init__(self, MAVLink_logging_ack_message.id, MAVLink_logging_ack_message.name)
@@ -7956,13 +8265,15 @@ class MAVLink_video_stream_information_message(MAVLink_message):
         id = MAVLINK_MSG_ID_VIDEO_STREAM_INFORMATION
         name = 'VIDEO_STREAM_INFORMATION'
         fieldnames = ['camera_id', 'status', 'framerate', 'resolution_h', 'resolution_v', 'bitrate', 'rotation', 'uri']
-        ordered_fieldnames = [ 'framerate', 'bitrate', 'resolution_h', 'resolution_v', 'rotation', 'camera_id', 'status', 'uri' ]
+        ordered_fieldnames = ['framerate', 'bitrate', 'resolution_h', 'resolution_v', 'rotation', 'camera_id', 'status', 'uri']
+        fieldtypes = ['uint8_t', 'uint8_t', 'float', 'uint16_t', 'uint16_t', 'uint32_t', 'uint16_t', 'char']
         format = '<fIHHHBB230s'
         native_format = bytearray('<fIHHHBBc', 'ascii')
         orders = [5, 6, 0, 2, 3, 1, 4, 7]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 230]
         crc_extra = 58
+        unpacker = struct.Struct('<fIHHHBB230s')
 
         def __init__(self, camera_id, status, framerate, resolution_h, resolution_v, bitrate, rotation, uri):
                 MAVLink_message.__init__(self, MAVLink_video_stream_information_message.id, MAVLink_video_stream_information_message.name)
@@ -7986,13 +8297,15 @@ class MAVLink_set_video_stream_settings_message(MAVLink_message):
         id = MAVLINK_MSG_ID_SET_VIDEO_STREAM_SETTINGS
         name = 'SET_VIDEO_STREAM_SETTINGS'
         fieldnames = ['target_system', 'target_component', 'camera_id', 'framerate', 'resolution_h', 'resolution_v', 'bitrate', 'rotation', 'uri']
-        ordered_fieldnames = [ 'framerate', 'bitrate', 'resolution_h', 'resolution_v', 'rotation', 'target_system', 'target_component', 'camera_id', 'uri' ]
+        ordered_fieldnames = ['framerate', 'bitrate', 'resolution_h', 'resolution_v', 'rotation', 'target_system', 'target_component', 'camera_id', 'uri']
+        fieldtypes = ['uint8_t', 'uint8_t', 'uint8_t', 'float', 'uint16_t', 'uint16_t', 'uint32_t', 'uint16_t', 'char']
         format = '<fIHHHBBB230s'
         native_format = bytearray('<fIHHHBBBc', 'ascii')
         orders = [5, 6, 7, 0, 2, 3, 1, 4, 8]
         lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0, 0, 0, 230]
         crc_extra = 232
+        unpacker = struct.Struct('<fIHHHBBB230s')
 
         def __init__(self, target_system, target_component, camera_id, framerate, resolution_h, resolution_v, bitrate, rotation, uri):
                 MAVLink_message.__init__(self, MAVLink_set_video_stream_settings_message.id, MAVLink_set_video_stream_settings_message.name)
@@ -8017,13 +8330,15 @@ class MAVLink_wifi_config_ap_message(MAVLink_message):
         id = MAVLINK_MSG_ID_WIFI_CONFIG_AP
         name = 'WIFI_CONFIG_AP'
         fieldnames = ['ssid', 'password']
-        ordered_fieldnames = [ 'ssid', 'password' ]
+        ordered_fieldnames = ['ssid', 'password']
+        fieldtypes = ['char', 'char']
         format = '<32s64s'
         native_format = bytearray('<cc', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [32, 64]
         crc_extra = 19
+        unpacker = struct.Struct('<32s64s')
 
         def __init__(self, ssid, password):
                 MAVLink_message.__init__(self, MAVLink_wifi_config_ap_message.id, MAVLink_wifi_config_ap_message.name)
@@ -8048,13 +8363,15 @@ class MAVLink_protocol_version_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PROTOCOL_VERSION
         name = 'PROTOCOL_VERSION'
         fieldnames = ['version', 'min_version', 'max_version', 'spec_version_hash', 'library_version_hash']
-        ordered_fieldnames = [ 'version', 'min_version', 'max_version', 'spec_version_hash', 'library_version_hash' ]
+        ordered_fieldnames = ['version', 'min_version', 'max_version', 'spec_version_hash', 'library_version_hash']
+        fieldtypes = ['uint16_t', 'uint16_t', 'uint16_t', 'uint8_t', 'uint8_t']
         format = '<HHH8B8B'
         native_format = bytearray('<HHHBB', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 8, 8]
         array_lengths = [0, 0, 0, 8, 8]
         crc_extra = 217
+        unpacker = struct.Struct('<HHH8B8B')
 
         def __init__(self, version, min_version, max_version, spec_version_hash, library_version_hash):
                 MAVLink_message.__init__(self, MAVLink_protocol_version_message.id, MAVLink_protocol_version_message.name)
@@ -8078,13 +8395,15 @@ class MAVLink_uavcan_node_status_message(MAVLink_message):
         id = MAVLINK_MSG_ID_UAVCAN_NODE_STATUS
         name = 'UAVCAN_NODE_STATUS'
         fieldnames = ['time_usec', 'uptime_sec', 'health', 'mode', 'sub_mode', 'vendor_specific_status_code']
-        ordered_fieldnames = [ 'time_usec', 'uptime_sec', 'vendor_specific_status_code', 'health', 'mode', 'sub_mode' ]
+        ordered_fieldnames = ['time_usec', 'uptime_sec', 'vendor_specific_status_code', 'health', 'mode', 'sub_mode']
+        fieldtypes = ['uint64_t', 'uint32_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint16_t']
         format = '<QIHBBB'
         native_format = bytearray('<QIHBBB', 'ascii')
         orders = [0, 1, 3, 4, 5, 2]
         lengths = [1, 1, 1, 1, 1, 1]
         array_lengths = [0, 0, 0, 0, 0, 0]
         crc_extra = 28
+        unpacker = struct.Struct('<QIHBBB')
 
         def __init__(self, time_usec, uptime_sec, health, mode, sub_mode, vendor_specific_status_code):
                 MAVLink_message.__init__(self, MAVLink_uavcan_node_status_message.id, MAVLink_uavcan_node_status_message.name)
@@ -8115,13 +8434,15 @@ class MAVLink_uavcan_node_info_message(MAVLink_message):
         id = MAVLINK_MSG_ID_UAVCAN_NODE_INFO
         name = 'UAVCAN_NODE_INFO'
         fieldnames = ['time_usec', 'uptime_sec', 'name', 'hw_version_major', 'hw_version_minor', 'hw_unique_id', 'sw_version_major', 'sw_version_minor', 'sw_vcs_commit']
-        ordered_fieldnames = [ 'time_usec', 'uptime_sec', 'sw_vcs_commit', 'name', 'hw_version_major', 'hw_version_minor', 'hw_unique_id', 'sw_version_major', 'sw_version_minor' ]
+        ordered_fieldnames = ['time_usec', 'uptime_sec', 'sw_vcs_commit', 'name', 'hw_version_major', 'hw_version_minor', 'hw_unique_id', 'sw_version_major', 'sw_version_minor']
+        fieldtypes = ['uint64_t', 'uint32_t', 'char', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint8_t', 'uint32_t']
         format = '<QII80sBB16BBB'
         native_format = bytearray('<QIIcBBBBB', 'ascii')
         orders = [0, 1, 3, 4, 5, 6, 7, 8, 2]
         lengths = [1, 1, 1, 1, 1, 1, 16, 1, 1]
         array_lengths = [0, 0, 0, 80, 0, 0, 16, 0, 0]
         crc_extra = 95
+        unpacker = struct.Struct('<QII80sBB16BBB')
 
         def __init__(self, time_usec, uptime_sec, name, hw_version_major, hw_version_minor, hw_unique_id, sw_version_major, sw_version_minor, sw_vcs_commit):
                 MAVLink_message.__init__(self, MAVLink_uavcan_node_info_message.id, MAVLink_uavcan_node_info_message.name)
@@ -8147,13 +8468,15 @@ class MAVLink_param_ext_request_read_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_EXT_REQUEST_READ
         name = 'PARAM_EXT_REQUEST_READ'
         fieldnames = ['target_system', 'target_component', 'param_id', 'param_index']
-        ordered_fieldnames = [ 'param_index', 'target_system', 'target_component', 'param_id' ]
+        ordered_fieldnames = ['param_index', 'target_system', 'target_component', 'param_id']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char', 'int16_t']
         format = '<hBB16s'
         native_format = bytearray('<hBBc', 'ascii')
         orders = [1, 2, 3, 0]
         lengths = [1, 1, 1, 1]
         array_lengths = [0, 0, 0, 16]
         crc_extra = 243
+        unpacker = struct.Struct('<hBB16s')
 
         def __init__(self, target_system, target_component, param_id, param_index):
                 MAVLink_message.__init__(self, MAVLink_param_ext_request_read_message.id, MAVLink_param_ext_request_read_message.name)
@@ -8174,13 +8497,15 @@ class MAVLink_param_ext_request_list_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_EXT_REQUEST_LIST
         name = 'PARAM_EXT_REQUEST_LIST'
         fieldnames = ['target_system', 'target_component']
-        ordered_fieldnames = [ 'target_system', 'target_component' ]
+        ordered_fieldnames = ['target_system', 'target_component']
+        fieldtypes = ['uint8_t', 'uint8_t']
         format = '<BB'
         native_format = bytearray('<BB', 'ascii')
         orders = [0, 1]
         lengths = [1, 1]
         array_lengths = [0, 0]
         crc_extra = 88
+        unpacker = struct.Struct('<BB')
 
         def __init__(self, target_system, target_component):
                 MAVLink_message.__init__(self, MAVLink_param_ext_request_list_message.id, MAVLink_param_ext_request_list_message.name)
@@ -8201,13 +8526,15 @@ class MAVLink_param_ext_value_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_EXT_VALUE
         name = 'PARAM_EXT_VALUE'
         fieldnames = ['param_id', 'param_value', 'param_type', 'param_count', 'param_index']
-        ordered_fieldnames = [ 'param_count', 'param_index', 'param_id', 'param_value', 'param_type' ]
+        ordered_fieldnames = ['param_count', 'param_index', 'param_id', 'param_value', 'param_type']
+        fieldtypes = ['char', 'char', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<HH16s128sB'
         native_format = bytearray('<HHccB', 'ascii')
         orders = [2, 3, 4, 0, 1]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 16, 128, 0]
         crc_extra = 243
+        unpacker = struct.Struct('<HH16s128sB')
 
         def __init__(self, param_id, param_value, param_type, param_count, param_index):
                 MAVLink_message.__init__(self, MAVLink_param_ext_value_message.id, MAVLink_param_ext_value_message.name)
@@ -8233,13 +8560,15 @@ class MAVLink_param_ext_set_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_EXT_SET
         name = 'PARAM_EXT_SET'
         fieldnames = ['target_system', 'target_component', 'param_id', 'param_value', 'param_type']
-        ordered_fieldnames = [ 'target_system', 'target_component', 'param_id', 'param_value', 'param_type' ]
+        ordered_fieldnames = ['target_system', 'target_component', 'param_id', 'param_value', 'param_type']
+        fieldtypes = ['uint8_t', 'uint8_t', 'char', 'char', 'uint8_t']
         format = '<BB16s128sB'
         native_format = bytearray('<BBccB', 'ascii')
         orders = [0, 1, 2, 3, 4]
         lengths = [1, 1, 1, 1, 1]
         array_lengths = [0, 0, 16, 128, 0]
         crc_extra = 78
+        unpacker = struct.Struct('<BB16s128sB')
 
         def __init__(self, target_system, target_component, param_id, param_value, param_type):
                 MAVLink_message.__init__(self, MAVLink_param_ext_set_message.id, MAVLink_param_ext_set_message.name)
@@ -8260,13 +8589,15 @@ class MAVLink_param_ext_ack_message(MAVLink_message):
         id = MAVLINK_MSG_ID_PARAM_EXT_ACK
         name = 'PARAM_EXT_ACK'
         fieldnames = ['param_id', 'param_value', 'param_type', 'param_result']
-        ordered_fieldnames = [ 'param_id', 'param_value', 'param_type', 'param_result' ]
+        ordered_fieldnames = ['param_id', 'param_value', 'param_type', 'param_result']
+        fieldtypes = ['char', 'char', 'uint8_t', 'uint8_t']
         format = '<16s128sBB'
         native_format = bytearray('<ccBB', 'ascii')
         orders = [0, 1, 2, 3]
         lengths = [1, 1, 1, 1]
         array_lengths = [16, 128, 0, 0]
         crc_extra = 132
+        unpacker = struct.Struct('<16s128sBB')
 
         def __init__(self, param_id, param_value, param_type, param_result):
                 MAVLink_message.__init__(self, MAVLink_param_ext_ack_message.id, MAVLink_param_ext_ack_message.name)
@@ -8287,13 +8618,15 @@ class MAVLink_obstacle_distance_message(MAVLink_message):
         id = MAVLINK_MSG_ID_OBSTACLE_DISTANCE
         name = 'OBSTACLE_DISTANCE'
         fieldnames = ['time_usec', 'sensor_type', 'distances', 'increment', 'min_distance', 'max_distance']
-        ordered_fieldnames = [ 'time_usec', 'distances', 'min_distance', 'max_distance', 'sensor_type', 'increment' ]
+        ordered_fieldnames = ['time_usec', 'distances', 'min_distance', 'max_distance', 'sensor_type', 'increment']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint16_t', 'uint8_t', 'uint16_t', 'uint16_t']
         format = '<Q72HHHBB'
         native_format = bytearray('<QHHHBB', 'ascii')
         orders = [0, 4, 1, 5, 2, 3]
         lengths = [1, 72, 1, 1, 1, 1]
         array_lengths = [0, 72, 0, 0, 0, 0]
         crc_extra = 23
+        unpacker = struct.Struct('<Q72HHHBB')
 
         def __init__(self, time_usec, sensor_type, distances, increment, min_distance, max_distance):
                 MAVLink_message.__init__(self, MAVLink_obstacle_distance_message.id, MAVLink_obstacle_distance_message.name)
@@ -8317,13 +8650,15 @@ class MAVLink_odometry_message(MAVLink_message):
         id = MAVLINK_MSG_ID_ODOMETRY
         name = 'ODOMETRY'
         fieldnames = ['time_usec', 'frame_id', 'child_frame_id', 'x', 'y', 'z', 'q', 'vx', 'vy', 'vz', 'rollspeed', 'pitchspeed', 'yawspeed', 'pose_covariance', 'twist_covariance']
-        ordered_fieldnames = [ 'time_usec', 'x', 'y', 'z', 'q', 'vx', 'vy', 'vz', 'rollspeed', 'pitchspeed', 'yawspeed', 'pose_covariance', 'twist_covariance', 'frame_id', 'child_frame_id' ]
+        ordered_fieldnames = ['time_usec', 'x', 'y', 'z', 'q', 'vx', 'vy', 'vz', 'rollspeed', 'pitchspeed', 'yawspeed', 'pose_covariance', 'twist_covariance', 'frame_id', 'child_frame_id']
+        fieldtypes = ['uint64_t', 'uint8_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Qfff4fffffff21f21fBB'
         native_format = bytearray('<QffffffffffffBB', 'ascii')
         orders = [0, 13, 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         lengths = [1, 1, 1, 1, 4, 1, 1, 1, 1, 1, 1, 21, 21, 1, 1]
         array_lengths = [0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 21, 21, 0, 0]
         crc_extra = 58
+        unpacker = struct.Struct('<Qfff4fffffff21f21fBB')
 
         def __init__(self, time_usec, frame_id, child_frame_id, x, y, z, q, vx, vy, vz, rollspeed, pitchspeed, yawspeed, pose_covariance, twist_covariance):
                 MAVLink_message.__init__(self, MAVLink_odometry_message.id, MAVLink_odometry_message.name)
@@ -8355,13 +8690,15 @@ class MAVLink_trajectory_representation_waypoints_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS
         name = 'TRAJECTORY_REPRESENTATION_WAYPOINTS'
         fieldnames = ['time_usec', 'valid_points', 'pos_x', 'pos_y', 'pos_z', 'vel_x', 'vel_y', 'vel_z', 'acc_x', 'acc_y', 'acc_z', 'pos_yaw', 'vel_yaw']
-        ordered_fieldnames = [ 'time_usec', 'pos_x', 'pos_y', 'pos_z', 'vel_x', 'vel_y', 'vel_z', 'acc_x', 'acc_y', 'acc_z', 'pos_yaw', 'vel_yaw', 'valid_points' ]
+        ordered_fieldnames = ['time_usec', 'pos_x', 'pos_y', 'pos_z', 'vel_x', 'vel_y', 'vel_z', 'acc_x', 'acc_y', 'acc_z', 'pos_yaw', 'vel_yaw', 'valid_points']
+        fieldtypes = ['uint64_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float', 'float']
         format = '<Q5f5f5f5f5f5f5f5f5f5f5fB'
         native_format = bytearray('<QfffffffffffB', 'ascii')
         orders = [0, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         lengths = [1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 1]
         array_lengths = [0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0]
         crc_extra = 91
+        unpacker = struct.Struct('<Q5f5f5f5f5f5f5f5f5f5f5fB')
 
         def __init__(self, time_usec, valid_points, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z, pos_yaw, vel_yaw):
                 MAVLink_message.__init__(self, MAVLink_trajectory_representation_waypoints_message.id, MAVLink_trajectory_representation_waypoints_message.name)
@@ -8391,13 +8728,15 @@ class MAVLink_trajectory_representation_bezier_message(MAVLink_message):
         id = MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER
         name = 'TRAJECTORY_REPRESENTATION_BEZIER'
         fieldnames = ['time_usec', 'valid_points', 'pos_x', 'pos_y', 'pos_z', 'delta', 'pos_yaw']
-        ordered_fieldnames = [ 'time_usec', 'pos_x', 'pos_y', 'pos_z', 'delta', 'pos_yaw', 'valid_points' ]
+        ordered_fieldnames = ['time_usec', 'pos_x', 'pos_y', 'pos_z', 'delta', 'pos_yaw', 'valid_points']
+        fieldtypes = ['uint64_t', 'uint8_t', 'float', 'float', 'float', 'float', 'float']
         format = '<Q5f5f5f5f5fB'
         native_format = bytearray('<QfffffB', 'ascii')
         orders = [0, 6, 1, 2, 3, 4, 5]
         lengths = [1, 5, 5, 5, 5, 5, 1]
         array_lengths = [0, 5, 5, 5, 5, 5, 0]
         crc_extra = 231
+        unpacker = struct.Struct('<Q5f5f5f5f5fB')
 
         def __init__(self, time_usec, valid_points, pos_x, pos_y, pos_z, delta, pos_yaw):
                 MAVLink_message.__init__(self, MAVLink_trajectory_representation_bezier_message.id, MAVLink_trajectory_representation_bezier_message.name)
@@ -8413,39 +8752,11 @@ class MAVLink_trajectory_representation_bezier_message(MAVLink_message):
         def pack(self, mav, force_mavlink1=False):
                 return MAVLink_message.pack(self, mav, 231, struct.pack('<Q5f5f5f5f5fB', self.time_usec, self.pos_x[0], self.pos_x[1], self.pos_x[2], self.pos_x[3], self.pos_x[4], self.pos_y[0], self.pos_y[1], self.pos_y[2], self.pos_y[3], self.pos_y[4], self.pos_z[0], self.pos_z[1], self.pos_z[2], self.pos_z[3], self.pos_z[4], self.delta[0], self.delta[1], self.delta[2], self.delta[3], self.delta[4], self.pos_yaw[0], self.pos_yaw[1], self.pos_yaw[2], self.pos_yaw[3], self.pos_yaw[4], self.valid_points), force_mavlink1=force_mavlink1)
 
-class MAVLink_debug_float_array_message(MAVLink_message):
-        '''
-        Large debug/prototyping array. The message uses the maximum
-        available payload for data. The array_id and name fields are
-        used to discriminate between messages in code and in user
-        interfaces (respectively). Do not use in production code.
-        '''
-        id = MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY
-        name = 'DEBUG_FLOAT_ARRAY'
-        fieldnames = ['time_usec', 'name', 'array_id', 'data']
-        ordered_fieldnames = [ 'time_usec', 'array_id', 'name', 'data' ]
-        format = '<QH10s58f'
-        native_format = bytearray('<QHcf', 'ascii')
-        orders = [0, 2, 1, 3]
-        lengths = [1, 1, 1, 58]
-        array_lengths = [0, 0, 10, 58]
-        crc_extra = 232
-
-        def __init__(self, time_usec, name, array_id, data=0):
-                MAVLink_message.__init__(self, MAVLink_debug_float_array_message.id, MAVLink_debug_float_array_message.name)
-                self._fieldnames = MAVLink_debug_float_array_message.fieldnames
-                self.time_usec = time_usec
-                self.name = name
-                self.array_id = array_id
-                self.data = data
-
-        def pack(self, mav, force_mavlink1=False):
-                return MAVLink_message.pack(self, mav, 232, struct.pack('<QH10s58f', self.time_usec, self.array_id, self.name, self.data[0], self.data[1], self.data[2], self.data[3], self.data[4], self.data[5], self.data[6], self.data[7], self.data[8], self.data[9], self.data[10], self.data[11], self.data[12], self.data[13], self.data[14], self.data[15], self.data[16], self.data[17], self.data[18], self.data[19], self.data[20], self.data[21], self.data[22], self.data[23], self.data[24], self.data[25], self.data[26], self.data[27], self.data[28], self.data[29], self.data[30], self.data[31], self.data[32], self.data[33], self.data[34], self.data[35], self.data[36], self.data[37], self.data[38], self.data[39], self.data[40], self.data[41], self.data[42], self.data[43], self.data[44], self.data[45], self.data[46], self.data[47], self.data[48], self.data[49], self.data[50], self.data[51], self.data[52], self.data[53], self.data[54], self.data[55], self.data[56], self.data[57]), force_mavlink1=force_mavlink1)
-
 
 mavlink_map = {
         MAVLINK_MSG_ID_SWARM_INFO : MAVLink_swarm_info_message,
         MAVLINK_MSG_ID_SWARM_RELATIVE_FUSED : MAVLink_swarm_relative_fused_message,
+        MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND : MAVLink_swarm_remote_command_message,
         MAVLINK_MSG_ID_HEARTBEAT : MAVLink_heartbeat_message,
         MAVLINK_MSG_ID_SYS_STATUS : MAVLink_sys_status_message,
         MAVLINK_MSG_ID_SYSTEM_TIME : MAVLink_system_time_message,
@@ -8611,7 +8922,6 @@ mavlink_map = {
         MAVLINK_MSG_ID_ODOMETRY : MAVLink_odometry_message,
         MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS : MAVLink_trajectory_representation_waypoints_message,
         MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER : MAVLink_trajectory_representation_bezier_message,
-        MAVLINK_MSG_ID_DEBUG_FLOAT_ARRAY : MAVLink_debug_float_array_message,
 }
 
 class MAVError(Exception):
@@ -8696,6 +9006,11 @@ class MAVLink(object):
                     self.native = None
                 if native_testing:
                     self.test_buf = bytearray()
+                self.mav20_unpacker = struct.Struct('<cBBBBBBHB')
+                self.mav10_unpacker = struct.Struct('<cBBBBB')
+                self.mav20_h3_unpacker = struct.Struct('BBB')
+                self.mav_csum_unpacker = struct.Struct('<H')
+                self.mav_sign_unpacker = struct.Struct('<IH')
 
         def set_callback(self, callback, *args, **kwargs):
             self.callback = callback
@@ -8726,7 +9041,7 @@ class MAVLink(object):
                 ret = self.native.expected_length - self.buf_len()
             else:
                 ret = self.expected_length - self.buf_len()
-            
+
             if ret <= 0:
                 return 1
             return ret
@@ -8760,7 +9075,7 @@ class MAVLink(object):
             else:
                 m = self.__parse_char_legacy()
 
-            if m != None:
+            if m is not None:
                 self.total_packets_received += 1
                 self.__callbacks(m)
             else:
@@ -8777,7 +9092,7 @@ class MAVLink(object):
             header_len = HEADER_LEN_V1
             if self.buf_len() >= 1 and self.buf[self.buf_index] == PROTOCOL_MARKER_V2:
                 header_len = HEADER_LEN_V2
-                
+
             if self.buf_len() >= 1 and self.buf[self.buf_index] != PROTOCOL_MARKER_V1 and self.buf[self.buf_index] != PROTOCOL_MARKER_V2:
                 magic = self.buf[self.buf_index]
                 self.buf_index += 1
@@ -8794,9 +9109,9 @@ class MAVLink(object):
             self.have_prefix_error = False
             if self.buf_len() >= 3:
                 sbuf = self.buf[self.buf_index:3+self.buf_index]
-                if sys.version_info[0] < 3:
+                if sys.version_info.major < 3:
                     sbuf = str(sbuf)
-                (magic, self.expected_length, incompat_flags) = struct.unpack('BBB', sbuf)
+                (magic, self.expected_length, incompat_flags) = self.mav20_h3_unpacker.unpack(sbuf)
                 if magic == PROTOCOL_MARKER_V2 and (incompat_flags & MAVLINK_IFLAG_SIGNED):
                         self.expected_length += MAVLINK_SIGNATURE_BLOCK_LEN
                 self.expected_length += header_len + 2
@@ -8838,7 +9153,7 @@ class MAVLink(object):
                 msgbuf = msgbuf.tostring()
             timestamp_buf = msgbuf[-12:-6]
             link_id = msgbuf[-13]
-            (tlow, thigh) = struct.unpack('<IH', timestamp_buf)
+            (tlow, thigh) = self.mav_sign_unpacker.unpack(timestamp_buf)
             timestamp = tlow + (thigh<<32)
 
             # see if the timestamp is acceptable
@@ -8877,7 +9192,7 @@ class MAVLink(object):
                 if msgbuf[0] != PROTOCOL_MARKER_V1:
                     headerlen = 10
                     try:
-                        magic, mlen, incompat_flags, compat_flags, seq, srcSystem, srcComponent, msgIdlow, msgIdhigh = struct.unpack('<cBBBBBBHB', msgbuf[:headerlen])
+                        magic, mlen, incompat_flags, compat_flags, seq, srcSystem, srcComponent, msgIdlow, msgIdhigh = self.mav20_unpacker.unpack(msgbuf[:headerlen])
                     except struct.error as emsg:
                         raise MAVError('Unable to unpack MAVLink header: %s' % emsg)
                     msgId = msgIdlow | (msgIdhigh<<16)
@@ -8885,7 +9200,7 @@ class MAVLink(object):
                 else:
                     headerlen = 6
                     try:
-                        magic, mlen, seq, srcSystem, srcComponent, msgId = struct.unpack('<cBBBBB', msgbuf[:headerlen])
+                        magic, mlen, seq, srcSystem, srcComponent, msgId = self.mav10_unpacker.unpack(msgbuf[:headerlen])
                         incompat_flags = 0
                         compat_flags = 0
                     except struct.error as emsg:
@@ -8913,7 +9228,7 @@ class MAVLink(object):
 
                 # decode the checksum
                 try:
-                    crc, = struct.unpack('<H', msgbuf[-(2+signature_len):][:2])
+                    crc, = self.mav_csum_unpacker.unpack(msgbuf[-(2+signature_len):][:2])
                 except struct.error as emsg:
                     raise MAVError('Unable to unpack MAVLink CRC: %s' % emsg)
                 crcbuf = msgbuf[1:-(2+signature_len)]
@@ -8950,7 +9265,7 @@ class MAVLink(object):
                     if not accept_signature:
                         raise MAVError('Invalid signature')
 
-                csize = struct.calcsize(fmt)
+                csize = type.unpacker.size
                 mbuf = msgbuf[headerlen:-(2+signature_len)]
                 if len(mbuf) < csize:
                     # zero pad to give right size
@@ -8960,7 +9275,7 @@ class MAVLink(object):
                         type, len(mbuf), csize))
                 mbuf = mbuf[:csize]
                 try:
-                    t = struct.unpack(fmt, mbuf)
+                    t = type.unpacker.unpack(mbuf)
                 except struct.error as emsg:
                     raise MAVError('Unable to unpack MAVLink payload type=%s fmt=%s payloadLength=%u: %s' % (
                         type, fmt, len(mbuf), emsg))
@@ -8988,7 +9303,9 @@ class MAVLink(object):
 
                 # terminate any strings
                 for i in range(0, len(tlist)):
-                    if isinstance(tlist[i], str):
+                    if type.fieldtypes[i] == 'char':
+                        if sys.version_info.major >= 3:
+                            tlist[i] = tlist[i].decode('utf-8')
                         tlist[i] = str(MAVString(tlist[i]))
                 t = tuple(tlist)
                 # construct the message object
@@ -9008,18 +9325,18 @@ class MAVLink(object):
                 '''
                 
 
-                odom_vaild                : If odometry is vaild (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                q0                        : q0 (float)
-                q1                        : q1 (float)
-                q2                        : q2 (float)
-                q3                        : q3 (float)
-                vx                        : X linear speed (float)
-                vy                        : Y linear speed (float)
-                vz                        : Z linear speed (float)
-                remote_distance           : Distance to Remote Drone (float)
+                odom_vaild                : If odometry is vaild (type:uint8_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                q0                        : q0 [m] (type:float)
+                q1                        : q1 [m] (type:float)
+                q2                        : q2 [m] (type:float)
+                q3                        : q3 [m] (type:float)
+                vx                        : X linear speed [m/s] (type:float)
+                vy                        : Y linear speed [m/s] (type:float)
+                vz                        : Z linear speed [m/s] (type:float)
+                remote_distance           : Distance to Remote Drone [m] (type:float)
 
                 '''
                 return MAVLink_swarm_info_message(odom_vaild, x, y, z, q0, q1, q2, q3, vx, vy, vz, remote_distance)
@@ -9028,18 +9345,18 @@ class MAVLink(object):
                 '''
                 
 
-                odom_vaild                : If odometry is vaild (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                q0                        : q0 (float)
-                q1                        : q1 (float)
-                q2                        : q2 (float)
-                q3                        : q3 (float)
-                vx                        : X linear speed (float)
-                vy                        : Y linear speed (float)
-                vz                        : Z linear speed (float)
-                remote_distance           : Distance to Remote Drone (float)
+                odom_vaild                : If odometry is vaild (type:uint8_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                q0                        : q0 [m] (type:float)
+                q1                        : q1 [m] (type:float)
+                q2                        : q2 [m] (type:float)
+                q3                        : q3 [m] (type:float)
+                vx                        : X linear speed [m/s] (type:float)
+                vy                        : Y linear speed [m/s] (type:float)
+                vz                        : Z linear speed [m/s] (type:float)
+                remote_distance           : Distance to Remote Drone [m] (type:float)
 
                 '''
                 return self.send(self.swarm_info_encode(odom_vaild, x, y, z, q0, q1, q2, q3, vx, vy, vz, remote_distance), force_mavlink1=force_mavlink1)
@@ -9048,12 +9365,12 @@ class MAVLink(object):
                 '''
                 
 
-                source_id                 : Source ID of drone (uint8_t)
-                target_id                 : Target ID of drone (uint8_t)
-                rel_x                     : Relative X Position (float)
-                rel_y                     : Relative Y Position (float)
-                rel_z                     : Relative Z Position (float)
-                rel_yaw_offset            : Relative Yaw coorinate offset (float)
+                source_id                 : Source ID of drone (type:uint8_t)
+                target_id                 : Target ID of drone (type:uint8_t)
+                rel_x                     : Relative X Position [m] (type:float)
+                rel_y                     : Relative Y Position [m] (type:float)
+                rel_z                     : Relative Z Position [m] (type:float)
+                rel_yaw_offset            : Relative Yaw coorinate offset [deg] (type:float)
 
                 '''
                 return MAVLink_swarm_relative_fused_message(source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset)
@@ -9062,15 +9379,51 @@ class MAVLink(object):
                 '''
                 
 
-                source_id                 : Source ID of drone (uint8_t)
-                target_id                 : Target ID of drone (uint8_t)
-                rel_x                     : Relative X Position (float)
-                rel_y                     : Relative Y Position (float)
-                rel_z                     : Relative Z Position (float)
-                rel_yaw_offset            : Relative Yaw coorinate offset (float)
+                source_id                 : Source ID of drone (type:uint8_t)
+                target_id                 : Target ID of drone (type:uint8_t)
+                rel_x                     : Relative X Position [m] (type:float)
+                rel_y                     : Relative Y Position [m] (type:float)
+                rel_z                     : Relative Z Position [m] (type:float)
+                rel_yaw_offset            : Relative Yaw coorinate offset [deg] (type:float)
 
                 '''
                 return self.send(self.swarm_relative_fused_encode(source_id, target_id, rel_x, rel_y, rel_z, rel_yaw_offset), force_mavlink1=force_mavlink1)
+
+        def swarm_remote_command_encode(self, target_id, command_type, param1, param2, param3, param4, param5, param6, param7, param8):
+                '''
+                
+
+                target_id                 : Target ID of drone (type:int8_t)
+                command_type              : Onboard command type [m] (type:uint8_t)
+                param1                    : param1 [m] (type:uint32_t)
+                param2                    : param2 [m] (type:uint32_t)
+                param3                    : param3 [m] (type:uint32_t)
+                param4                    : param4 [m] (type:uint32_t)
+                param5                    : param5 [m] (type:uint32_t)
+                param6                    : param6 [m] (type:uint32_t)
+                param7                    : param7 [m] (type:uint32_t)
+                param8                    : param8 [m] (type:uint32_t)
+
+                '''
+                return MAVLink_swarm_remote_command_message(target_id, command_type, param1, param2, param3, param4, param5, param6, param7, param8)
+
+        def swarm_remote_command_send(self, target_id, command_type, param1, param2, param3, param4, param5, param6, param7, param8, force_mavlink1=False):
+                '''
+                
+
+                target_id                 : Target ID of drone (type:int8_t)
+                command_type              : Onboard command type [m] (type:uint8_t)
+                param1                    : param1 [m] (type:uint32_t)
+                param2                    : param2 [m] (type:uint32_t)
+                param3                    : param3 [m] (type:uint32_t)
+                param4                    : param4 [m] (type:uint32_t)
+                param5                    : param5 [m] (type:uint32_t)
+                param6                    : param6 [m] (type:uint32_t)
+                param7                    : param7 [m] (type:uint32_t)
+                param8                    : param8 [m] (type:uint32_t)
+
+                '''
+                return self.send(self.swarm_remote_command_encode(target_id, command_type, param1, param2, param3, param4, param5, param6, param7, param8), force_mavlink1=force_mavlink1)
 
         def heartbeat_encode(self, type, autopilot, base_mode, custom_mode, system_status, mavlink_version=3):
                 '''
@@ -9080,12 +9433,12 @@ class MAVLink(object):
                 system appropriate (e.g. by laying out the user
                 interface based on the autopilot).
 
-                type                      : Type of the MAV (quadrotor, helicopter, etc.) (uint8_t)
-                autopilot                 : Autopilot type / class. (uint8_t)
-                base_mode                 : System mode bitmap. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags (uint32_t)
-                system_status             : System status flag. (uint8_t)
-                mavlink_version           : MAVLink version, not writable by user, gets added by protocol because of magic data type: uint8_t_mavlink_version (uint8_t)
+                type                      : Type of the MAV (quadrotor, helicopter, etc.) (type:uint8_t, values:MAV_TYPE)
+                autopilot                 : Autopilot type / class. (type:uint8_t, values:MAV_AUTOPILOT)
+                base_mode                 : System mode bitmap. (type:uint8_t, values:MAV_MODE_FLAG)
+                custom_mode               : A bitfield for use for autopilot-specific flags (type:uint32_t)
+                system_status             : System status flag. (type:uint8_t, values:MAV_STATE)
+                mavlink_version           : MAVLink version, not writable by user, gets added by protocol because of magic data type: uint8_t_mavlink_version (type:uint8_t)
 
                 '''
                 return MAVLink_heartbeat_message(type, autopilot, base_mode, custom_mode, system_status, mavlink_version)
@@ -9098,12 +9451,12 @@ class MAVLink(object):
                 system appropriate (e.g. by laying out the user
                 interface based on the autopilot).
 
-                type                      : Type of the MAV (quadrotor, helicopter, etc.) (uint8_t)
-                autopilot                 : Autopilot type / class. (uint8_t)
-                base_mode                 : System mode bitmap. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags (uint32_t)
-                system_status             : System status flag. (uint8_t)
-                mavlink_version           : MAVLink version, not writable by user, gets added by protocol because of magic data type: uint8_t_mavlink_version (uint8_t)
+                type                      : Type of the MAV (quadrotor, helicopter, etc.) (type:uint8_t, values:MAV_TYPE)
+                autopilot                 : Autopilot type / class. (type:uint8_t, values:MAV_AUTOPILOT)
+                base_mode                 : System mode bitmap. (type:uint8_t, values:MAV_MODE_FLAG)
+                custom_mode               : A bitfield for use for autopilot-specific flags (type:uint32_t)
+                system_status             : System status flag. (type:uint8_t, values:MAV_STATE)
+                mavlink_version           : MAVLink version, not writable by user, gets added by protocol because of magic data type: uint8_t_mavlink_version (type:uint8_t)
 
                 '''
                 return self.send(self.heartbeat_encode(type, autopilot, base_mode, custom_mode, system_status, mavlink_version), force_mavlink1=force_mavlink1)
@@ -9130,19 +9483,19 @@ class MAVLink(object):
                 manual intervention and then move to emergency after a
                 certain timeout.
 
-                onboard_control_sensors_present        : Bitmap showing which onboard controllers and sensors are present. Value of 0: not present. Value of 1: present. (uint32_t)
-                onboard_control_sensors_enabled        : Bitmap showing which onboard controllers and sensors are enabled:  Value of 0: not enabled. Value of 1: enabled. (uint32_t)
-                onboard_control_sensors_health        : Bitmap showing which onboard controllers and sensors are operational or have an error:  Value of 0: not enabled. Value of 1: enabled. (uint32_t)
-                load                      : Maximum usage in percent of the mainloop time. Values: [0-1000] - should always be below 1000 (uint16_t)
-                voltage_battery           : Battery voltage (uint16_t)
-                current_battery           : Battery current, -1: autopilot does not measure the current (int16_t)
-                battery_remaining         : Remaining battery energy, -1: autopilot estimate the remaining battery (int8_t)
-                drop_rate_comm            : Communication drop rate, (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (uint16_t)
-                errors_comm               : Communication errors (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (uint16_t)
-                errors_count1             : Autopilot-specific errors (uint16_t)
-                errors_count2             : Autopilot-specific errors (uint16_t)
-                errors_count3             : Autopilot-specific errors (uint16_t)
-                errors_count4             : Autopilot-specific errors (uint16_t)
+                onboard_control_sensors_present        : Bitmap showing which onboard controllers and sensors are present. Value of 0: not present. Value of 1: present. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                onboard_control_sensors_enabled        : Bitmap showing which onboard controllers and sensors are enabled:  Value of 0: not enabled. Value of 1: enabled. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                onboard_control_sensors_health        : Bitmap showing which onboard controllers and sensors are operational or have an error:  Value of 0: not enabled. Value of 1: enabled. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                load                      : Maximum usage in percent of the mainloop time. Values: [0-1000] - should always be below 1000 [d%] (type:uint16_t)
+                voltage_battery           : Battery voltage [mV] (type:uint16_t)
+                current_battery           : Battery current, -1: autopilot does not measure the current [cA] (type:int16_t)
+                battery_remaining         : Remaining battery energy, -1: autopilot estimate the remaining battery [%] (type:int8_t)
+                drop_rate_comm            : Communication drop rate, (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) [c%] (type:uint16_t)
+                errors_comm               : Communication errors (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (type:uint16_t)
+                errors_count1             : Autopilot-specific errors (type:uint16_t)
+                errors_count2             : Autopilot-specific errors (type:uint16_t)
+                errors_count3             : Autopilot-specific errors (type:uint16_t)
+                errors_count4             : Autopilot-specific errors (type:uint16_t)
 
                 '''
                 return MAVLink_sys_status_message(onboard_control_sensors_present, onboard_control_sensors_enabled, onboard_control_sensors_health, load, voltage_battery, current_battery, battery_remaining, drop_rate_comm, errors_comm, errors_count1, errors_count2, errors_count3, errors_count4)
@@ -9169,19 +9522,19 @@ class MAVLink(object):
                 manual intervention and then move to emergency after a
                 certain timeout.
 
-                onboard_control_sensors_present        : Bitmap showing which onboard controllers and sensors are present. Value of 0: not present. Value of 1: present. (uint32_t)
-                onboard_control_sensors_enabled        : Bitmap showing which onboard controllers and sensors are enabled:  Value of 0: not enabled. Value of 1: enabled. (uint32_t)
-                onboard_control_sensors_health        : Bitmap showing which onboard controllers and sensors are operational or have an error:  Value of 0: not enabled. Value of 1: enabled. (uint32_t)
-                load                      : Maximum usage in percent of the mainloop time. Values: [0-1000] - should always be below 1000 (uint16_t)
-                voltage_battery           : Battery voltage (uint16_t)
-                current_battery           : Battery current, -1: autopilot does not measure the current (int16_t)
-                battery_remaining         : Remaining battery energy, -1: autopilot estimate the remaining battery (int8_t)
-                drop_rate_comm            : Communication drop rate, (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (uint16_t)
-                errors_comm               : Communication errors (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (uint16_t)
-                errors_count1             : Autopilot-specific errors (uint16_t)
-                errors_count2             : Autopilot-specific errors (uint16_t)
-                errors_count3             : Autopilot-specific errors (uint16_t)
-                errors_count4             : Autopilot-specific errors (uint16_t)
+                onboard_control_sensors_present        : Bitmap showing which onboard controllers and sensors are present. Value of 0: not present. Value of 1: present. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                onboard_control_sensors_enabled        : Bitmap showing which onboard controllers and sensors are enabled:  Value of 0: not enabled. Value of 1: enabled. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                onboard_control_sensors_health        : Bitmap showing which onboard controllers and sensors are operational or have an error:  Value of 0: not enabled. Value of 1: enabled. (type:uint32_t, values:MAV_SYS_STATUS_SENSOR)
+                load                      : Maximum usage in percent of the mainloop time. Values: [0-1000] - should always be below 1000 [d%] (type:uint16_t)
+                voltage_battery           : Battery voltage [mV] (type:uint16_t)
+                current_battery           : Battery current, -1: autopilot does not measure the current [cA] (type:int16_t)
+                battery_remaining         : Remaining battery energy, -1: autopilot estimate the remaining battery [%] (type:int8_t)
+                drop_rate_comm            : Communication drop rate, (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) [c%] (type:uint16_t)
+                errors_comm               : Communication errors (UART, I2C, SPI, CAN), dropped packets on all links (packets that were corrupted on reception on the MAV) (type:uint16_t)
+                errors_count1             : Autopilot-specific errors (type:uint16_t)
+                errors_count2             : Autopilot-specific errors (type:uint16_t)
+                errors_count3             : Autopilot-specific errors (type:uint16_t)
+                errors_count4             : Autopilot-specific errors (type:uint16_t)
 
                 '''
                 return self.send(self.sys_status_encode(onboard_control_sensors_present, onboard_control_sensors_enabled, onboard_control_sensors_health, load, voltage_battery, current_battery, battery_remaining, drop_rate_comm, errors_comm, errors_count1, errors_count2, errors_count3, errors_count4), force_mavlink1=force_mavlink1)
@@ -9191,8 +9544,8 @@ class MAVLink(object):
                 The system time is the time of the master clock, typically the
                 computer clock of the main onboard computer.
 
-                time_unix_usec            : Timestamp (UNIX epoch time). (uint64_t)
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
+                time_unix_usec            : Timestamp (UNIX epoch time). [us] (type:uint64_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
 
                 '''
                 return MAVLink_system_time_message(time_unix_usec, time_boot_ms)
@@ -9202,8 +9555,8 @@ class MAVLink(object):
                 The system time is the time of the master clock, typically the
                 computer clock of the main onboard computer.
 
-                time_unix_usec            : Timestamp (UNIX epoch time). (uint64_t)
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
+                time_unix_usec            : Timestamp (UNIX epoch time). [us] (type:uint64_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
 
                 '''
                 return self.send(self.system_time_encode(time_unix_usec, time_boot_ms), force_mavlink1=force_mavlink1)
@@ -9214,10 +9567,10 @@ class MAVLink(object):
                 to measure the system latencies, including serial
                 port, radio modem and UDP connections.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                seq                       : PING sequence (uint32_t)
-                target_system             : 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system (uint8_t)
-                target_component          : 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                seq                       : PING sequence (type:uint32_t)
+                target_system             : 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system (type:uint8_t)
+                target_component          : 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system (type:uint8_t)
 
                 '''
                 return MAVLink_ping_message(time_usec, seq, target_system, target_component)
@@ -9228,10 +9581,10 @@ class MAVLink(object):
                 to measure the system latencies, including serial
                 port, radio modem and UDP connections.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                seq                       : PING sequence (uint32_t)
-                target_system             : 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system (uint8_t)
-                target_component          : 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                seq                       : PING sequence (type:uint32_t)
+                target_system             : 0: request ping from all receiving systems, if greater than 0: message is a ping response and number is the system id of the requesting system (type:uint8_t)
+                target_component          : 0: request ping from all receiving components, if greater than 0: message is a ping response and number is the system id of the requesting system (type:uint8_t)
 
                 '''
                 return self.send(self.ping_encode(time_usec, seq, target_system, target_component), force_mavlink1=force_mavlink1)
@@ -9240,10 +9593,10 @@ class MAVLink(object):
                 '''
                 Request to control this MAV
 
-                target_system             : System the GCS requests control for (uint8_t)
-                control_request           : 0: request control of this MAV, 1: Release control of this MAV (uint8_t)
-                version                   : 0: key as plaintext, 1-255: future, different hashing/encryption variants. The GCS should in general use the safest mode possible initially and then gradually move down the encryption level if it gets a NACK message indicating an encryption mismatch. (uint8_t)
-                passkey                   : Password / Key, depending on version plaintext or encrypted. 25 or less characters, NULL terminated. The characters may involve A-Z, a-z, 0-9, and "!?,.-" (char)
+                target_system             : System the GCS requests control for (type:uint8_t)
+                control_request           : 0: request control of this MAV, 1: Release control of this MAV (type:uint8_t)
+                version                   : 0: key as plaintext, 1-255: future, different hashing/encryption variants. The GCS should in general use the safest mode possible initially and then gradually move down the encryption level if it gets a NACK message indicating an encryption mismatch. [rad] (type:uint8_t)
+                passkey                   : Password / Key, depending on version plaintext or encrypted. 25 or less characters, NULL terminated. The characters may involve A-Z, a-z, 0-9, and "!?,.-" (type:char)
 
                 '''
                 return MAVLink_change_operator_control_message(target_system, control_request, version, passkey)
@@ -9252,10 +9605,10 @@ class MAVLink(object):
                 '''
                 Request to control this MAV
 
-                target_system             : System the GCS requests control for (uint8_t)
-                control_request           : 0: request control of this MAV, 1: Release control of this MAV (uint8_t)
-                version                   : 0: key as plaintext, 1-255: future, different hashing/encryption variants. The GCS should in general use the safest mode possible initially and then gradually move down the encryption level if it gets a NACK message indicating an encryption mismatch. (uint8_t)
-                passkey                   : Password / Key, depending on version plaintext or encrypted. 25 or less characters, NULL terminated. The characters may involve A-Z, a-z, 0-9, and "!?,.-" (char)
+                target_system             : System the GCS requests control for (type:uint8_t)
+                control_request           : 0: request control of this MAV, 1: Release control of this MAV (type:uint8_t)
+                version                   : 0: key as plaintext, 1-255: future, different hashing/encryption variants. The GCS should in general use the safest mode possible initially and then gradually move down the encryption level if it gets a NACK message indicating an encryption mismatch. [rad] (type:uint8_t)
+                passkey                   : Password / Key, depending on version plaintext or encrypted. 25 or less characters, NULL terminated. The characters may involve A-Z, a-z, 0-9, and "!?,.-" (type:char)
 
                 '''
                 return self.send(self.change_operator_control_encode(target_system, control_request, version, passkey), force_mavlink1=force_mavlink1)
@@ -9264,9 +9617,9 @@ class MAVLink(object):
                 '''
                 Accept / deny control of this MAV
 
-                gcs_system_id             : ID of the GCS this message (uint8_t)
-                control_request           : 0: request control of this MAV, 1: Release control of this MAV (uint8_t)
-                ack                       : 0: ACK, 1: NACK: Wrong passkey, 2: NACK: Unsupported passkey encryption method, 3: NACK: Already under control (uint8_t)
+                gcs_system_id             : ID of the GCS this message (type:uint8_t)
+                control_request           : 0: request control of this MAV, 1: Release control of this MAV (type:uint8_t)
+                ack                       : 0: ACK, 1: NACK: Wrong passkey, 2: NACK: Unsupported passkey encryption method, 3: NACK: Already under control (type:uint8_t)
 
                 '''
                 return MAVLink_change_operator_control_ack_message(gcs_system_id, control_request, ack)
@@ -9275,9 +9628,9 @@ class MAVLink(object):
                 '''
                 Accept / deny control of this MAV
 
-                gcs_system_id             : ID of the GCS this message (uint8_t)
-                control_request           : 0: request control of this MAV, 1: Release control of this MAV (uint8_t)
-                ack                       : 0: ACK, 1: NACK: Wrong passkey, 2: NACK: Unsupported passkey encryption method, 3: NACK: Already under control (uint8_t)
+                gcs_system_id             : ID of the GCS this message (type:uint8_t)
+                control_request           : 0: request control of this MAV, 1: Release control of this MAV (type:uint8_t)
+                ack                       : 0: ACK, 1: NACK: Wrong passkey, 2: NACK: Unsupported passkey encryption method, 3: NACK: Already under control (type:uint8_t)
 
                 '''
                 return self.send(self.change_operator_control_ack_encode(gcs_system_id, control_request, ack), force_mavlink1=force_mavlink1)
@@ -9289,7 +9642,7 @@ class MAVLink(object):
                 transmitting the key requires an encrypted channel for
                 true safety.
 
-                key                       : key (char)
+                key                       : key (type:char)
 
                 '''
                 return MAVLink_auth_key_message(key)
@@ -9301,7 +9654,7 @@ class MAVLink(object):
                 transmitting the key requires an encrypted channel for
                 true safety.
 
-                key                       : key (char)
+                key                       : key (type:char)
 
                 '''
                 return self.send(self.auth_key_encode(key), force_mavlink1=force_mavlink1)
@@ -9312,9 +9665,9 @@ class MAVLink(object):
                 component id as the mode is by definition for the
                 overall aircraft, not only for one component.
 
-                target_system             : The system setting the mode (uint8_t)
-                base_mode                 : The new base mode. (uint8_t)
-                custom_mode               : The new autopilot-specific mode. This field can be ignored by an autopilot. (uint32_t)
+                target_system             : The system setting the mode (type:uint8_t)
+                base_mode                 : The new base mode. (type:uint8_t, values:MAV_MODE)
+                custom_mode               : The new autopilot-specific mode. This field can be ignored by an autopilot. (type:uint32_t)
 
                 '''
                 return MAVLink_set_mode_message(target_system, base_mode, custom_mode)
@@ -9325,9 +9678,9 @@ class MAVLink(object):
                 component id as the mode is by definition for the
                 overall aircraft, not only for one component.
 
-                target_system             : The system setting the mode (uint8_t)
-                base_mode                 : The new base mode. (uint8_t)
-                custom_mode               : The new autopilot-specific mode. This field can be ignored by an autopilot. (uint32_t)
+                target_system             : The system setting the mode (type:uint8_t)
+                base_mode                 : The new base mode. (type:uint8_t, values:MAV_MODE)
+                custom_mode               : The new autopilot-specific mode. This field can be ignored by an autopilot. (type:uint32_t)
 
                 '''
                 return self.send(self.set_mode_encode(target_system, base_mode, custom_mode), force_mavlink1=force_mavlink1)
@@ -9344,10 +9697,10 @@ class MAVLink(object):
                 https://mavlink.io/en/protocol/parameter.html for a
                 full documentation of QGroundControl and IMU code.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored) (int16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored) (type:int16_t)
 
                 '''
                 return MAVLink_param_request_read_message(target_system, target_component, param_id, param_index)
@@ -9364,10 +9717,10 @@ class MAVLink(object):
                 https://mavlink.io/en/protocol/parameter.html for a
                 full documentation of QGroundControl and IMU code.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored) (int16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored) (type:int16_t)
 
                 '''
                 return self.send(self.param_request_read_encode(target_system, target_component, param_id, param_index), force_mavlink1=force_mavlink1)
@@ -9377,8 +9730,8 @@ class MAVLink(object):
                 Request all parameters of this component. After this request, all
                 parameters are emitted.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return MAVLink_param_request_list_message(target_system, target_component)
@@ -9388,8 +9741,8 @@ class MAVLink(object):
                 Request all parameters of this component. After this request, all
                 parameters are emitted.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return self.send(self.param_request_list_encode(target_system, target_component), force_mavlink1=force_mavlink1)
@@ -9401,11 +9754,11 @@ class MAVLink(object):
                 keep track of received parameters and allows him to
                 re-request missing parameters after a loss or timeout.
 
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Onboard parameter value (float)
-                param_type                : Onboard parameter type. (uint8_t)
-                param_count               : Total number of onboard parameters (uint16_t)
-                param_index               : Index of this onboard parameter (uint16_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Onboard parameter value (type:float)
+                param_type                : Onboard parameter type. (type:uint8_t, values:MAV_PARAM_TYPE)
+                param_count               : Total number of onboard parameters (type:uint16_t)
+                param_index               : Index of this onboard parameter (type:uint16_t)
 
                 '''
                 return MAVLink_param_value_message(param_id, param_value, param_type, param_count, param_index)
@@ -9417,11 +9770,11 @@ class MAVLink(object):
                 keep track of received parameters and allows him to
                 re-request missing parameters after a loss or timeout.
 
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Onboard parameter value (float)
-                param_type                : Onboard parameter type. (uint8_t)
-                param_count               : Total number of onboard parameters (uint16_t)
-                param_index               : Index of this onboard parameter (uint16_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Onboard parameter value (type:float)
+                param_type                : Onboard parameter type. (type:uint8_t, values:MAV_PARAM_TYPE)
+                param_count               : Total number of onboard parameters (type:uint16_t)
+                param_index               : Index of this onboard parameter (type:uint16_t)
 
                 '''
                 return self.send(self.param_value_encode(param_id, param_value, param_type, param_count, param_index), force_mavlink1=force_mavlink1)
@@ -9439,11 +9792,11 @@ class MAVLink(object):
                 did not receive a PARAM_VALUE message within its
                 timeout time, it should re-send the PARAM_SET message.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Onboard parameter value (float)
-                param_type                : Onboard parameter type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Onboard parameter value (type:float)
+                param_type                : Onboard parameter type. (type:uint8_t, values:MAV_PARAM_TYPE)
 
                 '''
                 return MAVLink_param_set_message(target_system, target_component, param_id, param_value, param_type)
@@ -9461,11 +9814,11 @@ class MAVLink(object):
                 did not receive a PARAM_VALUE message within its
                 timeout time, it should re-send the PARAM_SET message.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Onboard parameter value (float)
-                param_type                : Onboard parameter type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Onboard parameter value (type:float)
+                param_type                : Onboard parameter type. (type:uint8_t, values:MAV_PARAM_TYPE)
 
                 '''
                 return self.send(self.param_set_encode(target_system, target_component, param_id, param_value, param_type), force_mavlink1=force_mavlink1)
@@ -9478,21 +9831,21 @@ class MAVLink(object):
                 See message GLOBAL_POSITION for the global position
                 estimate.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : GPS fix type. (uint8_t)
-                lat                       : Latitude (WGS84, EGM96 ellipsoid) (int32_t)
-                lon                       : Longitude (WGS84, EGM96 ellipsoid) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. Note that virtually all GPS modules provide the AMSL altitude in addition to the WGS84 altitude. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX (uint16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                alt_ellipsoid             : Altitude (above WGS84, EGM96 ellipsoid). Positive for up. (int32_t)
-                h_acc                     : Position uncertainty. Positive for up. (uint32_t)
-                v_acc                     : Altitude uncertainty. Positive for up. (uint32_t)
-                vel_acc                   : Speed uncertainty. Positive for up. (uint32_t)
-                hdg_acc                   : Heading / track uncertainty (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : GPS fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                lat                       : Latitude (WGS84, EGM96 ellipsoid) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84, EGM96 ellipsoid) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. Note that virtually all GPS modules provide the AMSL altitude in addition to the WGS84 altitude. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX [cm/s] (type:uint16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                alt_ellipsoid             : Altitude (above WGS84, EGM96 ellipsoid). Positive for up. [mm] (type:int32_t)
+                h_acc                     : Position uncertainty. Positive for up. [mm] (type:uint32_t)
+                v_acc                     : Altitude uncertainty. Positive for up. [mm] (type:uint32_t)
+                vel_acc                   : Speed uncertainty. Positive for up. [mm] (type:uint32_t)
+                hdg_acc                   : Heading / track uncertainty [degE5] (type:uint32_t)
 
                 '''
                 return MAVLink_gps_raw_int_message(time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, alt_ellipsoid, h_acc, v_acc, vel_acc, hdg_acc)
@@ -9505,21 +9858,21 @@ class MAVLink(object):
                 See message GLOBAL_POSITION for the global position
                 estimate.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : GPS fix type. (uint8_t)
-                lat                       : Latitude (WGS84, EGM96 ellipsoid) (int32_t)
-                lon                       : Longitude (WGS84, EGM96 ellipsoid) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. Note that virtually all GPS modules provide the AMSL altitude in addition to the WGS84 altitude. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX (uint16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                alt_ellipsoid             : Altitude (above WGS84, EGM96 ellipsoid). Positive for up. (int32_t)
-                h_acc                     : Position uncertainty. Positive for up. (uint32_t)
-                v_acc                     : Altitude uncertainty. Positive for up. (uint32_t)
-                vel_acc                   : Speed uncertainty. Positive for up. (uint32_t)
-                hdg_acc                   : Heading / track uncertainty (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : GPS fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                lat                       : Latitude (WGS84, EGM96 ellipsoid) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84, EGM96 ellipsoid) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. Note that virtually all GPS modules provide the AMSL altitude in addition to the WGS84 altitude. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX [cm/s] (type:uint16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                alt_ellipsoid             : Altitude (above WGS84, EGM96 ellipsoid). Positive for up. [mm] (type:int32_t)
+                h_acc                     : Position uncertainty. Positive for up. [mm] (type:uint32_t)
+                v_acc                     : Altitude uncertainty. Positive for up. [mm] (type:uint32_t)
+                vel_acc                   : Speed uncertainty. Positive for up. [mm] (type:uint32_t)
+                hdg_acc                   : Heading / track uncertainty [degE5] (type:uint32_t)
 
                 '''
                 return self.send(self.gps_raw_int_encode(time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, alt_ellipsoid, h_acc, v_acc, vel_acc, hdg_acc), force_mavlink1=force_mavlink1)
@@ -9532,12 +9885,12 @@ class MAVLink(object):
                 for the global position estimate. This message can
                 contain information for up to 20 satellites.
 
-                satellites_visible        : Number of satellites visible (uint8_t)
-                satellite_prn             : Global satellite ID (uint8_t)
-                satellite_used            : 0: Satellite not used, 1: used for localization (uint8_t)
-                satellite_elevation        : Elevation (0: right on top of receiver, 90: on the horizon) of satellite (uint8_t)
-                satellite_azimuth         : Direction of satellite, 0: 0 deg, 255: 360 deg. (uint8_t)
-                satellite_snr             : Signal to noise ratio of satellite (uint8_t)
+                satellites_visible        : Number of satellites visible (type:uint8_t)
+                satellite_prn             : Global satellite ID (type:uint8_t)
+                satellite_used            : 0: Satellite not used, 1: used for localization (type:uint8_t)
+                satellite_elevation        : Elevation (0: right on top of receiver, 90: on the horizon) of satellite [deg] (type:uint8_t)
+                satellite_azimuth         : Direction of satellite, 0: 0 deg, 255: 360 deg. [deg] (type:uint8_t)
+                satellite_snr             : Signal to noise ratio of satellite [dB] (type:uint8_t)
 
                 '''
                 return MAVLink_gps_status_message(satellites_visible, satellite_prn, satellite_used, satellite_elevation, satellite_azimuth, satellite_snr)
@@ -9550,12 +9903,12 @@ class MAVLink(object):
                 for the global position estimate. This message can
                 contain information for up to 20 satellites.
 
-                satellites_visible        : Number of satellites visible (uint8_t)
-                satellite_prn             : Global satellite ID (uint8_t)
-                satellite_used            : 0: Satellite not used, 1: used for localization (uint8_t)
-                satellite_elevation        : Elevation (0: right on top of receiver, 90: on the horizon) of satellite (uint8_t)
-                satellite_azimuth         : Direction of satellite, 0: 0 deg, 255: 360 deg. (uint8_t)
-                satellite_snr             : Signal to noise ratio of satellite (uint8_t)
+                satellites_visible        : Number of satellites visible (type:uint8_t)
+                satellite_prn             : Global satellite ID (type:uint8_t)
+                satellite_used            : 0: Satellite not used, 1: used for localization (type:uint8_t)
+                satellite_elevation        : Elevation (0: right on top of receiver, 90: on the horizon) of satellite [deg] (type:uint8_t)
+                satellite_azimuth         : Direction of satellite, 0: 0 deg, 255: 360 deg. [deg] (type:uint8_t)
+                satellite_snr             : Signal to noise ratio of satellite [dB] (type:uint8_t)
 
                 '''
                 return self.send(self.gps_status_encode(satellites_visible, satellite_prn, satellite_used, satellite_elevation, satellite_azimuth, satellite_snr), force_mavlink1=force_mavlink1)
@@ -9566,16 +9919,16 @@ class MAVLink(object):
                 should contain the scaled values to the described
                 units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_imu_message(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag)
@@ -9586,16 +9939,16 @@ class MAVLink(object):
                 should contain the scaled values to the described
                 units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_imu_encode(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag), force_mavlink1=force_mavlink1)
@@ -9606,16 +9959,16 @@ class MAVLink(object):
                 should always contain the true raw values without any
                 scaling to allow data capture and system debugging.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (raw) (int16_t)
-                yacc                      : Y acceleration (raw) (int16_t)
-                zacc                      : Z acceleration (raw) (int16_t)
-                xgyro                     : Angular speed around X axis (raw) (int16_t)
-                ygyro                     : Angular speed around Y axis (raw) (int16_t)
-                zgyro                     : Angular speed around Z axis (raw) (int16_t)
-                xmag                      : X Magnetic field (raw) (int16_t)
-                ymag                      : Y Magnetic field (raw) (int16_t)
-                zmag                      : Z Magnetic field (raw) (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration (raw) (type:int16_t)
+                yacc                      : Y acceleration (raw) (type:int16_t)
+                zacc                      : Z acceleration (raw) (type:int16_t)
+                xgyro                     : Angular speed around X axis (raw) (type:int16_t)
+                ygyro                     : Angular speed around Y axis (raw) (type:int16_t)
+                zgyro                     : Angular speed around Z axis (raw) (type:int16_t)
+                xmag                      : X Magnetic field (raw) (type:int16_t)
+                ymag                      : Y Magnetic field (raw) (type:int16_t)
+                zmag                      : Z Magnetic field (raw) (type:int16_t)
 
                 '''
                 return MAVLink_raw_imu_message(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag)
@@ -9626,16 +9979,16 @@ class MAVLink(object):
                 should always contain the true raw values without any
                 scaling to allow data capture and system debugging.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (raw) (int16_t)
-                yacc                      : Y acceleration (raw) (int16_t)
-                zacc                      : Z acceleration (raw) (int16_t)
-                xgyro                     : Angular speed around X axis (raw) (int16_t)
-                ygyro                     : Angular speed around Y axis (raw) (int16_t)
-                zgyro                     : Angular speed around Z axis (raw) (int16_t)
-                xmag                      : X Magnetic field (raw) (int16_t)
-                ymag                      : Y Magnetic field (raw) (int16_t)
-                zmag                      : Z Magnetic field (raw) (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration (raw) (type:int16_t)
+                yacc                      : Y acceleration (raw) (type:int16_t)
+                zacc                      : Z acceleration (raw) (type:int16_t)
+                xgyro                     : Angular speed around X axis (raw) (type:int16_t)
+                ygyro                     : Angular speed around Y axis (raw) (type:int16_t)
+                zgyro                     : Angular speed around Z axis (raw) (type:int16_t)
+                xmag                      : X Magnetic field (raw) (type:int16_t)
+                ymag                      : Y Magnetic field (raw) (type:int16_t)
+                zmag                      : Z Magnetic field (raw) (type:int16_t)
 
                 '''
                 return self.send(self.raw_imu_encode(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag), force_mavlink1=force_mavlink1)
@@ -9646,11 +9999,11 @@ class MAVLink(object):
                 pressure and one differential pressure sensor. The
                 sensor values should be the raw, UNSCALED ADC values.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                press_abs                 : Absolute pressure (raw) (int16_t)
-                press_diff1               : Differential pressure 1 (raw, 0 if nonexistent) (int16_t)
-                press_diff2               : Differential pressure 2 (raw, 0 if nonexistent) (int16_t)
-                temperature               : Raw Temperature measurement (raw) (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                press_abs                 : Absolute pressure (raw) (type:int16_t)
+                press_diff1               : Differential pressure 1 (raw, 0 if nonexistent) (type:int16_t)
+                press_diff2               : Differential pressure 2 (raw, 0 if nonexistent) (type:int16_t)
+                temperature               : Raw Temperature measurement (raw) (type:int16_t)
 
                 '''
                 return MAVLink_raw_pressure_message(time_usec, press_abs, press_diff1, press_diff2, temperature)
@@ -9661,11 +10014,11 @@ class MAVLink(object):
                 pressure and one differential pressure sensor. The
                 sensor values should be the raw, UNSCALED ADC values.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                press_abs                 : Absolute pressure (raw) (int16_t)
-                press_diff1               : Differential pressure 1 (raw, 0 if nonexistent) (int16_t)
-                press_diff2               : Differential pressure 2 (raw, 0 if nonexistent) (int16_t)
-                temperature               : Raw Temperature measurement (raw) (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                press_abs                 : Absolute pressure (raw) (type:int16_t)
+                press_diff1               : Differential pressure 1 (raw, 0 if nonexistent) (type:int16_t)
+                press_diff2               : Differential pressure 2 (raw, 0 if nonexistent) (type:int16_t)
+                temperature               : Raw Temperature measurement (raw) (type:int16_t)
 
                 '''
                 return self.send(self.raw_pressure_encode(time_usec, press_abs, press_diff1, press_diff2, temperature), force_mavlink1=force_mavlink1)
@@ -9676,10 +10029,10 @@ class MAVLink(object):
                 differential pressure sensor. The units are as
                 specified in each field.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure 1 (float)
-                temperature               : Temperature (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure 1 [hPa] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_pressure_message(time_boot_ms, press_abs, press_diff, temperature)
@@ -9690,10 +10043,10 @@ class MAVLink(object):
                 differential pressure sensor. The units are as
                 specified in each field.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure 1 (float)
-                temperature               : Temperature (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure 1 [hPa] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_pressure_encode(time_boot_ms, press_abs, press_diff, temperature), force_mavlink1=force_mavlink1)
@@ -9703,13 +10056,13 @@ class MAVLink(object):
                 The attitude in the aeronautical frame (right-handed, Z-down, X-front,
                 Y-right).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Roll angle (-pi..+pi) (float)
-                pitch                     : Pitch angle (-pi..+pi) (float)
-                yaw                       : Yaw angle (-pi..+pi) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Roll angle (-pi..+pi) [rad] (type:float)
+                pitch                     : Pitch angle (-pi..+pi) [rad] (type:float)
+                yaw                       : Yaw angle (-pi..+pi) [rad] (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
 
                 '''
                 return MAVLink_attitude_message(time_boot_ms, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed)
@@ -9719,13 +10072,13 @@ class MAVLink(object):
                 The attitude in the aeronautical frame (right-handed, Z-down, X-front,
                 Y-right).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Roll angle (-pi..+pi) (float)
-                pitch                     : Pitch angle (-pi..+pi) (float)
-                yaw                       : Yaw angle (-pi..+pi) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Roll angle (-pi..+pi) [rad] (type:float)
+                pitch                     : Pitch angle (-pi..+pi) [rad] (type:float)
+                yaw                       : Yaw angle (-pi..+pi) [rad] (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
 
                 '''
                 return self.send(self.attitude_encode(time_boot_ms, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed), force_mavlink1=force_mavlink1)
@@ -9737,14 +10090,14 @@ class MAVLink(object):
                 w, x, y, z and a zero rotation would be expressed as
                 (1 0 0 0).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                q1                        : Quaternion component 1, w (1 in null-rotation) (float)
-                q2                        : Quaternion component 2, x (0 in null-rotation) (float)
-                q3                        : Quaternion component 3, y (0 in null-rotation) (float)
-                q4                        : Quaternion component 4, z (0 in null-rotation) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                q1                        : Quaternion component 1, w (1 in null-rotation) (type:float)
+                q2                        : Quaternion component 2, x (0 in null-rotation) (type:float)
+                q3                        : Quaternion component 3, y (0 in null-rotation) (type:float)
+                q4                        : Quaternion component 4, z (0 in null-rotation) (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
 
                 '''
                 return MAVLink_attitude_quaternion_message(time_boot_ms, q1, q2, q3, q4, rollspeed, pitchspeed, yawspeed)
@@ -9756,14 +10109,14 @@ class MAVLink(object):
                 w, x, y, z and a zero rotation would be expressed as
                 (1 0 0 0).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                q1                        : Quaternion component 1, w (1 in null-rotation) (float)
-                q2                        : Quaternion component 2, x (0 in null-rotation) (float)
-                q3                        : Quaternion component 3, y (0 in null-rotation) (float)
-                q4                        : Quaternion component 4, z (0 in null-rotation) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                q1                        : Quaternion component 1, w (1 in null-rotation) (type:float)
+                q2                        : Quaternion component 2, x (0 in null-rotation) (type:float)
+                q3                        : Quaternion component 3, y (0 in null-rotation) (type:float)
+                q4                        : Quaternion component 4, z (0 in null-rotation) (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
 
                 '''
                 return self.send(self.attitude_quaternion_encode(time_boot_ms, q1, q2, q3, q4, rollspeed, pitchspeed, yawspeed), force_mavlink1=force_mavlink1)
@@ -9775,13 +10128,13 @@ class MAVLink(object):
                 Z-axis down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                vx                        : X Speed (float)
-                vy                        : Y Speed (float)
-                vz                        : Z Speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                vx                        : X Speed [m/s] (type:float)
+                vy                        : Y Speed [m/s] (type:float)
+                vz                        : Z Speed [m/s] (type:float)
 
                 '''
                 return MAVLink_local_position_ned_message(time_boot_ms, x, y, z, vx, vy, vz)
@@ -9793,13 +10146,13 @@ class MAVLink(object):
                 Z-axis down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                vx                        : X Speed (float)
-                vy                        : Y Speed (float)
-                vz                        : Z Speed (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                vx                        : X Speed [m/s] (type:float)
+                vy                        : Y Speed [m/s] (type:float)
+                vz                        : Z Speed [m/s] (type:float)
 
                 '''
                 return self.send(self.local_position_ned_encode(time_boot_ms, x, y, z, vx, vy, vz), force_mavlink1=force_mavlink1)
@@ -9811,15 +10164,15 @@ class MAVLink(object):
                 is designed as scaled integer message since the
                 resolution of float is not sufficient.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                lat                       : Latitude, expressed (int32_t)
-                lon                       : Longitude, expressed (int32_t)
-                alt                       : Altitude (AMSL). Note that virtually all GPS modules provide both WGS84 and AMSL. (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                vx                        : Ground X Speed (Latitude, positive north) (int16_t)
-                vy                        : Ground Y Speed (Longitude, positive east) (int16_t)
-                vz                        : Ground Z Speed (Altitude, positive down) (int16_t)
-                hdg                       : Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                lat                       : Latitude, expressed [degE7] (type:int32_t)
+                lon                       : Longitude, expressed [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Note that virtually all GPS modules provide both WGS84 and AMSL. [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude, positive north) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude, positive east) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude, positive down) [cm/s] (type:int16_t)
+                hdg                       : Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
 
                 '''
                 return MAVLink_global_position_int_message(time_boot_ms, lat, lon, alt, relative_alt, vx, vy, vz, hdg)
@@ -9831,15 +10184,15 @@ class MAVLink(object):
                 is designed as scaled integer message since the
                 resolution of float is not sufficient.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                lat                       : Latitude, expressed (int32_t)
-                lon                       : Longitude, expressed (int32_t)
-                alt                       : Altitude (AMSL). Note that virtually all GPS modules provide both WGS84 and AMSL. (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                vx                        : Ground X Speed (Latitude, positive north) (int16_t)
-                vy                        : Ground Y Speed (Longitude, positive east) (int16_t)
-                vz                        : Ground Z Speed (Altitude, positive down) (int16_t)
-                hdg                       : Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                lat                       : Latitude, expressed [degE7] (type:int32_t)
+                lon                       : Longitude, expressed [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Note that virtually all GPS modules provide both WGS84 and AMSL. [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude, positive north) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude, positive east) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude, positive down) [cm/s] (type:int16_t)
+                hdg                       : Vehicle heading (yaw angle), 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
 
                 '''
                 return self.send(self.global_position_int_encode(time_boot_ms, lat, lon, alt, relative_alt, vx, vy, vz, hdg), force_mavlink1=force_mavlink1)
@@ -9850,17 +10203,17 @@ class MAVLink(object):
                 (100%) 10000. Channels that are inactive should be set
                 to UINT16_MAX.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (uint8_t)
-                chan1_scaled              : RC channel 1 value scaled. (int16_t)
-                chan2_scaled              : RC channel 2 value scaled. (int16_t)
-                chan3_scaled              : RC channel 3 value scaled. (int16_t)
-                chan4_scaled              : RC channel 4 value scaled. (int16_t)
-                chan5_scaled              : RC channel 5 value scaled. (int16_t)
-                chan6_scaled              : RC channel 6 value scaled. (int16_t)
-                chan7_scaled              : RC channel 7 value scaled. (int16_t)
-                chan8_scaled              : RC channel 8 value scaled. (int16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (type:uint8_t)
+                chan1_scaled              : RC channel 1 value scaled. (type:int16_t)
+                chan2_scaled              : RC channel 2 value scaled. (type:int16_t)
+                chan3_scaled              : RC channel 3 value scaled. (type:int16_t)
+                chan4_scaled              : RC channel 4 value scaled. (type:int16_t)
+                chan5_scaled              : RC channel 5 value scaled. (type:int16_t)
+                chan6_scaled              : RC channel 6 value scaled. (type:int16_t)
+                chan7_scaled              : RC channel 7 value scaled. (type:int16_t)
+                chan8_scaled              : RC channel 8 value scaled. (type:int16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return MAVLink_rc_channels_scaled_message(time_boot_ms, port, chan1_scaled, chan2_scaled, chan3_scaled, chan4_scaled, chan5_scaled, chan6_scaled, chan7_scaled, chan8_scaled, rssi)
@@ -9871,17 +10224,17 @@ class MAVLink(object):
                 (100%) 10000. Channels that are inactive should be set
                 to UINT16_MAX.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (uint8_t)
-                chan1_scaled              : RC channel 1 value scaled. (int16_t)
-                chan2_scaled              : RC channel 2 value scaled. (int16_t)
-                chan3_scaled              : RC channel 3 value scaled. (int16_t)
-                chan4_scaled              : RC channel 4 value scaled. (int16_t)
-                chan5_scaled              : RC channel 5 value scaled. (int16_t)
-                chan6_scaled              : RC channel 6 value scaled. (int16_t)
-                chan7_scaled              : RC channel 7 value scaled. (int16_t)
-                chan8_scaled              : RC channel 8 value scaled. (int16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (type:uint8_t)
+                chan1_scaled              : RC channel 1 value scaled. (type:int16_t)
+                chan2_scaled              : RC channel 2 value scaled. (type:int16_t)
+                chan3_scaled              : RC channel 3 value scaled. (type:int16_t)
+                chan4_scaled              : RC channel 4 value scaled. (type:int16_t)
+                chan5_scaled              : RC channel 5 value scaled. (type:int16_t)
+                chan6_scaled              : RC channel 6 value scaled. (type:int16_t)
+                chan7_scaled              : RC channel 7 value scaled. (type:int16_t)
+                chan8_scaled              : RC channel 8 value scaled. (type:int16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return self.send(self.rc_channels_scaled_encode(time_boot_ms, port, chan1_scaled, chan2_scaled, chan3_scaled, chan4_scaled, chan5_scaled, chan6_scaled, chan7_scaled, chan8_scaled, rssi), force_mavlink1=force_mavlink1)
@@ -9894,17 +10247,17 @@ class MAVLink(object):
                 channel is unused. Individual receivers/transmitters
                 might violate this specification.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (uint8_t)
-                chan1_raw                 : RC channel 1 value. (uint16_t)
-                chan2_raw                 : RC channel 2 value. (uint16_t)
-                chan3_raw                 : RC channel 3 value. (uint16_t)
-                chan4_raw                 : RC channel 4 value. (uint16_t)
-                chan5_raw                 : RC channel 5 value. (uint16_t)
-                chan6_raw                 : RC channel 6 value. (uint16_t)
-                chan7_raw                 : RC channel 7 value. (uint16_t)
-                chan8_raw                 : RC channel 8 value. (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return MAVLink_rc_channels_raw_message(time_boot_ms, port, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, rssi)
@@ -9917,17 +10270,17 @@ class MAVLink(object):
                 channel is unused. Individual receivers/transmitters
                 might violate this specification.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (uint8_t)
-                chan1_raw                 : RC channel 1 value. (uint16_t)
-                chan2_raw                 : RC channel 2 value. (uint16_t)
-                chan3_raw                 : RC channel 3 value. (uint16_t)
-                chan4_raw                 : RC channel 4 value. (uint16_t)
-                chan5_raw                 : RC channel 5 value. (uint16_t)
-                chan6_raw                 : RC channel 6 value. (uint16_t)
-                chan7_raw                 : RC channel 7 value. (uint16_t)
-                chan8_raw                 : RC channel 8 value. (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos. (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return self.send(self.rc_channels_raw_encode(time_boot_ms, port, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, rssi), force_mavlink1=force_mavlink1)
@@ -9939,24 +10292,24 @@ class MAVLink(object):
                 is as follows: 1000 microseconds: 0%, 2000
                 microseconds: 100%.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows to encode more than 8 servos. (uint8_t)
-                servo1_raw                : Servo output 1 value (uint16_t)
-                servo2_raw                : Servo output 2 value (uint16_t)
-                servo3_raw                : Servo output 3 value (uint16_t)
-                servo4_raw                : Servo output 4 value (uint16_t)
-                servo5_raw                : Servo output 5 value (uint16_t)
-                servo6_raw                : Servo output 6 value (uint16_t)
-                servo7_raw                : Servo output 7 value (uint16_t)
-                servo8_raw                : Servo output 8 value (uint16_t)
-                servo9_raw                : Servo output 9 value (uint16_t)
-                servo10_raw               : Servo output 10 value (uint16_t)
-                servo11_raw               : Servo output 11 value (uint16_t)
-                servo12_raw               : Servo output 12 value (uint16_t)
-                servo13_raw               : Servo output 13 value (uint16_t)
-                servo14_raw               : Servo output 14 value (uint16_t)
-                servo15_raw               : Servo output 15 value (uint16_t)
-                servo16_raw               : Servo output 16 value (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows to encode more than 8 servos. (type:uint8_t)
+                servo1_raw                : Servo output 1 value [us] (type:uint16_t)
+                servo2_raw                : Servo output 2 value [us] (type:uint16_t)
+                servo3_raw                : Servo output 3 value [us] (type:uint16_t)
+                servo4_raw                : Servo output 4 value [us] (type:uint16_t)
+                servo5_raw                : Servo output 5 value [us] (type:uint16_t)
+                servo6_raw                : Servo output 6 value [us] (type:uint16_t)
+                servo7_raw                : Servo output 7 value [us] (type:uint16_t)
+                servo8_raw                : Servo output 8 value [us] (type:uint16_t)
+                servo9_raw                : Servo output 9 value [us] (type:uint16_t)
+                servo10_raw               : Servo output 10 value [us] (type:uint16_t)
+                servo11_raw               : Servo output 11 value [us] (type:uint16_t)
+                servo12_raw               : Servo output 12 value [us] (type:uint16_t)
+                servo13_raw               : Servo output 13 value [us] (type:uint16_t)
+                servo14_raw               : Servo output 14 value [us] (type:uint16_t)
+                servo15_raw               : Servo output 15 value [us] (type:uint16_t)
+                servo16_raw               : Servo output 16 value [us] (type:uint16_t)
 
                 '''
                 return MAVLink_servo_output_raw_message(time_usec, port, servo1_raw, servo2_raw, servo3_raw, servo4_raw, servo5_raw, servo6_raw, servo7_raw, servo8_raw, servo9_raw, servo10_raw, servo11_raw, servo12_raw, servo13_raw, servo14_raw, servo15_raw, servo16_raw)
@@ -9968,24 +10321,24 @@ class MAVLink(object):
                 is as follows: 1000 microseconds: 0%, 2000
                 microseconds: 100%.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint32_t)
-                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows to encode more than 8 servos. (uint8_t)
-                servo1_raw                : Servo output 1 value (uint16_t)
-                servo2_raw                : Servo output 2 value (uint16_t)
-                servo3_raw                : Servo output 3 value (uint16_t)
-                servo4_raw                : Servo output 4 value (uint16_t)
-                servo5_raw                : Servo output 5 value (uint16_t)
-                servo6_raw                : Servo output 6 value (uint16_t)
-                servo7_raw                : Servo output 7 value (uint16_t)
-                servo8_raw                : Servo output 8 value (uint16_t)
-                servo9_raw                : Servo output 9 value (uint16_t)
-                servo10_raw               : Servo output 10 value (uint16_t)
-                servo11_raw               : Servo output 11 value (uint16_t)
-                servo12_raw               : Servo output 12 value (uint16_t)
-                servo13_raw               : Servo output 13 value (uint16_t)
-                servo14_raw               : Servo output 14 value (uint16_t)
-                servo15_raw               : Servo output 15 value (uint16_t)
-                servo16_raw               : Servo output 16 value (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint32_t)
+                port                      : Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows to encode more than 8 servos. (type:uint8_t)
+                servo1_raw                : Servo output 1 value [us] (type:uint16_t)
+                servo2_raw                : Servo output 2 value [us] (type:uint16_t)
+                servo3_raw                : Servo output 3 value [us] (type:uint16_t)
+                servo4_raw                : Servo output 4 value [us] (type:uint16_t)
+                servo5_raw                : Servo output 5 value [us] (type:uint16_t)
+                servo6_raw                : Servo output 6 value [us] (type:uint16_t)
+                servo7_raw                : Servo output 7 value [us] (type:uint16_t)
+                servo8_raw                : Servo output 8 value [us] (type:uint16_t)
+                servo9_raw                : Servo output 9 value [us] (type:uint16_t)
+                servo10_raw               : Servo output 10 value [us] (type:uint16_t)
+                servo11_raw               : Servo output 11 value [us] (type:uint16_t)
+                servo12_raw               : Servo output 12 value [us] (type:uint16_t)
+                servo13_raw               : Servo output 13 value [us] (type:uint16_t)
+                servo14_raw               : Servo output 14 value [us] (type:uint16_t)
+                servo15_raw               : Servo output 15 value [us] (type:uint16_t)
+                servo16_raw               : Servo output 16 value [us] (type:uint16_t)
 
                 '''
                 return self.send(self.servo_output_raw_encode(time_usec, port, servo1_raw, servo2_raw, servo3_raw, servo4_raw, servo5_raw, servo6_raw, servo7_raw, servo8_raw, servo9_raw, servo10_raw, servo11_raw, servo12_raw, servo13_raw, servo14_raw, servo15_raw, servo16_raw), force_mavlink1=force_mavlink1)
@@ -9996,11 +10349,11 @@ class MAVLink(object):
                 https://mavlink.io/en/protocol/mission.html. If start
                 and end index are the same, just send one waypoint.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start_index               : Start index, 0 by default (int16_t)
-                end_index                 : End index, -1 by default (-1: send list to end). Else a valid index of the list (int16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start_index               : Start index, 0 by default (type:int16_t)
+                end_index                 : End index, -1 by default (-1: send list to end). Else a valid index of the list (type:int16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_request_partial_list_message(target_system, target_component, start_index, end_index, mission_type)
@@ -10011,11 +10364,11 @@ class MAVLink(object):
                 https://mavlink.io/en/protocol/mission.html. If start
                 and end index are the same, just send one waypoint.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start_index               : Start index, 0 by default (int16_t)
-                end_index                 : End index, -1 by default (-1: send list to end). Else a valid index of the list (int16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start_index               : Start index, 0 by default (type:int16_t)
+                end_index                 : End index, -1 by default (-1: send list to end). Else a valid index of the list (type:int16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_request_partial_list_encode(target_system, target_component, start_index, end_index, mission_type), force_mavlink1=force_mavlink1)
@@ -10027,11 +10380,11 @@ class MAVLink(object):
                 / updated. If the start index is NOT 0 and above the
                 current list size, this request should be REJECTED!
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start_index               : Start index, 0 by default and smaller / equal to the largest index of the current onboard list. (int16_t)
-                end_index                 : End index, equal or greater than start index. (int16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start_index               : Start index, 0 by default and smaller / equal to the largest index of the current onboard list. (type:int16_t)
+                end_index                 : End index, equal or greater than start index. (type:int16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_write_partial_list_message(target_system, target_component, start_index, end_index, mission_type)
@@ -10043,11 +10396,11 @@ class MAVLink(object):
                 / updated. If the start index is NOT 0 and above the
                 current list size, this request should be REJECTED!
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start_index               : Start index, 0 by default and smaller / equal to the largest index of the current onboard list. (int16_t)
-                end_index                 : End index, equal or greater than start index. (int16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start_index               : Start index, 0 by default and smaller / equal to the largest index of the current onboard list. (type:int16_t)
+                end_index                 : End index, equal or greater than start index. (type:int16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_write_partial_list_encode(target_system, target_component, start_index, end_index, mission_type), force_mavlink1=force_mavlink1)
@@ -10062,21 +10415,21 @@ class MAVLink(object):
                 global frame is Z-up, right handed (ENU). See also
                 https://mavlink.io/en/protocol/mission.html.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                frame                     : The coordinate system of the waypoint. (uint8_t)
-                command                   : The scheduled action for the waypoint. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : Autocontinue to next waypoint (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: X coordinate, global: latitude (float)
-                y                         : PARAM6 / local: Y coordinate, global: longitude (float)
-                z                         : PARAM7 / local: Z coordinate, global: altitude (relative or absolute, depending on frame). (float)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                frame                     : The coordinate system of the waypoint. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the waypoint. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : Autocontinue to next waypoint (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: X coordinate, global: latitude (type:float)
+                y                         : PARAM6 / local: Y coordinate, global: longitude (type:float)
+                z                         : PARAM7 / local: Z coordinate, global: altitude (relative or absolute, depending on frame). (type:float)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_item_message(target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type)
@@ -10091,21 +10444,21 @@ class MAVLink(object):
                 global frame is Z-up, right handed (ENU). See also
                 https://mavlink.io/en/protocol/mission.html.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                frame                     : The coordinate system of the waypoint. (uint8_t)
-                command                   : The scheduled action for the waypoint. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : Autocontinue to next waypoint (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: X coordinate, global: latitude (float)
-                y                         : PARAM6 / local: Y coordinate, global: longitude (float)
-                z                         : PARAM7 / local: Z coordinate, global: altitude (relative or absolute, depending on frame). (float)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                frame                     : The coordinate system of the waypoint. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the waypoint. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : Autocontinue to next waypoint (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: X coordinate, global: latitude (type:float)
+                y                         : PARAM6 / local: Y coordinate, global: longitude (type:float)
+                z                         : PARAM7 / local: Z coordinate, global: altitude (relative or absolute, depending on frame). (type:float)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_item_encode(target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type), force_mavlink1=force_mavlink1)
@@ -10117,10 +10470,10 @@ class MAVLink(object):
                 be a MISSION_ITEM message.
                 https://mavlink.io/en/protocol/mission.html
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_request_message(target_system, target_component, seq, mission_type)
@@ -10132,10 +10485,10 @@ class MAVLink(object):
                 be a MISSION_ITEM message.
                 https://mavlink.io/en/protocol/mission.html
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_request_encode(target_system, target_component, seq, mission_type), force_mavlink1=force_mavlink1)
@@ -10147,9 +10500,9 @@ class MAVLink(object):
                 on the shortest path (not following the mission items
                 in-between).
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return MAVLink_mission_set_current_message(target_system, target_component, seq)
@@ -10161,9 +10514,9 @@ class MAVLink(object):
                 on the shortest path (not following the mission items
                 in-between).
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return self.send(self.mission_set_current_encode(target_system, target_component, seq), force_mavlink1=force_mavlink1)
@@ -10174,7 +10527,7 @@ class MAVLink(object):
                 mission item. The MAV will fly towards this mission
                 item.
 
-                seq                       : Sequence (uint16_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return MAVLink_mission_current_message(seq)
@@ -10185,7 +10538,7 @@ class MAVLink(object):
                 mission item. The MAV will fly towards this mission
                 item.
 
-                seq                       : Sequence (uint16_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return self.send(self.mission_current_encode(seq), force_mavlink1=force_mavlink1)
@@ -10194,9 +10547,9 @@ class MAVLink(object):
                 '''
                 Request the overall list of mission items from the system/component.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_request_list_message(target_system, target_component, mission_type)
@@ -10205,9 +10558,9 @@ class MAVLink(object):
                 '''
                 Request the overall list of mission items from the system/component.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_request_list_encode(target_system, target_component, mission_type), force_mavlink1=force_mavlink1)
@@ -10219,10 +10572,10 @@ class MAVLink(object):
                 request the individual mission item based on the
                 knowledge of the total number of waypoints.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                count                     : Number of mission items in the sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                count                     : Number of mission items in the sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_count_message(target_system, target_component, count, mission_type)
@@ -10234,10 +10587,10 @@ class MAVLink(object):
                 request the individual mission item based on the
                 knowledge of the total number of waypoints.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                count                     : Number of mission items in the sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                count                     : Number of mission items in the sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_count_encode(target_system, target_component, count, mission_type), force_mavlink1=force_mavlink1)
@@ -10246,9 +10599,9 @@ class MAVLink(object):
                 '''
                 Delete all mission items at once.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_clear_all_message(target_system, target_component, mission_type)
@@ -10257,9 +10610,9 @@ class MAVLink(object):
                 '''
                 Delete all mission items at once.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_clear_all_encode(target_system, target_component, mission_type), force_mavlink1=force_mavlink1)
@@ -10271,7 +10624,7 @@ class MAVLink(object):
                 autocontinue on the WP was set) continue to the next
                 waypoint.
 
-                seq                       : Sequence (uint16_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return MAVLink_mission_item_reached_message(seq)
@@ -10283,7 +10636,7 @@ class MAVLink(object):
                 autocontinue on the WP was set) continue to the next
                 waypoint.
 
-                seq                       : Sequence (uint16_t)
+                seq                       : Sequence (type:uint16_t)
 
                 '''
                 return self.send(self.mission_item_reached_encode(seq), force_mavlink1=force_mavlink1)
@@ -10294,10 +10647,10 @@ class MAVLink(object):
                 if this message is a positive ack (type=0) or if an
                 error happened (type=non-zero).
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                type                      : Mission result. (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                type                      : Mission result. (type:uint8_t, values:MAV_MISSION_RESULT)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_ack_message(target_system, target_component, type, mission_type)
@@ -10308,10 +10661,10 @@ class MAVLink(object):
                 if this message is a positive ack (type=0) or if an
                 error happened (type=non-zero).
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                type                      : Mission result. (uint8_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                type                      : Mission result. (type:uint8_t, values:MAV_MISSION_RESULT)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_ack_encode(target_system, target_component, type, mission_type), force_mavlink1=force_mavlink1)
@@ -10324,11 +10677,11 @@ class MAVLink(object):
                 when e.g. in- and outdoor settings are connected and
                 the MAV should move from in- to outdoor.
 
-                target_system             : System ID (uint8_t)
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                target_system             : System ID (type:uint8_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return MAVLink_set_gps_global_origin_message(target_system, latitude, longitude, altitude, time_usec)
@@ -10341,11 +10694,11 @@ class MAVLink(object):
                 when e.g. in- and outdoor settings are connected and
                 the MAV should move from in- to outdoor.
 
-                target_system             : System ID (uint8_t)
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                target_system             : System ID (type:uint8_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return self.send(self.set_gps_global_origin_encode(target_system, latitude, longitude, altitude, time_usec), force_mavlink1=force_mavlink1)
@@ -10355,10 +10708,10 @@ class MAVLink(object):
                 Once the MAV sets a new GPS-Local correspondence, this message
                 announces the origin (0,0,0) position
 
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return MAVLink_gps_global_origin_message(latitude, longitude, altitude, time_usec)
@@ -10368,10 +10721,10 @@ class MAVLink(object):
                 Once the MAV sets a new GPS-Local correspondence, this message
                 announces the origin (0,0,0) position
 
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return self.send(self.gps_global_origin_encode(latitude, longitude, altitude, time_usec), force_mavlink1=force_mavlink1)
@@ -10381,15 +10734,15 @@ class MAVLink(object):
                 Bind a RC channel to a parameter. The parameter should change
                 according to the RC channel value.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored), send -2 to disable any existing map for this rc_channel_index. (int16_t)
-                parameter_rc_channel_index        : Index of parameter RC channel. Not equal to the RC channel id. Typically corresponds to a potentiometer-knob on the RC. (uint8_t)
-                param_value0              : Initial parameter value (float)
-                scale                     : Scale, maps the RC range [-1, 1] to a parameter value (float)
-                param_value_min           : Minimum param value. The protocol does not define if this overwrites an onboard minimum value. (Depends on implementation) (float)
-                param_value_max           : Maximum param value. The protocol does not define if this overwrites an onboard maximum value. (Depends on implementation) (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored), send -2 to disable any existing map for this rc_channel_index. (type:int16_t)
+                parameter_rc_channel_index        : Index of parameter RC channel. Not equal to the RC channel id. Typically corresponds to a potentiometer-knob on the RC. (type:uint8_t)
+                param_value0              : Initial parameter value (type:float)
+                scale                     : Scale, maps the RC range [-1, 1] to a parameter value (type:float)
+                param_value_min           : Minimum param value. The protocol does not define if this overwrites an onboard minimum value. (Depends on implementation) (type:float)
+                param_value_max           : Maximum param value. The protocol does not define if this overwrites an onboard maximum value. (Depends on implementation) (type:float)
 
                 '''
                 return MAVLink_param_map_rc_message(target_system, target_component, param_id, param_index, parameter_rc_channel_index, param_value0, scale, param_value_min, param_value_max)
@@ -10399,15 +10752,15 @@ class MAVLink(object):
                 Bind a RC channel to a parameter. The parameter should change
                 according to the RC channel value.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored), send -2 to disable any existing map for this rc_channel_index. (int16_t)
-                parameter_rc_channel_index        : Index of parameter RC channel. Not equal to the RC channel id. Typically corresponds to a potentiometer-knob on the RC. (uint8_t)
-                param_value0              : Initial parameter value (float)
-                scale                     : Scale, maps the RC range [-1, 1] to a parameter value (float)
-                param_value_min           : Minimum param value. The protocol does not define if this overwrites an onboard minimum value. (Depends on implementation) (float)
-                param_value_max           : Maximum param value. The protocol does not define if this overwrites an onboard maximum value. (Depends on implementation) (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Onboard parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Send -1 to use the param ID field as identifier (else the param id will be ignored), send -2 to disable any existing map for this rc_channel_index. (type:int16_t)
+                parameter_rc_channel_index        : Index of parameter RC channel. Not equal to the RC channel id. Typically corresponds to a potentiometer-knob on the RC. (type:uint8_t)
+                param_value0              : Initial parameter value (type:float)
+                scale                     : Scale, maps the RC range [-1, 1] to a parameter value (type:float)
+                param_value_min           : Minimum param value. The protocol does not define if this overwrites an onboard minimum value. (Depends on implementation) (type:float)
+                param_value_max           : Maximum param value. The protocol does not define if this overwrites an onboard maximum value. (Depends on implementation) (type:float)
 
                 '''
                 return self.send(self.param_map_rc_encode(target_system, target_component, param_id, param_index, parameter_rc_channel_index, param_value0, scale, param_value_min, param_value_max), force_mavlink1=force_mavlink1)
@@ -10419,10 +10772,10 @@ class MAVLink(object):
                 be a MISSION_ITEM_INT message.
                 https://mavlink.io/en/protocol/mission.html
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_request_int_message(target_system, target_component, seq, mission_type)
@@ -10434,10 +10787,10 @@ class MAVLink(object):
                 be a MISSION_ITEM_INT message.
                 https://mavlink.io/en/protocol/mission.html
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Sequence (uint16_t)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Sequence (type:uint16_t)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_request_int_encode(target_system, target_component, seq, mission_type), force_mavlink1=force_mavlink1)
@@ -10450,15 +10803,15 @@ class MAVLink(object):
                 Safety areas are often enforced by national or
                 competition regulations.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (uint8_t)
-                p1x                       : x position 1 / Latitude 1 (float)
-                p1y                       : y position 1 / Longitude 1 (float)
-                p1z                       : z position 1 / Altitude 1 (float)
-                p2x                       : x position 2 / Latitude 2 (float)
-                p2y                       : y position 2 / Longitude 2 (float)
-                p2z                       : z position 2 / Altitude 2 (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (type:uint8_t, values:MAV_FRAME)
+                p1x                       : x position 1 / Latitude 1 [m] (type:float)
+                p1y                       : y position 1 / Longitude 1 [m] (type:float)
+                p1z                       : z position 1 / Altitude 1 [m] (type:float)
+                p2x                       : x position 2 / Latitude 2 [m] (type:float)
+                p2y                       : y position 2 / Longitude 2 [m] (type:float)
+                p2z                       : z position 2 / Altitude 2 [m] (type:float)
 
                 '''
                 return MAVLink_safety_set_allowed_area_message(target_system, target_component, frame, p1x, p1y, p1z, p2x, p2y, p2z)
@@ -10471,15 +10824,15 @@ class MAVLink(object):
                 Safety areas are often enforced by national or
                 competition regulations.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (uint8_t)
-                p1x                       : x position 1 / Latitude 1 (float)
-                p1y                       : y position 1 / Longitude 1 (float)
-                p1z                       : z position 1 / Altitude 1 (float)
-                p2x                       : x position 2 / Latitude 2 (float)
-                p2y                       : y position 2 / Longitude 2 (float)
-                p2z                       : z position 2 / Altitude 2 (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (type:uint8_t, values:MAV_FRAME)
+                p1x                       : x position 1 / Latitude 1 [m] (type:float)
+                p1y                       : y position 1 / Longitude 1 [m] (type:float)
+                p1z                       : z position 1 / Altitude 1 [m] (type:float)
+                p2x                       : x position 2 / Latitude 2 [m] (type:float)
+                p2y                       : y position 2 / Longitude 2 [m] (type:float)
+                p2z                       : z position 2 / Altitude 2 [m] (type:float)
 
                 '''
                 return self.send(self.safety_set_allowed_area_encode(target_system, target_component, frame, p1x, p1y, p1z, p2x, p2y, p2z), force_mavlink1=force_mavlink1)
@@ -10488,13 +10841,13 @@ class MAVLink(object):
                 '''
                 Read out the safety zone the MAV currently assumes.
 
-                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (uint8_t)
-                p1x                       : x position 1 / Latitude 1 (float)
-                p1y                       : y position 1 / Longitude 1 (float)
-                p1z                       : z position 1 / Altitude 1 (float)
-                p2x                       : x position 2 / Latitude 2 (float)
-                p2y                       : y position 2 / Longitude 2 (float)
-                p2z                       : z position 2 / Altitude 2 (float)
+                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (type:uint8_t, values:MAV_FRAME)
+                p1x                       : x position 1 / Latitude 1 [m] (type:float)
+                p1y                       : y position 1 / Longitude 1 [m] (type:float)
+                p1z                       : z position 1 / Altitude 1 [m] (type:float)
+                p2x                       : x position 2 / Latitude 2 [m] (type:float)
+                p2y                       : y position 2 / Longitude 2 [m] (type:float)
+                p2z                       : z position 2 / Altitude 2 [m] (type:float)
 
                 '''
                 return MAVLink_safety_allowed_area_message(frame, p1x, p1y, p1z, p2x, p2y, p2z)
@@ -10503,13 +10856,13 @@ class MAVLink(object):
                 '''
                 Read out the safety zone the MAV currently assumes.
 
-                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (uint8_t)
-                p1x                       : x position 1 / Latitude 1 (float)
-                p1y                       : y position 1 / Longitude 1 (float)
-                p1z                       : z position 1 / Altitude 1 (float)
-                p2x                       : x position 2 / Latitude 2 (float)
-                p2y                       : y position 2 / Longitude 2 (float)
-                p2z                       : z position 2 / Altitude 2 (float)
+                frame                     : Coordinate frame. Can be either global, GPS, right-handed with Z axis up or local, right handed, Z axis down. (type:uint8_t, values:MAV_FRAME)
+                p1x                       : x position 1 / Latitude 1 [m] (type:float)
+                p1y                       : y position 1 / Longitude 1 [m] (type:float)
+                p1z                       : z position 1 / Altitude 1 [m] (type:float)
+                p2x                       : x position 2 / Latitude 2 [m] (type:float)
+                p2y                       : y position 2 / Longitude 2 [m] (type:float)
+                p2z                       : z position 2 / Altitude 2 [m] (type:float)
 
                 '''
                 return self.send(self.safety_allowed_area_encode(frame, p1x, p1y, p1z, p2x, p2y, p2z), force_mavlink1=force_mavlink1)
@@ -10521,12 +10874,12 @@ class MAVLink(object):
                 w, x, y, z and a zero rotation would be expressed as
                 (1 0 0 0).
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
-                covariance                : Attitude covariance (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
+                covariance                : Attitude covariance (type:float)
 
                 '''
                 return MAVLink_attitude_quaternion_cov_message(time_usec, q, rollspeed, pitchspeed, yawspeed, covariance)
@@ -10538,12 +10891,12 @@ class MAVLink(object):
                 w, x, y, z and a zero rotation would be expressed as
                 (1 0 0 0).
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
-                covariance                : Attitude covariance (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
+                covariance                : Attitude covariance (type:float)
 
                 '''
                 return self.send(self.attitude_quaternion_cov_encode(time_usec, q, rollspeed, pitchspeed, yawspeed, covariance), force_mavlink1=force_mavlink1)
@@ -10552,14 +10905,14 @@ class MAVLink(object):
                 '''
                 The state of the fixed wing navigation and position controller.
 
-                nav_roll                  : Current desired roll (float)
-                nav_pitch                 : Current desired pitch (float)
-                nav_bearing               : Current desired heading (int16_t)
-                target_bearing            : Bearing to current waypoint/target (int16_t)
-                wp_dist                   : Distance to active waypoint (uint16_t)
-                alt_error                 : Current altitude error (float)
-                aspd_error                : Current airspeed error (float)
-                xtrack_error              : Current crosstrack error on x-y plane (float)
+                nav_roll                  : Current desired roll [deg] (type:float)
+                nav_pitch                 : Current desired pitch [deg] (type:float)
+                nav_bearing               : Current desired heading [deg] (type:int16_t)
+                target_bearing            : Bearing to current waypoint/target [deg] (type:int16_t)
+                wp_dist                   : Distance to active waypoint [m] (type:uint16_t)
+                alt_error                 : Current altitude error [m] (type:float)
+                aspd_error                : Current airspeed error [m/s] (type:float)
+                xtrack_error              : Current crosstrack error on x-y plane [m] (type:float)
 
                 '''
                 return MAVLink_nav_controller_output_message(nav_roll, nav_pitch, nav_bearing, target_bearing, wp_dist, alt_error, aspd_error, xtrack_error)
@@ -10568,14 +10921,14 @@ class MAVLink(object):
                 '''
                 The state of the fixed wing navigation and position controller.
 
-                nav_roll                  : Current desired roll (float)
-                nav_pitch                 : Current desired pitch (float)
-                nav_bearing               : Current desired heading (int16_t)
-                target_bearing            : Bearing to current waypoint/target (int16_t)
-                wp_dist                   : Distance to active waypoint (uint16_t)
-                alt_error                 : Current altitude error (float)
-                aspd_error                : Current airspeed error (float)
-                xtrack_error              : Current crosstrack error on x-y plane (float)
+                nav_roll                  : Current desired roll [deg] (type:float)
+                nav_pitch                 : Current desired pitch [deg] (type:float)
+                nav_bearing               : Current desired heading [deg] (type:int16_t)
+                target_bearing            : Bearing to current waypoint/target [deg] (type:int16_t)
+                wp_dist                   : Distance to active waypoint [m] (type:uint16_t)
+                alt_error                 : Current altitude error [m] (type:float)
+                aspd_error                : Current airspeed error [m/s] (type:float)
+                xtrack_error              : Current crosstrack error on x-y plane [m] (type:float)
 
                 '''
                 return self.send(self.nav_controller_output_encode(nav_roll, nav_pitch, nav_bearing, target_bearing, wp_dist, alt_error, aspd_error, xtrack_error), force_mavlink1=force_mavlink1)
@@ -10591,16 +10944,16 @@ class MAVLink(object):
                 accuracy and completeness. Please use the
                 GLOBAL_POSITION_INT message for a minimal subset.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                estimator_type            : Class id of the estimator this estimate originated from. (uint8_t)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude in meters above MSL (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                vx                        : Ground X Speed (Latitude) (float)
-                vy                        : Ground Y Speed (Longitude) (float)
-                vz                        : Ground Z Speed (Altitude) (float)
-                covariance                : Covariance matrix (first six entries are the first ROW, next six entries are the second row, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                estimator_type            : Class id of the estimator this estimate originated from. (type:uint8_t, values:MAV_ESTIMATOR_TYPE)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude in meters above MSL [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [m/s] (type:float)
+                vy                        : Ground Y Speed (Longitude) [m/s] (type:float)
+                vz                        : Ground Z Speed (Altitude) [m/s] (type:float)
+                covariance                : Covariance matrix (first six entries are the first ROW, next six entries are the second row, etc.) (type:float)
 
                 '''
                 return MAVLink_global_position_int_cov_message(time_usec, estimator_type, lat, lon, alt, relative_alt, vx, vy, vz, covariance)
@@ -10616,16 +10969,16 @@ class MAVLink(object):
                 accuracy and completeness. Please use the
                 GLOBAL_POSITION_INT message for a minimal subset.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                estimator_type            : Class id of the estimator this estimate originated from. (uint8_t)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude in meters above MSL (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                vx                        : Ground X Speed (Latitude) (float)
-                vy                        : Ground Y Speed (Longitude) (float)
-                vz                        : Ground Z Speed (Altitude) (float)
-                covariance                : Covariance matrix (first six entries are the first ROW, next six entries are the second row, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                estimator_type            : Class id of the estimator this estimate originated from. (type:uint8_t, values:MAV_ESTIMATOR_TYPE)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude in meters above MSL [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [m/s] (type:float)
+                vy                        : Ground Y Speed (Longitude) [m/s] (type:float)
+                vz                        : Ground Z Speed (Altitude) [m/s] (type:float)
+                covariance                : Covariance matrix (first six entries are the first ROW, next six entries are the second row, etc.) (type:float)
 
                 '''
                 return self.send(self.global_position_int_cov_encode(time_usec, estimator_type, lat, lon, alt, relative_alt, vx, vy, vz, covariance), force_mavlink1=force_mavlink1)
@@ -10637,18 +10990,18 @@ class MAVLink(object):
                 Z-axis down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                estimator_type            : Class id of the estimator this estimate originated from. (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                vx                        : X Speed (float)
-                vy                        : Y Speed (float)
-                vz                        : Z Speed (float)
-                ax                        : X Acceleration (float)
-                ay                        : Y Acceleration (float)
-                az                        : Z Acceleration (float)
-                covariance                : Covariance matrix upper right triangular (first nine entries are the first ROW, next eight entries are the second row, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                estimator_type            : Class id of the estimator this estimate originated from. (type:uint8_t, values:MAV_ESTIMATOR_TYPE)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                vx                        : X Speed [m/s] (type:float)
+                vy                        : Y Speed [m/s] (type:float)
+                vz                        : Z Speed [m/s] (type:float)
+                ax                        : X Acceleration [m/s/s] (type:float)
+                ay                        : Y Acceleration [m/s/s] (type:float)
+                az                        : Z Acceleration [m/s/s] (type:float)
+                covariance                : Covariance matrix upper right triangular (first nine entries are the first ROW, next eight entries are the second row, etc.) (type:float)
 
                 '''
                 return MAVLink_local_position_ned_cov_message(time_usec, estimator_type, x, y, z, vx, vy, vz, ax, ay, az, covariance)
@@ -10660,18 +11013,18 @@ class MAVLink(object):
                 Z-axis down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                estimator_type            : Class id of the estimator this estimate originated from. (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                vx                        : X Speed (float)
-                vy                        : Y Speed (float)
-                vz                        : Z Speed (float)
-                ax                        : X Acceleration (float)
-                ay                        : Y Acceleration (float)
-                az                        : Z Acceleration (float)
-                covariance                : Covariance matrix upper right triangular (first nine entries are the first ROW, next eight entries are the second row, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                estimator_type            : Class id of the estimator this estimate originated from. (type:uint8_t, values:MAV_ESTIMATOR_TYPE)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                vx                        : X Speed [m/s] (type:float)
+                vy                        : Y Speed [m/s] (type:float)
+                vz                        : Z Speed [m/s] (type:float)
+                ax                        : X Acceleration [m/s/s] (type:float)
+                ay                        : Y Acceleration [m/s/s] (type:float)
+                az                        : Z Acceleration [m/s/s] (type:float)
+                covariance                : Covariance matrix upper right triangular (first nine entries are the first ROW, next eight entries are the second row, etc.) (type:float)
 
                 '''
                 return self.send(self.local_position_ned_cov_encode(time_usec, estimator_type, x, y, z, vx, vy, vz, ax, ay, az, covariance), force_mavlink1=force_mavlink1)
@@ -10684,27 +11037,27 @@ class MAVLink(object):
                 channel is unused. Individual receivers/transmitters
                 might violate this specification.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                chancount                 : Total number of RC channels being received. This can be larger than 18, indicating that more channels are available but not given in this message. This value should be 0 when no RC channels are available. (uint8_t)
-                chan1_raw                 : RC channel 1 value. (uint16_t)
-                chan2_raw                 : RC channel 2 value. (uint16_t)
-                chan3_raw                 : RC channel 3 value. (uint16_t)
-                chan4_raw                 : RC channel 4 value. (uint16_t)
-                chan5_raw                 : RC channel 5 value. (uint16_t)
-                chan6_raw                 : RC channel 6 value. (uint16_t)
-                chan7_raw                 : RC channel 7 value. (uint16_t)
-                chan8_raw                 : RC channel 8 value. (uint16_t)
-                chan9_raw                 : RC channel 9 value. (uint16_t)
-                chan10_raw                : RC channel 10 value. (uint16_t)
-                chan11_raw                : RC channel 11 value. (uint16_t)
-                chan12_raw                : RC channel 12 value. (uint16_t)
-                chan13_raw                : RC channel 13 value. (uint16_t)
-                chan14_raw                : RC channel 14 value. (uint16_t)
-                chan15_raw                : RC channel 15 value. (uint16_t)
-                chan16_raw                : RC channel 16 value. (uint16_t)
-                chan17_raw                : RC channel 17 value. (uint16_t)
-                chan18_raw                : RC channel 18 value. (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                chancount                 : Total number of RC channels being received. This can be larger than 18, indicating that more channels are available but not given in this message. This value should be 0 when no RC channels are available. (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value. [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value. [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value. [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value. [us] (type:uint16_t)
+                chan13_raw                : RC channel 13 value. [us] (type:uint16_t)
+                chan14_raw                : RC channel 14 value. [us] (type:uint16_t)
+                chan15_raw                : RC channel 15 value. [us] (type:uint16_t)
+                chan16_raw                : RC channel 16 value. [us] (type:uint16_t)
+                chan17_raw                : RC channel 17 value. [us] (type:uint16_t)
+                chan18_raw                : RC channel 18 value. [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return MAVLink_rc_channels_message(time_boot_ms, chancount, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, chan13_raw, chan14_raw, chan15_raw, chan16_raw, chan17_raw, chan18_raw, rssi)
@@ -10717,27 +11070,27 @@ class MAVLink(object):
                 channel is unused. Individual receivers/transmitters
                 might violate this specification.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                chancount                 : Total number of RC channels being received. This can be larger than 18, indicating that more channels are available but not given in this message. This value should be 0 when no RC channels are available. (uint8_t)
-                chan1_raw                 : RC channel 1 value. (uint16_t)
-                chan2_raw                 : RC channel 2 value. (uint16_t)
-                chan3_raw                 : RC channel 3 value. (uint16_t)
-                chan4_raw                 : RC channel 4 value. (uint16_t)
-                chan5_raw                 : RC channel 5 value. (uint16_t)
-                chan6_raw                 : RC channel 6 value. (uint16_t)
-                chan7_raw                 : RC channel 7 value. (uint16_t)
-                chan8_raw                 : RC channel 8 value. (uint16_t)
-                chan9_raw                 : RC channel 9 value. (uint16_t)
-                chan10_raw                : RC channel 10 value. (uint16_t)
-                chan11_raw                : RC channel 11 value. (uint16_t)
-                chan12_raw                : RC channel 12 value. (uint16_t)
-                chan13_raw                : RC channel 13 value. (uint16_t)
-                chan14_raw                : RC channel 14 value. (uint16_t)
-                chan15_raw                : RC channel 15 value. (uint16_t)
-                chan16_raw                : RC channel 16 value. (uint16_t)
-                chan17_raw                : RC channel 17 value. (uint16_t)
-                chan18_raw                : RC channel 18 value. (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                chancount                 : Total number of RC channels being received. This can be larger than 18, indicating that more channels are available but not given in this message. This value should be 0 when no RC channels are available. (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value. [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value. [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value. [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value. [us] (type:uint16_t)
+                chan13_raw                : RC channel 13 value. [us] (type:uint16_t)
+                chan14_raw                : RC channel 14 value. [us] (type:uint16_t)
+                chan15_raw                : RC channel 15 value. [us] (type:uint16_t)
+                chan16_raw                : RC channel 16 value. [us] (type:uint16_t)
+                chan17_raw                : RC channel 17 value. [us] (type:uint16_t)
+                chan18_raw                : RC channel 18 value. [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. [%] (type:uint8_t)
 
                 '''
                 return self.send(self.rc_channels_encode(time_boot_ms, chancount, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, chan13_raw, chan14_raw, chan15_raw, chan16_raw, chan17_raw, chan18_raw, rssi), force_mavlink1=force_mavlink1)
@@ -10746,11 +11099,11 @@ class MAVLink(object):
                 '''
                 Request a data stream.
 
-                target_system             : The target requested to send the message stream. (uint8_t)
-                target_component          : The target requested to send the message stream. (uint8_t)
-                req_stream_id             : The ID of the requested data stream (uint8_t)
-                req_message_rate          : The requested message rate (uint16_t)
-                start_stop                : 1 to start sending, 0 to stop sending. (uint8_t)
+                target_system             : The target requested to send the message stream. (type:uint8_t)
+                target_component          : The target requested to send the message stream. (type:uint8_t)
+                req_stream_id             : The ID of the requested data stream (type:uint8_t)
+                req_message_rate          : The requested message rate [Hz] (type:uint16_t)
+                start_stop                : 1 to start sending, 0 to stop sending. (type:uint8_t)
 
                 '''
                 return MAVLink_request_data_stream_message(target_system, target_component, req_stream_id, req_message_rate, start_stop)
@@ -10759,11 +11112,11 @@ class MAVLink(object):
                 '''
                 Request a data stream.
 
-                target_system             : The target requested to send the message stream. (uint8_t)
-                target_component          : The target requested to send the message stream. (uint8_t)
-                req_stream_id             : The ID of the requested data stream (uint8_t)
-                req_message_rate          : The requested message rate (uint16_t)
-                start_stop                : 1 to start sending, 0 to stop sending. (uint8_t)
+                target_system             : The target requested to send the message stream. (type:uint8_t)
+                target_component          : The target requested to send the message stream. (type:uint8_t)
+                req_stream_id             : The ID of the requested data stream (type:uint8_t)
+                req_message_rate          : The requested message rate [Hz] (type:uint16_t)
+                start_stop                : 1 to start sending, 0 to stop sending. (type:uint8_t)
 
                 '''
                 return self.send(self.request_data_stream_encode(target_system, target_component, req_stream_id, req_message_rate, start_stop), force_mavlink1=force_mavlink1)
@@ -10772,9 +11125,9 @@ class MAVLink(object):
                 '''
                 Data stream status information.
 
-                stream_id                 : The ID of the requested data stream (uint8_t)
-                message_rate              : The message rate (uint16_t)
-                on_off                    : 1 stream is enabled, 0 stream is stopped. (uint8_t)
+                stream_id                 : The ID of the requested data stream (type:uint8_t)
+                message_rate              : The message rate [Hz] (type:uint16_t)
+                on_off                    : 1 stream is enabled, 0 stream is stopped. (type:uint8_t)
 
                 '''
                 return MAVLink_data_stream_message(stream_id, message_rate, on_off)
@@ -10783,9 +11136,9 @@ class MAVLink(object):
                 '''
                 Data stream status information.
 
-                stream_id                 : The ID of the requested data stream (uint8_t)
-                message_rate              : The message rate (uint16_t)
-                on_off                    : 1 stream is enabled, 0 stream is stopped. (uint8_t)
+                stream_id                 : The ID of the requested data stream (type:uint8_t)
+                message_rate              : The message rate [Hz] (type:uint16_t)
+                on_off                    : 1 stream is enabled, 0 stream is stopped. (type:uint8_t)
 
                 '''
                 return self.send(self.data_stream_encode(stream_id, message_rate, on_off), force_mavlink1=force_mavlink1)
@@ -10798,12 +11151,12 @@ class MAVLink(object):
                 disabled an buttons are also transmit as boolean
                 values of their
 
-                target                    : The system to be controlled. (uint8_t)
-                x                         : X-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to forward(1000)-backward(-1000) movement on a joystick and the pitch of a vehicle. (int16_t)
-                y                         : Y-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to left(-1000)-right(1000) movement on a joystick and the roll of a vehicle. (int16_t)
-                z                         : Z-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a separate slider movement with maximum being 1000 and minimum being -1000 on a joystick and the thrust of a vehicle. Positive values are positive thrust, negative values are negative thrust. (int16_t)
-                r                         : R-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a twisting of the joystick, with counter-clockwise being 1000 and clockwise being -1000, and the yaw of a vehicle. (int16_t)
-                buttons                   : A bitfield corresponding to the joystick buttons' current state, 1 for pressed, 0 for released. The lowest bit corresponds to Button 1. (uint16_t)
+                target                    : The system to be controlled. (type:uint8_t)
+                x                         : X-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to forward(1000)-backward(-1000) movement on a joystick and the pitch of a vehicle. (type:int16_t)
+                y                         : Y-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to left(-1000)-right(1000) movement on a joystick and the roll of a vehicle. (type:int16_t)
+                z                         : Z-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a separate slider movement with maximum being 1000 and minimum being -1000 on a joystick and the thrust of a vehicle. Positive values are positive thrust, negative values are negative thrust. (type:int16_t)
+                r                         : R-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a twisting of the joystick, with counter-clockwise being 1000 and clockwise being -1000, and the yaw of a vehicle. (type:int16_t)
+                buttons                   : A bitfield corresponding to the joystick buttons' current state, 1 for pressed, 0 for released. The lowest bit corresponds to Button 1. (type:uint16_t)
 
                 '''
                 return MAVLink_manual_control_message(target, x, y, z, r, buttons)
@@ -10816,12 +11169,12 @@ class MAVLink(object):
                 disabled an buttons are also transmit as boolean
                 values of their
 
-                target                    : The system to be controlled. (uint8_t)
-                x                         : X-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to forward(1000)-backward(-1000) movement on a joystick and the pitch of a vehicle. (int16_t)
-                y                         : Y-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to left(-1000)-right(1000) movement on a joystick and the roll of a vehicle. (int16_t)
-                z                         : Z-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a separate slider movement with maximum being 1000 and minimum being -1000 on a joystick and the thrust of a vehicle. Positive values are positive thrust, negative values are negative thrust. (int16_t)
-                r                         : R-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a twisting of the joystick, with counter-clockwise being 1000 and clockwise being -1000, and the yaw of a vehicle. (int16_t)
-                buttons                   : A bitfield corresponding to the joystick buttons' current state, 1 for pressed, 0 for released. The lowest bit corresponds to Button 1. (uint16_t)
+                target                    : The system to be controlled. (type:uint8_t)
+                x                         : X-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to forward(1000)-backward(-1000) movement on a joystick and the pitch of a vehicle. (type:int16_t)
+                y                         : Y-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to left(-1000)-right(1000) movement on a joystick and the roll of a vehicle. (type:int16_t)
+                z                         : Z-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a separate slider movement with maximum being 1000 and minimum being -1000 on a joystick and the thrust of a vehicle. Positive values are positive thrust, negative values are negative thrust. (type:int16_t)
+                r                         : R-axis, normalized to the range [-1000,1000]. A value of INT16_MAX indicates that this axis is invalid. Generally corresponds to a twisting of the joystick, with counter-clockwise being 1000 and clockwise being -1000, and the yaw of a vehicle. (type:int16_t)
+                buttons                   : A bitfield corresponding to the joystick buttons' current state, 1 for pressed, 0 for released. The lowest bit corresponds to Button 1. (type:uint16_t)
 
                 '''
                 return self.send(self.manual_control_encode(target, x, y, z, r, buttons), force_mavlink1=force_mavlink1)
@@ -10837,26 +11190,26 @@ class MAVLink(object):
                 Individual receivers/transmitters might violate this
                 specification.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                chan1_raw                 : RC channel 1 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan2_raw                 : RC channel 2 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan3_raw                 : RC channel 3 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan4_raw                 : RC channel 4 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan5_raw                 : RC channel 5 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan9_raw                 : RC channel 9 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan13_raw                : RC channel 13 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan14_raw                : RC channel 14 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan15_raw                : RC channel 15 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan16_raw                : RC channel 16 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan17_raw                : RC channel 17 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan18_raw                : RC channel 18 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value. A value of 0 means to ignore this field. [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan13_raw                : RC channel 13 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan14_raw                : RC channel 14 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan15_raw                : RC channel 15 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan16_raw                : RC channel 16 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan17_raw                : RC channel 17 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan18_raw                : RC channel 18 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
 
                 '''
                 return MAVLink_rc_channels_override_message(target_system, target_component, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, chan13_raw, chan14_raw, chan15_raw, chan16_raw, chan17_raw, chan18_raw)
@@ -10872,26 +11225,26 @@ class MAVLink(object):
                 Individual receivers/transmitters might violate this
                 specification.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                chan1_raw                 : RC channel 1 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan2_raw                 : RC channel 2 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan3_raw                 : RC channel 3 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan4_raw                 : RC channel 4 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan5_raw                 : RC channel 5 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. (uint16_t)
-                chan9_raw                 : RC channel 9 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan13_raw                : RC channel 13 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan14_raw                : RC channel 14 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan15_raw                : RC channel 15 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan16_raw                : RC channel 16 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan17_raw                : RC channel 17 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
-                chan18_raw                : RC channel 18 value. A value of 0 or UINT16_MAX means to ignore this field. (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                chan1_raw                 : RC channel 1 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value. A value of UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value. A value of 0 means to ignore this field. [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan13_raw                : RC channel 13 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan14_raw                : RC channel 14 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan15_raw                : RC channel 15 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan16_raw                : RC channel 16 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan17_raw                : RC channel 17 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
+                chan18_raw                : RC channel 18 value. A value of 0 or UINT16_MAX means to ignore this field. [us] (type:uint16_t)
 
                 '''
                 return self.send(self.rc_channels_override_encode(target_system, target_component, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, chan13_raw, chan14_raw, chan15_raw, chan16_raw, chan17_raw, chan18_raw), force_mavlink1=force_mavlink1)
@@ -10906,21 +11259,21 @@ class MAVLink(object):
                 global frame is Z-up, right handed (ENU). See also
                 https://mavlink.io/en/protocol/mission.html.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Waypoint ID (sequence number). Starts at zero. Increases monotonically for each waypoint, no gaps in the sequence (0,1,2,3,4). (uint16_t)
-                frame                     : The coordinate system of the waypoint. (uint8_t)
-                command                   : The scheduled action for the waypoint. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : Autocontinue to next waypoint (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (int32_t)
-                y                         : PARAM6 / y position: local: x position in meters * 1e4, global: longitude in degrees *10^7 (int32_t)
-                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame. (float)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Waypoint ID (sequence number). Starts at zero. Increases monotonically for each waypoint, no gaps in the sequence (0,1,2,3,4). (type:uint16_t)
+                frame                     : The coordinate system of the waypoint. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the waypoint. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : Autocontinue to next waypoint (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (type:int32_t)
+                y                         : PARAM6 / y position: local: x position in meters * 1e4, global: longitude in degrees *10^7 (type:int32_t)
+                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame. (type:float)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return MAVLink_mission_item_int_message(target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type)
@@ -10935,21 +11288,21 @@ class MAVLink(object):
                 global frame is Z-up, right handed (ENU). See also
                 https://mavlink.io/en/protocol/mission.html.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                seq                       : Waypoint ID (sequence number). Starts at zero. Increases monotonically for each waypoint, no gaps in the sequence (0,1,2,3,4). (uint16_t)
-                frame                     : The coordinate system of the waypoint. (uint8_t)
-                command                   : The scheduled action for the waypoint. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : Autocontinue to next waypoint (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (int32_t)
-                y                         : PARAM6 / y position: local: x position in meters * 1e4, global: longitude in degrees *10^7 (int32_t)
-                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame. (float)
-                mission_type              : Mission type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                seq                       : Waypoint ID (sequence number). Starts at zero. Increases monotonically for each waypoint, no gaps in the sequence (0,1,2,3,4). (type:uint16_t)
+                frame                     : The coordinate system of the waypoint. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the waypoint. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : Autocontinue to next waypoint (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (type:int32_t)
+                y                         : PARAM6 / y position: local: x position in meters * 1e4, global: longitude in degrees *10^7 (type:int32_t)
+                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame. (type:float)
+                mission_type              : Mission type. (type:uint8_t, values:MAV_MISSION_TYPE)
 
                 '''
                 return self.send(self.mission_item_int_encode(target_system, target_component, seq, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z, mission_type), force_mavlink1=force_mavlink1)
@@ -10958,12 +11311,12 @@ class MAVLink(object):
                 '''
                 Metrics typically displayed on a HUD for fixed wing aircraft
 
-                airspeed                  : Current airspeed (float)
-                groundspeed               : Current ground speed (float)
-                heading                   : Current heading in degrees, in compass units (0..360, 0=north) (int16_t)
-                throttle                  : Current throttle setting in integer percent, 0 to 100 (uint16_t)
-                alt                       : Current altitude (MSL) (float)
-                climb                     : Current climb rate (float)
+                airspeed                  : Current airspeed [m/s] (type:float)
+                groundspeed               : Current ground speed [m/s] (type:float)
+                heading                   : Current heading in degrees, in compass units (0..360, 0=north) [deg] (type:int16_t)
+                throttle                  : Current throttle setting in integer percent, 0 to 100 [%] (type:uint16_t)
+                alt                       : Current altitude (MSL) [m] (type:float)
+                climb                     : Current climb rate [m/s] (type:float)
 
                 '''
                 return MAVLink_vfr_hud_message(airspeed, groundspeed, heading, throttle, alt, climb)
@@ -10972,12 +11325,12 @@ class MAVLink(object):
                 '''
                 Metrics typically displayed on a HUD for fixed wing aircraft
 
-                airspeed                  : Current airspeed (float)
-                groundspeed               : Current ground speed (float)
-                heading                   : Current heading in degrees, in compass units (0..360, 0=north) (int16_t)
-                throttle                  : Current throttle setting in integer percent, 0 to 100 (uint16_t)
-                alt                       : Current altitude (MSL) (float)
-                climb                     : Current climb rate (float)
+                airspeed                  : Current airspeed [m/s] (type:float)
+                groundspeed               : Current ground speed [m/s] (type:float)
+                heading                   : Current heading in degrees, in compass units (0..360, 0=north) [deg] (type:int16_t)
+                throttle                  : Current throttle setting in integer percent, 0 to 100 [%] (type:uint16_t)
+                alt                       : Current altitude (MSL) [m] (type:float)
+                climb                     : Current climb rate [m/s] (type:float)
 
                 '''
                 return self.send(self.vfr_hud_encode(airspeed, groundspeed, heading, throttle, alt, climb), force_mavlink1=force_mavlink1)
@@ -10987,19 +11340,19 @@ class MAVLink(object):
                 Message encoding a command with parameters as scaled integers. Scaling
                 depends on the actual command value.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                frame                     : The coordinate system of the COMMAND. (uint8_t)
-                command                   : The scheduled action for the mission item. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : autocontinue to next wp (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (int32_t)
-                y                         : PARAM6 / local: y position in meters * 1e4, global: longitude in degrees * 10^7 (int32_t)
-                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame). (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                frame                     : The coordinate system of the COMMAND. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the mission item. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : autocontinue to next wp (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (type:int32_t)
+                y                         : PARAM6 / local: y position in meters * 1e4, global: longitude in degrees * 10^7 (type:int32_t)
+                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame). (type:float)
 
                 '''
                 return MAVLink_command_int_message(target_system, target_component, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z)
@@ -11009,19 +11362,19 @@ class MAVLink(object):
                 Message encoding a command with parameters as scaled integers. Scaling
                 depends on the actual command value.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                frame                     : The coordinate system of the COMMAND. (uint8_t)
-                command                   : The scheduled action for the mission item. (uint16_t)
-                current                   : false:0, true:1 (uint8_t)
-                autocontinue              : autocontinue to next wp (uint8_t)
-                param1                    : PARAM1, see MAV_CMD enum (float)
-                param2                    : PARAM2, see MAV_CMD enum (float)
-                param3                    : PARAM3, see MAV_CMD enum (float)
-                param4                    : PARAM4, see MAV_CMD enum (float)
-                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (int32_t)
-                y                         : PARAM6 / local: y position in meters * 1e4, global: longitude in degrees * 10^7 (int32_t)
-                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame). (float)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                frame                     : The coordinate system of the COMMAND. (type:uint8_t, values:MAV_FRAME)
+                command                   : The scheduled action for the mission item. (type:uint16_t, values:MAV_CMD)
+                current                   : false:0, true:1 (type:uint8_t)
+                autocontinue              : autocontinue to next wp (type:uint8_t)
+                param1                    : PARAM1, see MAV_CMD enum (type:float)
+                param2                    : PARAM2, see MAV_CMD enum (type:float)
+                param3                    : PARAM3, see MAV_CMD enum (type:float)
+                param4                    : PARAM4, see MAV_CMD enum (type:float)
+                x                         : PARAM5 / local: x position in meters * 1e4, global: latitude in degrees * 10^7 (type:int32_t)
+                y                         : PARAM6 / local: y position in meters * 1e4, global: longitude in degrees * 10^7 (type:int32_t)
+                z                         : PARAM7 / z position: global: altitude in meters (relative or absolute, depending on frame). (type:float)
 
                 '''
                 return self.send(self.command_int_encode(target_system, target_component, frame, command, current, autocontinue, param1, param2, param3, param4, x, y, z), force_mavlink1=force_mavlink1)
@@ -11030,17 +11383,17 @@ class MAVLink(object):
                 '''
                 Send a command with up to seven parameters to the MAV
 
-                target_system             : System which should execute the command (uint8_t)
-                target_component          : Component which should execute the command, 0 for all components (uint8_t)
-                command                   : Command ID (of command to send). (uint16_t)
-                confirmation              : 0: First transmission of this command. 1-255: Confirmation transmissions (e.g. for kill command) (uint8_t)
-                param1                    : Parameter 1 (for the specific command). (float)
-                param2                    : Parameter 2 (for the specific command). (float)
-                param3                    : Parameter 3 (for the specific command). (float)
-                param4                    : Parameter 4 (for the specific command). (float)
-                param5                    : Parameter 5 (for the specific command). (float)
-                param6                    : Parameter 6 (for the specific command). (float)
-                param7                    : Parameter 7 (for the specific command). (float)
+                target_system             : System which should execute the command (type:uint8_t)
+                target_component          : Component which should execute the command, 0 for all components (type:uint8_t)
+                command                   : Command ID (of command to send). (type:uint16_t, values:MAV_CMD)
+                confirmation              : 0: First transmission of this command. 1-255: Confirmation transmissions (e.g. for kill command) (type:uint8_t)
+                param1                    : Parameter 1 (for the specific command). (type:float)
+                param2                    : Parameter 2 (for the specific command). (type:float)
+                param3                    : Parameter 3 (for the specific command). (type:float)
+                param4                    : Parameter 4 (for the specific command). (type:float)
+                param5                    : Parameter 5 (for the specific command). (type:float)
+                param6                    : Parameter 6 (for the specific command). (type:float)
+                param7                    : Parameter 7 (for the specific command). (type:float)
 
                 '''
                 return MAVLink_command_long_message(target_system, target_component, command, confirmation, param1, param2, param3, param4, param5, param6, param7)
@@ -11049,17 +11402,17 @@ class MAVLink(object):
                 '''
                 Send a command with up to seven parameters to the MAV
 
-                target_system             : System which should execute the command (uint8_t)
-                target_component          : Component which should execute the command, 0 for all components (uint8_t)
-                command                   : Command ID (of command to send). (uint16_t)
-                confirmation              : 0: First transmission of this command. 1-255: Confirmation transmissions (e.g. for kill command) (uint8_t)
-                param1                    : Parameter 1 (for the specific command). (float)
-                param2                    : Parameter 2 (for the specific command). (float)
-                param3                    : Parameter 3 (for the specific command). (float)
-                param4                    : Parameter 4 (for the specific command). (float)
-                param5                    : Parameter 5 (for the specific command). (float)
-                param6                    : Parameter 6 (for the specific command). (float)
-                param7                    : Parameter 7 (for the specific command). (float)
+                target_system             : System which should execute the command (type:uint8_t)
+                target_component          : Component which should execute the command, 0 for all components (type:uint8_t)
+                command                   : Command ID (of command to send). (type:uint16_t, values:MAV_CMD)
+                confirmation              : 0: First transmission of this command. 1-255: Confirmation transmissions (e.g. for kill command) (type:uint8_t)
+                param1                    : Parameter 1 (for the specific command). (type:float)
+                param2                    : Parameter 2 (for the specific command). (type:float)
+                param3                    : Parameter 3 (for the specific command). (type:float)
+                param4                    : Parameter 4 (for the specific command). (type:float)
+                param5                    : Parameter 5 (for the specific command). (type:float)
+                param6                    : Parameter 6 (for the specific command). (type:float)
+                param7                    : Parameter 7 (for the specific command). (type:float)
 
                 '''
                 return self.send(self.command_long_encode(target_system, target_component, command, confirmation, param1, param2, param3, param4, param5, param6, param7), force_mavlink1=force_mavlink1)
@@ -11069,12 +11422,12 @@ class MAVLink(object):
                 Report status of a command. Includes feedback whether the command was
                 executed.
 
-                command                   : Command ID (of acknowledged command). (uint16_t)
-                result                    : Result of command. (uint8_t)
-                progress                  : WIP: Also used as result_param1, it can be set with a enum containing the errors reasons of why the command was denied or the progress percentage or 255 if unknown the progress when result is MAV_RESULT_IN_PROGRESS. (uint8_t)
-                result_param2             : WIP: Additional parameter of the result, example: which parameter of MAV_CMD_NAV_WAYPOINT caused it to be denied. (int32_t)
-                target_system             : WIP: System which requested the command to be executed (uint8_t)
-                target_component          : WIP: Component which requested the command to be executed (uint8_t)
+                command                   : Command ID (of acknowledged command). (type:uint16_t, values:MAV_CMD)
+                result                    : Result of command. (type:uint8_t, values:MAV_RESULT)
+                progress                  : WIP: Also used as result_param1, it can be set with a enum containing the errors reasons of why the command was denied or the progress percentage or 255 if unknown the progress when result is MAV_RESULT_IN_PROGRESS. (type:uint8_t)
+                result_param2             : WIP: Additional parameter of the result, example: which parameter of MAV_CMD_NAV_WAYPOINT caused it to be denied. (type:int32_t)
+                target_system             : WIP: System which requested the command to be executed (type:uint8_t)
+                target_component          : WIP: Component which requested the command to be executed (type:uint8_t)
 
                 '''
                 return MAVLink_command_ack_message(command, result, progress, result_param2, target_system, target_component)
@@ -11084,12 +11437,12 @@ class MAVLink(object):
                 Report status of a command. Includes feedback whether the command was
                 executed.
 
-                command                   : Command ID (of acknowledged command). (uint16_t)
-                result                    : Result of command. (uint8_t)
-                progress                  : WIP: Also used as result_param1, it can be set with a enum containing the errors reasons of why the command was denied or the progress percentage or 255 if unknown the progress when result is MAV_RESULT_IN_PROGRESS. (uint8_t)
-                result_param2             : WIP: Additional parameter of the result, example: which parameter of MAV_CMD_NAV_WAYPOINT caused it to be denied. (int32_t)
-                target_system             : WIP: System which requested the command to be executed (uint8_t)
-                target_component          : WIP: Component which requested the command to be executed (uint8_t)
+                command                   : Command ID (of acknowledged command). (type:uint16_t, values:MAV_CMD)
+                result                    : Result of command. (type:uint8_t, values:MAV_RESULT)
+                progress                  : WIP: Also used as result_param1, it can be set with a enum containing the errors reasons of why the command was denied or the progress percentage or 255 if unknown the progress when result is MAV_RESULT_IN_PROGRESS. (type:uint8_t)
+                result_param2             : WIP: Additional parameter of the result, example: which parameter of MAV_CMD_NAV_WAYPOINT caused it to be denied. (type:int32_t)
+                target_system             : WIP: System which requested the command to be executed (type:uint8_t)
+                target_component          : WIP: Component which requested the command to be executed (type:uint8_t)
 
                 '''
                 return self.send(self.command_ack_encode(command, result, progress, result_param2, target_system, target_component), force_mavlink1=force_mavlink1)
@@ -11098,13 +11451,13 @@ class MAVLink(object):
                 '''
                 Setpoint in roll, pitch, yaw and thrust from the operator
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Desired roll rate (float)
-                pitch                     : Desired pitch rate (float)
-                yaw                       : Desired yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (float)
-                mode_switch               : Flight mode switch position, 0.. 255 (uint8_t)
-                manual_override_switch        : Override mode switch position, 0.. 255 (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Desired roll rate [rad/s] (type:float)
+                pitch                     : Desired pitch rate [rad/s] (type:float)
+                yaw                       : Desired yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (type:float)
+                mode_switch               : Flight mode switch position, 0.. 255 (type:uint8_t)
+                manual_override_switch        : Override mode switch position, 0.. 255 (type:uint8_t)
 
                 '''
                 return MAVLink_manual_setpoint_message(time_boot_ms, roll, pitch, yaw, thrust, mode_switch, manual_override_switch)
@@ -11113,13 +11466,13 @@ class MAVLink(object):
                 '''
                 Setpoint in roll, pitch, yaw and thrust from the operator
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Desired roll rate (float)
-                pitch                     : Desired pitch rate (float)
-                yaw                       : Desired yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (float)
-                mode_switch               : Flight mode switch position, 0.. 255 (uint8_t)
-                manual_override_switch        : Override mode switch position, 0.. 255 (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Desired roll rate [rad/s] (type:float)
+                pitch                     : Desired pitch rate [rad/s] (type:float)
+                yaw                       : Desired yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (type:float)
+                mode_switch               : Flight mode switch position, 0.. 255 (type:uint8_t)
+                manual_override_switch        : Override mode switch position, 0.. 255 (type:uint8_t)
 
                 '''
                 return self.send(self.manual_setpoint_encode(time_boot_ms, roll, pitch, yaw, thrust, mode_switch, manual_override_switch), force_mavlink1=force_mavlink1)
@@ -11130,15 +11483,15 @@ class MAVLink(object):
                 command the vehicle (manual controller or other
                 system).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude (uint8_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                body_roll_rate            : Body roll rate (float)
-                body_pitch_rate           : Body pitch rate (float)
-                body_yaw_rate             : Body yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude (type:uint8_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                body_roll_rate            : Body roll rate [rad/s] (type:float)
+                body_pitch_rate           : Body pitch rate [rad/s] (type:float)
+                body_yaw_rate             : Body yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (type:float)
 
                 '''
                 return MAVLink_set_attitude_target_message(time_boot_ms, target_system, target_component, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust)
@@ -11149,15 +11502,15 @@ class MAVLink(object):
                 command the vehicle (manual controller or other
                 system).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude (uint8_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                body_roll_rate            : Body roll rate (float)
-                body_pitch_rate           : Body pitch rate (float)
-                body_yaw_rate             : Body yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude (type:uint8_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                body_roll_rate            : Body roll rate [rad/s] (type:float)
+                body_pitch_rate           : Body pitch rate [rad/s] (type:float)
+                body_yaw_rate             : Body yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (type:float)
 
                 '''
                 return self.send(self.set_attitude_target_encode(time_boot_ms, target_system, target_component, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust), force_mavlink1=force_mavlink1)
@@ -11169,13 +11522,13 @@ class MAVLink(object):
                 a SET_ATTITUDE_TARGET message if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 7: reserved, bit 8: attitude (uint8_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                body_roll_rate            : Body roll rate (float)
-                body_pitch_rate           : Body pitch rate (float)
-                body_yaw_rate             : Body yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 7: reserved, bit 8: attitude (type:uint8_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                body_roll_rate            : Body roll rate [rad/s] (type:float)
+                body_pitch_rate           : Body pitch rate [rad/s] (type:float)
+                body_yaw_rate             : Body yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (type:float)
 
                 '''
                 return MAVLink_attitude_target_message(time_boot_ms, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust)
@@ -11187,13 +11540,13 @@ class MAVLink(object):
                 a SET_ATTITUDE_TARGET message if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 7: reserved, bit 8: attitude (uint8_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                body_roll_rate            : Body roll rate (float)
-                body_pitch_rate           : Body pitch rate (float)
-                body_yaw_rate             : Body yaw rate (float)
-                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                type_mask                 : Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 7: reserved, bit 8: attitude (type:uint8_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                body_roll_rate            : Body roll rate [rad/s] (type:float)
+                body_pitch_rate           : Body pitch rate [rad/s] (type:float)
+                body_yaw_rate             : Body yaw rate [rad/s] (type:float)
+                thrust                    : Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust) (type:float)
 
                 '''
                 return self.send(self.attitude_target_encode(time_boot_ms, type_mask, q, body_roll_rate, body_pitch_rate, body_yaw_rate, thrust), force_mavlink1=force_mavlink1)
@@ -11204,22 +11557,22 @@ class MAVLink(object):
                 frame. Used by an external controller to command the
                 vehicle (manual controller or other system).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                x                         : X Position in NED frame (float)
-                y                         : Y Position in NED frame (float)
-                z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                x                         : X Position in NED frame [m] (type:float)
+                y                         : Y Position in NED frame [m] (type:float)
+                z                         : Z Position in NED frame (note, altitude is negative in NED) [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return MAVLink_set_position_target_local_ned_message(time_boot_ms, target_system, target_component, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate)
@@ -11230,22 +11583,22 @@ class MAVLink(object):
                 frame. Used by an external controller to command the
                 vehicle (manual controller or other system).
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                x                         : X Position in NED frame (float)
-                y                         : Y Position in NED frame (float)
-                z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                x                         : X Position in NED frame [m] (type:float)
+                y                         : Y Position in NED frame [m] (type:float)
+                z                         : Z Position in NED frame (note, altitude is negative in NED) [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return self.send(self.set_position_target_local_ned_encode(time_boot_ms, target_system, target_component, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate), force_mavlink1=force_mavlink1)
@@ -11258,20 +11611,20 @@ class MAVLink(object):
                 SET_POSITION_TARGET_LOCAL_NED if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                x                         : X Position in NED frame (float)
-                y                         : Y Position in NED frame (float)
-                z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                x                         : X Position in NED frame [m] (type:float)
+                y                         : Y Position in NED frame [m] (type:float)
+                z                         : Z Position in NED frame (note, altitude is negative in NED) [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return MAVLink_position_target_local_ned_message(time_boot_ms, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate)
@@ -11284,20 +11637,20 @@ class MAVLink(object):
                 SET_POSITION_TARGET_LOCAL_NED if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                x                         : X Position in NED frame (float)
-                y                         : Y Position in NED frame (float)
-                z                         : Z Position in NED frame (note, altitude is negative in NED) (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_LOCAL_NED = 1, MAV_FRAME_LOCAL_OFFSET_NED = 7, MAV_FRAME_BODY_NED = 8, MAV_FRAME_BODY_OFFSET_NED = 9 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                x                         : X Position in NED frame [m] (type:float)
+                y                         : Y Position in NED frame [m] (type:float)
+                z                         : Z Position in NED frame (note, altitude is negative in NED) [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return self.send(self.position_target_local_ned_encode(time_boot_ms, coordinate_frame, type_mask, x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate), force_mavlink1=force_mavlink1)
@@ -11309,22 +11662,22 @@ class MAVLink(object):
                 controller to command the vehicle (manual controller
                 or other system).
 
-                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                lat_int                   : X Position in WGS84 frame (int32_t)
-                lon_int                   : Y Position in WGS84 frame (int32_t)
-                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                lat_int                   : X Position in WGS84 frame [degE7] (type:int32_t)
+                lon_int                   : Y Position in WGS84 frame [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return MAVLink_set_position_target_global_int_message(time_boot_ms, target_system, target_component, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate)
@@ -11336,22 +11689,22 @@ class MAVLink(object):
                 controller to command the vehicle (manual controller
                 or other system).
 
-                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                lat_int                   : X Position in WGS84 frame (int32_t)
-                lon_int                   : Y Position in WGS84 frame (int32_t)
-                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. [ms] (type:uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                lat_int                   : X Position in WGS84 frame [degE7] (type:int32_t)
+                lon_int                   : Y Position in WGS84 frame [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return self.send(self.set_position_target_global_int_encode(time_boot_ms, target_system, target_component, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate), force_mavlink1=force_mavlink1)
@@ -11364,20 +11717,20 @@ class MAVLink(object):
                 SET_POSITION_TARGET_GLOBAL_INT if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                lat_int                   : X Position in WGS84 frame (int32_t)
-                lon_int                   : Y Position in WGS84 frame (int32_t)
-                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. [ms] (type:uint32_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                lat_int                   : X Position in WGS84 frame [degE7] (type:int32_t)
+                lon_int                   : Y Position in WGS84 frame [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return MAVLink_position_target_global_int_message(time_boot_ms, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate)
@@ -11390,20 +11743,20 @@ class MAVLink(object):
                 SET_POSITION_TARGET_GLOBAL_INT if the vehicle is being
                 controlled this way.
 
-                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. (uint32_t)
-                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (uint8_t)
-                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle. (uint16_t)
-                lat_int                   : X Position in WGS84 frame (int32_t)
-                lon_int                   : Y Position in WGS84 frame (int32_t)
-                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT (float)
-                vx                        : X velocity in NED frame (float)
-                vy                        : Y velocity in NED frame (float)
-                vz                        : Z velocity in NED frame (float)
-                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N (float)
-                yaw                       : yaw setpoint (float)
-                yaw_rate                  : yaw rate setpoint (float)
+                time_boot_ms              : Timestamp (time since system boot). The rationale for the timestamp in the setpoint is to allow the system to compensate for the transport delay of the setpoint. This allows the system to compensate processing latency. [ms] (type:uint32_t)
+                coordinate_frame          : Valid options are: MAV_FRAME_GLOBAL_INT = 5, MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6, MAV_FRAME_GLOBAL_TERRAIN_ALT_INT = 11 (type:uint8_t, values:MAV_FRAME)
+                type_mask                 : Bitmap to indicate which dimensions should be ignored by the vehicle: a value of 0b0000000000000000 or 0b0000001000000000 indicates that none of the setpoint dimensions should be ignored. If bit 10 is set the floats afx afy afz should be interpreted as force instead of acceleration. Mapping: bit 1: x, bit 2: y, bit 3: z, bit 4: vx, bit 5: vy, bit 6: vz, bit 7: ax, bit 8: ay, bit 9: az, bit 10: is force setpoint, bit 11: yaw, bit 12: yaw rate (type:uint16_t)
+                lat_int                   : X Position in WGS84 frame [degE7] (type:int32_t)
+                lon_int                   : Y Position in WGS84 frame [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) if absolute or relative, above terrain if GLOBAL_TERRAIN_ALT_INT [m] (type:float)
+                vx                        : X velocity in NED frame [m/s] (type:float)
+                vy                        : Y velocity in NED frame [m/s] (type:float)
+                vz                        : Z velocity in NED frame [m/s] (type:float)
+                afx                       : X acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afy                       : Y acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                afz                       : Z acceleration or force (if bit 10 of type_mask is set) in NED frame in meter / s^2 or N [m/s/s] (type:float)
+                yaw                       : yaw setpoint [rad] (type:float)
+                yaw_rate                  : yaw rate setpoint [rad/s] (type:float)
 
                 '''
                 return self.send(self.position_target_global_int_encode(time_boot_ms, coordinate_frame, type_mask, lat_int, lon_int, alt, vx, vy, vz, afx, afy, afz, yaw, yaw_rate), force_mavlink1=force_mavlink1)
@@ -11416,13 +11769,13 @@ class MAVLink(object):
                 down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                roll                      : Roll (float)
-                pitch                     : Pitch (float)
-                yaw                       : Yaw (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                roll                      : Roll [rad] (type:float)
+                pitch                     : Pitch [rad] (type:float)
+                yaw                       : Yaw [rad] (type:float)
 
                 '''
                 return MAVLink_local_position_ned_system_global_offset_message(time_boot_ms, x, y, z, roll, pitch, yaw)
@@ -11435,13 +11788,13 @@ class MAVLink(object):
                 down (aeronautical frame, NED / north-east-down
                 convention)
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                roll                      : Roll (float)
-                pitch                     : Pitch (float)
-                yaw                       : Yaw (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                roll                      : Roll [rad] (type:float)
+                pitch                     : Pitch [rad] (type:float)
+                yaw                       : Yaw [rad] (type:float)
 
                 '''
                 return self.send(self.local_position_ned_system_global_offset_encode(time_boot_ms, x, y, z, roll, pitch, yaw), force_mavlink1=force_mavlink1)
@@ -11452,22 +11805,22 @@ class MAVLink(object):
                 throughput applications such as hardware in the loop
                 simulations.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                rollspeed                 : Body frame roll / phi angular speed (float)
-                pitchspeed                : Body frame pitch / theta angular speed (float)
-                yawspeed                  : Body frame yaw / psi angular speed (float)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude (int32_t)
-                vx                        : Ground X Speed (Latitude) (int16_t)
-                vy                        : Ground Y Speed (Longitude) (int16_t)
-                vz                        : Ground Z Speed (Altitude) (int16_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                rollspeed                 : Body frame roll / phi angular speed [rad/s] (type:float)
+                pitchspeed                : Body frame pitch / theta angular speed [rad/s] (type:float)
+                yawspeed                  : Body frame yaw / psi angular speed [rad/s] (type:float)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude) [cm/s] (type:int16_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
 
                 '''
                 return MAVLink_hil_state_message(time_usec, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, xacc, yacc, zacc)
@@ -11478,22 +11831,22 @@ class MAVLink(object):
                 throughput applications such as hardware in the loop
                 simulations.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                rollspeed                 : Body frame roll / phi angular speed (float)
-                pitchspeed                : Body frame pitch / theta angular speed (float)
-                yawspeed                  : Body frame yaw / psi angular speed (float)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude (int32_t)
-                vx                        : Ground X Speed (Latitude) (int16_t)
-                vy                        : Ground Y Speed (Longitude) (int16_t)
-                vz                        : Ground Z Speed (Altitude) (int16_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                rollspeed                 : Body frame roll / phi angular speed [rad/s] (type:float)
+                pitchspeed                : Body frame pitch / theta angular speed [rad/s] (type:float)
+                yawspeed                  : Body frame yaw / psi angular speed [rad/s] (type:float)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude) [cm/s] (type:int16_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
 
                 '''
                 return self.send(self.hil_state_encode(time_usec, roll, pitch, yaw, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, xacc, yacc, zacc), force_mavlink1=force_mavlink1)
@@ -11503,17 +11856,17 @@ class MAVLink(object):
                 Sent from autopilot to simulation. Hardware in the loop control
                 outputs
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                roll_ailerons             : Control output -1 .. 1 (float)
-                pitch_elevator            : Control output -1 .. 1 (float)
-                yaw_rudder                : Control output -1 .. 1 (float)
-                throttle                  : Throttle 0 .. 1 (float)
-                aux1                      : Aux 1, -1 .. 1 (float)
-                aux2                      : Aux 2, -1 .. 1 (float)
-                aux3                      : Aux 3, -1 .. 1 (float)
-                aux4                      : Aux 4, -1 .. 1 (float)
-                mode                      : System mode. (uint8_t)
-                nav_mode                  : Navigation mode (MAV_NAV_MODE) (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                roll_ailerons             : Control output -1 .. 1 (type:float)
+                pitch_elevator            : Control output -1 .. 1 (type:float)
+                yaw_rudder                : Control output -1 .. 1 (type:float)
+                throttle                  : Throttle 0 .. 1 (type:float)
+                aux1                      : Aux 1, -1 .. 1 (type:float)
+                aux2                      : Aux 2, -1 .. 1 (type:float)
+                aux3                      : Aux 3, -1 .. 1 (type:float)
+                aux4                      : Aux 4, -1 .. 1 (type:float)
+                mode                      : System mode. (type:uint8_t, values:MAV_MODE)
+                nav_mode                  : Navigation mode (MAV_NAV_MODE) (type:uint8_t)
 
                 '''
                 return MAVLink_hil_controls_message(time_usec, roll_ailerons, pitch_elevator, yaw_rudder, throttle, aux1, aux2, aux3, aux4, mode, nav_mode)
@@ -11523,17 +11876,17 @@ class MAVLink(object):
                 Sent from autopilot to simulation. Hardware in the loop control
                 outputs
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                roll_ailerons             : Control output -1 .. 1 (float)
-                pitch_elevator            : Control output -1 .. 1 (float)
-                yaw_rudder                : Control output -1 .. 1 (float)
-                throttle                  : Throttle 0 .. 1 (float)
-                aux1                      : Aux 1, -1 .. 1 (float)
-                aux2                      : Aux 2, -1 .. 1 (float)
-                aux3                      : Aux 3, -1 .. 1 (float)
-                aux4                      : Aux 4, -1 .. 1 (float)
-                mode                      : System mode. (uint8_t)
-                nav_mode                  : Navigation mode (MAV_NAV_MODE) (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                roll_ailerons             : Control output -1 .. 1 (type:float)
+                pitch_elevator            : Control output -1 .. 1 (type:float)
+                yaw_rudder                : Control output -1 .. 1 (type:float)
+                throttle                  : Throttle 0 .. 1 (type:float)
+                aux1                      : Aux 1, -1 .. 1 (type:float)
+                aux2                      : Aux 2, -1 .. 1 (type:float)
+                aux3                      : Aux 3, -1 .. 1 (type:float)
+                aux4                      : Aux 4, -1 .. 1 (type:float)
+                mode                      : System mode. (type:uint8_t, values:MAV_MODE)
+                nav_mode                  : Navigation mode (MAV_NAV_MODE) (type:uint8_t)
 
                 '''
                 return self.send(self.hil_controls_encode(time_usec, roll_ailerons, pitch_elevator, yaw_rudder, throttle, aux1, aux2, aux3, aux4, mode, nav_mode), force_mavlink1=force_mavlink1)
@@ -11546,20 +11899,20 @@ class MAVLink(object):
                 Individual receivers/transmitters might violate this
                 specification.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                chan1_raw                 : RC channel 1 value (uint16_t)
-                chan2_raw                 : RC channel 2 value (uint16_t)
-                chan3_raw                 : RC channel 3 value (uint16_t)
-                chan4_raw                 : RC channel 4 value (uint16_t)
-                chan5_raw                 : RC channel 5 value (uint16_t)
-                chan6_raw                 : RC channel 6 value (uint16_t)
-                chan7_raw                 : RC channel 7 value (uint16_t)
-                chan8_raw                 : RC channel 8 value (uint16_t)
-                chan9_raw                 : RC channel 9 value (uint16_t)
-                chan10_raw                : RC channel 10 value (uint16_t)
-                chan11_raw                : RC channel 11 value (uint16_t)
-                chan12_raw                : RC channel 12 value (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                chan1_raw                 : RC channel 1 value [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (type:uint8_t)
 
                 '''
                 return MAVLink_hil_rc_inputs_raw_message(time_usec, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, rssi)
@@ -11572,20 +11925,20 @@ class MAVLink(object):
                 Individual receivers/transmitters might violate this
                 specification.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                chan1_raw                 : RC channel 1 value (uint16_t)
-                chan2_raw                 : RC channel 2 value (uint16_t)
-                chan3_raw                 : RC channel 3 value (uint16_t)
-                chan4_raw                 : RC channel 4 value (uint16_t)
-                chan5_raw                 : RC channel 5 value (uint16_t)
-                chan6_raw                 : RC channel 6 value (uint16_t)
-                chan7_raw                 : RC channel 7 value (uint16_t)
-                chan8_raw                 : RC channel 8 value (uint16_t)
-                chan9_raw                 : RC channel 9 value (uint16_t)
-                chan10_raw                : RC channel 10 value (uint16_t)
-                chan11_raw                : RC channel 11 value (uint16_t)
-                chan12_raw                : RC channel 12 value (uint16_t)
-                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                chan1_raw                 : RC channel 1 value [us] (type:uint16_t)
+                chan2_raw                 : RC channel 2 value [us] (type:uint16_t)
+                chan3_raw                 : RC channel 3 value [us] (type:uint16_t)
+                chan4_raw                 : RC channel 4 value [us] (type:uint16_t)
+                chan5_raw                 : RC channel 5 value [us] (type:uint16_t)
+                chan6_raw                 : RC channel 6 value [us] (type:uint16_t)
+                chan7_raw                 : RC channel 7 value [us] (type:uint16_t)
+                chan8_raw                 : RC channel 8 value [us] (type:uint16_t)
+                chan9_raw                 : RC channel 9 value [us] (type:uint16_t)
+                chan10_raw                : RC channel 10 value [us] (type:uint16_t)
+                chan11_raw                : RC channel 11 value [us] (type:uint16_t)
+                chan12_raw                : RC channel 12 value [us] (type:uint16_t)
+                rssi                      : Receive signal strength indicator. Values: [0-100], 255: invalid/unknown. (type:uint8_t)
 
                 '''
                 return self.send(self.hil_rc_inputs_raw_encode(time_usec, chan1_raw, chan2_raw, chan3_raw, chan4_raw, chan5_raw, chan6_raw, chan7_raw, chan8_raw, chan9_raw, chan10_raw, chan11_raw, chan12_raw, rssi), force_mavlink1=force_mavlink1)
@@ -11595,10 +11948,10 @@ class MAVLink(object):
                 Sent from autopilot to simulation. Hardware in the loop control
                 outputs (replacement for HIL_CONTROLS)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                controls                  : Control outputs -1 .. 1. Channel assignment depends on the simulated hardware. (float)
-                mode                      : System mode. Includes arming state. (uint8_t)
-                flags                     : Flags as bitfield, reserved for future use. (uint64_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                controls                  : Control outputs -1 .. 1. Channel assignment depends on the simulated hardware. (type:float)
+                mode                      : System mode. Includes arming state. (type:uint8_t, values:MAV_MODE)
+                flags                     : Flags as bitfield, reserved for future use. (type:uint64_t)
 
                 '''
                 return MAVLink_hil_actuator_controls_message(time_usec, controls, mode, flags)
@@ -11608,10 +11961,10 @@ class MAVLink(object):
                 Sent from autopilot to simulation. Hardware in the loop control
                 outputs (replacement for HIL_CONTROLS)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                controls                  : Control outputs -1 .. 1. Channel assignment depends on the simulated hardware. (float)
-                mode                      : System mode. Includes arming state. (uint8_t)
-                flags                     : Flags as bitfield, reserved for future use. (uint64_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                controls                  : Control outputs -1 .. 1. Channel assignment depends on the simulated hardware. (type:float)
+                mode                      : System mode. Includes arming state. (type:uint8_t, values:MAV_MODE)
+                flags                     : Flags as bitfield, reserved for future use. (type:uint64_t)
 
                 '''
                 return self.send(self.hil_actuator_controls_encode(time_usec, controls, mode, flags), force_mavlink1=force_mavlink1)
@@ -11620,16 +11973,16 @@ class MAVLink(object):
                 '''
                 Optical flow from a flow sensor (e.g. optical mouse sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                flow_x                    : Flow in x-sensor direction (int16_t)
-                flow_y                    : Flow in y-sensor direction (int16_t)
-                flow_comp_m_x             : Flow in x-sensor direction, angular-speed compensated (float)
-                flow_comp_m_y             : Flow in y-sensor direction, angular-speed compensated (float)
-                quality                   : Optical flow quality / confidence. 0: bad, 255: maximum quality (uint8_t)
-                ground_distance           : Ground distance. Positive value: distance known. Negative value: Unknown distance (float)
-                flow_rate_x               : Flow rate about X axis (float)
-                flow_rate_y               : Flow rate about Y axis (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                flow_x                    : Flow in x-sensor direction [dpix] (type:int16_t)
+                flow_y                    : Flow in y-sensor direction [dpix] (type:int16_t)
+                flow_comp_m_x             : Flow in x-sensor direction, angular-speed compensated [m] (type:float)
+                flow_comp_m_y             : Flow in y-sensor direction, angular-speed compensated [m] (type:float)
+                quality                   : Optical flow quality / confidence. 0: bad, 255: maximum quality (type:uint8_t)
+                ground_distance           : Ground distance. Positive value: distance known. Negative value: Unknown distance [m] (type:float)
+                flow_rate_x               : Flow rate about X axis [rad/s] (type:float)
+                flow_rate_y               : Flow rate about Y axis [rad/s] (type:float)
 
                 '''
                 return MAVLink_optical_flow_message(time_usec, sensor_id, flow_x, flow_y, flow_comp_m_x, flow_comp_m_y, quality, ground_distance, flow_rate_x, flow_rate_y)
@@ -11638,138 +11991,138 @@ class MAVLink(object):
                 '''
                 Optical flow from a flow sensor (e.g. optical mouse sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                flow_x                    : Flow in x-sensor direction (int16_t)
-                flow_y                    : Flow in y-sensor direction (int16_t)
-                flow_comp_m_x             : Flow in x-sensor direction, angular-speed compensated (float)
-                flow_comp_m_y             : Flow in y-sensor direction, angular-speed compensated (float)
-                quality                   : Optical flow quality / confidence. 0: bad, 255: maximum quality (uint8_t)
-                ground_distance           : Ground distance. Positive value: distance known. Negative value: Unknown distance (float)
-                flow_rate_x               : Flow rate about X axis (float)
-                flow_rate_y               : Flow rate about Y axis (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                flow_x                    : Flow in x-sensor direction [dpix] (type:int16_t)
+                flow_y                    : Flow in y-sensor direction [dpix] (type:int16_t)
+                flow_comp_m_x             : Flow in x-sensor direction, angular-speed compensated [m] (type:float)
+                flow_comp_m_y             : Flow in y-sensor direction, angular-speed compensated [m] (type:float)
+                quality                   : Optical flow quality / confidence. 0: bad, 255: maximum quality (type:uint8_t)
+                ground_distance           : Ground distance. Positive value: distance known. Negative value: Unknown distance [m] (type:float)
+                flow_rate_x               : Flow rate about X axis [rad/s] (type:float)
+                flow_rate_y               : Flow rate about Y axis [rad/s] (type:float)
 
                 '''
                 return self.send(self.optical_flow_encode(time_usec, sensor_id, flow_x, flow_y, flow_comp_m_x, flow_comp_m_y, quality, ground_distance, flow_rate_x, flow_rate_y), force_mavlink1=force_mavlink1)
 
-        def global_vision_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def global_vision_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return MAVLink_global_vision_position_estimate_message(usec, x, y, z, roll, pitch, yaw, covariance)
 
-        def global_vision_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=0, force_mavlink1=False):
+        def global_vision_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return self.send(self.global_vision_position_estimate_encode(usec, x, y, z, roll, pitch, yaw, covariance), force_mavlink1=force_mavlink1)
 
-        def vision_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def vision_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return MAVLink_vision_position_estimate_message(usec, x, y, z, roll, pitch, yaw, covariance)
 
-        def vision_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=0, force_mavlink1=False):
+        def vision_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return self.send(self.vision_position_estimate_encode(usec, x, y, z, roll, pitch, yaw, covariance), force_mavlink1=force_mavlink1)
 
-        def vision_speed_estimate_encode(self, usec, x, y, z, covariance=0):
+        def vision_speed_estimate_encode(self, usec, x, y, z, covariance=[0,0,0,0,0,0,0,0,0]):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X speed (float)
-                y                         : Global Y speed (float)
-                z                         : Global Z speed (float)
-                covariance                : Linear velocity covariance matrix (1st three entries - 1st row, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X speed [m/s] (type:float)
+                y                         : Global Y speed [m/s] (type:float)
+                z                         : Global Z speed [m/s] (type:float)
+                covariance                : Linear velocity covariance matrix (1st three entries - 1st row, etc.) (type:float)
 
                 '''
                 return MAVLink_vision_speed_estimate_message(usec, x, y, z, covariance)
 
-        def vision_speed_estimate_send(self, usec, x, y, z, covariance=0, force_mavlink1=False):
+        def vision_speed_estimate_send(self, usec, x, y, z, covariance=[0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X speed (float)
-                y                         : Global Y speed (float)
-                z                         : Global Z speed (float)
-                covariance                : Linear velocity covariance matrix (1st three entries - 1st row, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X speed [m/s] (type:float)
+                y                         : Global Y speed [m/s] (type:float)
+                z                         : Global Z speed [m/s] (type:float)
+                covariance                : Linear velocity covariance matrix (1st three entries - 1st row, etc.) (type:float)
 
                 '''
                 return self.send(self.vision_speed_estimate_encode(usec, x, y, z, covariance), force_mavlink1=force_mavlink1)
 
-        def vicon_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=0):
+        def vicon_position_estimate_encode(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return MAVLink_vicon_position_estimate_message(usec, x, y, z, roll, pitch, yaw, covariance)
 
-        def vicon_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=0, force_mavlink1=False):
+        def vicon_position_estimate_send(self, usec, x, y, z, roll, pitch, yaw, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 
 
-                usec                      : Timestamp (UNIX time or time since system boot) (uint64_t)
-                x                         : Global X position (float)
-                y                         : Global Y position (float)
-                z                         : Global Z position (float)
-                roll                      : Roll angle (float)
-                pitch                     : Pitch angle (float)
-                yaw                       : Yaw angle (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                usec                      : Timestamp (UNIX time or time since system boot) [us] (type:uint64_t)
+                x                         : Global X position [m] (type:float)
+                y                         : Global Y position [m] (type:float)
+                z                         : Global Z position [m] (type:float)
+                roll                      : Roll angle [rad] (type:float)
+                pitch                     : Pitch angle [rad] (type:float)
+                yaw                       : Yaw angle [rad] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return self.send(self.vicon_position_estimate_encode(usec, x, y, z, roll, pitch, yaw, covariance), force_mavlink1=force_mavlink1)
@@ -11778,21 +12131,21 @@ class MAVLink(object):
                 '''
                 The IMU readings in SI units in NED body frame
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis (float)
-                ygyro                     : Angular speed around Y axis (float)
-                zgyro                     : Angular speed around Z axis (float)
-                xmag                      : X Magnetic field (float)
-                ymag                      : Y Magnetic field (float)
-                zmag                      : Z Magnetic field (float)
-                abs_pressure              : Absolute pressure (float)
-                diff_pressure             : Differential pressure (float)
-                pressure_alt              : Altitude calculated from pressure (float)
-                temperature               : Temperature (float)
-                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis [rad/s] (type:float)
+                xmag                      : X Magnetic field [gauss] (type:float)
+                ymag                      : Y Magnetic field [gauss] (type:float)
+                zmag                      : Z Magnetic field [gauss] (type:float)
+                abs_pressure              : Absolute pressure [mbar] (type:float)
+                diff_pressure             : Differential pressure [mbar] (type:float)
+                pressure_alt              : Altitude calculated from pressure (type:float)
+                temperature               : Temperature [degC] (type:float)
+                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature (type:uint16_t)
 
                 '''
                 return MAVLink_highres_imu_message(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated)
@@ -11801,21 +12154,21 @@ class MAVLink(object):
                 '''
                 The IMU readings in SI units in NED body frame
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis (float)
-                ygyro                     : Angular speed around Y axis (float)
-                zgyro                     : Angular speed around Z axis (float)
-                xmag                      : X Magnetic field (float)
-                ymag                      : Y Magnetic field (float)
-                zmag                      : Z Magnetic field (float)
-                abs_pressure              : Absolute pressure (float)
-                diff_pressure             : Differential pressure (float)
-                pressure_alt              : Altitude calculated from pressure (float)
-                temperature               : Temperature (float)
-                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis [rad/s] (type:float)
+                xmag                      : X Magnetic field [gauss] (type:float)
+                ymag                      : Y Magnetic field [gauss] (type:float)
+                zmag                      : Z Magnetic field [gauss] (type:float)
+                abs_pressure              : Absolute pressure [mbar] (type:float)
+                diff_pressure             : Differential pressure [mbar] (type:float)
+                pressure_alt              : Altitude calculated from pressure (type:float)
+                temperature               : Temperature [degC] (type:float)
+                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature (type:uint16_t)
 
                 '''
                 return self.send(self.highres_imu_encode(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated), force_mavlink1=force_mavlink1)
@@ -11825,18 +12178,18 @@ class MAVLink(object):
                 Optical flow from an angular rate flow sensor (e.g. PX4FLOW or mouse
                 sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. (uint32_t)
-                integrated_x              : Flow around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) (float)
-                integrated_y              : Flow around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) (float)
-                integrated_xgyro          : RH rotation around X axis (float)
-                integrated_ygyro          : RH rotation around Y axis (float)
-                integrated_zgyro          : RH rotation around Z axis (float)
-                temperature               : Temperature (int16_t)
-                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (uint8_t)
-                time_delta_distance_us        : Time since the distance was sampled. (uint32_t)
-                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. [us] (type:uint32_t)
+                integrated_x              : Flow around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) [rad] (type:float)
+                integrated_y              : Flow around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) [rad] (type:float)
+                integrated_xgyro          : RH rotation around X axis [rad] (type:float)
+                integrated_ygyro          : RH rotation around Y axis [rad] (type:float)
+                integrated_zgyro          : RH rotation around Z axis [rad] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
+                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (type:uint8_t)
+                time_delta_distance_us        : Time since the distance was sampled. [us] (type:uint32_t)
+                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. [m] (type:float)
 
                 '''
                 return MAVLink_optical_flow_rad_message(time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance)
@@ -11846,18 +12199,18 @@ class MAVLink(object):
                 Optical flow from an angular rate flow sensor (e.g. PX4FLOW or mouse
                 sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. (uint32_t)
-                integrated_x              : Flow around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) (float)
-                integrated_y              : Flow around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) (float)
-                integrated_xgyro          : RH rotation around X axis (float)
-                integrated_ygyro          : RH rotation around Y axis (float)
-                integrated_zgyro          : RH rotation around Z axis (float)
-                temperature               : Temperature (int16_t)
-                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (uint8_t)
-                time_delta_distance_us        : Time since the distance was sampled. (uint32_t)
-                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. [us] (type:uint32_t)
+                integrated_x              : Flow around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) [rad] (type:float)
+                integrated_y              : Flow around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) [rad] (type:float)
+                integrated_xgyro          : RH rotation around X axis [rad] (type:float)
+                integrated_ygyro          : RH rotation around Y axis [rad] (type:float)
+                integrated_zgyro          : RH rotation around Z axis [rad] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
+                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (type:uint8_t)
+                time_delta_distance_us        : Time since the distance was sampled. [us] (type:uint32_t)
+                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. [m] (type:float)
 
                 '''
                 return self.send(self.optical_flow_rad_encode(time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance), force_mavlink1=force_mavlink1)
@@ -11866,21 +12219,21 @@ class MAVLink(object):
                 '''
                 The IMU readings in SI units in NED body frame
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis in body frame (float)
-                ygyro                     : Angular speed around Y axis in body frame (float)
-                zgyro                     : Angular speed around Z axis in body frame (float)
-                xmag                      : X Magnetic field (float)
-                ymag                      : Y Magnetic field (float)
-                zmag                      : Z Magnetic field (float)
-                abs_pressure              : Absolute pressure (float)
-                diff_pressure             : Differential pressure (airspeed) (float)
-                pressure_alt              : Altitude calculated from pressure (float)
-                temperature               : Temperature (float)
-                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature, bit 31: full reset of attitude/position/velocities/etc was performed in sim. (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis in body frame [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis in body frame [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis in body frame [rad/s] (type:float)
+                xmag                      : X Magnetic field [gauss] (type:float)
+                ymag                      : Y Magnetic field [gauss] (type:float)
+                zmag                      : Z Magnetic field [gauss] (type:float)
+                abs_pressure              : Absolute pressure [mbar] (type:float)
+                diff_pressure             : Differential pressure (airspeed) [mbar] (type:float)
+                pressure_alt              : Altitude calculated from pressure (type:float)
+                temperature               : Temperature [degC] (type:float)
+                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature, bit 31: full reset of attitude/position/velocities/etc was performed in sim. (type:uint32_t)
 
                 '''
                 return MAVLink_hil_sensor_message(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated)
@@ -11889,21 +12242,21 @@ class MAVLink(object):
                 '''
                 The IMU readings in SI units in NED body frame
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis in body frame (float)
-                ygyro                     : Angular speed around Y axis in body frame (float)
-                zgyro                     : Angular speed around Z axis in body frame (float)
-                xmag                      : X Magnetic field (float)
-                ymag                      : Y Magnetic field (float)
-                zmag                      : Z Magnetic field (float)
-                abs_pressure              : Absolute pressure (float)
-                diff_pressure             : Differential pressure (airspeed) (float)
-                pressure_alt              : Altitude calculated from pressure (float)
-                temperature               : Temperature (float)
-                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature, bit 31: full reset of attitude/position/velocities/etc was performed in sim. (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis in body frame [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis in body frame [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis in body frame [rad/s] (type:float)
+                xmag                      : X Magnetic field [gauss] (type:float)
+                ymag                      : Y Magnetic field [gauss] (type:float)
+                zmag                      : Z Magnetic field [gauss] (type:float)
+                abs_pressure              : Absolute pressure [mbar] (type:float)
+                diff_pressure             : Differential pressure (airspeed) [mbar] (type:float)
+                pressure_alt              : Altitude calculated from pressure (type:float)
+                temperature               : Temperature [degC] (type:float)
+                fields_updated            : Bitmap for fields that have updated since last message, bit 0 = xacc, bit 12: temperature, bit 31: full reset of attitude/position/velocities/etc was performed in sim. (type:uint32_t)
 
                 '''
                 return self.send(self.hil_sensor_encode(time_usec, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag, abs_pressure, diff_pressure, pressure_alt, temperature, fields_updated), force_mavlink1=force_mavlink1)
@@ -11912,27 +12265,27 @@ class MAVLink(object):
                 '''
                 Status of simulation environment, if used
 
-                q1                        : True attitude quaternion component 1, w (1 in null-rotation) (float)
-                q2                        : True attitude quaternion component 2, x (0 in null-rotation) (float)
-                q3                        : True attitude quaternion component 3, y (0 in null-rotation) (float)
-                q4                        : True attitude quaternion component 4, z (0 in null-rotation) (float)
-                roll                      : Attitude roll expressed as Euler angles, not recommended except for human-readable outputs (float)
-                pitch                     : Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs (float)
-                yaw                       : Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs (float)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis (float)
-                ygyro                     : Angular speed around Y axis (float)
-                zgyro                     : Angular speed around Z axis (float)
-                lat                       : Latitude (float)
-                lon                       : Longitude (float)
-                alt                       : Altitude (float)
-                std_dev_horz              : Horizontal position standard deviation (float)
-                std_dev_vert              : Vertical position standard deviation (float)
-                vn                        : True velocity in NORTH direction in earth-fixed NED frame (float)
-                ve                        : True velocity in EAST direction in earth-fixed NED frame (float)
-                vd                        : True velocity in DOWN direction in earth-fixed NED frame (float)
+                q1                        : True attitude quaternion component 1, w (1 in null-rotation) (type:float)
+                q2                        : True attitude quaternion component 2, x (0 in null-rotation) (type:float)
+                q3                        : True attitude quaternion component 3, y (0 in null-rotation) (type:float)
+                q4                        : True attitude quaternion component 4, z (0 in null-rotation) (type:float)
+                roll                      : Attitude roll expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                pitch                     : Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                yaw                       : Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis [rad/s] (type:float)
+                lat                       : Latitude [deg] (type:float)
+                lon                       : Longitude [deg] (type:float)
+                alt                       : Altitude [m] (type:float)
+                std_dev_horz              : Horizontal position standard deviation (type:float)
+                std_dev_vert              : Vertical position standard deviation (type:float)
+                vn                        : True velocity in NORTH direction in earth-fixed NED frame [m/s] (type:float)
+                ve                        : True velocity in EAST direction in earth-fixed NED frame [m/s] (type:float)
+                vd                        : True velocity in DOWN direction in earth-fixed NED frame [m/s] (type:float)
 
                 '''
                 return MAVLink_sim_state_message(q1, q2, q3, q4, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, std_dev_horz, std_dev_vert, vn, ve, vd)
@@ -11941,27 +12294,27 @@ class MAVLink(object):
                 '''
                 Status of simulation environment, if used
 
-                q1                        : True attitude quaternion component 1, w (1 in null-rotation) (float)
-                q2                        : True attitude quaternion component 2, x (0 in null-rotation) (float)
-                q3                        : True attitude quaternion component 3, y (0 in null-rotation) (float)
-                q4                        : True attitude quaternion component 4, z (0 in null-rotation) (float)
-                roll                      : Attitude roll expressed as Euler angles, not recommended except for human-readable outputs (float)
-                pitch                     : Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs (float)
-                yaw                       : Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs (float)
-                xacc                      : X acceleration (float)
-                yacc                      : Y acceleration (float)
-                zacc                      : Z acceleration (float)
-                xgyro                     : Angular speed around X axis (float)
-                ygyro                     : Angular speed around Y axis (float)
-                zgyro                     : Angular speed around Z axis (float)
-                lat                       : Latitude (float)
-                lon                       : Longitude (float)
-                alt                       : Altitude (float)
-                std_dev_horz              : Horizontal position standard deviation (float)
-                std_dev_vert              : Vertical position standard deviation (float)
-                vn                        : True velocity in NORTH direction in earth-fixed NED frame (float)
-                ve                        : True velocity in EAST direction in earth-fixed NED frame (float)
-                vd                        : True velocity in DOWN direction in earth-fixed NED frame (float)
+                q1                        : True attitude quaternion component 1, w (1 in null-rotation) (type:float)
+                q2                        : True attitude quaternion component 2, x (0 in null-rotation) (type:float)
+                q3                        : True attitude quaternion component 3, y (0 in null-rotation) (type:float)
+                q4                        : True attitude quaternion component 4, z (0 in null-rotation) (type:float)
+                roll                      : Attitude roll expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                pitch                     : Attitude pitch expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                yaw                       : Attitude yaw expressed as Euler angles, not recommended except for human-readable outputs (type:float)
+                xacc                      : X acceleration [m/s/s] (type:float)
+                yacc                      : Y acceleration [m/s/s] (type:float)
+                zacc                      : Z acceleration [m/s/s] (type:float)
+                xgyro                     : Angular speed around X axis [rad/s] (type:float)
+                ygyro                     : Angular speed around Y axis [rad/s] (type:float)
+                zgyro                     : Angular speed around Z axis [rad/s] (type:float)
+                lat                       : Latitude [deg] (type:float)
+                lon                       : Longitude [deg] (type:float)
+                alt                       : Altitude [m] (type:float)
+                std_dev_horz              : Horizontal position standard deviation (type:float)
+                std_dev_vert              : Vertical position standard deviation (type:float)
+                vn                        : True velocity in NORTH direction in earth-fixed NED frame [m/s] (type:float)
+                ve                        : True velocity in EAST direction in earth-fixed NED frame [m/s] (type:float)
+                vd                        : True velocity in DOWN direction in earth-fixed NED frame [m/s] (type:float)
 
                 '''
                 return self.send(self.sim_state_encode(q1, q2, q3, q4, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, std_dev_horz, std_dev_vert, vn, ve, vd), force_mavlink1=force_mavlink1)
@@ -11970,13 +12323,13 @@ class MAVLink(object):
                 '''
                 Status generated by radio and injected into MAVLink stream.
 
-                rssi                      : Local signal strength (uint8_t)
-                remrssi                   : Remote signal strength (uint8_t)
-                txbuf                     : Remaining free buffer space. (uint8_t)
-                noise                     : Background noise level (uint8_t)
-                remnoise                  : Remote background noise level (uint8_t)
-                rxerrors                  : Receive errors (uint16_t)
-                fixed                     : Count of error corrected packets (uint16_t)
+                rssi                      : Local signal strength (type:uint8_t)
+                remrssi                   : Remote signal strength (type:uint8_t)
+                txbuf                     : Remaining free buffer space. [%] (type:uint8_t)
+                noise                     : Background noise level (type:uint8_t)
+                remnoise                  : Remote background noise level (type:uint8_t)
+                rxerrors                  : Receive errors (type:uint16_t)
+                fixed                     : Count of error corrected packets (type:uint16_t)
 
                 '''
                 return MAVLink_radio_status_message(rssi, remrssi, txbuf, noise, remnoise, rxerrors, fixed)
@@ -11985,13 +12338,13 @@ class MAVLink(object):
                 '''
                 Status generated by radio and injected into MAVLink stream.
 
-                rssi                      : Local signal strength (uint8_t)
-                remrssi                   : Remote signal strength (uint8_t)
-                txbuf                     : Remaining free buffer space. (uint8_t)
-                noise                     : Background noise level (uint8_t)
-                remnoise                  : Remote background noise level (uint8_t)
-                rxerrors                  : Receive errors (uint16_t)
-                fixed                     : Count of error corrected packets (uint16_t)
+                rssi                      : Local signal strength (type:uint8_t)
+                remrssi                   : Remote signal strength (type:uint8_t)
+                txbuf                     : Remaining free buffer space. [%] (type:uint8_t)
+                noise                     : Background noise level (type:uint8_t)
+                remnoise                  : Remote background noise level (type:uint8_t)
+                rxerrors                  : Receive errors (type:uint16_t)
+                fixed                     : Count of error corrected packets (type:uint16_t)
 
                 '''
                 return self.send(self.radio_status_encode(rssi, remrssi, txbuf, noise, remnoise, rxerrors, fixed), force_mavlink1=force_mavlink1)
@@ -12000,10 +12353,10 @@ class MAVLink(object):
                 '''
                 File transfer message
 
-                target_network            : Network ID (0 for broadcast) (uint8_t)
-                target_system             : System ID (0 for broadcast) (uint8_t)
-                target_component          : Component ID (0 for broadcast) (uint8_t)
-                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (uint8_t)
+                target_network            : Network ID (0 for broadcast) (type:uint8_t)
+                target_system             : System ID (0 for broadcast) (type:uint8_t)
+                target_component          : Component ID (0 for broadcast) (type:uint8_t)
+                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (type:uint8_t)
 
                 '''
                 return MAVLink_file_transfer_protocol_message(target_network, target_system, target_component, payload)
@@ -12012,10 +12365,10 @@ class MAVLink(object):
                 '''
                 File transfer message
 
-                target_network            : Network ID (0 for broadcast) (uint8_t)
-                target_system             : System ID (0 for broadcast) (uint8_t)
-                target_component          : Component ID (0 for broadcast) (uint8_t)
-                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (uint8_t)
+                target_network            : Network ID (0 for broadcast) (type:uint8_t)
+                target_system             : System ID (0 for broadcast) (type:uint8_t)
+                target_component          : Component ID (0 for broadcast) (type:uint8_t)
+                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (type:uint8_t)
 
                 '''
                 return self.send(self.file_transfer_protocol_encode(target_network, target_system, target_component, payload), force_mavlink1=force_mavlink1)
@@ -12024,8 +12377,8 @@ class MAVLink(object):
                 '''
                 Time synchronization message.
 
-                tc1                       : Time sync timestamp 1 (int64_t)
-                ts1                       : Time sync timestamp 2 (int64_t)
+                tc1                       : Time sync timestamp 1 (type:int64_t)
+                ts1                       : Time sync timestamp 2 (type:int64_t)
 
                 '''
                 return MAVLink_timesync_message(tc1, ts1)
@@ -12034,8 +12387,8 @@ class MAVLink(object):
                 '''
                 Time synchronization message.
 
-                tc1                       : Time sync timestamp 1 (int64_t)
-                ts1                       : Time sync timestamp 2 (int64_t)
+                tc1                       : Time sync timestamp 1 (type:int64_t)
+                ts1                       : Time sync timestamp 2 (type:int64_t)
 
                 '''
                 return self.send(self.timesync_encode(tc1, ts1), force_mavlink1=force_mavlink1)
@@ -12044,8 +12397,8 @@ class MAVLink(object):
                 '''
                 Camera-IMU triggering and synchronisation message.
 
-                time_usec                 : Timestamp for image frame (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                seq                       : Image frame sequence (uint32_t)
+                time_usec                 : Timestamp for image frame (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                seq                       : Image frame sequence (type:uint32_t)
 
                 '''
                 return MAVLink_camera_trigger_message(time_usec, seq)
@@ -12054,8 +12407,8 @@ class MAVLink(object):
                 '''
                 Camera-IMU triggering and synchronisation message.
 
-                time_usec                 : Timestamp for image frame (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                seq                       : Image frame sequence (uint32_t)
+                time_usec                 : Timestamp for image frame (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                seq                       : Image frame sequence (type:uint32_t)
 
                 '''
                 return self.send(self.camera_trigger_encode(time_usec, seq), force_mavlink1=force_mavlink1)
@@ -12068,19 +12421,19 @@ class MAVLink(object):
                 sensor value. See message GLOBAL_POSITION for the
                 global position estimate.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: 65535 (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: 65535 (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: 65535 (uint16_t)
-                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame (int16_t)
-                ve                        : GPS velocity in EAST direction in earth-fixed NED frame (int16_t)
-                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame (int16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: 65535 [cm] (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: 65535 [cm] (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: 65535 [cm/s] (type:uint16_t)
+                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                ve                        : GPS velocity in EAST direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
 
                 '''
                 return MAVLink_hil_gps_message(time_usec, fix_type, lat, lon, alt, eph, epv, vel, vn, ve, vd, cog, satellites_visible)
@@ -12093,19 +12446,19 @@ class MAVLink(object):
                 sensor value. See message GLOBAL_POSITION for the
                 global position estimate.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: 65535 (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: 65535 (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: 65535 (uint16_t)
-                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame (int16_t)
-                ve                        : GPS velocity in EAST direction in earth-fixed NED frame (int16_t)
-                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame (int16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: 65535 [cm] (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: 65535 [cm] (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: 65535 [cm/s] (type:uint16_t)
+                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                ve                        : GPS velocity in EAST direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
 
                 '''
                 return self.send(self.hil_gps_encode(time_usec, fix_type, lat, lon, alt, eph, epv, vel, vn, ve, vd, cog, satellites_visible), force_mavlink1=force_mavlink1)
@@ -12115,18 +12468,18 @@ class MAVLink(object):
                 Simulated optical flow from a flow sensor (e.g. PX4FLOW or optical
                 mouse sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. (uint32_t)
-                integrated_x              : Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) (float)
-                integrated_y              : Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) (float)
-                integrated_xgyro          : RH rotation around X axis (float)
-                integrated_ygyro          : RH rotation around Y axis (float)
-                integrated_zgyro          : RH rotation around Z axis (float)
-                temperature               : Temperature (int16_t)
-                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (uint8_t)
-                time_delta_distance_us        : Time since the distance was sampled. (uint32_t)
-                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. [us] (type:uint32_t)
+                integrated_x              : Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) [rad] (type:float)
+                integrated_y              : Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) [rad] (type:float)
+                integrated_xgyro          : RH rotation around X axis [rad] (type:float)
+                integrated_ygyro          : RH rotation around Y axis [rad] (type:float)
+                integrated_zgyro          : RH rotation around Z axis [rad] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
+                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (type:uint8_t)
+                time_delta_distance_us        : Time since the distance was sampled. [us] (type:uint32_t)
+                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. [m] (type:float)
 
                 '''
                 return MAVLink_hil_optical_flow_message(time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance)
@@ -12136,18 +12489,18 @@ class MAVLink(object):
                 Simulated optical flow from a flow sensor (e.g. PX4FLOW or optical
                 mouse sensor)
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_id                 : Sensor ID (uint8_t)
-                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. (uint32_t)
-                integrated_x              : Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) (float)
-                integrated_y              : Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) (float)
-                integrated_xgyro          : RH rotation around X axis (float)
-                integrated_ygyro          : RH rotation around Y axis (float)
-                integrated_zgyro          : RH rotation around Z axis (float)
-                temperature               : Temperature (int16_t)
-                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (uint8_t)
-                time_delta_distance_us        : Time since the distance was sampled. (uint32_t)
-                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_id                 : Sensor ID (type:uint8_t)
+                integration_time_us        : Integration time. Divide integrated_x and integrated_y by the integration time to obtain average flow. The integration time also indicates the. [us] (type:uint32_t)
+                integrated_x              : Flow in radians around X axis (Sensor RH rotation about the X axis induces a positive flow. Sensor linear motion along the positive Y axis induces a negative flow.) [rad] (type:float)
+                integrated_y              : Flow in radians around Y axis (Sensor RH rotation about the Y axis induces a positive flow. Sensor linear motion along the positive X axis induces a positive flow.) [rad] (type:float)
+                integrated_xgyro          : RH rotation around X axis [rad] (type:float)
+                integrated_ygyro          : RH rotation around Y axis [rad] (type:float)
+                integrated_zgyro          : RH rotation around Z axis [rad] (type:float)
+                temperature               : Temperature [cdegC] (type:int16_t)
+                quality                   : Optical flow quality / confidence. 0: no valid flow, 255: maximum quality (type:uint8_t)
+                time_delta_distance_us        : Time since the distance was sampled. [us] (type:uint32_t)
+                distance                  : Distance to the center of the flow field. Positive value (including zero): distance known. Negative value: Unknown distance. [m] (type:float)
 
                 '''
                 return self.send(self.hil_optical_flow_encode(time_usec, sensor_id, integration_time_us, integrated_x, integrated_y, integrated_xgyro, integrated_ygyro, integrated_zgyro, temperature, quality, time_delta_distance_us, distance), force_mavlink1=force_mavlink1)
@@ -12159,22 +12512,22 @@ class MAVLink(object):
                 throughput applications such as hardware in the loop
                 simulations.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                attitude_quaternion        : Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation) (float)
-                rollspeed                 : Body frame roll / phi angular speed (float)
-                pitchspeed                : Body frame pitch / theta angular speed (float)
-                yawspeed                  : Body frame yaw / psi angular speed (float)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude (int32_t)
-                vx                        : Ground X Speed (Latitude) (int16_t)
-                vy                        : Ground Y Speed (Longitude) (int16_t)
-                vz                        : Ground Z Speed (Altitude) (int16_t)
-                ind_airspeed              : Indicated airspeed (uint16_t)
-                true_airspeed             : True airspeed (uint16_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                attitude_quaternion        : Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation) (type:float)
+                rollspeed                 : Body frame roll / phi angular speed [rad/s] (type:float)
+                pitchspeed                : Body frame pitch / theta angular speed [rad/s] (type:float)
+                yawspeed                  : Body frame yaw / psi angular speed [rad/s] (type:float)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude) [cm/s] (type:int16_t)
+                ind_airspeed              : Indicated airspeed [cm/s] (type:uint16_t)
+                true_airspeed             : True airspeed [cm/s] (type:uint16_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
 
                 '''
                 return MAVLink_hil_state_quaternion_message(time_usec, attitude_quaternion, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, ind_airspeed, true_airspeed, xacc, yacc, zacc)
@@ -12186,22 +12539,22 @@ class MAVLink(object):
                 throughput applications such as hardware in the loop
                 simulations.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                attitude_quaternion        : Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation) (float)
-                rollspeed                 : Body frame roll / phi angular speed (float)
-                pitchspeed                : Body frame pitch / theta angular speed (float)
-                yawspeed                  : Body frame yaw / psi angular speed (float)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                alt                       : Altitude (int32_t)
-                vx                        : Ground X Speed (Latitude) (int16_t)
-                vy                        : Ground Y Speed (Longitude) (int16_t)
-                vz                        : Ground Z Speed (Altitude) (int16_t)
-                ind_airspeed              : Indicated airspeed (uint16_t)
-                true_airspeed             : True airspeed (uint16_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                attitude_quaternion        : Vehicle attitude expressed as normalized quaternion in w, x, y, z order (with 1 0 0 0 being the null-rotation) (type:float)
+                rollspeed                 : Body frame roll / phi angular speed [rad/s] (type:float)
+                pitchspeed                : Body frame pitch / theta angular speed [rad/s] (type:float)
+                yawspeed                  : Body frame yaw / psi angular speed [rad/s] (type:float)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                alt                       : Altitude [mm] (type:int32_t)
+                vx                        : Ground X Speed (Latitude) [cm/s] (type:int16_t)
+                vy                        : Ground Y Speed (Longitude) [cm/s] (type:int16_t)
+                vz                        : Ground Z Speed (Altitude) [cm/s] (type:int16_t)
+                ind_airspeed              : Indicated airspeed [cm/s] (type:uint16_t)
+                true_airspeed             : True airspeed [cm/s] (type:uint16_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
 
                 '''
                 return self.send(self.hil_state_quaternion_encode(time_usec, attitude_quaternion, rollspeed, pitchspeed, yawspeed, lat, lon, alt, vx, vy, vz, ind_airspeed, true_airspeed, xacc, yacc, zacc), force_mavlink1=force_mavlink1)
@@ -12212,16 +12565,16 @@ class MAVLink(object):
                 should contain the scaled values to the described
                 units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_imu2_message(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag)
@@ -12232,16 +12585,16 @@ class MAVLink(object):
                 should contain the scaled values to the described
                 units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_imu2_encode(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag), force_mavlink1=force_mavlink1)
@@ -12251,10 +12604,10 @@ class MAVLink(object):
                 Request a list of available logs. On some systems calling this may
                 stop on-board logging until LOG_REQUEST_END is called.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start                     : First log id (0 for first available) (uint16_t)
-                end                       : Last log id (0xffff for last available) (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start                     : First log id (0 for first available) (type:uint16_t)
+                end                       : Last log id (0xffff for last available) (type:uint16_t)
 
                 '''
                 return MAVLink_log_request_list_message(target_system, target_component, start, end)
@@ -12264,10 +12617,10 @@ class MAVLink(object):
                 Request a list of available logs. On some systems calling this may
                 stop on-board logging until LOG_REQUEST_END is called.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                start                     : First log id (0 for first available) (uint16_t)
-                end                       : Last log id (0xffff for last available) (uint16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                start                     : First log id (0 for first available) (type:uint16_t)
+                end                       : Last log id (0xffff for last available) (type:uint16_t)
 
                 '''
                 return self.send(self.log_request_list_encode(target_system, target_component, start, end), force_mavlink1=force_mavlink1)
@@ -12276,11 +12629,11 @@ class MAVLink(object):
                 '''
                 Reply to LOG_REQUEST_LIST
 
-                id                        : Log id (uint16_t)
-                num_logs                  : Total number of logs (uint16_t)
-                last_log_num              : High log number (uint16_t)
-                time_utc                  : UTC timestamp of log since 1970, or 0 if not available (uint32_t)
-                size                      : Size of the log (may be approximate) (uint32_t)
+                id                        : Log id (type:uint16_t)
+                num_logs                  : Total number of logs (type:uint16_t)
+                last_log_num              : High log number (type:uint16_t)
+                time_utc                  : UTC timestamp of log since 1970, or 0 if not available [s] (type:uint32_t)
+                size                      : Size of the log (may be approximate) [bytes] (type:uint32_t)
 
                 '''
                 return MAVLink_log_entry_message(id, num_logs, last_log_num, time_utc, size)
@@ -12289,11 +12642,11 @@ class MAVLink(object):
                 '''
                 Reply to LOG_REQUEST_LIST
 
-                id                        : Log id (uint16_t)
-                num_logs                  : Total number of logs (uint16_t)
-                last_log_num              : High log number (uint16_t)
-                time_utc                  : UTC timestamp of log since 1970, or 0 if not available (uint32_t)
-                size                      : Size of the log (may be approximate) (uint32_t)
+                id                        : Log id (type:uint16_t)
+                num_logs                  : Total number of logs (type:uint16_t)
+                last_log_num              : High log number (type:uint16_t)
+                time_utc                  : UTC timestamp of log since 1970, or 0 if not available [s] (type:uint32_t)
+                size                      : Size of the log (may be approximate) [bytes] (type:uint32_t)
 
                 '''
                 return self.send(self.log_entry_encode(id, num_logs, last_log_num, time_utc, size), force_mavlink1=force_mavlink1)
@@ -12302,11 +12655,11 @@ class MAVLink(object):
                 '''
                 Request a chunk of a log
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                id                        : Log id (from LOG_ENTRY reply) (uint16_t)
-                ofs                       : Offset into the log (uint32_t)
-                count                     : Number of bytes (uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                id                        : Log id (from LOG_ENTRY reply) (type:uint16_t)
+                ofs                       : Offset into the log (type:uint32_t)
+                count                     : Number of bytes [bytes] (type:uint32_t)
 
                 '''
                 return MAVLink_log_request_data_message(target_system, target_component, id, ofs, count)
@@ -12315,11 +12668,11 @@ class MAVLink(object):
                 '''
                 Request a chunk of a log
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                id                        : Log id (from LOG_ENTRY reply) (uint16_t)
-                ofs                       : Offset into the log (uint32_t)
-                count                     : Number of bytes (uint32_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                id                        : Log id (from LOG_ENTRY reply) (type:uint16_t)
+                ofs                       : Offset into the log (type:uint32_t)
+                count                     : Number of bytes [bytes] (type:uint32_t)
 
                 '''
                 return self.send(self.log_request_data_encode(target_system, target_component, id, ofs, count), force_mavlink1=force_mavlink1)
@@ -12328,10 +12681,10 @@ class MAVLink(object):
                 '''
                 Reply to LOG_REQUEST_DATA
 
-                id                        : Log id (from LOG_ENTRY reply) (uint16_t)
-                ofs                       : Offset into the log (uint32_t)
-                count                     : Number of bytes (zero for end of log) (uint8_t)
-                data                      : log data (uint8_t)
+                id                        : Log id (from LOG_ENTRY reply) (type:uint16_t)
+                ofs                       : Offset into the log (type:uint32_t)
+                count                     : Number of bytes (zero for end of log) [bytes] (type:uint8_t)
+                data                      : log data (type:uint8_t)
 
                 '''
                 return MAVLink_log_data_message(id, ofs, count, data)
@@ -12340,10 +12693,10 @@ class MAVLink(object):
                 '''
                 Reply to LOG_REQUEST_DATA
 
-                id                        : Log id (from LOG_ENTRY reply) (uint16_t)
-                ofs                       : Offset into the log (uint32_t)
-                count                     : Number of bytes (zero for end of log) (uint8_t)
-                data                      : log data (uint8_t)
+                id                        : Log id (from LOG_ENTRY reply) (type:uint16_t)
+                ofs                       : Offset into the log (type:uint32_t)
+                count                     : Number of bytes (zero for end of log) [bytes] (type:uint8_t)
+                data                      : log data (type:uint8_t)
 
                 '''
                 return self.send(self.log_data_encode(id, ofs, count, data), force_mavlink1=force_mavlink1)
@@ -12352,8 +12705,8 @@ class MAVLink(object):
                 '''
                 Erase all logs
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return MAVLink_log_erase_message(target_system, target_component)
@@ -12362,8 +12715,8 @@ class MAVLink(object):
                 '''
                 Erase all logs
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return self.send(self.log_erase_encode(target_system, target_component), force_mavlink1=force_mavlink1)
@@ -12372,8 +12725,8 @@ class MAVLink(object):
                 '''
                 Stop log transfer and resume normal logging
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return MAVLink_log_request_end_message(target_system, target_component)
@@ -12382,8 +12735,8 @@ class MAVLink(object):
                 '''
                 Stop log transfer and resume normal logging
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return self.send(self.log_request_end_encode(target_system, target_component), force_mavlink1=force_mavlink1)
@@ -12392,10 +12745,10 @@ class MAVLink(object):
                 '''
                 data for injecting into the onboard GPS (used for DGPS)
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                len                       : data length (uint8_t)
-                data                      : raw data (110 is enough for 12 satellites of RTCMv2) (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                len                       : data length [bytes] (type:uint8_t)
+                data                      : raw data (110 is enough for 12 satellites of RTCMv2) (type:uint8_t)
 
                 '''
                 return MAVLink_gps_inject_data_message(target_system, target_component, len, data)
@@ -12404,10 +12757,10 @@ class MAVLink(object):
                 '''
                 data for injecting into the onboard GPS (used for DGPS)
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                len                       : data length (uint8_t)
-                data                      : raw data (110 is enough for 12 satellites of RTCMv2) (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                len                       : data length [bytes] (type:uint8_t)
+                data                      : raw data (110 is enough for 12 satellites of RTCMv2) (type:uint8_t)
 
                 '''
                 return self.send(self.gps_inject_data_encode(target_system, target_component, len, data), force_mavlink1=force_mavlink1)
@@ -12416,18 +12769,18 @@ class MAVLink(object):
                 '''
                 Second GPS data.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : GPS fix type. (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: UINT16_MAX (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: UINT16_MAX (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX (uint16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement): 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                dgps_numch                : Number of DGPS satellites (uint8_t)
-                dgps_age                  : Age of DGPS info (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : GPS fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: UINT16_MAX [cm] (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: UINT16_MAX [cm] (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX [cm/s] (type:uint16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement): 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                dgps_numch                : Number of DGPS satellites (type:uint8_t)
+                dgps_age                  : Age of DGPS info [ms] (type:uint32_t)
 
                 '''
                 return MAVLink_gps2_raw_message(time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, dgps_numch, dgps_age)
@@ -12436,18 +12789,18 @@ class MAVLink(object):
                 '''
                 Second GPS data.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                fix_type                  : GPS fix type. (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (int32_t)
-                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: UINT16_MAX (uint16_t)
-                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: UINT16_MAX (uint16_t)
-                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX (uint16_t)
-                cog                       : Course over ground (NOT heading, but direction of movement): 0.0..359.99 degrees. If unknown, set to: UINT16_MAX (uint16_t)
-                satellites_visible        : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                dgps_numch                : Number of DGPS satellites (uint8_t)
-                dgps_age                  : Age of DGPS info (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                fix_type                  : GPS fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                eph                       : GPS HDOP horizontal dilution of position. If unknown, set to: UINT16_MAX [cm] (type:uint16_t)
+                epv                       : GPS VDOP vertical dilution of position. If unknown, set to: UINT16_MAX [cm] (type:uint16_t)
+                vel                       : GPS ground speed. If unknown, set to: UINT16_MAX [cm/s] (type:uint16_t)
+                cog                       : Course over ground (NOT heading, but direction of movement): 0.0..359.99 degrees. If unknown, set to: UINT16_MAX [cdeg] (type:uint16_t)
+                satellites_visible        : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                dgps_numch                : Number of DGPS satellites (type:uint8_t)
+                dgps_age                  : Age of DGPS info [ms] (type:uint32_t)
 
                 '''
                 return self.send(self.gps2_raw_encode(time_usec, fix_type, lat, lon, alt, eph, epv, vel, cog, satellites_visible, dgps_numch, dgps_age), force_mavlink1=force_mavlink1)
@@ -12456,9 +12809,9 @@ class MAVLink(object):
                 '''
                 Power supply status
 
-                Vcc                       : 5V rail voltage. (uint16_t)
-                Vservo                    : Servo rail voltage. (uint16_t)
-                flags                     : Bitmap of power supply status flags. (uint16_t)
+                Vcc                       : 5V rail voltage. [mV] (type:uint16_t)
+                Vservo                    : Servo rail voltage. [mV] (type:uint16_t)
+                flags                     : Bitmap of power supply status flags. (type:uint16_t, values:MAV_POWER_STATUS)
 
                 '''
                 return MAVLink_power_status_message(Vcc, Vservo, flags)
@@ -12467,9 +12820,9 @@ class MAVLink(object):
                 '''
                 Power supply status
 
-                Vcc                       : 5V rail voltage. (uint16_t)
-                Vservo                    : Servo rail voltage. (uint16_t)
-                flags                     : Bitmap of power supply status flags. (uint16_t)
+                Vcc                       : 5V rail voltage. [mV] (type:uint16_t)
+                Vservo                    : Servo rail voltage. [mV] (type:uint16_t)
+                flags                     : Bitmap of power supply status flags. (type:uint16_t, values:MAV_POWER_STATUS)
 
                 '''
                 return self.send(self.power_status_encode(Vcc, Vservo, flags), force_mavlink1=force_mavlink1)
@@ -12483,12 +12836,12 @@ class MAVLink(object):
                 settings. A message with zero bytes can be used to
                 change just the baudrate.
 
-                device                    : Serial control device type. (uint8_t)
-                flags                     : Bitmap of serial control flags. (uint8_t)
-                timeout                   : Timeout for reply data (uint16_t)
-                baudrate                  : Baudrate of transfer. Zero means no change. (uint32_t)
-                count                     : how many bytes in this transfer (uint8_t)
-                data                      : serial data (uint8_t)
+                device                    : Serial control device type. (type:uint8_t, values:SERIAL_CONTROL_DEV)
+                flags                     : Bitmap of serial control flags. (type:uint8_t, values:SERIAL_CONTROL_FLAG)
+                timeout                   : Timeout for reply data [ms] (type:uint16_t)
+                baudrate                  : Baudrate of transfer. Zero means no change. [bits/s] (type:uint32_t)
+                count                     : how many bytes in this transfer [bytes] (type:uint8_t)
+                data                      : serial data (type:uint8_t)
 
                 '''
                 return MAVLink_serial_control_message(device, flags, timeout, baudrate, count, data)
@@ -12502,12 +12855,12 @@ class MAVLink(object):
                 settings. A message with zero bytes can be used to
                 change just the baudrate.
 
-                device                    : Serial control device type. (uint8_t)
-                flags                     : Bitmap of serial control flags. (uint8_t)
-                timeout                   : Timeout for reply data (uint16_t)
-                baudrate                  : Baudrate of transfer. Zero means no change. (uint32_t)
-                count                     : how many bytes in this transfer (uint8_t)
-                data                      : serial data (uint8_t)
+                device                    : Serial control device type. (type:uint8_t, values:SERIAL_CONTROL_DEV)
+                flags                     : Bitmap of serial control flags. (type:uint8_t, values:SERIAL_CONTROL_FLAG)
+                timeout                   : Timeout for reply data [ms] (type:uint16_t)
+                baudrate                  : Baudrate of transfer. Zero means no change. [bits/s] (type:uint32_t)
+                count                     : how many bytes in this transfer [bytes] (type:uint8_t)
+                data                      : serial data (type:uint8_t)
 
                 '''
                 return self.send(self.serial_control_encode(device, flags, timeout, baudrate, count, data), force_mavlink1=force_mavlink1)
@@ -12517,19 +12870,19 @@ class MAVLink(object):
                 RTK GPS data. Gives information on the relative baseline calculation
                 the GPS is reporting
 
-                time_last_baseline_ms        : Time since boot of last baseline message received. (uint32_t)
-                rtk_receiver_id           : Identification of connected RTK receiver. (uint8_t)
-                wn                        : GPS Week Number of last baseline (uint16_t)
-                tow                       : GPS Time of Week of last baseline (uint32_t)
-                rtk_health                : GPS-specific health report for RTK data. (uint8_t)
-                rtk_rate                  : Rate of baseline messages being received by GPS (uint8_t)
-                nsats                     : Current number of sats used for RTK calculation. (uint8_t)
-                baseline_coords_type        : Coordinate system of baseline (uint8_t)
-                baseline_a_mm             : Current baseline in ECEF x or NED north component. (int32_t)
-                baseline_b_mm             : Current baseline in ECEF y or NED east component. (int32_t)
-                baseline_c_mm             : Current baseline in ECEF z or NED down component. (int32_t)
-                accuracy                  : Current estimate of baseline accuracy. (uint32_t)
-                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (int32_t)
+                time_last_baseline_ms        : Time since boot of last baseline message received. [ms] (type:uint32_t)
+                rtk_receiver_id           : Identification of connected RTK receiver. (type:uint8_t)
+                wn                        : GPS Week Number of last baseline (type:uint16_t)
+                tow                       : GPS Time of Week of last baseline [ms] (type:uint32_t)
+                rtk_health                : GPS-specific health report for RTK data. (type:uint8_t)
+                rtk_rate                  : Rate of baseline messages being received by GPS [Hz] (type:uint8_t)
+                nsats                     : Current number of sats used for RTK calculation. (type:uint8_t)
+                baseline_coords_type        : Coordinate system of baseline (type:uint8_t, values:RTK_BASELINE_COORDINATE_SYSTEM)
+                baseline_a_mm             : Current baseline in ECEF x or NED north component. [mm] (type:int32_t)
+                baseline_b_mm             : Current baseline in ECEF y or NED east component. [mm] (type:int32_t)
+                baseline_c_mm             : Current baseline in ECEF z or NED down component. [mm] (type:int32_t)
+                accuracy                  : Current estimate of baseline accuracy. (type:uint32_t)
+                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (type:int32_t)
 
                 '''
                 return MAVLink_gps_rtk_message(time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses)
@@ -12539,19 +12892,19 @@ class MAVLink(object):
                 RTK GPS data. Gives information on the relative baseline calculation
                 the GPS is reporting
 
-                time_last_baseline_ms        : Time since boot of last baseline message received. (uint32_t)
-                rtk_receiver_id           : Identification of connected RTK receiver. (uint8_t)
-                wn                        : GPS Week Number of last baseline (uint16_t)
-                tow                       : GPS Time of Week of last baseline (uint32_t)
-                rtk_health                : GPS-specific health report for RTK data. (uint8_t)
-                rtk_rate                  : Rate of baseline messages being received by GPS (uint8_t)
-                nsats                     : Current number of sats used for RTK calculation. (uint8_t)
-                baseline_coords_type        : Coordinate system of baseline (uint8_t)
-                baseline_a_mm             : Current baseline in ECEF x or NED north component. (int32_t)
-                baseline_b_mm             : Current baseline in ECEF y or NED east component. (int32_t)
-                baseline_c_mm             : Current baseline in ECEF z or NED down component. (int32_t)
-                accuracy                  : Current estimate of baseline accuracy. (uint32_t)
-                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (int32_t)
+                time_last_baseline_ms        : Time since boot of last baseline message received. [ms] (type:uint32_t)
+                rtk_receiver_id           : Identification of connected RTK receiver. (type:uint8_t)
+                wn                        : GPS Week Number of last baseline (type:uint16_t)
+                tow                       : GPS Time of Week of last baseline [ms] (type:uint32_t)
+                rtk_health                : GPS-specific health report for RTK data. (type:uint8_t)
+                rtk_rate                  : Rate of baseline messages being received by GPS [Hz] (type:uint8_t)
+                nsats                     : Current number of sats used for RTK calculation. (type:uint8_t)
+                baseline_coords_type        : Coordinate system of baseline (type:uint8_t, values:RTK_BASELINE_COORDINATE_SYSTEM)
+                baseline_a_mm             : Current baseline in ECEF x or NED north component. [mm] (type:int32_t)
+                baseline_b_mm             : Current baseline in ECEF y or NED east component. [mm] (type:int32_t)
+                baseline_c_mm             : Current baseline in ECEF z or NED down component. [mm] (type:int32_t)
+                accuracy                  : Current estimate of baseline accuracy. (type:uint32_t)
+                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (type:int32_t)
 
                 '''
                 return self.send(self.gps_rtk_encode(time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses), force_mavlink1=force_mavlink1)
@@ -12561,19 +12914,19 @@ class MAVLink(object):
                 RTK GPS data. Gives information on the relative baseline calculation
                 the GPS is reporting
 
-                time_last_baseline_ms        : Time since boot of last baseline message received. (uint32_t)
-                rtk_receiver_id           : Identification of connected RTK receiver. (uint8_t)
-                wn                        : GPS Week Number of last baseline (uint16_t)
-                tow                       : GPS Time of Week of last baseline (uint32_t)
-                rtk_health                : GPS-specific health report for RTK data. (uint8_t)
-                rtk_rate                  : Rate of baseline messages being received by GPS (uint8_t)
-                nsats                     : Current number of sats used for RTK calculation. (uint8_t)
-                baseline_coords_type        : Coordinate system of baseline (uint8_t)
-                baseline_a_mm             : Current baseline in ECEF x or NED north component. (int32_t)
-                baseline_b_mm             : Current baseline in ECEF y or NED east component. (int32_t)
-                baseline_c_mm             : Current baseline in ECEF z or NED down component. (int32_t)
-                accuracy                  : Current estimate of baseline accuracy. (uint32_t)
-                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (int32_t)
+                time_last_baseline_ms        : Time since boot of last baseline message received. [ms] (type:uint32_t)
+                rtk_receiver_id           : Identification of connected RTK receiver. (type:uint8_t)
+                wn                        : GPS Week Number of last baseline (type:uint16_t)
+                tow                       : GPS Time of Week of last baseline [ms] (type:uint32_t)
+                rtk_health                : GPS-specific health report for RTK data. (type:uint8_t)
+                rtk_rate                  : Rate of baseline messages being received by GPS [Hz] (type:uint8_t)
+                nsats                     : Current number of sats used for RTK calculation. (type:uint8_t)
+                baseline_coords_type        : Coordinate system of baseline (type:uint8_t, values:RTK_BASELINE_COORDINATE_SYSTEM)
+                baseline_a_mm             : Current baseline in ECEF x or NED north component. [mm] (type:int32_t)
+                baseline_b_mm             : Current baseline in ECEF y or NED east component. [mm] (type:int32_t)
+                baseline_c_mm             : Current baseline in ECEF z or NED down component. [mm] (type:int32_t)
+                accuracy                  : Current estimate of baseline accuracy. (type:uint32_t)
+                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (type:int32_t)
 
                 '''
                 return MAVLink_gps2_rtk_message(time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses)
@@ -12583,19 +12936,19 @@ class MAVLink(object):
                 RTK GPS data. Gives information on the relative baseline calculation
                 the GPS is reporting
 
-                time_last_baseline_ms        : Time since boot of last baseline message received. (uint32_t)
-                rtk_receiver_id           : Identification of connected RTK receiver. (uint8_t)
-                wn                        : GPS Week Number of last baseline (uint16_t)
-                tow                       : GPS Time of Week of last baseline (uint32_t)
-                rtk_health                : GPS-specific health report for RTK data. (uint8_t)
-                rtk_rate                  : Rate of baseline messages being received by GPS (uint8_t)
-                nsats                     : Current number of sats used for RTK calculation. (uint8_t)
-                baseline_coords_type        : Coordinate system of baseline (uint8_t)
-                baseline_a_mm             : Current baseline in ECEF x or NED north component. (int32_t)
-                baseline_b_mm             : Current baseline in ECEF y or NED east component. (int32_t)
-                baseline_c_mm             : Current baseline in ECEF z or NED down component. (int32_t)
-                accuracy                  : Current estimate of baseline accuracy. (uint32_t)
-                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (int32_t)
+                time_last_baseline_ms        : Time since boot of last baseline message received. [ms] (type:uint32_t)
+                rtk_receiver_id           : Identification of connected RTK receiver. (type:uint8_t)
+                wn                        : GPS Week Number of last baseline (type:uint16_t)
+                tow                       : GPS Time of Week of last baseline [ms] (type:uint32_t)
+                rtk_health                : GPS-specific health report for RTK data. (type:uint8_t)
+                rtk_rate                  : Rate of baseline messages being received by GPS [Hz] (type:uint8_t)
+                nsats                     : Current number of sats used for RTK calculation. (type:uint8_t)
+                baseline_coords_type        : Coordinate system of baseline (type:uint8_t, values:RTK_BASELINE_COORDINATE_SYSTEM)
+                baseline_a_mm             : Current baseline in ECEF x or NED north component. [mm] (type:int32_t)
+                baseline_b_mm             : Current baseline in ECEF y or NED east component. [mm] (type:int32_t)
+                baseline_c_mm             : Current baseline in ECEF z or NED down component. [mm] (type:int32_t)
+                accuracy                  : Current estimate of baseline accuracy. (type:uint32_t)
+                iar_num_hypotheses        : Current number of integer ambiguity hypotheses. (type:int32_t)
 
                 '''
                 return self.send(self.gps2_rtk_encode(time_last_baseline_ms, rtk_receiver_id, wn, tow, rtk_health, rtk_rate, nsats, baseline_coords_type, baseline_a_mm, baseline_b_mm, baseline_c_mm, accuracy, iar_num_hypotheses), force_mavlink1=force_mavlink1)
@@ -12605,16 +12958,16 @@ class MAVLink(object):
                 The RAW IMU readings for 3rd 9DOF sensor setup. This message should
                 contain the scaled values to the described units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_imu3_message(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag)
@@ -12624,16 +12977,16 @@ class MAVLink(object):
                 The RAW IMU readings for 3rd 9DOF sensor setup. This message should
                 contain the scaled values to the described units
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                xacc                      : X acceleration (int16_t)
-                yacc                      : Y acceleration (int16_t)
-                zacc                      : Z acceleration (int16_t)
-                xgyro                     : Angular speed around X axis (int16_t)
-                ygyro                     : Angular speed around Y axis (int16_t)
-                zgyro                     : Angular speed around Z axis (int16_t)
-                xmag                      : X Magnetic field (int16_t)
-                ymag                      : Y Magnetic field (int16_t)
-                zmag                      : Z Magnetic field (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                xacc                      : X acceleration [mG] (type:int16_t)
+                yacc                      : Y acceleration [mG] (type:int16_t)
+                zacc                      : Z acceleration [mG] (type:int16_t)
+                xgyro                     : Angular speed around X axis [mrad/s] (type:int16_t)
+                ygyro                     : Angular speed around Y axis [mrad/s] (type:int16_t)
+                zgyro                     : Angular speed around Z axis [mrad/s] (type:int16_t)
+                xmag                      : X Magnetic field [mT] (type:int16_t)
+                ymag                      : Y Magnetic field [mT] (type:int16_t)
+                zmag                      : Z Magnetic field [mT] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_imu3_encode(time_boot_ms, xacc, yacc, zacc, xgyro, ygyro, zgyro, xmag, ymag, zmag), force_mavlink1=force_mavlink1)
@@ -12642,13 +12995,13 @@ class MAVLink(object):
                 '''
                 
 
-                type                      : Type of requested/acknowledged data. (uint8_t)
-                size                      : total data size (set on ACK only). (uint32_t)
-                width                     : Width of a matrix or image. (uint16_t)
-                height                    : Height of a matrix or image. (uint16_t)
-                packets                   : Number of packets being sent (set on ACK only). (uint16_t)
-                payload                   : Payload size per packet (normally 253 byte, see DATA field size in message ENCAPSULATED_DATA) (set on ACK only). (uint8_t)
-                jpg_quality               : JPEG quality. Values: [1-100]. (uint8_t)
+                type                      : Type of requested/acknowledged data. (type:uint8_t, values:DATA_TYPES)
+                size                      : total data size (set on ACK only). [bytes] (type:uint32_t)
+                width                     : Width of a matrix or image. (type:uint16_t)
+                height                    : Height of a matrix or image. (type:uint16_t)
+                packets                   : Number of packets being sent (set on ACK only). (type:uint16_t)
+                payload                   : Payload size per packet (normally 253 byte, see DATA field size in message ENCAPSULATED_DATA) (set on ACK only). [bytes] (type:uint8_t)
+                jpg_quality               : JPEG quality. Values: [1-100]. [%] (type:uint8_t)
 
                 '''
                 return MAVLink_data_transmission_handshake_message(type, size, width, height, packets, payload, jpg_quality)
@@ -12657,13 +13010,13 @@ class MAVLink(object):
                 '''
                 
 
-                type                      : Type of requested/acknowledged data. (uint8_t)
-                size                      : total data size (set on ACK only). (uint32_t)
-                width                     : Width of a matrix or image. (uint16_t)
-                height                    : Height of a matrix or image. (uint16_t)
-                packets                   : Number of packets being sent (set on ACK only). (uint16_t)
-                payload                   : Payload size per packet (normally 253 byte, see DATA field size in message ENCAPSULATED_DATA) (set on ACK only). (uint8_t)
-                jpg_quality               : JPEG quality. Values: [1-100]. (uint8_t)
+                type                      : Type of requested/acknowledged data. (type:uint8_t, values:DATA_TYPES)
+                size                      : total data size (set on ACK only). [bytes] (type:uint32_t)
+                width                     : Width of a matrix or image. (type:uint16_t)
+                height                    : Height of a matrix or image. (type:uint16_t)
+                packets                   : Number of packets being sent (set on ACK only). (type:uint16_t)
+                payload                   : Payload size per packet (normally 253 byte, see DATA field size in message ENCAPSULATED_DATA) (set on ACK only). [bytes] (type:uint8_t)
+                jpg_quality               : JPEG quality. Values: [1-100]. [%] (type:uint8_t)
 
                 '''
                 return self.send(self.data_transmission_handshake_encode(type, size, width, height, packets, payload, jpg_quality), force_mavlink1=force_mavlink1)
@@ -12672,8 +13025,8 @@ class MAVLink(object):
                 '''
                 
 
-                seqnr                     : sequence number (starting with 0 on every transmission) (uint16_t)
-                data                      : image data bytes (uint8_t)
+                seqnr                     : sequence number (starting with 0 on every transmission) (type:uint16_t)
+                data                      : image data bytes (type:uint8_t)
 
                 '''
                 return MAVLink_encapsulated_data_message(seqnr, data)
@@ -12682,8 +13035,8 @@ class MAVLink(object):
                 '''
                 
 
-                seqnr                     : sequence number (starting with 0 on every transmission) (uint16_t)
-                data                      : image data bytes (uint8_t)
+                seqnr                     : sequence number (starting with 0 on every transmission) (type:uint16_t)
+                data                      : image data bytes (type:uint8_t)
 
                 '''
                 return self.send(self.encapsulated_data_encode(seqnr, data), force_mavlink1=force_mavlink1)
@@ -12692,14 +13045,14 @@ class MAVLink(object):
                 '''
                 
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                min_distance              : Minimum distance the sensor can measure (uint16_t)
-                max_distance              : Maximum distance the sensor can measure (uint16_t)
-                current_distance          : Current distance reading (uint16_t)
-                type                      : Type of distance sensor. (uint8_t)
-                id                        : Onboard ID of the sensor (uint8_t)
-                orientation               : Direction the sensor faces. downward-facing: ROTATION_PITCH_270, upward-facing: ROTATION_PITCH_90, backward-facing: ROTATION_PITCH_180, forward-facing: ROTATION_NONE, left-facing: ROTATION_YAW_90, right-facing: ROTATION_YAW_270 (uint8_t)
-                covariance                : Measurement covariance, 0 for unknown / invalid readings (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                min_distance              : Minimum distance the sensor can measure [cm] (type:uint16_t)
+                max_distance              : Maximum distance the sensor can measure [cm] (type:uint16_t)
+                current_distance          : Current distance reading [cm] (type:uint16_t)
+                type                      : Type of distance sensor. (type:uint8_t, values:MAV_DISTANCE_SENSOR)
+                id                        : Onboard ID of the sensor (type:uint8_t)
+                orientation               : Direction the sensor faces. downward-facing: ROTATION_PITCH_270, upward-facing: ROTATION_PITCH_90, backward-facing: ROTATION_PITCH_180, forward-facing: ROTATION_NONE, left-facing: ROTATION_YAW_90, right-facing: ROTATION_YAW_270 (type:uint8_t, values:MAV_SENSOR_ORIENTATION)
+                covariance                : Measurement covariance, 0 for unknown / invalid readings [cm] (type:uint8_t)
 
                 '''
                 return MAVLink_distance_sensor_message(time_boot_ms, min_distance, max_distance, current_distance, type, id, orientation, covariance)
@@ -12708,14 +13061,14 @@ class MAVLink(object):
                 '''
                 
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                min_distance              : Minimum distance the sensor can measure (uint16_t)
-                max_distance              : Maximum distance the sensor can measure (uint16_t)
-                current_distance          : Current distance reading (uint16_t)
-                type                      : Type of distance sensor. (uint8_t)
-                id                        : Onboard ID of the sensor (uint8_t)
-                orientation               : Direction the sensor faces. downward-facing: ROTATION_PITCH_270, upward-facing: ROTATION_PITCH_90, backward-facing: ROTATION_PITCH_180, forward-facing: ROTATION_NONE, left-facing: ROTATION_YAW_90, right-facing: ROTATION_YAW_270 (uint8_t)
-                covariance                : Measurement covariance, 0 for unknown / invalid readings (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                min_distance              : Minimum distance the sensor can measure [cm] (type:uint16_t)
+                max_distance              : Maximum distance the sensor can measure [cm] (type:uint16_t)
+                current_distance          : Current distance reading [cm] (type:uint16_t)
+                type                      : Type of distance sensor. (type:uint8_t, values:MAV_DISTANCE_SENSOR)
+                id                        : Onboard ID of the sensor (type:uint8_t)
+                orientation               : Direction the sensor faces. downward-facing: ROTATION_PITCH_270, upward-facing: ROTATION_PITCH_90, backward-facing: ROTATION_PITCH_180, forward-facing: ROTATION_NONE, left-facing: ROTATION_YAW_90, right-facing: ROTATION_YAW_270 (type:uint8_t, values:MAV_SENSOR_ORIENTATION)
+                covariance                : Measurement covariance, 0 for unknown / invalid readings [cm] (type:uint8_t)
 
                 '''
                 return self.send(self.distance_sensor_encode(time_boot_ms, min_distance, max_distance, current_distance, type, id, orientation, covariance), force_mavlink1=force_mavlink1)
@@ -12724,10 +13077,10 @@ class MAVLink(object):
                 '''
                 Request for terrain data and terrain status
 
-                lat                       : Latitude of SW corner of first grid (int32_t)
-                lon                       : Longitude of SW corner of first grid (int32_t)
-                grid_spacing              : Grid spacing (uint16_t)
-                mask                      : Bitmask of requested 4x4 grids (row major 8x7 array of grids, 56 bits) (uint64_t)
+                lat                       : Latitude of SW corner of first grid [degE7] (type:int32_t)
+                lon                       : Longitude of SW corner of first grid [degE7] (type:int32_t)
+                grid_spacing              : Grid spacing [m] (type:uint16_t)
+                mask                      : Bitmask of requested 4x4 grids (row major 8x7 array of grids, 56 bits) (type:uint64_t)
 
                 '''
                 return MAVLink_terrain_request_message(lat, lon, grid_spacing, mask)
@@ -12736,10 +13089,10 @@ class MAVLink(object):
                 '''
                 Request for terrain data and terrain status
 
-                lat                       : Latitude of SW corner of first grid (int32_t)
-                lon                       : Longitude of SW corner of first grid (int32_t)
-                grid_spacing              : Grid spacing (uint16_t)
-                mask                      : Bitmask of requested 4x4 grids (row major 8x7 array of grids, 56 bits) (uint64_t)
+                lat                       : Latitude of SW corner of first grid [degE7] (type:int32_t)
+                lon                       : Longitude of SW corner of first grid [degE7] (type:int32_t)
+                grid_spacing              : Grid spacing [m] (type:uint16_t)
+                mask                      : Bitmask of requested 4x4 grids (row major 8x7 array of grids, 56 bits) (type:uint64_t)
 
                 '''
                 return self.send(self.terrain_request_encode(lat, lon, grid_spacing, mask), force_mavlink1=force_mavlink1)
@@ -12749,11 +13102,11 @@ class MAVLink(object):
                 Terrain data sent from GCS. The lat/lon and grid_spacing must be the
                 same as a lat/lon from a TERRAIN_REQUEST
 
-                lat                       : Latitude of SW corner of first grid (int32_t)
-                lon                       : Longitude of SW corner of first grid (int32_t)
-                grid_spacing              : Grid spacing (uint16_t)
-                gridbit                   : bit within the terrain request mask (uint8_t)
-                data                      : Terrain data AMSL (int16_t)
+                lat                       : Latitude of SW corner of first grid [degE7] (type:int32_t)
+                lon                       : Longitude of SW corner of first grid [degE7] (type:int32_t)
+                grid_spacing              : Grid spacing [m] (type:uint16_t)
+                gridbit                   : bit within the terrain request mask (type:uint8_t)
+                data                      : Terrain data AMSL [m] (type:int16_t)
 
                 '''
                 return MAVLink_terrain_data_message(lat, lon, grid_spacing, gridbit, data)
@@ -12763,11 +13116,11 @@ class MAVLink(object):
                 Terrain data sent from GCS. The lat/lon and grid_spacing must be the
                 same as a lat/lon from a TERRAIN_REQUEST
 
-                lat                       : Latitude of SW corner of first grid (int32_t)
-                lon                       : Longitude of SW corner of first grid (int32_t)
-                grid_spacing              : Grid spacing (uint16_t)
-                gridbit                   : bit within the terrain request mask (uint8_t)
-                data                      : Terrain data AMSL (int16_t)
+                lat                       : Latitude of SW corner of first grid [degE7] (type:int32_t)
+                lon                       : Longitude of SW corner of first grid [degE7] (type:int32_t)
+                grid_spacing              : Grid spacing [m] (type:uint16_t)
+                gridbit                   : bit within the terrain request mask (type:uint8_t)
+                data                      : Terrain data AMSL [m] (type:int16_t)
 
                 '''
                 return self.send(self.terrain_data_encode(lat, lon, grid_spacing, gridbit, data), force_mavlink1=force_mavlink1)
@@ -12778,8 +13131,8 @@ class MAVLink(object):
                 Used by GCS to check if vehicle has all terrain data
                 needed for a mission.
 
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
 
                 '''
                 return MAVLink_terrain_check_message(lat, lon)
@@ -12790,8 +13143,8 @@ class MAVLink(object):
                 Used by GCS to check if vehicle has all terrain data
                 needed for a mission.
 
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
 
                 '''
                 return self.send(self.terrain_check_encode(lat, lon), force_mavlink1=force_mavlink1)
@@ -12800,13 +13153,13 @@ class MAVLink(object):
                 '''
                 Response from a TERRAIN_CHECK request
 
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                spacing                   : grid spacing (zero if terrain at this location unavailable) (uint16_t)
-                terrain_height            : Terrain height AMSL (float)
-                current_height            : Current vehicle height above lat/lon terrain height (float)
-                pending                   : Number of 4x4 terrain blocks waiting to be received or read from disk (uint16_t)
-                loaded                    : Number of 4x4 terrain blocks in memory (uint16_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                spacing                   : grid spacing (zero if terrain at this location unavailable) (type:uint16_t)
+                terrain_height            : Terrain height AMSL [m] (type:float)
+                current_height            : Current vehicle height above lat/lon terrain height [m] (type:float)
+                pending                   : Number of 4x4 terrain blocks waiting to be received or read from disk (type:uint16_t)
+                loaded                    : Number of 4x4 terrain blocks in memory (type:uint16_t)
 
                 '''
                 return MAVLink_terrain_report_message(lat, lon, spacing, terrain_height, current_height, pending, loaded)
@@ -12815,13 +13168,13 @@ class MAVLink(object):
                 '''
                 Response from a TERRAIN_CHECK request
 
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                spacing                   : grid spacing (zero if terrain at this location unavailable) (uint16_t)
-                terrain_height            : Terrain height AMSL (float)
-                current_height            : Current vehicle height above lat/lon terrain height (float)
-                pending                   : Number of 4x4 terrain blocks waiting to be received or read from disk (uint16_t)
-                loaded                    : Number of 4x4 terrain blocks in memory (uint16_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                spacing                   : grid spacing (zero if terrain at this location unavailable) (type:uint16_t)
+                terrain_height            : Terrain height AMSL [m] (type:float)
+                current_height            : Current vehicle height above lat/lon terrain height [m] (type:float)
+                pending                   : Number of 4x4 terrain blocks waiting to be received or read from disk (type:uint16_t)
+                loaded                    : Number of 4x4 terrain blocks in memory (type:uint16_t)
 
                 '''
                 return self.send(self.terrain_report_encode(lat, lon, spacing, terrain_height, current_height, pending, loaded), force_mavlink1=force_mavlink1)
@@ -12830,10 +13183,10 @@ class MAVLink(object):
                 '''
                 Barometer readings for 2nd barometer
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure (float)
-                temperature               : Temperature measurement (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure [hPa] (type:float)
+                temperature               : Temperature measurement [cdegC] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_pressure2_message(time_boot_ms, press_abs, press_diff, temperature)
@@ -12842,38 +13195,38 @@ class MAVLink(object):
                 '''
                 Barometer readings for 2nd barometer
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure (float)
-                temperature               : Temperature measurement (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure [hPa] (type:float)
+                temperature               : Temperature measurement [cdegC] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_pressure2_encode(time_boot_ms, press_abs, press_diff, temperature), force_mavlink1=force_mavlink1)
 
-        def att_pos_mocap_encode(self, time_usec, q, x, y, z, covariance=0):
+        def att_pos_mocap_encode(self, time_usec, q, x, y, z, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 '''
                 Motion capture attitude and position
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                x                         : X position (NED) (float)
-                y                         : Y position (NED) (float)
-                z                         : Z position (NED) (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                x                         : X position (NED) [m] (type:float)
+                y                         : Y position (NED) [m] (type:float)
+                z                         : Z position (NED) [m] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return MAVLink_att_pos_mocap_message(time_usec, q, x, y, z, covariance)
 
-        def att_pos_mocap_send(self, time_usec, q, x, y, z, covariance=0, force_mavlink1=False):
+        def att_pos_mocap_send(self, time_usec, q, x, y, z, covariance=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 Motion capture attitude and position
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                x                         : X position (NED) (float)
-                y                         : Y position (NED) (float)
-                z                         : Z position (NED) (float)
-                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                q                         : Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                x                         : X position (NED) [m] (type:float)
+                y                         : Y position (NED) [m] (type:float)
+                z                         : Z position (NED) [m] (type:float)
+                covariance                : Pose covariance matrix upper right triangular (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return self.send(self.att_pos_mocap_encode(time_usec, q, x, y, z, covariance), force_mavlink1=force_mavlink1)
@@ -12882,11 +13235,11 @@ class MAVLink(object):
                 '''
                 Set the vehicle attitude and body angular rates.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (uint8_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (type:uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (type:float)
 
                 '''
                 return MAVLink_set_actuator_control_target_message(time_usec, group_mlx, target_system, target_component, controls)
@@ -12895,11 +13248,11 @@ class MAVLink(object):
                 '''
                 Set the vehicle attitude and body angular rates.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (uint8_t)
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (type:uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (type:float)
 
                 '''
                 return self.send(self.set_actuator_control_target_encode(time_usec, group_mlx, target_system, target_component, controls), force_mavlink1=force_mavlink1)
@@ -12908,9 +13261,9 @@ class MAVLink(object):
                 '''
                 Set the vehicle attitude and body angular rates.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (uint8_t)
-                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (type:uint8_t)
+                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (type:float)
 
                 '''
                 return MAVLink_actuator_control_target_message(time_usec, group_mlx, controls)
@@ -12919,9 +13272,9 @@ class MAVLink(object):
                 '''
                 Set the vehicle attitude and body angular rates.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (uint8_t)
-                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                group_mlx                 : Actuator group. The "_mlx" indicates this is a multi-instance message and a MAVLink parser should use this field to difference between instances. (type:uint8_t)
+                controls                  : Actuator controls. Normed to -1..+1 where 0 is neutral position. Throttle for single rotation direction motors is 0..1, negative range for reverse direction. Standard mapping for attitude controls (group 0): (index 0-7): roll, pitch, yaw, throttle, flaps, spoilers, airbrakes, landing gear. Load a pass-through mixer to repurpose them as generic outputs. (type:float)
 
                 '''
                 return self.send(self.actuator_control_target_encode(time_usec, group_mlx, controls), force_mavlink1=force_mavlink1)
@@ -12930,13 +13283,13 @@ class MAVLink(object):
                 '''
                 The current system altitude.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                altitude_monotonic        : This altitude measure is initialized on system boot and monotonic (it is never reset, but represents the local altitude change). The only guarantee on this field is that it will never be reset and is consistent within a flight. The recommended value for this field is the uncorrected barometric altitude at boot time. This altitude will also drift and vary between flights. (float)
-                altitude_amsl             : This altitude measure is strictly above mean sea level and might be non-monotonic (it might reset on events like GPS lock or when a new QNH value is set). It should be the altitude to which global altitude waypoints are compared to. Note that it is *not* the GPS altitude, however, most GPS modules already output AMSL by default and not the WGS84 altitude. (float)
-                altitude_local            : This is the local altitude in the local coordinate frame. It is not the altitude above home, but in reference to the coordinate origin (0, 0, 0). It is up-positive. (float)
-                altitude_relative         : This is the altitude above the home position. It resets on each change of the current home position. (float)
-                altitude_terrain          : This is the altitude above terrain. It might be fed by a terrain database or an altimeter. Values smaller than -1000 should be interpreted as unknown. (float)
-                bottom_clearance          : This is not the altitude, but the clear space below the system according to the fused clearance estimate. It generally should max out at the maximum range of e.g. the laser altimeter. It is generally a moving target. A negative value indicates no measurement available. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                altitude_monotonic        : This altitude measure is initialized on system boot and monotonic (it is never reset, but represents the local altitude change). The only guarantee on this field is that it will never be reset and is consistent within a flight. The recommended value for this field is the uncorrected barometric altitude at boot time. This altitude will also drift and vary between flights. [m] (type:float)
+                altitude_amsl             : This altitude measure is strictly above mean sea level and might be non-monotonic (it might reset on events like GPS lock or when a new QNH value is set). It should be the altitude to which global altitude waypoints are compared to. Note that it is *not* the GPS altitude, however, most GPS modules already output AMSL by default and not the WGS84 altitude. [m] (type:float)
+                altitude_local            : This is the local altitude in the local coordinate frame. It is not the altitude above home, but in reference to the coordinate origin (0, 0, 0). It is up-positive. [m] (type:float)
+                altitude_relative         : This is the altitude above the home position. It resets on each change of the current home position. [m] (type:float)
+                altitude_terrain          : This is the altitude above terrain. It might be fed by a terrain database or an altimeter. Values smaller than -1000 should be interpreted as unknown. [m] (type:float)
+                bottom_clearance          : This is not the altitude, but the clear space below the system according to the fused clearance estimate. It generally should max out at the maximum range of e.g. the laser altimeter. It is generally a moving target. A negative value indicates no measurement available. [m] (type:float)
 
                 '''
                 return MAVLink_altitude_message(time_usec, altitude_monotonic, altitude_amsl, altitude_local, altitude_relative, altitude_terrain, bottom_clearance)
@@ -12945,13 +13298,13 @@ class MAVLink(object):
                 '''
                 The current system altitude.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                altitude_monotonic        : This altitude measure is initialized on system boot and monotonic (it is never reset, but represents the local altitude change). The only guarantee on this field is that it will never be reset and is consistent within a flight. The recommended value for this field is the uncorrected barometric altitude at boot time. This altitude will also drift and vary between flights. (float)
-                altitude_amsl             : This altitude measure is strictly above mean sea level and might be non-monotonic (it might reset on events like GPS lock or when a new QNH value is set). It should be the altitude to which global altitude waypoints are compared to. Note that it is *not* the GPS altitude, however, most GPS modules already output AMSL by default and not the WGS84 altitude. (float)
-                altitude_local            : This is the local altitude in the local coordinate frame. It is not the altitude above home, but in reference to the coordinate origin (0, 0, 0). It is up-positive. (float)
-                altitude_relative         : This is the altitude above the home position. It resets on each change of the current home position. (float)
-                altitude_terrain          : This is the altitude above terrain. It might be fed by a terrain database or an altimeter. Values smaller than -1000 should be interpreted as unknown. (float)
-                bottom_clearance          : This is not the altitude, but the clear space below the system according to the fused clearance estimate. It generally should max out at the maximum range of e.g. the laser altimeter. It is generally a moving target. A negative value indicates no measurement available. (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                altitude_monotonic        : This altitude measure is initialized on system boot and monotonic (it is never reset, but represents the local altitude change). The only guarantee on this field is that it will never be reset and is consistent within a flight. The recommended value for this field is the uncorrected barometric altitude at boot time. This altitude will also drift and vary between flights. [m] (type:float)
+                altitude_amsl             : This altitude measure is strictly above mean sea level and might be non-monotonic (it might reset on events like GPS lock or when a new QNH value is set). It should be the altitude to which global altitude waypoints are compared to. Note that it is *not* the GPS altitude, however, most GPS modules already output AMSL by default and not the WGS84 altitude. [m] (type:float)
+                altitude_local            : This is the local altitude in the local coordinate frame. It is not the altitude above home, but in reference to the coordinate origin (0, 0, 0). It is up-positive. [m] (type:float)
+                altitude_relative         : This is the altitude above the home position. It resets on each change of the current home position. [m] (type:float)
+                altitude_terrain          : This is the altitude above terrain. It might be fed by a terrain database or an altimeter. Values smaller than -1000 should be interpreted as unknown. [m] (type:float)
+                bottom_clearance          : This is not the altitude, but the clear space below the system according to the fused clearance estimate. It generally should max out at the maximum range of e.g. the laser altimeter. It is generally a moving target. A negative value indicates no measurement available. [m] (type:float)
 
                 '''
                 return self.send(self.altitude_encode(time_usec, altitude_monotonic, altitude_amsl, altitude_local, altitude_relative, altitude_terrain, bottom_clearance), force_mavlink1=force_mavlink1)
@@ -12961,11 +13314,11 @@ class MAVLink(object):
                 The autopilot is requesting a resource (file, binary, other type of
                 data)
 
-                request_id                : Request ID. This ID should be re-used when sending back URI contents (uint8_t)
-                uri_type                  : The type of requested URI. 0 = a file via URL. 1 = a UAVCAN binary (uint8_t)
-                uri                       : The requested unique resource identifier (URI). It is not necessarily a straight domain name (depends on the URI type enum) (uint8_t)
-                transfer_type             : The way the autopilot wants to receive the URI. 0 = MAVLink FTP. 1 = binary stream. (uint8_t)
-                storage                   : The storage path the autopilot wants the URI to be stored in. Will only be valid if the transfer_type has a storage associated (e.g. MAVLink FTP). (uint8_t)
+                request_id                : Request ID. This ID should be re-used when sending back URI contents (type:uint8_t)
+                uri_type                  : The type of requested URI. 0 = a file via URL. 1 = a UAVCAN binary (type:uint8_t)
+                uri                       : The requested unique resource identifier (URI). It is not necessarily a straight domain name (depends on the URI type enum) (type:uint8_t)
+                transfer_type             : The way the autopilot wants to receive the URI. 0 = MAVLink FTP. 1 = binary stream. (type:uint8_t)
+                storage                   : The storage path the autopilot wants the URI to be stored in. Will only be valid if the transfer_type has a storage associated (e.g. MAVLink FTP). (type:uint8_t)
 
                 '''
                 return MAVLink_resource_request_message(request_id, uri_type, uri, transfer_type, storage)
@@ -12975,11 +13328,11 @@ class MAVLink(object):
                 The autopilot is requesting a resource (file, binary, other type of
                 data)
 
-                request_id                : Request ID. This ID should be re-used when sending back URI contents (uint8_t)
-                uri_type                  : The type of requested URI. 0 = a file via URL. 1 = a UAVCAN binary (uint8_t)
-                uri                       : The requested unique resource identifier (URI). It is not necessarily a straight domain name (depends on the URI type enum) (uint8_t)
-                transfer_type             : The way the autopilot wants to receive the URI. 0 = MAVLink FTP. 1 = binary stream. (uint8_t)
-                storage                   : The storage path the autopilot wants the URI to be stored in. Will only be valid if the transfer_type has a storage associated (e.g. MAVLink FTP). (uint8_t)
+                request_id                : Request ID. This ID should be re-used when sending back URI contents (type:uint8_t)
+                uri_type                  : The type of requested URI. 0 = a file via URL. 1 = a UAVCAN binary (type:uint8_t)
+                uri                       : The requested unique resource identifier (URI). It is not necessarily a straight domain name (depends on the URI type enum) (type:uint8_t)
+                transfer_type             : The way the autopilot wants to receive the URI. 0 = MAVLink FTP. 1 = binary stream. (type:uint8_t)
+                storage                   : The storage path the autopilot wants the URI to be stored in. Will only be valid if the transfer_type has a storage associated (e.g. MAVLink FTP). (type:uint8_t)
 
                 '''
                 return self.send(self.resource_request_encode(request_id, uri_type, uri, transfer_type, storage), force_mavlink1=force_mavlink1)
@@ -12988,10 +13341,10 @@ class MAVLink(object):
                 '''
                 Barometer readings for 3rd barometer
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure (float)
-                temperature               : Temperature measurement (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure [hPa] (type:float)
+                temperature               : Temperature measurement [cdegC] (type:int16_t)
 
                 '''
                 return MAVLink_scaled_pressure3_message(time_boot_ms, press_abs, press_diff, temperature)
@@ -13000,10 +13353,10 @@ class MAVLink(object):
                 '''
                 Barometer readings for 3rd barometer
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                press_abs                 : Absolute pressure (float)
-                press_diff                : Differential pressure (float)
-                temperature               : Temperature measurement (int16_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                press_abs                 : Absolute pressure [hPa] (type:float)
+                press_diff                : Differential pressure [hPa] (type:float)
+                temperature               : Temperature measurement [cdegC] (type:int16_t)
 
                 '''
                 return self.send(self.scaled_pressure3_encode(time_boot_ms, press_abs, press_diff, temperature), force_mavlink1=force_mavlink1)
@@ -13012,17 +13365,17 @@ class MAVLink(object):
                 '''
                 current motion information from a designated system
 
-                timestamp                 : Timestamp (time since system boot). (uint64_t)
-                est_capabilities          : bit positions for tracker reporting capabilities (POS = 0, VEL = 1, ACCEL = 2, ATT + RATES = 3) (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL) (float)
-                vel                       : target velocity (0,0,0) for unknown (float)
-                acc                       : linear target acceleration (0,0,0) for unknown (float)
-                attitude_q                : (1 0 0 0 for unknown) (float)
-                rates                     : (0 0 0 for unknown) (float)
-                position_cov              : eph epv (float)
-                custom_state              : button states or switches of a tracker device (uint64_t)
+                timestamp                 : Timestamp (time since system boot). [ms] (type:uint64_t)
+                est_capabilities          : bit positions for tracker reporting capabilities (POS = 0, VEL = 1, ACCEL = 2, ATT + RATES = 3) (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) [m] (type:float)
+                vel                       : target velocity (0,0,0) for unknown [m/s] (type:float)
+                acc                       : linear target acceleration (0,0,0) for unknown [m/s/s] (type:float)
+                attitude_q                : (1 0 0 0 for unknown) (type:float)
+                rates                     : (0 0 0 for unknown) (type:float)
+                position_cov              : eph epv (type:float)
+                custom_state              : button states or switches of a tracker device (type:uint64_t)
 
                 '''
                 return MAVLink_follow_target_message(timestamp, est_capabilities, lat, lon, alt, vel, acc, attitude_q, rates, position_cov, custom_state)
@@ -13031,17 +13384,17 @@ class MAVLink(object):
                 '''
                 current motion information from a designated system
 
-                timestamp                 : Timestamp (time since system boot). (uint64_t)
-                est_capabilities          : bit positions for tracker reporting capabilities (POS = 0, VEL = 1, ACCEL = 2, ATT + RATES = 3) (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL) (float)
-                vel                       : target velocity (0,0,0) for unknown (float)
-                acc                       : linear target acceleration (0,0,0) for unknown (float)
-                attitude_q                : (1 0 0 0 for unknown) (float)
-                rates                     : (0 0 0 for unknown) (float)
-                position_cov              : eph epv (float)
-                custom_state              : button states or switches of a tracker device (uint64_t)
+                timestamp                 : Timestamp (time since system boot). [ms] (type:uint64_t)
+                est_capabilities          : bit positions for tracker reporting capabilities (POS = 0, VEL = 1, ACCEL = 2, ATT + RATES = 3) (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) [m] (type:float)
+                vel                       : target velocity (0,0,0) for unknown [m/s] (type:float)
+                acc                       : linear target acceleration (0,0,0) for unknown [m/s/s] (type:float)
+                attitude_q                : (1 0 0 0 for unknown) (type:float)
+                rates                     : (0 0 0 for unknown) (type:float)
+                position_cov              : eph epv (type:float)
+                custom_state              : button states or switches of a tracker device (type:uint64_t)
 
                 '''
                 return self.send(self.follow_target_encode(timestamp, est_capabilities, lat, lon, alt, vel, acc, attitude_q, rates, position_cov, custom_state), force_mavlink1=force_mavlink1)
@@ -13051,23 +13404,23 @@ class MAVLink(object):
                 The smoothed, monotonic system state used to feed the control loops of
                 the system.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                x_acc                     : X acceleration in body frame (float)
-                y_acc                     : Y acceleration in body frame (float)
-                z_acc                     : Z acceleration in body frame (float)
-                x_vel                     : X velocity in body frame (float)
-                y_vel                     : Y velocity in body frame (float)
-                z_vel                     : Z velocity in body frame (float)
-                x_pos                     : X position in local frame (float)
-                y_pos                     : Y position in local frame (float)
-                z_pos                     : Z position in local frame (float)
-                airspeed                  : Airspeed, set to -1 if unknown (float)
-                vel_variance              : Variance of body velocity estimate (float)
-                pos_variance              : Variance in local position (float)
-                q                         : The attitude, represented as Quaternion (float)
-                roll_rate                 : Angular rate in roll axis (float)
-                pitch_rate                : Angular rate in pitch axis (float)
-                yaw_rate                  : Angular rate in yaw axis (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                x_acc                     : X acceleration in body frame [m/s/s] (type:float)
+                y_acc                     : Y acceleration in body frame [m/s/s] (type:float)
+                z_acc                     : Z acceleration in body frame [m/s/s] (type:float)
+                x_vel                     : X velocity in body frame [m/s] (type:float)
+                y_vel                     : Y velocity in body frame [m/s] (type:float)
+                z_vel                     : Z velocity in body frame [m/s] (type:float)
+                x_pos                     : X position in local frame [m] (type:float)
+                y_pos                     : Y position in local frame [m] (type:float)
+                z_pos                     : Z position in local frame [m] (type:float)
+                airspeed                  : Airspeed, set to -1 if unknown [m/s] (type:float)
+                vel_variance              : Variance of body velocity estimate (type:float)
+                pos_variance              : Variance in local position (type:float)
+                q                         : The attitude, represented as Quaternion (type:float)
+                roll_rate                 : Angular rate in roll axis [rad/s] (type:float)
+                pitch_rate                : Angular rate in pitch axis [rad/s] (type:float)
+                yaw_rate                  : Angular rate in yaw axis [rad/s] (type:float)
 
                 '''
                 return MAVLink_control_system_state_message(time_usec, x_acc, y_acc, z_acc, x_vel, y_vel, z_vel, x_pos, y_pos, z_pos, airspeed, vel_variance, pos_variance, q, roll_rate, pitch_rate, yaw_rate)
@@ -13077,23 +13430,23 @@ class MAVLink(object):
                 The smoothed, monotonic system state used to feed the control loops of
                 the system.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                x_acc                     : X acceleration in body frame (float)
-                y_acc                     : Y acceleration in body frame (float)
-                z_acc                     : Z acceleration in body frame (float)
-                x_vel                     : X velocity in body frame (float)
-                y_vel                     : Y velocity in body frame (float)
-                z_vel                     : Z velocity in body frame (float)
-                x_pos                     : X position in local frame (float)
-                y_pos                     : Y position in local frame (float)
-                z_pos                     : Z position in local frame (float)
-                airspeed                  : Airspeed, set to -1 if unknown (float)
-                vel_variance              : Variance of body velocity estimate (float)
-                pos_variance              : Variance in local position (float)
-                q                         : The attitude, represented as Quaternion (float)
-                roll_rate                 : Angular rate in roll axis (float)
-                pitch_rate                : Angular rate in pitch axis (float)
-                yaw_rate                  : Angular rate in yaw axis (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                x_acc                     : X acceleration in body frame [m/s/s] (type:float)
+                y_acc                     : Y acceleration in body frame [m/s/s] (type:float)
+                z_acc                     : Z acceleration in body frame [m/s/s] (type:float)
+                x_vel                     : X velocity in body frame [m/s] (type:float)
+                y_vel                     : Y velocity in body frame [m/s] (type:float)
+                z_vel                     : Z velocity in body frame [m/s] (type:float)
+                x_pos                     : X position in local frame [m] (type:float)
+                y_pos                     : Y position in local frame [m] (type:float)
+                z_pos                     : Z position in local frame [m] (type:float)
+                airspeed                  : Airspeed, set to -1 if unknown [m/s] (type:float)
+                vel_variance              : Variance of body velocity estimate (type:float)
+                pos_variance              : Variance in local position (type:float)
+                q                         : The attitude, represented as Quaternion (type:float)
+                roll_rate                 : Angular rate in roll axis [rad/s] (type:float)
+                pitch_rate                : Angular rate in pitch axis [rad/s] (type:float)
+                yaw_rate                  : Angular rate in yaw axis [rad/s] (type:float)
 
                 '''
                 return self.send(self.control_system_state_encode(time_usec, x_acc, y_acc, z_acc, x_vel, y_vel, z_vel, x_pos, y_pos, z_pos, airspeed, vel_variance, pos_variance, q, roll_rate, pitch_rate, yaw_rate), force_mavlink1=force_mavlink1)
@@ -13102,17 +13455,17 @@ class MAVLink(object):
                 '''
                 Battery information
 
-                id                        : Battery ID (uint8_t)
-                battery_function          : Function of the battery (uint8_t)
-                type                      : Type (chemistry) of the battery (uint8_t)
-                temperature               : Temperature of the battery. INT16_MAX for unknown temperature. (int16_t)
-                voltages                  : Battery voltage of cells. Cells above the valid cell count for this battery should have the UINT16_MAX value. (uint16_t)
-                current_battery           : Battery current, -1: autopilot does not measure the current (int16_t)
-                current_consumed          : Consumed charge, -1: autopilot does not provide consumption estimate (int32_t)
-                energy_consumed           : Consumed energy, -1: autopilot does not provide energy consumption estimate (int32_t)
-                battery_remaining         : Remaining battery energy. Values: [0-100], -1: autopilot does not estimate the remaining battery. (int8_t)
-                time_remaining            : Remaining battery time, 0: autopilot does not provide remaining battery time estimate (int32_t)
-                charge_state              : State for extent of discharge, provided by autopilot for warning or external reactions (uint8_t)
+                id                        : Battery ID (type:uint8_t)
+                battery_function          : Function of the battery (type:uint8_t, values:MAV_BATTERY_FUNCTION)
+                type                      : Type (chemistry) of the battery (type:uint8_t, values:MAV_BATTERY_TYPE)
+                temperature               : Temperature of the battery. INT16_MAX for unknown temperature. [cdegC] (type:int16_t)
+                voltages                  : Battery voltage of cells. Cells above the valid cell count for this battery should have the UINT16_MAX value. [mV] (type:uint16_t)
+                current_battery           : Battery current, -1: autopilot does not measure the current [cA] (type:int16_t)
+                current_consumed          : Consumed charge, -1: autopilot does not provide consumption estimate [mAh] (type:int32_t)
+                energy_consumed           : Consumed energy, -1: autopilot does not provide energy consumption estimate [hJ] (type:int32_t)
+                battery_remaining         : Remaining battery energy. Values: [0-100], -1: autopilot does not estimate the remaining battery. [%] (type:int8_t)
+                time_remaining            : Remaining battery time, 0: autopilot does not provide remaining battery time estimate [s] (type:int32_t)
+                charge_state              : State for extent of discharge, provided by autopilot for warning or external reactions (type:uint8_t, values:MAV_BATTERY_CHARGE_STATE)
 
                 '''
                 return MAVLink_battery_status_message(id, battery_function, type, temperature, voltages, current_battery, current_consumed, energy_consumed, battery_remaining, time_remaining, charge_state)
@@ -13121,101 +13474,101 @@ class MAVLink(object):
                 '''
                 Battery information
 
-                id                        : Battery ID (uint8_t)
-                battery_function          : Function of the battery (uint8_t)
-                type                      : Type (chemistry) of the battery (uint8_t)
-                temperature               : Temperature of the battery. INT16_MAX for unknown temperature. (int16_t)
-                voltages                  : Battery voltage of cells. Cells above the valid cell count for this battery should have the UINT16_MAX value. (uint16_t)
-                current_battery           : Battery current, -1: autopilot does not measure the current (int16_t)
-                current_consumed          : Consumed charge, -1: autopilot does not provide consumption estimate (int32_t)
-                energy_consumed           : Consumed energy, -1: autopilot does not provide energy consumption estimate (int32_t)
-                battery_remaining         : Remaining battery energy. Values: [0-100], -1: autopilot does not estimate the remaining battery. (int8_t)
-                time_remaining            : Remaining battery time, 0: autopilot does not provide remaining battery time estimate (int32_t)
-                charge_state              : State for extent of discharge, provided by autopilot for warning or external reactions (uint8_t)
+                id                        : Battery ID (type:uint8_t)
+                battery_function          : Function of the battery (type:uint8_t, values:MAV_BATTERY_FUNCTION)
+                type                      : Type (chemistry) of the battery (type:uint8_t, values:MAV_BATTERY_TYPE)
+                temperature               : Temperature of the battery. INT16_MAX for unknown temperature. [cdegC] (type:int16_t)
+                voltages                  : Battery voltage of cells. Cells above the valid cell count for this battery should have the UINT16_MAX value. [mV] (type:uint16_t)
+                current_battery           : Battery current, -1: autopilot does not measure the current [cA] (type:int16_t)
+                current_consumed          : Consumed charge, -1: autopilot does not provide consumption estimate [mAh] (type:int32_t)
+                energy_consumed           : Consumed energy, -1: autopilot does not provide energy consumption estimate [hJ] (type:int32_t)
+                battery_remaining         : Remaining battery energy. Values: [0-100], -1: autopilot does not estimate the remaining battery. [%] (type:int8_t)
+                time_remaining            : Remaining battery time, 0: autopilot does not provide remaining battery time estimate [s] (type:int32_t)
+                charge_state              : State for extent of discharge, provided by autopilot for warning or external reactions (type:uint8_t, values:MAV_BATTERY_CHARGE_STATE)
 
                 '''
                 return self.send(self.battery_status_encode(id, battery_function, type, temperature, voltages, current_battery, current_consumed, energy_consumed, battery_remaining, time_remaining, charge_state), force_mavlink1=force_mavlink1)
 
-        def autopilot_version_encode(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=0):
+        def autopilot_version_encode(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]):
                 '''
                 Version and capability of autopilot software
 
-                capabilities              : Bitmap of capabilities (uint64_t)
-                flight_sw_version         : Firmware version number (uint32_t)
-                middleware_sw_version        : Middleware version number (uint32_t)
-                os_sw_version             : Operating system version number (uint32_t)
-                board_version             : HW / board version (last 8 bytes should be silicon ID, if any) (uint32_t)
-                flight_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                middleware_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                os_custom_version         : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                vendor_id                 : ID of the board vendor (uint16_t)
-                product_id                : ID of the product (uint16_t)
-                uid                       : UID if provided by hardware (see uid2) (uint64_t)
-                uid2                      : UID if provided by hardware (supersedes the uid field. If this is non-zero, use this field, otherwise use uid) (uint8_t)
+                capabilities              : Bitmap of capabilities (type:uint64_t, values:MAV_PROTOCOL_CAPABILITY)
+                flight_sw_version         : Firmware version number (type:uint32_t)
+                middleware_sw_version        : Middleware version number (type:uint32_t)
+                os_sw_version             : Operating system version number (type:uint32_t)
+                board_version             : HW / board version (last 8 bytes should be silicon ID, if any) (type:uint32_t)
+                flight_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                middleware_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                os_custom_version         : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                vendor_id                 : ID of the board vendor (type:uint16_t)
+                product_id                : ID of the product (type:uint16_t)
+                uid                       : UID if provided by hardware (see uid2) (type:uint64_t)
+                uid2                      : UID if provided by hardware (supersedes the uid field. If this is non-zero, use this field, otherwise use uid) (type:uint8_t)
 
                 '''
                 return MAVLink_autopilot_version_message(capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2)
 
-        def autopilot_version_send(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=0, force_mavlink1=False):
+        def autopilot_version_send(self, capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], force_mavlink1=False):
                 '''
                 Version and capability of autopilot software
 
-                capabilities              : Bitmap of capabilities (uint64_t)
-                flight_sw_version         : Firmware version number (uint32_t)
-                middleware_sw_version        : Middleware version number (uint32_t)
-                os_sw_version             : Operating system version number (uint32_t)
-                board_version             : HW / board version (last 8 bytes should be silicon ID, if any) (uint32_t)
-                flight_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                middleware_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                os_custom_version         : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (uint8_t)
-                vendor_id                 : ID of the board vendor (uint16_t)
-                product_id                : ID of the product (uint16_t)
-                uid                       : UID if provided by hardware (see uid2) (uint64_t)
-                uid2                      : UID if provided by hardware (supersedes the uid field. If this is non-zero, use this field, otherwise use uid) (uint8_t)
+                capabilities              : Bitmap of capabilities (type:uint64_t, values:MAV_PROTOCOL_CAPABILITY)
+                flight_sw_version         : Firmware version number (type:uint32_t)
+                middleware_sw_version        : Middleware version number (type:uint32_t)
+                os_sw_version             : Operating system version number (type:uint32_t)
+                board_version             : HW / board version (last 8 bytes should be silicon ID, if any) (type:uint32_t)
+                flight_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                middleware_custom_version        : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                os_custom_version         : Custom version field, commonly the first 8 bytes of the git hash. This is not an unique identifier, but should allow to identify the commit using the main version number even for very large code bases. (type:uint8_t)
+                vendor_id                 : ID of the board vendor (type:uint16_t)
+                product_id                : ID of the product (type:uint16_t)
+                uid                       : UID if provided by hardware (see uid2) (type:uint64_t)
+                uid2                      : UID if provided by hardware (supersedes the uid field. If this is non-zero, use this field, otherwise use uid) (type:uint8_t)
 
                 '''
                 return self.send(self.autopilot_version_encode(capabilities, flight_sw_version, middleware_sw_version, os_sw_version, board_version, flight_custom_version, middleware_custom_version, os_custom_version, vendor_id, product_id, uid, uid2), force_mavlink1=force_mavlink1)
 
-        def landing_target_encode(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=0, type=0, position_valid=0):
+        def landing_target_encode(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=[0,0,0,0], type=0, position_valid=0):
                 '''
                 The location of a landing area captured from a downward facing camera
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                target_num                : The ID of the target if multiple targets are present (uint8_t)
-                frame                     : Coordinate frame used for following fields. (uint8_t)
-                angle_x                   : X-axis angular offset of the target from the center of the image (float)
-                angle_y                   : Y-axis angular offset of the target from the center of the image (float)
-                distance                  : Distance to the target from the vehicle (float)
-                size_x                    : Size of target along x-axis (float)
-                size_y                    : Size of target along y-axis (float)
-                x                         : X Position of the landing target on MAV_FRAME (float)
-                y                         : Y Position of the landing target on MAV_FRAME (float)
-                z                         : Z Position of the landing target on MAV_FRAME (float)
-                q                         : Quaternion of landing target orientation (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                type                      : Type of landing target (uint8_t)
-                position_valid            : Boolean indicating known position (1) or default unknown position (0), for validation of positioning of the landing target (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                target_num                : The ID of the target if multiple targets are present (type:uint8_t)
+                frame                     : Coordinate frame used for following fields. (type:uint8_t, values:MAV_FRAME)
+                angle_x                   : X-axis angular offset of the target from the center of the image [rad] (type:float)
+                angle_y                   : Y-axis angular offset of the target from the center of the image [rad] (type:float)
+                distance                  : Distance to the target from the vehicle [m] (type:float)
+                size_x                    : Size of target along x-axis [rad] (type:float)
+                size_y                    : Size of target along y-axis [rad] (type:float)
+                x                         : X Position of the landing target on MAV_FRAME [m] (type:float)
+                y                         : Y Position of the landing target on MAV_FRAME [m] (type:float)
+                z                         : Z Position of the landing target on MAV_FRAME [m] (type:float)
+                q                         : Quaternion of landing target orientation (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                type                      : Type of landing target (type:uint8_t, values:LANDING_TARGET_TYPE)
+                position_valid            : Boolean indicating known position (1) or default unknown position (0), for validation of positioning of the landing target (type:uint8_t)
 
                 '''
                 return MAVLink_landing_target_message(time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x, y, z, q, type, position_valid)
 
-        def landing_target_send(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=0, type=0, position_valid=0, force_mavlink1=False):
+        def landing_target_send(self, time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x=0, y=0, z=0, q=[0,0,0,0], type=0, position_valid=0, force_mavlink1=False):
                 '''
                 The location of a landing area captured from a downward facing camera
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                target_num                : The ID of the target if multiple targets are present (uint8_t)
-                frame                     : Coordinate frame used for following fields. (uint8_t)
-                angle_x                   : X-axis angular offset of the target from the center of the image (float)
-                angle_y                   : Y-axis angular offset of the target from the center of the image (float)
-                distance                  : Distance to the target from the vehicle (float)
-                size_x                    : Size of target along x-axis (float)
-                size_y                    : Size of target along y-axis (float)
-                x                         : X Position of the landing target on MAV_FRAME (float)
-                y                         : Y Position of the landing target on MAV_FRAME (float)
-                z                         : Z Position of the landing target on MAV_FRAME (float)
-                q                         : Quaternion of landing target orientation (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (float)
-                type                      : Type of landing target (uint8_t)
-                position_valid            : Boolean indicating known position (1) or default unknown position (0), for validation of positioning of the landing target (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                target_num                : The ID of the target if multiple targets are present (type:uint8_t)
+                frame                     : Coordinate frame used for following fields. (type:uint8_t, values:MAV_FRAME)
+                angle_x                   : X-axis angular offset of the target from the center of the image [rad] (type:float)
+                angle_y                   : Y-axis angular offset of the target from the center of the image [rad] (type:float)
+                distance                  : Distance to the target from the vehicle [m] (type:float)
+                size_x                    : Size of target along x-axis [rad] (type:float)
+                size_y                    : Size of target along y-axis [rad] (type:float)
+                x                         : X Position of the landing target on MAV_FRAME [m] (type:float)
+                y                         : Y Position of the landing target on MAV_FRAME [m] (type:float)
+                z                         : Z Position of the landing target on MAV_FRAME [m] (type:float)
+                q                         : Quaternion of landing target orientation (w, x, y, z order, zero-rotation is 1, 0, 0, 0) (type:float)
+                type                      : Type of landing target (type:uint8_t, values:LANDING_TARGET_TYPE)
+                position_valid            : Boolean indicating known position (1) or default unknown position (0), for validation of positioning of the landing target (type:uint8_t)
 
                 '''
                 return self.send(self.landing_target_encode(time_usec, target_num, frame, angle_x, angle_y, distance, size_x, size_y, x, y, z, q, type, position_valid), force_mavlink1=force_mavlink1)
@@ -13238,16 +13591,16 @@ class MAVLink(object):
                 Notifications for values in the range between 0.5 and
                 1.0 should be optional and controllable by the user.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                flags                     : Bitmap indicating which EKF outputs are valid. (uint16_t)
-                vel_ratio                 : Velocity innovation test ratio (float)
-                pos_horiz_ratio           : Horizontal position innovation test ratio (float)
-                pos_vert_ratio            : Vertical position innovation test ratio (float)
-                mag_ratio                 : Magnetometer innovation test ratio (float)
-                hagl_ratio                : Height above terrain innovation test ratio (float)
-                tas_ratio                 : True airspeed innovation test ratio (float)
-                pos_horiz_accuracy        : Horizontal position 1-STD accuracy relative to the EKF local origin (float)
-                pos_vert_accuracy         : Vertical position 1-STD accuracy relative to the EKF local origin (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                flags                     : Bitmap indicating which EKF outputs are valid. (type:uint16_t, values:ESTIMATOR_STATUS_FLAGS)
+                vel_ratio                 : Velocity innovation test ratio (type:float)
+                pos_horiz_ratio           : Horizontal position innovation test ratio (type:float)
+                pos_vert_ratio            : Vertical position innovation test ratio (type:float)
+                mag_ratio                 : Magnetometer innovation test ratio (type:float)
+                hagl_ratio                : Height above terrain innovation test ratio (type:float)
+                tas_ratio                 : True airspeed innovation test ratio (type:float)
+                pos_horiz_accuracy        : Horizontal position 1-STD accuracy relative to the EKF local origin [m] (type:float)
+                pos_vert_accuracy         : Vertical position 1-STD accuracy relative to the EKF local origin [m] (type:float)
 
                 '''
                 return MAVLink_estimator_status_message(time_usec, flags, vel_ratio, pos_horiz_ratio, pos_vert_ratio, mag_ratio, hagl_ratio, tas_ratio, pos_horiz_accuracy, pos_vert_accuracy)
@@ -13270,16 +13623,16 @@ class MAVLink(object):
                 Notifications for values in the range between 0.5 and
                 1.0 should be optional and controllable by the user.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                flags                     : Bitmap indicating which EKF outputs are valid. (uint16_t)
-                vel_ratio                 : Velocity innovation test ratio (float)
-                pos_horiz_ratio           : Horizontal position innovation test ratio (float)
-                pos_vert_ratio            : Vertical position innovation test ratio (float)
-                mag_ratio                 : Magnetometer innovation test ratio (float)
-                hagl_ratio                : Height above terrain innovation test ratio (float)
-                tas_ratio                 : True airspeed innovation test ratio (float)
-                pos_horiz_accuracy        : Horizontal position 1-STD accuracy relative to the EKF local origin (float)
-                pos_vert_accuracy         : Vertical position 1-STD accuracy relative to the EKF local origin (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                flags                     : Bitmap indicating which EKF outputs are valid. (type:uint16_t, values:ESTIMATOR_STATUS_FLAGS)
+                vel_ratio                 : Velocity innovation test ratio (type:float)
+                pos_horiz_ratio           : Horizontal position innovation test ratio (type:float)
+                pos_vert_ratio            : Vertical position innovation test ratio (type:float)
+                mag_ratio                 : Magnetometer innovation test ratio (type:float)
+                hagl_ratio                : Height above terrain innovation test ratio (type:float)
+                tas_ratio                 : True airspeed innovation test ratio (type:float)
+                pos_horiz_accuracy        : Horizontal position 1-STD accuracy relative to the EKF local origin [m] (type:float)
+                pos_vert_accuracy         : Vertical position 1-STD accuracy relative to the EKF local origin [m] (type:float)
 
                 '''
                 return self.send(self.estimator_status_encode(time_usec, flags, vel_ratio, pos_horiz_ratio, pos_vert_ratio, mag_ratio, hagl_ratio, tas_ratio, pos_horiz_accuracy, pos_vert_accuracy), force_mavlink1=force_mavlink1)
@@ -13288,15 +13641,15 @@ class MAVLink(object):
                 '''
                 
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                wind_x                    : Wind in X (NED) direction (float)
-                wind_y                    : Wind in Y (NED) direction (float)
-                wind_z                    : Wind in Z (NED) direction (float)
-                var_horiz                 : Variability of the wind in XY. RMS of a 1 Hz lowpassed wind estimate. (float)
-                var_vert                  : Variability of the wind in Z. RMS of a 1 Hz lowpassed wind estimate. (float)
-                wind_alt                  : Altitude (AMSL) that this measurement was taken at (float)
-                horiz_accuracy            : Horizontal speed 1-STD accuracy (float)
-                vert_accuracy             : Vertical speed 1-STD accuracy (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                wind_x                    : Wind in X (NED) direction [m/s] (type:float)
+                wind_y                    : Wind in Y (NED) direction [m/s] (type:float)
+                wind_z                    : Wind in Z (NED) direction [m/s] (type:float)
+                var_horiz                 : Variability of the wind in XY. RMS of a 1 Hz lowpassed wind estimate. [m/s] (type:float)
+                var_vert                  : Variability of the wind in Z. RMS of a 1 Hz lowpassed wind estimate. [m/s] (type:float)
+                wind_alt                  : Altitude (AMSL) that this measurement was taken at [m] (type:float)
+                horiz_accuracy            : Horizontal speed 1-STD accuracy [m] (type:float)
+                vert_accuracy             : Vertical speed 1-STD accuracy [m] (type:float)
 
                 '''
                 return MAVLink_wind_cov_message(time_usec, wind_x, wind_y, wind_z, var_horiz, var_vert, wind_alt, horiz_accuracy, vert_accuracy)
@@ -13305,15 +13658,15 @@ class MAVLink(object):
                 '''
                 
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                wind_x                    : Wind in X (NED) direction (float)
-                wind_y                    : Wind in Y (NED) direction (float)
-                wind_z                    : Wind in Z (NED) direction (float)
-                var_horiz                 : Variability of the wind in XY. RMS of a 1 Hz lowpassed wind estimate. (float)
-                var_vert                  : Variability of the wind in Z. RMS of a 1 Hz lowpassed wind estimate. (float)
-                wind_alt                  : Altitude (AMSL) that this measurement was taken at (float)
-                horiz_accuracy            : Horizontal speed 1-STD accuracy (float)
-                vert_accuracy             : Vertical speed 1-STD accuracy (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                wind_x                    : Wind in X (NED) direction [m/s] (type:float)
+                wind_y                    : Wind in Y (NED) direction [m/s] (type:float)
+                wind_z                    : Wind in Z (NED) direction [m/s] (type:float)
+                var_horiz                 : Variability of the wind in XY. RMS of a 1 Hz lowpassed wind estimate. [m/s] (type:float)
+                var_vert                  : Variability of the wind in Z. RMS of a 1 Hz lowpassed wind estimate. [m/s] (type:float)
+                wind_alt                  : Altitude (AMSL) that this measurement was taken at [m] (type:float)
+                horiz_accuracy            : Horizontal speed 1-STD accuracy [m] (type:float)
+                vert_accuracy             : Vertical speed 1-STD accuracy [m] (type:float)
 
                 '''
                 return self.send(self.wind_cov_encode(time_usec, wind_x, wind_y, wind_z, var_horiz, var_vert, wind_alt, horiz_accuracy, vert_accuracy), force_mavlink1=force_mavlink1)
@@ -13324,24 +13677,24 @@ class MAVLink(object):
                 This is NOT the global position estimate of the
                 system.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                gps_id                    : ID of the GPS for multiple GPS inputs (uint8_t)
-                ignore_flags              : Bitmap indicating which GPS input flags fields to ignore.  All other fields must be provided. (uint16_t)
-                time_week_ms              : GPS time (from start of GPS week) (uint32_t)
-                time_week                 : GPS week number (uint16_t)
-                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. 4: 3D with DGPS. 5: 3D with RTK (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (float)
-                hdop                      : GPS HDOP horizontal dilution of position (float)
-                vdop                      : GPS VDOP vertical dilution of position (float)
-                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame (float)
-                ve                        : GPS velocity in EAST direction in earth-fixed NED frame (float)
-                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame (float)
-                speed_accuracy            : GPS speed accuracy (float)
-                horiz_accuracy            : GPS horizontal accuracy (float)
-                vert_accuracy             : GPS vertical accuracy (float)
-                satellites_visible        : Number of satellites visible. (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                gps_id                    : ID of the GPS for multiple GPS inputs (type:uint8_t)
+                ignore_flags              : Bitmap indicating which GPS input flags fields to ignore.  All other fields must be provided. (type:uint16_t, values:GPS_INPUT_IGNORE_FLAGS)
+                time_week_ms              : GPS time (from start of GPS week) [ms] (type:uint32_t)
+                time_week                 : GPS week number (type:uint16_t)
+                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. 4: 3D with DGPS. 5: 3D with RTK (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [m] (type:float)
+                hdop                      : GPS HDOP horizontal dilution of position [m] (type:float)
+                vdop                      : GPS VDOP vertical dilution of position [m] (type:float)
+                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame [m/s] (type:float)
+                ve                        : GPS velocity in EAST direction in earth-fixed NED frame [m/s] (type:float)
+                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame [m/s] (type:float)
+                speed_accuracy            : GPS speed accuracy [m/s] (type:float)
+                horiz_accuracy            : GPS horizontal accuracy [m] (type:float)
+                vert_accuracy             : GPS vertical accuracy [m] (type:float)
+                satellites_visible        : Number of satellites visible. (type:uint8_t)
 
                 '''
                 return MAVLink_gps_input_message(time_usec, gps_id, ignore_flags, time_week_ms, time_week, fix_type, lat, lon, alt, hdop, vdop, vn, ve, vd, speed_accuracy, horiz_accuracy, vert_accuracy, satellites_visible)
@@ -13352,24 +13705,24 @@ class MAVLink(object):
                 This is NOT the global position estimate of the
                 system.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                gps_id                    : ID of the GPS for multiple GPS inputs (uint8_t)
-                ignore_flags              : Bitmap indicating which GPS input flags fields to ignore.  All other fields must be provided. (uint16_t)
-                time_week_ms              : GPS time (from start of GPS week) (uint32_t)
-                time_week                 : GPS week number (uint16_t)
-                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. 4: 3D with DGPS. 5: 3D with RTK (uint8_t)
-                lat                       : Latitude (WGS84) (int32_t)
-                lon                       : Longitude (WGS84) (int32_t)
-                alt                       : Altitude (AMSL). Positive for up. (float)
-                hdop                      : GPS HDOP horizontal dilution of position (float)
-                vdop                      : GPS VDOP vertical dilution of position (float)
-                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame (float)
-                ve                        : GPS velocity in EAST direction in earth-fixed NED frame (float)
-                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame (float)
-                speed_accuracy            : GPS speed accuracy (float)
-                horiz_accuracy            : GPS horizontal accuracy (float)
-                vert_accuracy             : GPS vertical accuracy (float)
-                satellites_visible        : Number of satellites visible. (uint8_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                gps_id                    : ID of the GPS for multiple GPS inputs (type:uint8_t)
+                ignore_flags              : Bitmap indicating which GPS input flags fields to ignore.  All other fields must be provided. (type:uint16_t, values:GPS_INPUT_IGNORE_FLAGS)
+                time_week_ms              : GPS time (from start of GPS week) [ms] (type:uint32_t)
+                time_week                 : GPS week number (type:uint16_t)
+                fix_type                  : 0-1: no fix, 2: 2D fix, 3: 3D fix. 4: 3D with DGPS. 5: 3D with RTK (type:uint8_t)
+                lat                       : Latitude (WGS84) [degE7] (type:int32_t)
+                lon                       : Longitude (WGS84) [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL). Positive for up. [m] (type:float)
+                hdop                      : GPS HDOP horizontal dilution of position [m] (type:float)
+                vdop                      : GPS VDOP vertical dilution of position [m] (type:float)
+                vn                        : GPS velocity in NORTH direction in earth-fixed NED frame [m/s] (type:float)
+                ve                        : GPS velocity in EAST direction in earth-fixed NED frame [m/s] (type:float)
+                vd                        : GPS velocity in DOWN direction in earth-fixed NED frame [m/s] (type:float)
+                speed_accuracy            : GPS speed accuracy [m/s] (type:float)
+                horiz_accuracy            : GPS horizontal accuracy [m] (type:float)
+                vert_accuracy             : GPS vertical accuracy [m] (type:float)
+                satellites_visible        : Number of satellites visible. (type:uint8_t)
 
                 '''
                 return self.send(self.gps_input_encode(time_usec, gps_id, ignore_flags, time_week_ms, time_week, fix_type, lat, lon, alt, hdop, vdop, vn, ve, vd, speed_accuracy, horiz_accuracy, vert_accuracy, satellites_visible), force_mavlink1=force_mavlink1)
@@ -13378,9 +13731,9 @@ class MAVLink(object):
                 '''
                 RTCM message for injecting into the onboard GPS (used for DGPS)
 
-                flags                     : LSB: 1 means message is fragmented, next 2 bits are the fragment ID, the remaining 5 bits are used for the sequence ID. Messages are only to be flushed to the GPS when the entire message has been reconstructed on the autopilot. The fragment ID specifies which order the fragments should be assembled into a buffer, while the sequence ID is used to detect a mismatch between different buffers. The buffer is considered fully reconstructed when either all 4 fragments are present, or all the fragments before the first fragment with a non full payload is received. This management is used to ensure that normal GPS operation doesn't corrupt RTCM data, and to recover from a unreliable transport delivery order. (uint8_t)
-                len                       : data length (uint8_t)
-                data                      : RTCM message (may be fragmented) (uint8_t)
+                flags                     : LSB: 1 means message is fragmented, next 2 bits are the fragment ID, the remaining 5 bits are used for the sequence ID. Messages are only to be flushed to the GPS when the entire message has been reconstructed on the autopilot. The fragment ID specifies which order the fragments should be assembled into a buffer, while the sequence ID is used to detect a mismatch between different buffers. The buffer is considered fully reconstructed when either all 4 fragments are present, or all the fragments before the first fragment with a non full payload is received. This management is used to ensure that normal GPS operation doesn't corrupt RTCM data, and to recover from a unreliable transport delivery order. (type:uint8_t)
+                len                       : data length [bytes] (type:uint8_t)
+                data                      : RTCM message (may be fragmented) (type:uint8_t)
 
                 '''
                 return MAVLink_gps_rtcm_data_message(flags, len, data)
@@ -13389,9 +13742,9 @@ class MAVLink(object):
                 '''
                 RTCM message for injecting into the onboard GPS (used for DGPS)
 
-                flags                     : LSB: 1 means message is fragmented, next 2 bits are the fragment ID, the remaining 5 bits are used for the sequence ID. Messages are only to be flushed to the GPS when the entire message has been reconstructed on the autopilot. The fragment ID specifies which order the fragments should be assembled into a buffer, while the sequence ID is used to detect a mismatch between different buffers. The buffer is considered fully reconstructed when either all 4 fragments are present, or all the fragments before the first fragment with a non full payload is received. This management is used to ensure that normal GPS operation doesn't corrupt RTCM data, and to recover from a unreliable transport delivery order. (uint8_t)
-                len                       : data length (uint8_t)
-                data                      : RTCM message (may be fragmented) (uint8_t)
+                flags                     : LSB: 1 means message is fragmented, next 2 bits are the fragment ID, the remaining 5 bits are used for the sequence ID. Messages are only to be flushed to the GPS when the entire message has been reconstructed on the autopilot. The fragment ID specifies which order the fragments should be assembled into a buffer, while the sequence ID is used to detect a mismatch between different buffers. The buffer is considered fully reconstructed when either all 4 fragments are present, or all the fragments before the first fragment with a non full payload is received. This management is used to ensure that normal GPS operation doesn't corrupt RTCM data, and to recover from a unreliable transport delivery order. (type:uint8_t)
+                len                       : data length [bytes] (type:uint8_t)
+                data                      : RTCM message (may be fragmented) (type:uint8_t)
 
                 '''
                 return self.send(self.gps_rtcm_data_encode(flags, len, data), force_mavlink1=force_mavlink1)
@@ -13400,30 +13753,30 @@ class MAVLink(object):
                 '''
                 Message appropriate for high latency connections like Iridium
 
-                base_mode                 : Bitmap of enabled system modes. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags. (uint32_t)
-                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (uint8_t)
-                roll                      : roll (int16_t)
-                pitch                     : pitch (int16_t)
-                heading                   : heading (uint16_t)
-                throttle                  : throttle (percentage) (int8_t)
-                heading_sp                : heading setpoint (int16_t)
-                latitude                  : Latitude (int32_t)
-                longitude                 : Longitude (int32_t)
-                altitude_amsl             : Altitude above mean sea level (int16_t)
-                altitude_sp               : Altitude setpoint relative to the home position (int16_t)
-                airspeed                  : airspeed (uint8_t)
-                airspeed_sp               : airspeed setpoint (uint8_t)
-                groundspeed               : groundspeed (uint8_t)
-                climb_rate                : climb rate (int8_t)
-                gps_nsat                  : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                gps_fix_type              : GPS Fix type. (uint8_t)
-                battery_remaining         : Remaining battery (percentage) (uint8_t)
-                temperature               : Autopilot temperature (degrees C) (int8_t)
-                temperature_air           : Air temperature (degrees C) from airspeed sensor (int8_t)
-                failsafe                  : failsafe (each bit represents a failsafe where 0=ok, 1=failsafe active (bit0:RC, bit1:batt, bit2:GPS, bit3:GCS, bit4:fence) (uint8_t)
-                wp_num                    : current waypoint number (uint8_t)
-                wp_distance               : distance to target (uint16_t)
+                base_mode                 : Bitmap of enabled system modes. (type:uint8_t, values:MAV_MODE_FLAG)
+                custom_mode               : A bitfield for use for autopilot-specific flags. (type:uint32_t)
+                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (type:uint8_t, values:MAV_LANDED_STATE)
+                roll                      : roll [cdeg] (type:int16_t)
+                pitch                     : pitch [cdeg] (type:int16_t)
+                heading                   : heading [cdeg] (type:uint16_t)
+                throttle                  : throttle (percentage) [%] (type:int8_t)
+                heading_sp                : heading setpoint [cdeg] (type:int16_t)
+                latitude                  : Latitude [degE7] (type:int32_t)
+                longitude                 : Longitude [degE7] (type:int32_t)
+                altitude_amsl             : Altitude above mean sea level [m] (type:int16_t)
+                altitude_sp               : Altitude setpoint relative to the home position [m] (type:int16_t)
+                airspeed                  : airspeed [m/s] (type:uint8_t)
+                airspeed_sp               : airspeed setpoint [m/s] (type:uint8_t)
+                groundspeed               : groundspeed [m/s] (type:uint8_t)
+                climb_rate                : climb rate [m/s] (type:int8_t)
+                gps_nsat                  : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                gps_fix_type              : GPS Fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                battery_remaining         : Remaining battery (percentage) [%] (type:uint8_t)
+                temperature               : Autopilot temperature (degrees C) [degC] (type:int8_t)
+                temperature_air           : Air temperature (degrees C) from airspeed sensor [degC] (type:int8_t)
+                failsafe                  : failsafe (each bit represents a failsafe where 0=ok, 1=failsafe active (bit0:RC, bit1:batt, bit2:GPS, bit3:GCS, bit4:fence) (type:uint8_t)
+                wp_num                    : current waypoint number (type:uint8_t)
+                wp_distance               : distance to target [m] (type:uint16_t)
 
                 '''
                 return MAVLink_high_latency_message(base_mode, custom_mode, landed_state, roll, pitch, heading, throttle, heading_sp, latitude, longitude, altitude_amsl, altitude_sp, airspeed, airspeed_sp, groundspeed, climb_rate, gps_nsat, gps_fix_type, battery_remaining, temperature, temperature_air, failsafe, wp_num, wp_distance)
@@ -13432,30 +13785,30 @@ class MAVLink(object):
                 '''
                 Message appropriate for high latency connections like Iridium
 
-                base_mode                 : Bitmap of enabled system modes. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags. (uint32_t)
-                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (uint8_t)
-                roll                      : roll (int16_t)
-                pitch                     : pitch (int16_t)
-                heading                   : heading (uint16_t)
-                throttle                  : throttle (percentage) (int8_t)
-                heading_sp                : heading setpoint (int16_t)
-                latitude                  : Latitude (int32_t)
-                longitude                 : Longitude (int32_t)
-                altitude_amsl             : Altitude above mean sea level (int16_t)
-                altitude_sp               : Altitude setpoint relative to the home position (int16_t)
-                airspeed                  : airspeed (uint8_t)
-                airspeed_sp               : airspeed setpoint (uint8_t)
-                groundspeed               : groundspeed (uint8_t)
-                climb_rate                : climb rate (int8_t)
-                gps_nsat                  : Number of satellites visible. If unknown, set to 255 (uint8_t)
-                gps_fix_type              : GPS Fix type. (uint8_t)
-                battery_remaining         : Remaining battery (percentage) (uint8_t)
-                temperature               : Autopilot temperature (degrees C) (int8_t)
-                temperature_air           : Air temperature (degrees C) from airspeed sensor (int8_t)
-                failsafe                  : failsafe (each bit represents a failsafe where 0=ok, 1=failsafe active (bit0:RC, bit1:batt, bit2:GPS, bit3:GCS, bit4:fence) (uint8_t)
-                wp_num                    : current waypoint number (uint8_t)
-                wp_distance               : distance to target (uint16_t)
+                base_mode                 : Bitmap of enabled system modes. (type:uint8_t, values:MAV_MODE_FLAG)
+                custom_mode               : A bitfield for use for autopilot-specific flags. (type:uint32_t)
+                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (type:uint8_t, values:MAV_LANDED_STATE)
+                roll                      : roll [cdeg] (type:int16_t)
+                pitch                     : pitch [cdeg] (type:int16_t)
+                heading                   : heading [cdeg] (type:uint16_t)
+                throttle                  : throttle (percentage) [%] (type:int8_t)
+                heading_sp                : heading setpoint [cdeg] (type:int16_t)
+                latitude                  : Latitude [degE7] (type:int32_t)
+                longitude                 : Longitude [degE7] (type:int32_t)
+                altitude_amsl             : Altitude above mean sea level [m] (type:int16_t)
+                altitude_sp               : Altitude setpoint relative to the home position [m] (type:int16_t)
+                airspeed                  : airspeed [m/s] (type:uint8_t)
+                airspeed_sp               : airspeed setpoint [m/s] (type:uint8_t)
+                groundspeed               : groundspeed [m/s] (type:uint8_t)
+                climb_rate                : climb rate [m/s] (type:int8_t)
+                gps_nsat                  : Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                gps_fix_type              : GPS Fix type. (type:uint8_t, values:GPS_FIX_TYPE)
+                battery_remaining         : Remaining battery (percentage) [%] (type:uint8_t)
+                temperature               : Autopilot temperature (degrees C) [degC] (type:int8_t)
+                temperature_air           : Air temperature (degrees C) from airspeed sensor [degC] (type:int8_t)
+                failsafe                  : failsafe (each bit represents a failsafe where 0=ok, 1=failsafe active (bit0:RC, bit1:batt, bit2:GPS, bit3:GCS, bit4:fence) (type:uint8_t)
+                wp_num                    : current waypoint number (type:uint8_t)
+                wp_distance               : distance to target [m] (type:uint16_t)
 
                 '''
                 return self.send(self.high_latency_encode(base_mode, custom_mode, landed_state, roll, pitch, heading, throttle, heading_sp, latitude, longitude, altitude_amsl, altitude_sp, airspeed, airspeed_sp, groundspeed, climb_rate, gps_nsat, gps_fix_type, battery_remaining, temperature, temperature_air, failsafe, wp_num, wp_distance), force_mavlink1=force_mavlink1)
@@ -13465,33 +13818,33 @@ class MAVLink(object):
                 Message appropriate for high latency connections like Iridium (version
                 2)
 
-                timestamp                 : Timestamp (milliseconds since boot or Unix epoch) (uint32_t)
-                type                      : Type of the MAV (quadrotor, helicopter, etc.) (uint8_t)
-                autopilot                 : Autopilot type / class. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags (2 byte version). (uint16_t)
-                latitude                  : Latitude (int32_t)
-                longitude                 : Longitude (int32_t)
-                altitude                  : Altitude above mean sea level (int16_t)
-                target_altitude           : Altitude setpoint (int16_t)
-                heading                   : Heading (uint8_t)
-                target_heading            : Heading setpoint (uint8_t)
-                target_distance           : Distance to target waypoint or position (uint16_t)
-                throttle                  : Throttle (uint8_t)
-                airspeed                  : Airspeed (uint8_t)
-                airspeed_sp               : Airspeed setpoint (uint8_t)
-                groundspeed               : Groundspeed (uint8_t)
-                windspeed                 : Windspeed (uint8_t)
-                wind_heading              : Wind heading (uint8_t)
-                eph                       : Maximum error horizontal position since last message (uint8_t)
-                epv                       : Maximum error vertical position since last message (uint8_t)
-                temperature_air           : Air temperature from airspeed sensor (int8_t)
-                climb_rate                : Maximum climb rate magnitude since last message (int8_t)
-                battery                   : Battery (percentage, -1 for DNU) (int8_t)
-                wp_num                    : Current waypoint number (uint16_t)
-                failure_flags             : Bitmap of failure flags. (uint16_t)
-                custom0                   : Field for custom payload. (int8_t)
-                custom1                   : Field for custom payload. (int8_t)
-                custom2                   : Field for custom payload. (int8_t)
+                timestamp                 : Timestamp (milliseconds since boot or Unix epoch) [ms] (type:uint32_t)
+                type                      : Type of the MAV (quadrotor, helicopter, etc.) (type:uint8_t, values:MAV_TYPE)
+                autopilot                 : Autopilot type / class. (type:uint8_t, values:MAV_AUTOPILOT)
+                custom_mode               : A bitfield for use for autopilot-specific flags (2 byte version). (type:uint16_t)
+                latitude                  : Latitude [degE7] (type:int32_t)
+                longitude                 : Longitude [degE7] (type:int32_t)
+                altitude                  : Altitude above mean sea level [m] (type:int16_t)
+                target_altitude           : Altitude setpoint [m] (type:int16_t)
+                heading                   : Heading [deg/2] (type:uint8_t)
+                target_heading            : Heading setpoint [deg/2] (type:uint8_t)
+                target_distance           : Distance to target waypoint or position [dam] (type:uint16_t)
+                throttle                  : Throttle [%] (type:uint8_t)
+                airspeed                  : Airspeed [m/s*5] (type:uint8_t)
+                airspeed_sp               : Airspeed setpoint [m/s*5] (type:uint8_t)
+                groundspeed               : Groundspeed [m/s*5] (type:uint8_t)
+                windspeed                 : Windspeed [m/s*5] (type:uint8_t)
+                wind_heading              : Wind heading [deg/2] (type:uint8_t)
+                eph                       : Maximum error horizontal position since last message [dm] (type:uint8_t)
+                epv                       : Maximum error vertical position since last message [dm] (type:uint8_t)
+                temperature_air           : Air temperature from airspeed sensor [degC] (type:int8_t)
+                climb_rate                : Maximum climb rate magnitude since last message [dm/s] (type:int8_t)
+                battery                   : Battery (percentage, -1 for DNU) [%] (type:int8_t)
+                wp_num                    : Current waypoint number (type:uint16_t)
+                failure_flags             : Bitmap of failure flags. (type:uint16_t, values:HL_FAILURE_FLAG)
+                custom0                   : Field for custom payload. (type:int8_t)
+                custom1                   : Field for custom payload. (type:int8_t)
+                custom2                   : Field for custom payload. (type:int8_t)
 
                 '''
                 return MAVLink_high_latency2_message(timestamp, type, autopilot, custom_mode, latitude, longitude, altitude, target_altitude, heading, target_heading, target_distance, throttle, airspeed, airspeed_sp, groundspeed, windspeed, wind_heading, eph, epv, temperature_air, climb_rate, battery, wp_num, failure_flags, custom0, custom1, custom2)
@@ -13501,33 +13854,33 @@ class MAVLink(object):
                 Message appropriate for high latency connections like Iridium (version
                 2)
 
-                timestamp                 : Timestamp (milliseconds since boot or Unix epoch) (uint32_t)
-                type                      : Type of the MAV (quadrotor, helicopter, etc.) (uint8_t)
-                autopilot                 : Autopilot type / class. (uint8_t)
-                custom_mode               : A bitfield for use for autopilot-specific flags (2 byte version). (uint16_t)
-                latitude                  : Latitude (int32_t)
-                longitude                 : Longitude (int32_t)
-                altitude                  : Altitude above mean sea level (int16_t)
-                target_altitude           : Altitude setpoint (int16_t)
-                heading                   : Heading (uint8_t)
-                target_heading            : Heading setpoint (uint8_t)
-                target_distance           : Distance to target waypoint or position (uint16_t)
-                throttle                  : Throttle (uint8_t)
-                airspeed                  : Airspeed (uint8_t)
-                airspeed_sp               : Airspeed setpoint (uint8_t)
-                groundspeed               : Groundspeed (uint8_t)
-                windspeed                 : Windspeed (uint8_t)
-                wind_heading              : Wind heading (uint8_t)
-                eph                       : Maximum error horizontal position since last message (uint8_t)
-                epv                       : Maximum error vertical position since last message (uint8_t)
-                temperature_air           : Air temperature from airspeed sensor (int8_t)
-                climb_rate                : Maximum climb rate magnitude since last message (int8_t)
-                battery                   : Battery (percentage, -1 for DNU) (int8_t)
-                wp_num                    : Current waypoint number (uint16_t)
-                failure_flags             : Bitmap of failure flags. (uint16_t)
-                custom0                   : Field for custom payload. (int8_t)
-                custom1                   : Field for custom payload. (int8_t)
-                custom2                   : Field for custom payload. (int8_t)
+                timestamp                 : Timestamp (milliseconds since boot or Unix epoch) [ms] (type:uint32_t)
+                type                      : Type of the MAV (quadrotor, helicopter, etc.) (type:uint8_t, values:MAV_TYPE)
+                autopilot                 : Autopilot type / class. (type:uint8_t, values:MAV_AUTOPILOT)
+                custom_mode               : A bitfield for use for autopilot-specific flags (2 byte version). (type:uint16_t)
+                latitude                  : Latitude [degE7] (type:int32_t)
+                longitude                 : Longitude [degE7] (type:int32_t)
+                altitude                  : Altitude above mean sea level [m] (type:int16_t)
+                target_altitude           : Altitude setpoint [m] (type:int16_t)
+                heading                   : Heading [deg/2] (type:uint8_t)
+                target_heading            : Heading setpoint [deg/2] (type:uint8_t)
+                target_distance           : Distance to target waypoint or position [dam] (type:uint16_t)
+                throttle                  : Throttle [%] (type:uint8_t)
+                airspeed                  : Airspeed [m/s*5] (type:uint8_t)
+                airspeed_sp               : Airspeed setpoint [m/s*5] (type:uint8_t)
+                groundspeed               : Groundspeed [m/s*5] (type:uint8_t)
+                windspeed                 : Windspeed [m/s*5] (type:uint8_t)
+                wind_heading              : Wind heading [deg/2] (type:uint8_t)
+                eph                       : Maximum error horizontal position since last message [dm] (type:uint8_t)
+                epv                       : Maximum error vertical position since last message [dm] (type:uint8_t)
+                temperature_air           : Air temperature from airspeed sensor [degC] (type:int8_t)
+                climb_rate                : Maximum climb rate magnitude since last message [dm/s] (type:int8_t)
+                battery                   : Battery (percentage, -1 for DNU) [%] (type:int8_t)
+                wp_num                    : Current waypoint number (type:uint16_t)
+                failure_flags             : Bitmap of failure flags. (type:uint16_t, values:HL_FAILURE_FLAG)
+                custom0                   : Field for custom payload. (type:int8_t)
+                custom1                   : Field for custom payload. (type:int8_t)
+                custom2                   : Field for custom payload. (type:int8_t)
 
                 '''
                 return self.send(self.high_latency2_encode(timestamp, type, autopilot, custom_mode, latitude, longitude, altitude, target_altitude, heading, target_heading, target_distance, throttle, airspeed, airspeed_sp, groundspeed, windspeed, wind_heading, eph, epv, temperature_air, climb_rate, battery, wp_num, failure_flags, custom0, custom1, custom2), force_mavlink1=force_mavlink1)
@@ -13536,13 +13889,13 @@ class MAVLink(object):
                 '''
                 Vibration levels and accelerometer clipping
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                vibration_x               : Vibration levels on X-axis (float)
-                vibration_y               : Vibration levels on Y-axis (float)
-                vibration_z               : Vibration levels on Z-axis (float)
-                clipping_0                : first accelerometer clipping count (uint32_t)
-                clipping_1                : second accelerometer clipping count (uint32_t)
-                clipping_2                : third accelerometer clipping count (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                vibration_x               : Vibration levels on X-axis (type:float)
+                vibration_y               : Vibration levels on Y-axis (type:float)
+                vibration_z               : Vibration levels on Z-axis (type:float)
+                clipping_0                : first accelerometer clipping count (type:uint32_t)
+                clipping_1                : second accelerometer clipping count (type:uint32_t)
+                clipping_2                : third accelerometer clipping count (type:uint32_t)
 
                 '''
                 return MAVLink_vibration_message(time_usec, vibration_x, vibration_y, vibration_z, clipping_0, clipping_1, clipping_2)
@@ -13551,13 +13904,13 @@ class MAVLink(object):
                 '''
                 Vibration levels and accelerometer clipping
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                vibration_x               : Vibration levels on X-axis (float)
-                vibration_y               : Vibration levels on Y-axis (float)
-                vibration_z               : Vibration levels on Z-axis (float)
-                clipping_0                : first accelerometer clipping count (uint32_t)
-                clipping_1                : second accelerometer clipping count (uint32_t)
-                clipping_2                : third accelerometer clipping count (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                vibration_x               : Vibration levels on X-axis (type:float)
+                vibration_y               : Vibration levels on Y-axis (type:float)
+                vibration_z               : Vibration levels on Z-axis (type:float)
+                clipping_0                : first accelerometer clipping count (type:uint32_t)
+                clipping_1                : second accelerometer clipping count (type:uint32_t)
+                clipping_2                : third accelerometer clipping count (type:uint32_t)
 
                 '''
                 return self.send(self.vibration_encode(time_usec, vibration_x, vibration_y, vibration_z, clipping_0, clipping_1, clipping_2), force_mavlink1=force_mavlink1)
@@ -13579,17 +13932,17 @@ class MAVLink(object):
                 to which the system should fly in normal flight mode
                 and then perform a landing sequence along the vector.
 
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                x                         : Local X position of this position in the local coordinate frame (float)
-                y                         : Local Y position of this position in the local coordinate frame (float)
-                z                         : Local Z position of this position in the local coordinate frame (float)
-                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (float)
-                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                x                         : Local X position of this position in the local coordinate frame [m] (type:float)
+                y                         : Local Y position of this position in the local coordinate frame [m] (type:float)
+                z                         : Local Z position of this position in the local coordinate frame [m] (type:float)
+                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (type:float)
+                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return MAVLink_home_position_message(latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec)
@@ -13611,17 +13964,17 @@ class MAVLink(object):
                 to which the system should fly in normal flight mode
                 and then perform a landing sequence along the vector.
 
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                x                         : Local X position of this position in the local coordinate frame (float)
-                y                         : Local Y position of this position in the local coordinate frame (float)
-                z                         : Local Z position of this position in the local coordinate frame (float)
-                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (float)
-                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                x                         : Local X position of this position in the local coordinate frame [m] (type:float)
+                y                         : Local Y position of this position in the local coordinate frame [m] (type:float)
+                z                         : Local Z position of this position in the local coordinate frame [m] (type:float)
+                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (type:float)
+                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return self.send(self.home_position_encode(latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec), force_mavlink1=force_mavlink1)
@@ -13641,18 +13994,18 @@ class MAVLink(object):
                 fly in normal flight mode and then perform a landing
                 sequence along the vector.
 
-                target_system             : System ID. (uint8_t)
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                x                         : Local X position of this position in the local coordinate frame (float)
-                y                         : Local Y position of this position in the local coordinate frame (float)
-                z                         : Local Z position of this position in the local coordinate frame (float)
-                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (float)
-                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                target_system             : System ID. (type:uint8_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                x                         : Local X position of this position in the local coordinate frame [m] (type:float)
+                y                         : Local Y position of this position in the local coordinate frame [m] (type:float)
+                z                         : Local Z position of this position in the local coordinate frame [m] (type:float)
+                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (type:float)
+                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return MAVLink_set_home_position_message(target_system, latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec)
@@ -13672,18 +14025,18 @@ class MAVLink(object):
                 fly in normal flight mode and then perform a landing
                 sequence along the vector.
 
-                target_system             : System ID. (uint8_t)
-                latitude                  : Latitude (WGS84) (int32_t)
-                longitude                 : Longitude (WGS84) (int32_t)
-                altitude                  : Altitude (AMSL). Positive for up. (int32_t)
-                x                         : Local X position of this position in the local coordinate frame (float)
-                y                         : Local Y position of this position in the local coordinate frame (float)
-                z                         : Local Z position of this position in the local coordinate frame (float)
-                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (float)
-                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. (float)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
+                target_system             : System ID. (type:uint8_t)
+                latitude                  : Latitude (WGS84) [degE7] (type:int32_t)
+                longitude                 : Longitude (WGS84) [degE7] (type:int32_t)
+                altitude                  : Altitude (AMSL). Positive for up. [mm] (type:int32_t)
+                x                         : Local X position of this position in the local coordinate frame [m] (type:float)
+                y                         : Local Y position of this position in the local coordinate frame [m] (type:float)
+                z                         : Local Z position of this position in the local coordinate frame [m] (type:float)
+                q                         : World to surface normal and heading transformation of the takeoff position. Used to indicate the heading and slope of the ground (type:float)
+                approach_x                : Local X position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_y                : Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                approach_z                : Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone. [m] (type:float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
 
                 '''
                 return self.send(self.set_home_position_encode(target_system, latitude, longitude, altitude, x, y, z, q, approach_x, approach_y, approach_z, time_usec), force_mavlink1=force_mavlink1)
@@ -13693,8 +14046,8 @@ class MAVLink(object):
                 The interval between messages for a particular MAVLink message ID.
                 This interface replaces DATA_STREAM
 
-                message_id                : The ID of the requested MAVLink message. v1.0 is limited to 254 messages. (uint16_t)
-                interval_us               : The interval between two messages. A value of -1 indicates this stream is disabled, 0 indicates it is not available, > 0 indicates the interval at which it is sent. (int32_t)
+                message_id                : The ID of the requested MAVLink message. v1.0 is limited to 254 messages. (type:uint16_t)
+                interval_us               : The interval between two messages. A value of -1 indicates this stream is disabled, 0 indicates it is not available, > 0 indicates the interval at which it is sent. [us] (type:int32_t)
 
                 '''
                 return MAVLink_message_interval_message(message_id, interval_us)
@@ -13704,8 +14057,8 @@ class MAVLink(object):
                 The interval between messages for a particular MAVLink message ID.
                 This interface replaces DATA_STREAM
 
-                message_id                : The ID of the requested MAVLink message. v1.0 is limited to 254 messages. (uint16_t)
-                interval_us               : The interval between two messages. A value of -1 indicates this stream is disabled, 0 indicates it is not available, > 0 indicates the interval at which it is sent. (int32_t)
+                message_id                : The ID of the requested MAVLink message. v1.0 is limited to 254 messages. (type:uint16_t)
+                interval_us               : The interval between two messages. A value of -1 indicates this stream is disabled, 0 indicates it is not available, > 0 indicates the interval at which it is sent. [us] (type:int32_t)
 
                 '''
                 return self.send(self.message_interval_encode(message_id, interval_us), force_mavlink1=force_mavlink1)
@@ -13714,8 +14067,8 @@ class MAVLink(object):
                 '''
                 Provides state for additional features
 
-                vtol_state                : The VTOL state if applicable. Is set to MAV_VTOL_STATE_UNDEFINED if UAV is not in VTOL configuration. (uint8_t)
-                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (uint8_t)
+                vtol_state                : The VTOL state if applicable. Is set to MAV_VTOL_STATE_UNDEFINED if UAV is not in VTOL configuration. (type:uint8_t, values:MAV_VTOL_STATE)
+                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (type:uint8_t, values:MAV_LANDED_STATE)
 
                 '''
                 return MAVLink_extended_sys_state_message(vtol_state, landed_state)
@@ -13724,8 +14077,8 @@ class MAVLink(object):
                 '''
                 Provides state for additional features
 
-                vtol_state                : The VTOL state if applicable. Is set to MAV_VTOL_STATE_UNDEFINED if UAV is not in VTOL configuration. (uint8_t)
-                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (uint8_t)
+                vtol_state                : The VTOL state if applicable. Is set to MAV_VTOL_STATE_UNDEFINED if UAV is not in VTOL configuration. (type:uint8_t, values:MAV_VTOL_STATE)
+                landed_state              : The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown. (type:uint8_t, values:MAV_LANDED_STATE)
 
                 '''
                 return self.send(self.extended_sys_state_encode(vtol_state, landed_state), force_mavlink1=force_mavlink1)
@@ -13734,19 +14087,19 @@ class MAVLink(object):
                 '''
                 The location and information of an ADSB vehicle
 
-                ICAO_address              : ICAO address (uint32_t)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                altitude_type             : ADSB altitude type. (uint8_t)
-                altitude                  : Altitude(ASL) (int32_t)
-                heading                   : Course over ground (uint16_t)
-                hor_velocity              : The horizontal velocity (uint16_t)
-                ver_velocity              : The vertical velocity. Positive is up (int16_t)
-                callsign                  : The callsign, 8+null (char)
-                emitter_type              : ADSB emitter type. (uint8_t)
-                tslc                      : Time since last communication in seconds (uint8_t)
-                flags                     : Bitmap to indicate various statuses including valid data fields (uint16_t)
-                squawk                    : Squawk code (uint16_t)
+                ICAO_address              : ICAO address (type:uint32_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                altitude_type             : ADSB altitude type. (type:uint8_t, values:ADSB_ALTITUDE_TYPE)
+                altitude                  : Altitude(ASL) [mm] (type:int32_t)
+                heading                   : Course over ground [cdeg] (type:uint16_t)
+                hor_velocity              : The horizontal velocity [cm/s] (type:uint16_t)
+                ver_velocity              : The vertical velocity. Positive is up [cm/s] (type:int16_t)
+                callsign                  : The callsign, 8+null (type:char)
+                emitter_type              : ADSB emitter type. (type:uint8_t, values:ADSB_EMITTER_TYPE)
+                tslc                      : Time since last communication in seconds [s] (type:uint8_t)
+                flags                     : Bitmap to indicate various statuses including valid data fields (type:uint16_t, values:ADSB_FLAGS)
+                squawk                    : Squawk code (type:uint16_t)
 
                 '''
                 return MAVLink_adsb_vehicle_message(ICAO_address, lat, lon, altitude_type, altitude, heading, hor_velocity, ver_velocity, callsign, emitter_type, tslc, flags, squawk)
@@ -13755,19 +14108,19 @@ class MAVLink(object):
                 '''
                 The location and information of an ADSB vehicle
 
-                ICAO_address              : ICAO address (uint32_t)
-                lat                       : Latitude (int32_t)
-                lon                       : Longitude (int32_t)
-                altitude_type             : ADSB altitude type. (uint8_t)
-                altitude                  : Altitude(ASL) (int32_t)
-                heading                   : Course over ground (uint16_t)
-                hor_velocity              : The horizontal velocity (uint16_t)
-                ver_velocity              : The vertical velocity. Positive is up (int16_t)
-                callsign                  : The callsign, 8+null (char)
-                emitter_type              : ADSB emitter type. (uint8_t)
-                tslc                      : Time since last communication in seconds (uint8_t)
-                flags                     : Bitmap to indicate various statuses including valid data fields (uint16_t)
-                squawk                    : Squawk code (uint16_t)
+                ICAO_address              : ICAO address (type:uint32_t)
+                lat                       : Latitude [degE7] (type:int32_t)
+                lon                       : Longitude [degE7] (type:int32_t)
+                altitude_type             : ADSB altitude type. (type:uint8_t, values:ADSB_ALTITUDE_TYPE)
+                altitude                  : Altitude(ASL) [mm] (type:int32_t)
+                heading                   : Course over ground [cdeg] (type:uint16_t)
+                hor_velocity              : The horizontal velocity [cm/s] (type:uint16_t)
+                ver_velocity              : The vertical velocity. Positive is up [cm/s] (type:int16_t)
+                callsign                  : The callsign, 8+null (type:char)
+                emitter_type              : ADSB emitter type. (type:uint8_t, values:ADSB_EMITTER_TYPE)
+                tslc                      : Time since last communication in seconds [s] (type:uint8_t)
+                flags                     : Bitmap to indicate various statuses including valid data fields (type:uint16_t, values:ADSB_FLAGS)
+                squawk                    : Squawk code (type:uint16_t)
 
                 '''
                 return self.send(self.adsb_vehicle_encode(ICAO_address, lat, lon, altitude_type, altitude, heading, hor_velocity, ver_velocity, callsign, emitter_type, tslc, flags, squawk), force_mavlink1=force_mavlink1)
@@ -13776,13 +14129,13 @@ class MAVLink(object):
                 '''
                 Information about a potential collision
 
-                src                       : Collision data source (uint8_t)
-                id                        : Unique identifier, domain based on src field (uint32_t)
-                action                    : Action that is being taken to avoid this collision (uint8_t)
-                threat_level              : How concerned the aircraft is about this collision (uint8_t)
-                time_to_minimum_delta        : Estimated time until collision occurs (float)
-                altitude_minimum_delta        : Closest vertical distance between vehicle and object (float)
-                horizontal_minimum_delta        : Closest horizontal distance between vehicle and object (float)
+                src                       : Collision data source (type:uint8_t, values:MAV_COLLISION_SRC)
+                id                        : Unique identifier, domain based on src field (type:uint32_t)
+                action                    : Action that is being taken to avoid this collision (type:uint8_t, values:MAV_COLLISION_ACTION)
+                threat_level              : How concerned the aircraft is about this collision (type:uint8_t, values:MAV_COLLISION_THREAT_LEVEL)
+                time_to_minimum_delta        : Estimated time until collision occurs [s] (type:float)
+                altitude_minimum_delta        : Closest vertical distance between vehicle and object [m] (type:float)
+                horizontal_minimum_delta        : Closest horizontal distance between vehicle and object [m] (type:float)
 
                 '''
                 return MAVLink_collision_message(src, id, action, threat_level, time_to_minimum_delta, altitude_minimum_delta, horizontal_minimum_delta)
@@ -13791,13 +14144,13 @@ class MAVLink(object):
                 '''
                 Information about a potential collision
 
-                src                       : Collision data source (uint8_t)
-                id                        : Unique identifier, domain based on src field (uint32_t)
-                action                    : Action that is being taken to avoid this collision (uint8_t)
-                threat_level              : How concerned the aircraft is about this collision (uint8_t)
-                time_to_minimum_delta        : Estimated time until collision occurs (float)
-                altitude_minimum_delta        : Closest vertical distance between vehicle and object (float)
-                horizontal_minimum_delta        : Closest horizontal distance between vehicle and object (float)
+                src                       : Collision data source (type:uint8_t, values:MAV_COLLISION_SRC)
+                id                        : Unique identifier, domain based on src field (type:uint32_t)
+                action                    : Action that is being taken to avoid this collision (type:uint8_t, values:MAV_COLLISION_ACTION)
+                threat_level              : How concerned the aircraft is about this collision (type:uint8_t, values:MAV_COLLISION_THREAT_LEVEL)
+                time_to_minimum_delta        : Estimated time until collision occurs [s] (type:float)
+                altitude_minimum_delta        : Closest vertical distance between vehicle and object [m] (type:float)
+                horizontal_minimum_delta        : Closest horizontal distance between vehicle and object [m] (type:float)
 
                 '''
                 return self.send(self.collision_encode(src, id, action, threat_level, time_to_minimum_delta, altitude_minimum_delta, horizontal_minimum_delta), force_mavlink1=force_mavlink1)
@@ -13807,11 +14160,11 @@ class MAVLink(object):
                 Message implementing parts of the V2 payload specs in V1 frames for
                 transitional support.
 
-                target_network            : Network ID (0 for broadcast) (uint8_t)
-                target_system             : System ID (0 for broadcast) (uint8_t)
-                target_component          : Component ID (0 for broadcast) (uint8_t)
-                message_type              : A code that identifies the software component that understands this message (analogous to USB device classes or mime type strings).  If this code is less than 32768, it is considered a 'registered' protocol extension and the corresponding entry should be added to https://github.com/mavlink/mavlink/extension-message-ids.xml.  Software creators can register blocks of message IDs as needed (useful for GCS specific metadata, etc...). Message_types greater than 32767 are considered local experiments and should not be checked in to any widely distributed codebase. (uint16_t)
-                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (uint8_t)
+                target_network            : Network ID (0 for broadcast) (type:uint8_t)
+                target_system             : System ID (0 for broadcast) (type:uint8_t)
+                target_component          : Component ID (0 for broadcast) (type:uint8_t)
+                message_type              : A code that identifies the software component that understands this message (analogous to USB device classes or mime type strings).  If this code is less than 32768, it is considered a 'registered' protocol extension and the corresponding entry should be added to https://github.com/mavlink/mavlink/extension-message-ids.xml.  Software creators can register blocks of message IDs as needed (useful for GCS specific metadata, etc...). Message_types greater than 32767 are considered local experiments and should not be checked in to any widely distributed codebase. (type:uint16_t)
+                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (type:uint8_t)
 
                 '''
                 return MAVLink_v2_extension_message(target_network, target_system, target_component, message_type, payload)
@@ -13821,11 +14174,11 @@ class MAVLink(object):
                 Message implementing parts of the V2 payload specs in V1 frames for
                 transitional support.
 
-                target_network            : Network ID (0 for broadcast) (uint8_t)
-                target_system             : System ID (0 for broadcast) (uint8_t)
-                target_component          : Component ID (0 for broadcast) (uint8_t)
-                message_type              : A code that identifies the software component that understands this message (analogous to USB device classes or mime type strings).  If this code is less than 32768, it is considered a 'registered' protocol extension and the corresponding entry should be added to https://github.com/mavlink/mavlink/extension-message-ids.xml.  Software creators can register blocks of message IDs as needed (useful for GCS specific metadata, etc...). Message_types greater than 32767 are considered local experiments and should not be checked in to any widely distributed codebase. (uint16_t)
-                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (uint8_t)
+                target_network            : Network ID (0 for broadcast) (type:uint8_t)
+                target_system             : System ID (0 for broadcast) (type:uint8_t)
+                target_component          : Component ID (0 for broadcast) (type:uint8_t)
+                message_type              : A code that identifies the software component that understands this message (analogous to USB device classes or mime type strings).  If this code is less than 32768, it is considered a 'registered' protocol extension and the corresponding entry should be added to https://github.com/mavlink/mavlink/extension-message-ids.xml.  Software creators can register blocks of message IDs as needed (useful for GCS specific metadata, etc...). Message_types greater than 32767 are considered local experiments and should not be checked in to any widely distributed codebase. (type:uint16_t)
+                payload                   : Variable length payload. The length is defined by the remaining message length when subtracting the header and other fields.  The entire content of this block is opaque unless you understand any the encoding message_type.  The particular encoding used can be extension specific and might not always be documented as part of the mavlink specification. (type:uint8_t)
 
                 '''
                 return self.send(self.v2_extension_encode(target_network, target_system, target_component, message_type, payload), force_mavlink1=force_mavlink1)
@@ -13836,10 +14189,10 @@ class MAVLink(object):
                 normal packets, but a quite efficient way for testing
                 new messages and getting experimental debug output.
 
-                address                   : Starting address of the debug variables (uint16_t)
-                ver                       : Version code of the type variable. 0=unknown, type ignored and assumed int16_t. 1=as below (uint8_t)
-                type                      : Type code of the memory variables. for ver = 1: 0=16 x int16_t, 1=16 x uint16_t, 2=16 x Q15, 3=16 x 1Q14 (uint8_t)
-                value                     : Memory contents at specified address (int8_t)
+                address                   : Starting address of the debug variables (type:uint16_t)
+                ver                       : Version code of the type variable. 0=unknown, type ignored and assumed int16_t. 1=as below (type:uint8_t)
+                type                      : Type code of the memory variables. for ver = 1: 0=16 x int16_t, 1=16 x uint16_t, 2=16 x Q15, 3=16 x 1Q14 (type:uint8_t)
+                value                     : Memory contents at specified address (type:int8_t)
 
                 '''
                 return MAVLink_memory_vect_message(address, ver, type, value)
@@ -13850,10 +14203,10 @@ class MAVLink(object):
                 normal packets, but a quite efficient way for testing
                 new messages and getting experimental debug output.
 
-                address                   : Starting address of the debug variables (uint16_t)
-                ver                       : Version code of the type variable. 0=unknown, type ignored and assumed int16_t. 1=as below (uint8_t)
-                type                      : Type code of the memory variables. for ver = 1: 0=16 x int16_t, 1=16 x uint16_t, 2=16 x Q15, 3=16 x 1Q14 (uint8_t)
-                value                     : Memory contents at specified address (int8_t)
+                address                   : Starting address of the debug variables (type:uint16_t)
+                ver                       : Version code of the type variable. 0=unknown, type ignored and assumed int16_t. 1=as below (type:uint8_t)
+                type                      : Type code of the memory variables. for ver = 1: 0=16 x int16_t, 1=16 x uint16_t, 2=16 x Q15, 3=16 x 1Q14 (type:uint8_t)
+                value                     : Memory contents at specified address (type:int8_t)
 
                 '''
                 return self.send(self.memory_vect_encode(address, ver, type, value), force_mavlink1=force_mavlink1)
@@ -13862,11 +14215,11 @@ class MAVLink(object):
                 '''
                 To debug something using a named 3D vector.
 
-                name                      : Name (char)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                x                         : x (float)
-                y                         : y (float)
-                z                         : z (float)
+                name                      : Name (type:char)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                x                         : x (type:float)
+                y                         : y (type:float)
+                z                         : z (type:float)
 
                 '''
                 return MAVLink_debug_vect_message(name, time_usec, x, y, z)
@@ -13875,11 +14228,11 @@ class MAVLink(object):
                 '''
                 To debug something using a named 3D vector.
 
-                name                      : Name (char)
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                x                         : x (float)
-                y                         : y (float)
-                z                         : z (float)
+                name                      : Name (type:char)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                x                         : x (type:float)
+                y                         : y (type:float)
+                z                         : z (type:float)
 
                 '''
                 return self.send(self.debug_vect_encode(name, time_usec, x, y, z), force_mavlink1=force_mavlink1)
@@ -13891,9 +14244,9 @@ class MAVLink(object):
                 testing new messages and getting experimental debug
                 output.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                name                      : Name of the debug variable (char)
-                value                     : Floating point value (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                name                      : Name of the debug variable (type:char)
+                value                     : Floating point value (type:float)
 
                 '''
                 return MAVLink_named_value_float_message(time_boot_ms, name, value)
@@ -13905,9 +14258,9 @@ class MAVLink(object):
                 testing new messages and getting experimental debug
                 output.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                name                      : Name of the debug variable (char)
-                value                     : Floating point value (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                name                      : Name of the debug variable (type:char)
+                value                     : Floating point value (type:float)
 
                 '''
                 return self.send(self.named_value_float_encode(time_boot_ms, name, value), force_mavlink1=force_mavlink1)
@@ -13919,9 +14272,9 @@ class MAVLink(object):
                 way for testing new messages and getting experimental
                 debug output.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                name                      : Name of the debug variable (char)
-                value                     : Signed integer value (int32_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                name                      : Name of the debug variable (type:char)
+                value                     : Signed integer value (type:int32_t)
 
                 '''
                 return MAVLink_named_value_int_message(time_boot_ms, name, value)
@@ -13933,9 +14286,9 @@ class MAVLink(object):
                 way for testing new messages and getting experimental
                 debug output.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                name                      : Name of the debug variable (char)
-                value                     : Signed integer value (int32_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                name                      : Name of the debug variable (type:char)
+                value                     : Signed integer value (type:int32_t)
 
                 '''
                 return self.send(self.named_value_int_encode(time_boot_ms, name, value), force_mavlink1=force_mavlink1)
@@ -13949,8 +14302,8 @@ class MAVLink(object):
                 are buffered on the MCU and sent only at a limited
                 rate (e.g. 10 Hz).
 
-                severity                  : Severity of status. Relies on the definitions within RFC-5424. (uint8_t)
-                text                      : Status text message, without null termination character (char)
+                severity                  : Severity of status. Relies on the definitions within RFC-5424. (type:uint8_t, values:MAV_SEVERITY)
+                text                      : Status text message, without null termination character (type:char)
 
                 '''
                 return MAVLink_statustext_message(severity, text)
@@ -13964,8 +14317,8 @@ class MAVLink(object):
                 are buffered on the MCU and sent only at a limited
                 rate (e.g. 10 Hz).
 
-                severity                  : Severity of status. Relies on the definitions within RFC-5424. (uint8_t)
-                text                      : Status text message, without null termination character (char)
+                severity                  : Severity of status. Relies on the definitions within RFC-5424. (type:uint8_t, values:MAV_SEVERITY)
+                text                      : Status text message, without null termination character (type:char)
 
                 '''
                 return self.send(self.statustext_encode(severity, text), force_mavlink1=force_mavlink1)
@@ -13976,9 +14329,9 @@ class MAVLink(object):
                 These values show up in the plot of QGroundControl as
                 DEBUG N.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                ind                       : index of debug variable (uint8_t)
-                value                     : DEBUG value (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                ind                       : index of debug variable (type:uint8_t)
+                value                     : DEBUG value (type:float)
 
                 '''
                 return MAVLink_debug_message(time_boot_ms, ind, value)
@@ -13989,9 +14342,9 @@ class MAVLink(object):
                 These values show up in the plot of QGroundControl as
                 DEBUG N.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                ind                       : index of debug variable (uint8_t)
-                value                     : DEBUG value (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                ind                       : index of debug variable (type:uint8_t)
+                value                     : DEBUG value (type:float)
 
                 '''
                 return self.send(self.debug_encode(time_boot_ms, ind, value), force_mavlink1=force_mavlink1)
@@ -14001,10 +14354,10 @@ class MAVLink(object):
                 Setup a MAVLink2 signing key. If called with secret_key of all zero
                 and zero initial_timestamp will disable signing
 
-                target_system             : system id of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                secret_key                : signing key (uint8_t)
-                initial_timestamp         : initial timestamp (uint64_t)
+                target_system             : system id of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                secret_key                : signing key (type:uint8_t)
+                initial_timestamp         : initial timestamp (type:uint64_t)
 
                 '''
                 return MAVLink_setup_signing_message(target_system, target_component, secret_key, initial_timestamp)
@@ -14014,10 +14367,10 @@ class MAVLink(object):
                 Setup a MAVLink2 signing key. If called with secret_key of all zero
                 and zero initial_timestamp will disable signing
 
-                target_system             : system id of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                secret_key                : signing key (uint8_t)
-                initial_timestamp         : initial timestamp (uint64_t)
+                target_system             : system id of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                secret_key                : signing key (type:uint8_t)
+                initial_timestamp         : initial timestamp (type:uint64_t)
 
                 '''
                 return self.send(self.setup_signing_encode(target_system, target_component, secret_key, initial_timestamp), force_mavlink1=force_mavlink1)
@@ -14026,9 +14379,9 @@ class MAVLink(object):
                 '''
                 Report button state change.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                last_change_ms            : Time of last change of button state. (uint32_t)
-                state                     : Bitmap for state of buttons. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                last_change_ms            : Time of last change of button state. [ms] (type:uint32_t)
+                state                     : Bitmap for state of buttons. (type:uint8_t)
 
                 '''
                 return MAVLink_button_change_message(time_boot_ms, last_change_ms, state)
@@ -14037,54 +14390,52 @@ class MAVLink(object):
                 '''
                 Report button state change.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                last_change_ms            : Time of last change of button state. (uint32_t)
-                state                     : Bitmap for state of buttons. (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                last_change_ms            : Time of last change of button state. [ms] (type:uint32_t)
+                state                     : Bitmap for state of buttons. (type:uint8_t)
 
                 '''
                 return self.send(self.button_change_encode(time_boot_ms, last_change_ms, state), force_mavlink1=force_mavlink1)
 
-        def play_tune_encode(self, target_system, target_component, tune, tune2=0):
+        def play_tune_encode(self, target_system, target_component, tune):
                 '''
                 Control vehicle tone generation (buzzer)
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                tune                      : tune in board specific format (char)
-                tune2                     : tune extension (appended to tune) (char)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                tune                      : tune in board specific format (type:char)
 
                 '''
-                return MAVLink_play_tune_message(target_system, target_component, tune, tune2)
+                return MAVLink_play_tune_message(target_system, target_component, tune)
 
-        def play_tune_send(self, target_system, target_component, tune, tune2=0, force_mavlink1=False):
+        def play_tune_send(self, target_system, target_component, tune, force_mavlink1=False):
                 '''
                 Control vehicle tone generation (buzzer)
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                tune                      : tune in board specific format (char)
-                tune2                     : tune extension (appended to tune) (char)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                tune                      : tune in board specific format (type:char)
 
                 '''
-                return self.send(self.play_tune_encode(target_system, target_component, tune, tune2), force_mavlink1=force_mavlink1)
+                return self.send(self.play_tune_encode(target_system, target_component, tune), force_mavlink1=force_mavlink1)
 
         def camera_information_encode(self, time_boot_ms, vendor_name, model_name, firmware_version, focal_length, sensor_size_h, sensor_size_v, resolution_h, resolution_v, lens_id, flags, cam_definition_version, cam_definition_uri):
                 '''
                 Information about a camera
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                vendor_name               : Name of the camera vendor (uint8_t)
-                model_name                : Name of the camera model (uint8_t)
-                firmware_version          : Version of the camera firmware (v << 24 & 0xff = Dev, v << 16 & 0xff = Patch, v << 8 & 0xff = Minor, v & 0xff = Major) (uint32_t)
-                focal_length              : Focal length (float)
-                sensor_size_h             : Image sensor size horizontal (float)
-                sensor_size_v             : Image sensor size vertical (float)
-                resolution_h              : Horizontal image resolution (uint16_t)
-                resolution_v              : Vertical image resolution (uint16_t)
-                lens_id                   : Reserved for a lens ID (uint8_t)
-                flags                     : Bitmap of camera capability flags. (uint32_t)
-                cam_definition_version        : Camera definition version (iteration) (uint16_t)
-                cam_definition_uri        : Camera definition URI (if any, otherwise only basic functions will be available). (char)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                vendor_name               : Name of the camera vendor (type:uint8_t)
+                model_name                : Name of the camera model (type:uint8_t)
+                firmware_version          : Version of the camera firmware (v << 24 & 0xff = Dev, v << 16 & 0xff = Patch, v << 8 & 0xff = Minor, v & 0xff = Major) (type:uint32_t)
+                focal_length              : Focal length [mm] (type:float)
+                sensor_size_h             : Image sensor size horizontal [mm] (type:float)
+                sensor_size_v             : Image sensor size vertical [mm] (type:float)
+                resolution_h              : Horizontal image resolution [pix] (type:uint16_t)
+                resolution_v              : Vertical image resolution [pix] (type:uint16_t)
+                lens_id                   : Reserved for a lens ID (type:uint8_t)
+                flags                     : Bitmap of camera capability flags. (type:uint32_t, values:CAMERA_CAP_FLAGS)
+                cam_definition_version        : Camera definition version (iteration) (type:uint16_t)
+                cam_definition_uri        : Camera definition URI (if any, otherwise only basic functions will be available). (type:char)
 
                 '''
                 return MAVLink_camera_information_message(time_boot_ms, vendor_name, model_name, firmware_version, focal_length, sensor_size_h, sensor_size_v, resolution_h, resolution_v, lens_id, flags, cam_definition_version, cam_definition_uri)
@@ -14093,19 +14444,19 @@ class MAVLink(object):
                 '''
                 Information about a camera
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                vendor_name               : Name of the camera vendor (uint8_t)
-                model_name                : Name of the camera model (uint8_t)
-                firmware_version          : Version of the camera firmware (v << 24 & 0xff = Dev, v << 16 & 0xff = Patch, v << 8 & 0xff = Minor, v & 0xff = Major) (uint32_t)
-                focal_length              : Focal length (float)
-                sensor_size_h             : Image sensor size horizontal (float)
-                sensor_size_v             : Image sensor size vertical (float)
-                resolution_h              : Horizontal image resolution (uint16_t)
-                resolution_v              : Vertical image resolution (uint16_t)
-                lens_id                   : Reserved for a lens ID (uint8_t)
-                flags                     : Bitmap of camera capability flags. (uint32_t)
-                cam_definition_version        : Camera definition version (iteration) (uint16_t)
-                cam_definition_uri        : Camera definition URI (if any, otherwise only basic functions will be available). (char)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                vendor_name               : Name of the camera vendor (type:uint8_t)
+                model_name                : Name of the camera model (type:uint8_t)
+                firmware_version          : Version of the camera firmware (v << 24 & 0xff = Dev, v << 16 & 0xff = Patch, v << 8 & 0xff = Minor, v & 0xff = Major) (type:uint32_t)
+                focal_length              : Focal length [mm] (type:float)
+                sensor_size_h             : Image sensor size horizontal [mm] (type:float)
+                sensor_size_v             : Image sensor size vertical [mm] (type:float)
+                resolution_h              : Horizontal image resolution [pix] (type:uint16_t)
+                resolution_v              : Vertical image resolution [pix] (type:uint16_t)
+                lens_id                   : Reserved for a lens ID (type:uint8_t)
+                flags                     : Bitmap of camera capability flags. (type:uint32_t, values:CAMERA_CAP_FLAGS)
+                cam_definition_version        : Camera definition version (iteration) (type:uint16_t)
+                cam_definition_uri        : Camera definition URI (if any, otherwise only basic functions will be available). (type:char)
 
                 '''
                 return self.send(self.camera_information_encode(time_boot_ms, vendor_name, model_name, firmware_version, focal_length, sensor_size_h, sensor_size_v, resolution_h, resolution_v, lens_id, flags, cam_definition_version, cam_definition_uri), force_mavlink1=force_mavlink1)
@@ -14115,8 +14466,8 @@ class MAVLink(object):
                 Settings of a camera, can be requested using
                 MAV_CMD_REQUEST_CAMERA_SETTINGS.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                mode_id                   : Camera mode (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                mode_id                   : Camera mode (type:uint8_t, values:CAMERA_MODE)
 
                 '''
                 return MAVLink_camera_settings_message(time_boot_ms, mode_id)
@@ -14126,8 +14477,8 @@ class MAVLink(object):
                 Settings of a camera, can be requested using
                 MAV_CMD_REQUEST_CAMERA_SETTINGS.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                mode_id                   : Camera mode (uint8_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                mode_id                   : Camera mode (type:uint8_t, values:CAMERA_MODE)
 
                 '''
                 return self.send(self.camera_settings_encode(time_boot_ms, mode_id), force_mavlink1=force_mavlink1)
@@ -14136,15 +14487,15 @@ class MAVLink(object):
                 '''
                 Information about a storage medium.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                storage_id                : Storage ID (1 for first, 2 for second, etc.) (uint8_t)
-                storage_count             : Number of storage devices (uint8_t)
-                status                    : Status of storage (0 not available, 1 unformatted, 2 formatted) (uint8_t)
-                total_capacity            : Total capacity. (float)
-                used_capacity             : Used capacity. (float)
-                available_capacity        : Available storage capacity. (float)
-                read_speed                : Read speed. (float)
-                write_speed               : Write speed. (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                storage_id                : Storage ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                storage_count             : Number of storage devices (type:uint8_t)
+                status                    : Status of storage (0 not available, 1 unformatted, 2 formatted) (type:uint8_t)
+                total_capacity            : Total capacity. [MiB] (type:float)
+                used_capacity             : Used capacity. [MiB] (type:float)
+                available_capacity        : Available storage capacity. [MiB] (type:float)
+                read_speed                : Read speed. [MiB/s] (type:float)
+                write_speed               : Write speed. [MiB/s] (type:float)
 
                 '''
                 return MAVLink_storage_information_message(time_boot_ms, storage_id, storage_count, status, total_capacity, used_capacity, available_capacity, read_speed, write_speed)
@@ -14153,15 +14504,15 @@ class MAVLink(object):
                 '''
                 Information about a storage medium.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                storage_id                : Storage ID (1 for first, 2 for second, etc.) (uint8_t)
-                storage_count             : Number of storage devices (uint8_t)
-                status                    : Status of storage (0 not available, 1 unformatted, 2 formatted) (uint8_t)
-                total_capacity            : Total capacity. (float)
-                used_capacity             : Used capacity. (float)
-                available_capacity        : Available storage capacity. (float)
-                read_speed                : Read speed. (float)
-                write_speed               : Write speed. (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                storage_id                : Storage ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                storage_count             : Number of storage devices (type:uint8_t)
+                status                    : Status of storage (0 not available, 1 unformatted, 2 formatted) (type:uint8_t)
+                total_capacity            : Total capacity. [MiB] (type:float)
+                used_capacity             : Used capacity. [MiB] (type:float)
+                available_capacity        : Available storage capacity. [MiB] (type:float)
+                read_speed                : Read speed. [MiB/s] (type:float)
+                write_speed               : Write speed. [MiB/s] (type:float)
 
                 '''
                 return self.send(self.storage_information_encode(time_boot_ms, storage_id, storage_count, status, total_capacity, used_capacity, available_capacity, read_speed, write_speed), force_mavlink1=force_mavlink1)
@@ -14170,12 +14521,12 @@ class MAVLink(object):
                 '''
                 Information about the status of a capture.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                image_status              : Current status of image capturing (0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress) (uint8_t)
-                video_status              : Current status of video capturing (0: idle, 1: capture in progress) (uint8_t)
-                image_interval            : Image capture interval (float)
-                recording_time_ms         : Time since recording started (uint32_t)
-                available_capacity        : Available storage capacity. (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                image_status              : Current status of image capturing (0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress) (type:uint8_t)
+                video_status              : Current status of video capturing (0: idle, 1: capture in progress) (type:uint8_t)
+                image_interval            : Image capture interval [s] (type:float)
+                recording_time_ms         : Time since recording started [ms] (type:uint32_t)
+                available_capacity        : Available storage capacity. [MiB] (type:float)
 
                 '''
                 return MAVLink_camera_capture_status_message(time_boot_ms, image_status, video_status, image_interval, recording_time_ms, available_capacity)
@@ -14184,12 +14535,12 @@ class MAVLink(object):
                 '''
                 Information about the status of a capture.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                image_status              : Current status of image capturing (0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress) (uint8_t)
-                video_status              : Current status of video capturing (0: idle, 1: capture in progress) (uint8_t)
-                image_interval            : Image capture interval (float)
-                recording_time_ms         : Time since recording started (uint32_t)
-                available_capacity        : Available storage capacity. (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                image_status              : Current status of image capturing (0: idle, 1: capture in progress, 2: interval set but idle, 3: interval set and capture in progress) (type:uint8_t)
+                video_status              : Current status of video capturing (0: idle, 1: capture in progress) (type:uint8_t)
+                image_interval            : Image capture interval [s] (type:float)
+                recording_time_ms         : Time since recording started [ms] (type:uint32_t)
+                available_capacity        : Available storage capacity. [MiB] (type:float)
 
                 '''
                 return self.send(self.camera_capture_status_encode(time_boot_ms, image_status, video_status, image_interval, recording_time_ms, available_capacity), force_mavlink1=force_mavlink1)
@@ -14198,17 +14549,17 @@ class MAVLink(object):
                 '''
                 Information about a captured image
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                time_utc                  : Timestamp (time since UNIX epoch) in UTC. 0 for unknown. (uint64_t)
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                lat                       : Latitude where image was taken (int32_t)
-                lon                       : Longitude where capture was taken (int32_t)
-                alt                       : Altitude (AMSL) where image was taken (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                q                         : Quaternion of camera orientation (w, x, y, z order, zero-rotation is 0, 0, 0, 0) (float)
-                image_index               : Zero based index of this image (image count since armed -1) (int32_t)
-                capture_result            : Boolean indicating success (1) or failure (0) while capturing this image. (int8_t)
-                file_url                  : URL of image taken. Either local storage or http://foo.jpg if camera provides an HTTP interface. (char)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                time_utc                  : Timestamp (time since UNIX epoch) in UTC. 0 for unknown. [us] (type:uint64_t)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                lat                       : Latitude where image was taken [degE7] (type:int32_t)
+                lon                       : Longitude where capture was taken [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) where image was taken [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                q                         : Quaternion of camera orientation (w, x, y, z order, zero-rotation is 0, 0, 0, 0) (type:float)
+                image_index               : Zero based index of this image (image count since armed -1) (type:int32_t)
+                capture_result            : Boolean indicating success (1) or failure (0) while capturing this image. (type:int8_t)
+                file_url                  : URL of image taken. Either local storage or http://foo.jpg if camera provides an HTTP interface. (type:char)
 
                 '''
                 return MAVLink_camera_image_captured_message(time_boot_ms, time_utc, camera_id, lat, lon, alt, relative_alt, q, image_index, capture_result, file_url)
@@ -14217,17 +14568,17 @@ class MAVLink(object):
                 '''
                 Information about a captured image
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                time_utc                  : Timestamp (time since UNIX epoch) in UTC. 0 for unknown. (uint64_t)
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                lat                       : Latitude where image was taken (int32_t)
-                lon                       : Longitude where capture was taken (int32_t)
-                alt                       : Altitude (AMSL) where image was taken (int32_t)
-                relative_alt              : Altitude above ground (int32_t)
-                q                         : Quaternion of camera orientation (w, x, y, z order, zero-rotation is 0, 0, 0, 0) (float)
-                image_index               : Zero based index of this image (image count since armed -1) (int32_t)
-                capture_result            : Boolean indicating success (1) or failure (0) while capturing this image. (int8_t)
-                file_url                  : URL of image taken. Either local storage or http://foo.jpg if camera provides an HTTP interface. (char)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                time_utc                  : Timestamp (time since UNIX epoch) in UTC. 0 for unknown. [us] (type:uint64_t)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                lat                       : Latitude where image was taken [degE7] (type:int32_t)
+                lon                       : Longitude where capture was taken [degE7] (type:int32_t)
+                alt                       : Altitude (AMSL) where image was taken [mm] (type:int32_t)
+                relative_alt              : Altitude above ground [mm] (type:int32_t)
+                q                         : Quaternion of camera orientation (w, x, y, z order, zero-rotation is 0, 0, 0, 0) (type:float)
+                image_index               : Zero based index of this image (image count since armed -1) (type:int32_t)
+                capture_result            : Boolean indicating success (1) or failure (0) while capturing this image. (type:int8_t)
+                file_url                  : URL of image taken. Either local storage or http://foo.jpg if camera provides an HTTP interface. (type:char)
 
                 '''
                 return self.send(self.camera_image_captured_encode(time_boot_ms, time_utc, camera_id, lat, lon, alt, relative_alt, q, image_index, capture_result, file_url), force_mavlink1=force_mavlink1)
@@ -14236,10 +14587,10 @@ class MAVLink(object):
                 '''
                 Information about flight since last arming.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                arming_time_utc           : Timestamp at arming (time since UNIX epoch) in UTC, 0 for unknown (uint64_t)
-                takeoff_time_utc          : Timestamp at takeoff (time since UNIX epoch) in UTC, 0 for unknown (uint64_t)
-                flight_uuid               : Universally unique identifier (UUID) of flight, should correspond to name of log files (uint64_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                arming_time_utc           : Timestamp at arming (time since UNIX epoch) in UTC, 0 for unknown [us] (type:uint64_t)
+                takeoff_time_utc          : Timestamp at takeoff (time since UNIX epoch) in UTC, 0 for unknown [us] (type:uint64_t)
+                flight_uuid               : Universally unique identifier (UUID) of flight, should correspond to name of log files (type:uint64_t)
 
                 '''
                 return MAVLink_flight_information_message(time_boot_ms, arming_time_utc, takeoff_time_utc, flight_uuid)
@@ -14248,10 +14599,10 @@ class MAVLink(object):
                 '''
                 Information about flight since last arming.
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                arming_time_utc           : Timestamp at arming (time since UNIX epoch) in UTC, 0 for unknown (uint64_t)
-                takeoff_time_utc          : Timestamp at takeoff (time since UNIX epoch) in UTC, 0 for unknown (uint64_t)
-                flight_uuid               : Universally unique identifier (UUID) of flight, should correspond to name of log files (uint64_t)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                arming_time_utc           : Timestamp at arming (time since UNIX epoch) in UTC, 0 for unknown [us] (type:uint64_t)
+                takeoff_time_utc          : Timestamp at takeoff (time since UNIX epoch) in UTC, 0 for unknown [us] (type:uint64_t)
+                flight_uuid               : Universally unique identifier (UUID) of flight, should correspond to name of log files (type:uint64_t)
 
                 '''
                 return self.send(self.flight_information_encode(time_boot_ms, arming_time_utc, takeoff_time_utc, flight_uuid), force_mavlink1=force_mavlink1)
@@ -14260,11 +14611,11 @@ class MAVLink(object):
                 '''
                 Orientation of a mount
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Roll in global frame (set to NaN for invalid). (float)
-                pitch                     : Pitch in global frame (set to NaN for invalid). (float)
-                yaw                       : Yaw relative to vehicle(set to NaN for invalid). (float)
-                yaw_absolute              : Yaw in absolute frame, North is 0 (set to NaN for invalid). (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Roll in global frame (set to NaN for invalid). [deg] (type:float)
+                pitch                     : Pitch in global frame (set to NaN for invalid). [deg] (type:float)
+                yaw                       : Yaw relative to vehicle(set to NaN for invalid). [deg] (type:float)
+                yaw_absolute              : Yaw in absolute frame, North is 0 (set to NaN for invalid). [deg] (type:float)
 
                 '''
                 return MAVLink_mount_orientation_message(time_boot_ms, roll, pitch, yaw, yaw_absolute)
@@ -14273,11 +14624,11 @@ class MAVLink(object):
                 '''
                 Orientation of a mount
 
-                time_boot_ms              : Timestamp (time since system boot). (uint32_t)
-                roll                      : Roll in global frame (set to NaN for invalid). (float)
-                pitch                     : Pitch in global frame (set to NaN for invalid). (float)
-                yaw                       : Yaw relative to vehicle(set to NaN for invalid). (float)
-                yaw_absolute              : Yaw in absolute frame, North is 0 (set to NaN for invalid). (float)
+                time_boot_ms              : Timestamp (time since system boot). [ms] (type:uint32_t)
+                roll                      : Roll in global frame (set to NaN for invalid). [deg] (type:float)
+                pitch                     : Pitch in global frame (set to NaN for invalid). [deg] (type:float)
+                yaw                       : Yaw relative to vehicle(set to NaN for invalid). [deg] (type:float)
+                yaw_absolute              : Yaw in absolute frame, North is 0 (set to NaN for invalid). [deg] (type:float)
 
                 '''
                 return self.send(self.mount_orientation_encode(time_boot_ms, roll, pitch, yaw, yaw_absolute), force_mavlink1=force_mavlink1)
@@ -14286,12 +14637,12 @@ class MAVLink(object):
                 '''
                 A message containing logged data (see also MAV_CMD_LOGGING_START)
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (can wrap) (uint16_t)
-                length                    : data length (uint8_t)
-                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). (uint8_t)
-                data                      : logged data (uint8_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (can wrap) (type:uint16_t)
+                length                    : data length [bytes] (type:uint8_t)
+                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). [bytes] (type:uint8_t)
+                data                      : logged data (type:uint8_t)
 
                 '''
                 return MAVLink_logging_data_message(target_system, target_component, sequence, length, first_message_offset, data)
@@ -14300,12 +14651,12 @@ class MAVLink(object):
                 '''
                 A message containing logged data (see also MAV_CMD_LOGGING_START)
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (can wrap) (uint16_t)
-                length                    : data length (uint8_t)
-                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). (uint8_t)
-                data                      : logged data (uint8_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (can wrap) (type:uint16_t)
+                length                    : data length [bytes] (type:uint8_t)
+                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). [bytes] (type:uint8_t)
+                data                      : logged data (type:uint8_t)
 
                 '''
                 return self.send(self.logging_data_encode(target_system, target_component, sequence, length, first_message_offset, data), force_mavlink1=force_mavlink1)
@@ -14315,12 +14666,12 @@ class MAVLink(object):
                 A message containing logged data which requires a LOGGING_ACK to be
                 sent back
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (can wrap) (uint16_t)
-                length                    : data length (uint8_t)
-                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). (uint8_t)
-                data                      : logged data (uint8_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (can wrap) (type:uint16_t)
+                length                    : data length [bytes] (type:uint8_t)
+                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). [bytes] (type:uint8_t)
+                data                      : logged data (type:uint8_t)
 
                 '''
                 return MAVLink_logging_data_acked_message(target_system, target_component, sequence, length, first_message_offset, data)
@@ -14330,12 +14681,12 @@ class MAVLink(object):
                 A message containing logged data which requires a LOGGING_ACK to be
                 sent back
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (can wrap) (uint16_t)
-                length                    : data length (uint8_t)
-                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). (uint8_t)
-                data                      : logged data (uint8_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (can wrap) (type:uint16_t)
+                length                    : data length [bytes] (type:uint8_t)
+                first_message_offset        : offset into data where first message starts. This can be used for recovery, when a previous message got lost (set to 255 if no start exists). [bytes] (type:uint8_t)
+                data                      : logged data (type:uint8_t)
 
                 '''
                 return self.send(self.logging_data_acked_encode(target_system, target_component, sequence, length, first_message_offset, data), force_mavlink1=force_mavlink1)
@@ -14344,9 +14695,9 @@ class MAVLink(object):
                 '''
                 An ack for a LOGGING_DATA_ACKED message
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (must match the one in LOGGING_DATA_ACKED) (uint16_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (must match the one in LOGGING_DATA_ACKED) (type:uint16_t)
 
                 '''
                 return MAVLink_logging_ack_message(target_system, target_component, sequence)
@@ -14355,9 +14706,9 @@ class MAVLink(object):
                 '''
                 An ack for a LOGGING_DATA_ACKED message
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                sequence                  : sequence number (must match the one in LOGGING_DATA_ACKED) (uint16_t)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                sequence                  : sequence number (must match the one in LOGGING_DATA_ACKED) (type:uint16_t)
 
                 '''
                 return self.send(self.logging_ack_encode(target_system, target_component, sequence), force_mavlink1=force_mavlink1)
@@ -14366,14 +14717,14 @@ class MAVLink(object):
                 '''
                 Information about video stream
 
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                status                    : Current status of video streaming (0: not running, 1: in progress) (uint8_t)
-                framerate                 : Frame rate (float)
-                resolution_h              : Horizontal resolution (uint16_t)
-                resolution_v              : Vertical resolution (uint16_t)
-                bitrate                   : Bit rate in bits per second (uint32_t)
-                rotation                  : Video image rotation clockwise (uint16_t)
-                uri                       : Video stream URI (char)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                status                    : Current status of video streaming (0: not running, 1: in progress) (type:uint8_t)
+                framerate                 : Frame rate [Hz] (type:float)
+                resolution_h              : Horizontal resolution [pix] (type:uint16_t)
+                resolution_v              : Vertical resolution [pix] (type:uint16_t)
+                bitrate                   : Bit rate in bits per second [bits/s] (type:uint32_t)
+                rotation                  : Video image rotation clockwise [deg] (type:uint16_t)
+                uri                       : Video stream URI (type:char)
 
                 '''
                 return MAVLink_video_stream_information_message(camera_id, status, framerate, resolution_h, resolution_v, bitrate, rotation, uri)
@@ -14382,14 +14733,14 @@ class MAVLink(object):
                 '''
                 Information about video stream
 
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                status                    : Current status of video streaming (0: not running, 1: in progress) (uint8_t)
-                framerate                 : Frame rate (float)
-                resolution_h              : Horizontal resolution (uint16_t)
-                resolution_v              : Vertical resolution (uint16_t)
-                bitrate                   : Bit rate in bits per second (uint32_t)
-                rotation                  : Video image rotation clockwise (uint16_t)
-                uri                       : Video stream URI (char)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                status                    : Current status of video streaming (0: not running, 1: in progress) (type:uint8_t)
+                framerate                 : Frame rate [Hz] (type:float)
+                resolution_h              : Horizontal resolution [pix] (type:uint16_t)
+                resolution_v              : Vertical resolution [pix] (type:uint16_t)
+                bitrate                   : Bit rate in bits per second [bits/s] (type:uint32_t)
+                rotation                  : Video image rotation clockwise [deg] (type:uint16_t)
+                uri                       : Video stream URI (type:char)
 
                 '''
                 return self.send(self.video_stream_information_encode(camera_id, status, framerate, resolution_h, resolution_v, bitrate, rotation, uri), force_mavlink1=force_mavlink1)
@@ -14398,15 +14749,15 @@ class MAVLink(object):
                 '''
                 Message that sets video stream settings
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                framerate                 : Frame rate (set to -1 for highest framerate possible) (float)
-                resolution_h              : Horizontal resolution (set to -1 for highest resolution possible) (uint16_t)
-                resolution_v              : Vertical resolution (set to -1 for highest resolution possible) (uint16_t)
-                bitrate                   : Bit rate (set to -1 for auto) (uint32_t)
-                rotation                  : Video image rotation clockwise (0-359 degrees) (uint16_t)
-                uri                       : Video stream URI (char)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                framerate                 : Frame rate (set to -1 for highest framerate possible) [Hz] (type:float)
+                resolution_h              : Horizontal resolution (set to -1 for highest resolution possible) [pix] (type:uint16_t)
+                resolution_v              : Vertical resolution (set to -1 for highest resolution possible) [pix] (type:uint16_t)
+                bitrate                   : Bit rate (set to -1 for auto) [bits/s] (type:uint32_t)
+                rotation                  : Video image rotation clockwise (0-359 degrees) [deg] (type:uint16_t)
+                uri                       : Video stream URI (type:char)
 
                 '''
                 return MAVLink_set_video_stream_settings_message(target_system, target_component, camera_id, framerate, resolution_h, resolution_v, bitrate, rotation, uri)
@@ -14415,15 +14766,15 @@ class MAVLink(object):
                 '''
                 Message that sets video stream settings
 
-                target_system             : system ID of the target (uint8_t)
-                target_component          : component ID of the target (uint8_t)
-                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (uint8_t)
-                framerate                 : Frame rate (set to -1 for highest framerate possible) (float)
-                resolution_h              : Horizontal resolution (set to -1 for highest resolution possible) (uint16_t)
-                resolution_v              : Vertical resolution (set to -1 for highest resolution possible) (uint16_t)
-                bitrate                   : Bit rate (set to -1 for auto) (uint32_t)
-                rotation                  : Video image rotation clockwise (0-359 degrees) (uint16_t)
-                uri                       : Video stream URI (char)
+                target_system             : system ID of the target (type:uint8_t)
+                target_component          : component ID of the target (type:uint8_t)
+                camera_id                 : Camera ID (1 for first, 2 for second, etc.) (type:uint8_t)
+                framerate                 : Frame rate (set to -1 for highest framerate possible) [Hz] (type:float)
+                resolution_h              : Horizontal resolution (set to -1 for highest resolution possible) [pix] (type:uint16_t)
+                resolution_v              : Vertical resolution (set to -1 for highest resolution possible) [pix] (type:uint16_t)
+                bitrate                   : Bit rate (set to -1 for auto) [bits/s] (type:uint32_t)
+                rotation                  : Video image rotation clockwise (0-359 degrees) [deg] (type:uint16_t)
+                uri                       : Video stream URI (type:char)
 
                 '''
                 return self.send(self.set_video_stream_settings_encode(target_system, target_component, camera_id, framerate, resolution_h, resolution_v, bitrate, rotation, uri), force_mavlink1=force_mavlink1)
@@ -14432,8 +14783,8 @@ class MAVLink(object):
                 '''
                 Configure AP SSID and Password.
 
-                ssid                      : Name of Wi-Fi network (SSID). Leave it blank to leave it unchanged. (char)
-                password                  : Password. Leave it blank for an open AP. (char)
+                ssid                      : Name of Wi-Fi network (SSID). Leave it blank to leave it unchanged. (type:char)
+                password                  : Password. Leave it blank for an open AP. (type:char)
 
                 '''
                 return MAVLink_wifi_config_ap_message(ssid, password)
@@ -14442,8 +14793,8 @@ class MAVLink(object):
                 '''
                 Configure AP SSID and Password.
 
-                ssid                      : Name of Wi-Fi network (SSID). Leave it blank to leave it unchanged. (char)
-                password                  : Password. Leave it blank for an open AP. (char)
+                ssid                      : Name of Wi-Fi network (SSID). Leave it blank to leave it unchanged. (type:char)
+                password                  : Password. Leave it blank for an open AP. (type:char)
 
                 '''
                 return self.send(self.wifi_config_ap_encode(ssid, password), force_mavlink1=force_mavlink1)
@@ -14459,11 +14810,11 @@ class MAVLink(object):
                 adding this into the default decoding state machine to
                 allow the protocol core to respond directly.
 
-                version                   : Currently active MAVLink version number * 100: v1.0 is 100, v2.0 is 200, etc. (uint16_t)
-                min_version               : Minimum MAVLink version supported (uint16_t)
-                max_version               : Maximum MAVLink version supported (set to the same value as version by default) (uint16_t)
-                spec_version_hash         : The first 8 bytes (not characters printed in hex!) of the git hash. (uint8_t)
-                library_version_hash        : The first 8 bytes (not characters printed in hex!) of the git hash. (uint8_t)
+                version                   : Currently active MAVLink version number * 100: v1.0 is 100, v2.0 is 200, etc. (type:uint16_t)
+                min_version               : Minimum MAVLink version supported (type:uint16_t)
+                max_version               : Maximum MAVLink version supported (set to the same value as version by default) (type:uint16_t)
+                spec_version_hash         : The first 8 bytes (not characters printed in hex!) of the git hash. (type:uint8_t)
+                library_version_hash        : The first 8 bytes (not characters printed in hex!) of the git hash. (type:uint8_t)
 
                 '''
                 return MAVLink_protocol_version_message(version, min_version, max_version, spec_version_hash, library_version_hash)
@@ -14479,11 +14830,11 @@ class MAVLink(object):
                 adding this into the default decoding state machine to
                 allow the protocol core to respond directly.
 
-                version                   : Currently active MAVLink version number * 100: v1.0 is 100, v2.0 is 200, etc. (uint16_t)
-                min_version               : Minimum MAVLink version supported (uint16_t)
-                max_version               : Maximum MAVLink version supported (set to the same value as version by default) (uint16_t)
-                spec_version_hash         : The first 8 bytes (not characters printed in hex!) of the git hash. (uint8_t)
-                library_version_hash        : The first 8 bytes (not characters printed in hex!) of the git hash. (uint8_t)
+                version                   : Currently active MAVLink version number * 100: v1.0 is 100, v2.0 is 200, etc. (type:uint16_t)
+                min_version               : Minimum MAVLink version supported (type:uint16_t)
+                max_version               : Maximum MAVLink version supported (set to the same value as version by default) (type:uint16_t)
+                spec_version_hash         : The first 8 bytes (not characters printed in hex!) of the git hash. (type:uint8_t)
+                library_version_hash        : The first 8 bytes (not characters printed in hex!) of the git hash. (type:uint8_t)
 
                 '''
                 return self.send(self.protocol_version_encode(version, min_version, max_version, spec_version_hash, library_version_hash), force_mavlink1=force_mavlink1)
@@ -14496,12 +14847,12 @@ class MAVLink(object):
                 information. The UAVCAN specification is available at
                 http://uavcan.org.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                uptime_sec                : Time since the start-up of the node. (uint32_t)
-                health                    : Generalized node health status. (uint8_t)
-                mode                      : Generalized operating mode. (uint8_t)
-                sub_mode                  : Not used currently. (uint8_t)
-                vendor_specific_status_code        : Vendor-specific status information. (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                uptime_sec                : Time since the start-up of the node. [s] (type:uint32_t)
+                health                    : Generalized node health status. (type:uint8_t, values:UAVCAN_NODE_HEALTH)
+                mode                      : Generalized operating mode. (type:uint8_t, values:UAVCAN_NODE_MODE)
+                sub_mode                  : Not used currently. (type:uint8_t)
+                vendor_specific_status_code        : Vendor-specific status information. (type:uint16_t)
 
                 '''
                 return MAVLink_uavcan_node_status_message(time_usec, uptime_sec, health, mode, sub_mode, vendor_specific_status_code)
@@ -14514,12 +14865,12 @@ class MAVLink(object):
                 information. The UAVCAN specification is available at
                 http://uavcan.org.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                uptime_sec                : Time since the start-up of the node. (uint32_t)
-                health                    : Generalized node health status. (uint8_t)
-                mode                      : Generalized operating mode. (uint8_t)
-                sub_mode                  : Not used currently. (uint8_t)
-                vendor_specific_status_code        : Vendor-specific status information. (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                uptime_sec                : Time since the start-up of the node. [s] (type:uint32_t)
+                health                    : Generalized node health status. (type:uint8_t, values:UAVCAN_NODE_HEALTH)
+                mode                      : Generalized operating mode. (type:uint8_t, values:UAVCAN_NODE_MODE)
+                sub_mode                  : Not used currently. (type:uint8_t)
+                vendor_specific_status_code        : Vendor-specific status information. (type:uint16_t)
 
                 '''
                 return self.send(self.uavcan_node_status_encode(time_usec, uptime_sec, health, mode, sub_mode, vendor_specific_status_code), force_mavlink1=force_mavlink1)
@@ -14538,15 +14889,15 @@ class MAVLink(object):
                 low frequency. The UAVCAN specification is available
                 at http://uavcan.org.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                uptime_sec                : Time since the start-up of the node. (uint32_t)
-                name                      : Node name string. For example, "sapog.px4.io". (char)
-                hw_version_major          : Hardware major version number. (uint8_t)
-                hw_version_minor          : Hardware minor version number. (uint8_t)
-                hw_unique_id              : Hardware unique 128-bit ID. (uint8_t)
-                sw_version_major          : Software major version number. (uint8_t)
-                sw_version_minor          : Software minor version number. (uint8_t)
-                sw_vcs_commit             : Version control system (VCS) revision identifier (e.g. git short commit hash). Zero if unknown. (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                uptime_sec                : Time since the start-up of the node. [s] (type:uint32_t)
+                name                      : Node name string. For example, "sapog.px4.io". (type:char)
+                hw_version_major          : Hardware major version number. (type:uint8_t)
+                hw_version_minor          : Hardware minor version number. (type:uint8_t)
+                hw_unique_id              : Hardware unique 128-bit ID. (type:uint8_t)
+                sw_version_major          : Software major version number. (type:uint8_t)
+                sw_version_minor          : Software minor version number. (type:uint8_t)
+                sw_vcs_commit             : Version control system (VCS) revision identifier (e.g. git short commit hash). Zero if unknown. (type:uint32_t)
 
                 '''
                 return MAVLink_uavcan_node_info_message(time_usec, uptime_sec, name, hw_version_major, hw_version_minor, hw_unique_id, sw_version_major, sw_version_minor, sw_vcs_commit)
@@ -14565,15 +14916,15 @@ class MAVLink(object):
                 low frequency. The UAVCAN specification is available
                 at http://uavcan.org.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                uptime_sec                : Time since the start-up of the node. (uint32_t)
-                name                      : Node name string. For example, "sapog.px4.io". (char)
-                hw_version_major          : Hardware major version number. (uint8_t)
-                hw_version_minor          : Hardware minor version number. (uint8_t)
-                hw_unique_id              : Hardware unique 128-bit ID. (uint8_t)
-                sw_version_major          : Software major version number. (uint8_t)
-                sw_version_minor          : Software minor version number. (uint8_t)
-                sw_vcs_commit             : Version control system (VCS) revision identifier (e.g. git short commit hash). Zero if unknown. (uint32_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                uptime_sec                : Time since the start-up of the node. [s] (type:uint32_t)
+                name                      : Node name string. For example, "sapog.px4.io". (type:char)
+                hw_version_major          : Hardware major version number. (type:uint8_t)
+                hw_version_minor          : Hardware minor version number. (type:uint8_t)
+                hw_unique_id              : Hardware unique 128-bit ID. (type:uint8_t)
+                sw_version_major          : Software major version number. (type:uint8_t)
+                sw_version_minor          : Software minor version number. (type:uint8_t)
+                sw_vcs_commit             : Version control system (VCS) revision identifier (e.g. git short commit hash). Zero if unknown. (type:uint32_t)
 
                 '''
                 return self.send(self.uavcan_node_info_encode(time_usec, uptime_sec, name, hw_version_major, hw_version_minor, hw_unique_id, sw_version_major, sw_version_minor, sw_vcs_commit), force_mavlink1=force_mavlink1)
@@ -14583,10 +14934,10 @@ class MAVLink(object):
                 Request to read the value of a parameter with the either the param_id
                 string id or param_index.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Set to -1 to use the Parameter ID field as identifier (else param_id will be ignored) (int16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Set to -1 to use the Parameter ID field as identifier (else param_id will be ignored) (type:int16_t)
 
                 '''
                 return MAVLink_param_ext_request_read_message(target_system, target_component, param_id, param_index)
@@ -14596,10 +14947,10 @@ class MAVLink(object):
                 Request to read the value of a parameter with the either the param_id
                 string id or param_index.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_index               : Parameter index. Set to -1 to use the Parameter ID field as identifier (else param_id will be ignored) (int16_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_index               : Parameter index. Set to -1 to use the Parameter ID field as identifier (else param_id will be ignored) (type:int16_t)
 
                 '''
                 return self.send(self.param_ext_request_read_encode(target_system, target_component, param_id, param_index), force_mavlink1=force_mavlink1)
@@ -14609,8 +14960,8 @@ class MAVLink(object):
                 Request all parameters of this component. After this request, all
                 parameters are emitted.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return MAVLink_param_ext_request_list_message(target_system, target_component)
@@ -14620,8 +14971,8 @@ class MAVLink(object):
                 Request all parameters of this component. After this request, all
                 parameters are emitted.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
 
                 '''
                 return self.send(self.param_ext_request_list_encode(target_system, target_component), force_mavlink1=force_mavlink1)
@@ -14633,11 +14984,11 @@ class MAVLink(object):
                 keep track of received parameters and allows them to
                 re-request missing parameters after a loss or timeout.
 
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (char)
-                param_type                : Parameter type. (uint8_t)
-                param_count               : Total number of parameters (uint16_t)
-                param_index               : Index of this parameter (uint16_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
+                param_count               : Total number of parameters (type:uint16_t)
+                param_index               : Index of this parameter (type:uint16_t)
 
                 '''
                 return MAVLink_param_ext_value_message(param_id, param_value, param_type, param_count, param_index)
@@ -14649,11 +15000,11 @@ class MAVLink(object):
                 keep track of received parameters and allows them to
                 re-request missing parameters after a loss or timeout.
 
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (char)
-                param_type                : Parameter type. (uint8_t)
-                param_count               : Total number of parameters (uint16_t)
-                param_index               : Index of this parameter (uint16_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
+                param_count               : Total number of parameters (type:uint16_t)
+                param_index               : Index of this parameter (type:uint16_t)
 
                 '''
                 return self.send(self.param_ext_value_encode(param_id, param_value, param_type, param_count, param_index), force_mavlink1=force_mavlink1)
@@ -14668,11 +15019,11 @@ class MAVLink(object):
                 PARAM_ACK_IN_PROGRESS, you will accordingly receive a
                 PARAM_ACK_IN_PROGRESS in response.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (char)
-                param_type                : Parameter type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
 
                 '''
                 return MAVLink_param_ext_set_message(target_system, target_component, param_id, param_value, param_type)
@@ -14687,11 +15038,11 @@ class MAVLink(object):
                 PARAM_ACK_IN_PROGRESS, you will accordingly receive a
                 PARAM_ACK_IN_PROGRESS in response.
 
-                target_system             : System ID (uint8_t)
-                target_component          : Component ID (uint8_t)
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (char)
-                param_type                : Parameter type. (uint8_t)
+                target_system             : System ID (type:uint8_t)
+                target_component          : Component ID (type:uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
 
                 '''
                 return self.send(self.param_ext_set_encode(target_system, target_component, param_id, param_value, param_type), force_mavlink1=force_mavlink1)
@@ -14700,10 +15051,10 @@ class MAVLink(object):
                 '''
                 Response from a PARAM_EXT_SET message.
 
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (new value if PARAM_ACK_ACCEPTED, current value otherwise) (char)
-                param_type                : Parameter type. (uint8_t)
-                param_result              : Result code. (uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (new value if PARAM_ACK_ACCEPTED, current value otherwise) (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
+                param_result              : Result code. (type:uint8_t, values:PARAM_ACK)
 
                 '''
                 return MAVLink_param_ext_ack_message(param_id, param_value, param_type, param_result)
@@ -14712,10 +15063,10 @@ class MAVLink(object):
                 '''
                 Response from a PARAM_EXT_SET message.
 
-                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (char)
-                param_value               : Parameter value (new value if PARAM_ACK_ACCEPTED, current value otherwise) (char)
-                param_type                : Parameter type. (uint8_t)
-                param_result              : Result code. (uint8_t)
+                param_id                  : Parameter id, terminated by NULL if the length is less than 16 human-readable chars and WITHOUT null termination (NULL) byte if the length is exactly 16 chars - applications have to provide 16+1 bytes storage if the ID is stored as string (type:char)
+                param_value               : Parameter value (new value if PARAM_ACK_ACCEPTED, current value otherwise) (type:char)
+                param_type                : Parameter type. (type:uint8_t, values:MAV_PARAM_EXT_TYPE)
+                param_result              : Result code. (type:uint8_t, values:PARAM_ACK)
 
                 '''
                 return self.send(self.param_ext_ack_encode(param_id, param_value, param_type, param_result), force_mavlink1=force_mavlink1)
@@ -14725,12 +15076,12 @@ class MAVLink(object):
                 Obstacle distances in front of the sensor, starting from the left in
                 increment degrees to the right
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_type               : Class id of the distance sensor type. (uint8_t)
-                distances                 : Distance of obstacles around the UAV with index 0 corresponding to local North. A value of 0 means that the obstacle is right in front of the sensor. A value of max_distance +1 means no obstacle is present. A value of UINT16_MAX for unknown/not used. In a array element, one unit corresponds to 1cm. (uint16_t)
-                increment                 : Angular width in degrees of each array element. (uint8_t)
-                min_distance              : Minimum distance the sensor can measure. (uint16_t)
-                max_distance              : Maximum distance the sensor can measure. (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_type               : Class id of the distance sensor type. (type:uint8_t, values:MAV_DISTANCE_SENSOR)
+                distances                 : Distance of obstacles around the UAV with index 0 corresponding to local North. A value of 0 means that the obstacle is right in front of the sensor. A value of max_distance +1 means no obstacle is present. A value of UINT16_MAX for unknown/not used. In a array element, one unit corresponds to 1cm. [cm] (type:uint16_t)
+                increment                 : Angular width in degrees of each array element. [deg] (type:uint8_t)
+                min_distance              : Minimum distance the sensor can measure. [cm] (type:uint16_t)
+                max_distance              : Maximum distance the sensor can measure. [cm] (type:uint16_t)
 
                 '''
                 return MAVLink_obstacle_distance_message(time_usec, sensor_type, distances, increment, min_distance, max_distance)
@@ -14740,12 +15091,12 @@ class MAVLink(object):
                 Obstacle distances in front of the sensor, starting from the left in
                 increment degrees to the right
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                sensor_type               : Class id of the distance sensor type. (uint8_t)
-                distances                 : Distance of obstacles around the UAV with index 0 corresponding to local North. A value of 0 means that the obstacle is right in front of the sensor. A value of max_distance +1 means no obstacle is present. A value of UINT16_MAX for unknown/not used. In a array element, one unit corresponds to 1cm. (uint16_t)
-                increment                 : Angular width in degrees of each array element. (uint8_t)
-                min_distance              : Minimum distance the sensor can measure. (uint16_t)
-                max_distance              : Maximum distance the sensor can measure. (uint16_t)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                sensor_type               : Class id of the distance sensor type. (type:uint8_t, values:MAV_DISTANCE_SENSOR)
+                distances                 : Distance of obstacles around the UAV with index 0 corresponding to local North. A value of 0 means that the obstacle is right in front of the sensor. A value of max_distance +1 means no obstacle is present. A value of UINT16_MAX for unknown/not used. In a array element, one unit corresponds to 1cm. [cm] (type:uint16_t)
+                increment                 : Angular width in degrees of each array element. [deg] (type:uint8_t)
+                min_distance              : Minimum distance the sensor can measure. [cm] (type:uint16_t)
+                max_distance              : Maximum distance the sensor can measure. [cm] (type:uint16_t)
 
                 '''
                 return self.send(self.obstacle_distance_encode(time_usec, sensor_type, distances, increment, min_distance, max_distance), force_mavlink1=force_mavlink1)
@@ -14756,21 +15107,21 @@ class MAVLink(object):
                 interface. Fits ROS REP 147 standard for aerial
                 vehicles (http://www.ros.org/reps/rep-0147.html).
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                frame_id                  : Coordinate frame of reference for the pose data. (uint8_t)
-                child_frame_id            : Coordinate frame of reference for the velocity in free space (twist) data. (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (float)
-                vx                        : X linear speed (float)
-                vy                        : Y linear speed (float)
-                vz                        : Z linear speed (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
-                pose_covariance           : Pose (states: x, y, z, roll, pitch, yaw) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
-                twist_covariance          : Twist (states: vx, vy, vz, rollspeed, pitchspeed, yawspeed) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                frame_id                  : Coordinate frame of reference for the pose data. (type:uint8_t, values:MAV_FRAME)
+                child_frame_id            : Coordinate frame of reference for the velocity in free space (twist) data. (type:uint8_t, values:MAV_FRAME)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (type:float)
+                vx                        : X linear speed [m/s] (type:float)
+                vy                        : Y linear speed [m/s] (type:float)
+                vz                        : Z linear speed [m/s] (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
+                pose_covariance           : Pose (states: x, y, z, roll, pitch, yaw) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
+                twist_covariance          : Twist (states: vx, vy, vz, rollspeed, pitchspeed, yawspeed) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return MAVLink_odometry_message(time_usec, frame_id, child_frame_id, x, y, z, q, vx, vy, vz, rollspeed, pitchspeed, yawspeed, pose_covariance, twist_covariance)
@@ -14781,21 +15132,21 @@ class MAVLink(object):
                 interface. Fits ROS REP 147 standard for aerial
                 vehicles (http://www.ros.org/reps/rep-0147.html).
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                frame_id                  : Coordinate frame of reference for the pose data. (uint8_t)
-                child_frame_id            : Coordinate frame of reference for the velocity in free space (twist) data. (uint8_t)
-                x                         : X Position (float)
-                y                         : Y Position (float)
-                z                         : Z Position (float)
-                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (float)
-                vx                        : X linear speed (float)
-                vy                        : Y linear speed (float)
-                vz                        : Z linear speed (float)
-                rollspeed                 : Roll angular speed (float)
-                pitchspeed                : Pitch angular speed (float)
-                yawspeed                  : Yaw angular speed (float)
-                pose_covariance           : Pose (states: x, y, z, roll, pitch, yaw) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
-                twist_covariance          : Twist (states: vx, vy, vz, rollspeed, pitchspeed, yawspeed) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                frame_id                  : Coordinate frame of reference for the pose data. (type:uint8_t, values:MAV_FRAME)
+                child_frame_id            : Coordinate frame of reference for the velocity in free space (twist) data. (type:uint8_t, values:MAV_FRAME)
+                x                         : X Position [m] (type:float)
+                y                         : Y Position [m] (type:float)
+                z                         : Z Position [m] (type:float)
+                q                         : Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation) (type:float)
+                vx                        : X linear speed [m/s] (type:float)
+                vy                        : Y linear speed [m/s] (type:float)
+                vz                        : Z linear speed [m/s] (type:float)
+                rollspeed                 : Roll angular speed [rad/s] (type:float)
+                pitchspeed                : Pitch angular speed [rad/s] (type:float)
+                yawspeed                  : Yaw angular speed [rad/s] (type:float)
+                pose_covariance           : Pose (states: x, y, z, roll, pitch, yaw) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
+                twist_covariance          : Twist (states: vx, vy, vz, rollspeed, pitchspeed, yawspeed) covariance matrix upper right triangle (first six entries are the first ROW, next five entries are the second ROW, etc.) (type:float)
 
                 '''
                 return self.send(self.odometry_encode(time_usec, frame_id, child_frame_id, x, y, z, q, vx, vy, vz, rollspeed, pitchspeed, yawspeed, pose_covariance, twist_covariance), force_mavlink1=force_mavlink1)
@@ -14805,19 +15156,19 @@ class MAVLink(object):
                 Describe a trajectory using an array of up-to 5 waypoints in the local
                 frame.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                valid_points              : Number of valid points (up-to 5 waypoints are possible) (uint8_t)
-                pos_x                     : X-coordinate of waypoint, set to NaN if not being used (float)
-                pos_y                     : Y-coordinate of waypoint, set to NaN if not being used (float)
-                pos_z                     : Z-coordinate of waypoint, set to NaN if not being used (float)
-                vel_x                     : X-velocity of waypoint, set to NaN if not being used (float)
-                vel_y                     : Y-velocity of waypoint, set to NaN if not being used (float)
-                vel_z                     : Z-velocity of waypoint, set to NaN if not being used (float)
-                acc_x                     : X-acceleration of waypoint, set to NaN if not being used (float)
-                acc_y                     : Y-acceleration of waypoint, set to NaN if not being used (float)
-                acc_z                     : Z-acceleration of waypoint, set to NaN if not being used (float)
-                pos_yaw                   : Yaw angle, set to NaN if not being used (float)
-                vel_yaw                   : Yaw rate, set to NaN if not being used (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                valid_points              : Number of valid points (up-to 5 waypoints are possible) (type:uint8_t)
+                pos_x                     : X-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                pos_y                     : Y-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                pos_z                     : Z-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                vel_x                     : X-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                vel_y                     : Y-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                vel_z                     : Z-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                acc_x                     : X-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                acc_y                     : Y-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                acc_z                     : Z-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                pos_yaw                   : Yaw angle, set to NaN if not being used [rad] (type:float)
+                vel_yaw                   : Yaw rate, set to NaN if not being used [rad/s] (type:float)
 
                 '''
                 return MAVLink_trajectory_representation_waypoints_message(time_usec, valid_points, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z, pos_yaw, vel_yaw)
@@ -14827,19 +15178,19 @@ class MAVLink(object):
                 Describe a trajectory using an array of up-to 5 waypoints in the local
                 frame.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                valid_points              : Number of valid points (up-to 5 waypoints are possible) (uint8_t)
-                pos_x                     : X-coordinate of waypoint, set to NaN if not being used (float)
-                pos_y                     : Y-coordinate of waypoint, set to NaN if not being used (float)
-                pos_z                     : Z-coordinate of waypoint, set to NaN if not being used (float)
-                vel_x                     : X-velocity of waypoint, set to NaN if not being used (float)
-                vel_y                     : Y-velocity of waypoint, set to NaN if not being used (float)
-                vel_z                     : Z-velocity of waypoint, set to NaN if not being used (float)
-                acc_x                     : X-acceleration of waypoint, set to NaN if not being used (float)
-                acc_y                     : Y-acceleration of waypoint, set to NaN if not being used (float)
-                acc_z                     : Z-acceleration of waypoint, set to NaN if not being used (float)
-                pos_yaw                   : Yaw angle, set to NaN if not being used (float)
-                vel_yaw                   : Yaw rate, set to NaN if not being used (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                valid_points              : Number of valid points (up-to 5 waypoints are possible) (type:uint8_t)
+                pos_x                     : X-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                pos_y                     : Y-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                pos_z                     : Z-coordinate of waypoint, set to NaN if not being used [m] (type:float)
+                vel_x                     : X-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                vel_y                     : Y-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                vel_z                     : Z-velocity of waypoint, set to NaN if not being used [m/s] (type:float)
+                acc_x                     : X-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                acc_y                     : Y-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                acc_z                     : Z-acceleration of waypoint, set to NaN if not being used [m/s/s] (type:float)
+                pos_yaw                   : Yaw angle, set to NaN if not being used [rad] (type:float)
+                vel_yaw                   : Yaw rate, set to NaN if not being used [rad/s] (type:float)
 
                 '''
                 return self.send(self.trajectory_representation_waypoints_encode(time_usec, valid_points, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z, pos_yaw, vel_yaw), force_mavlink1=force_mavlink1)
@@ -14849,13 +15200,13 @@ class MAVLink(object):
                 Describe a trajectory using an array of up-to 5 bezier points in the
                 local frame.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                valid_points              : Number of valid points (up-to 5 waypoints are possible) (uint8_t)
-                pos_x                     : X-coordinate of starting bezier point, set to NaN if not being used (float)
-                pos_y                     : Y-coordinate of starting bezier point, set to NaN if not being used (float)
-                pos_z                     : Z-coordinate of starting bezier point, set to NaN if not being used (float)
-                delta                     : Bezier time horizon, set to NaN if velocity/acceleration should not be incorporated (float)
-                pos_yaw                   : Yaw, set to NaN for unchanged (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                valid_points              : Number of valid points (up-to 5 waypoints are possible) (type:uint8_t)
+                pos_x                     : X-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                pos_y                     : Y-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                pos_z                     : Z-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                delta                     : Bezier time horizon, set to NaN if velocity/acceleration should not be incorporated [s] (type:float)
+                pos_yaw                   : Yaw, set to NaN for unchanged [rad] (type:float)
 
                 '''
                 return MAVLink_trajectory_representation_bezier_message(time_usec, valid_points, pos_x, pos_y, pos_z, delta, pos_yaw)
@@ -14865,46 +15216,14 @@ class MAVLink(object):
                 Describe a trajectory using an array of up-to 5 bezier points in the
                 local frame.
 
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                valid_points              : Number of valid points (up-to 5 waypoints are possible) (uint8_t)
-                pos_x                     : X-coordinate of starting bezier point, set to NaN if not being used (float)
-                pos_y                     : Y-coordinate of starting bezier point, set to NaN if not being used (float)
-                pos_z                     : Z-coordinate of starting bezier point, set to NaN if not being used (float)
-                delta                     : Bezier time horizon, set to NaN if velocity/acceleration should not be incorporated (float)
-                pos_yaw                   : Yaw, set to NaN for unchanged (float)
+                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. [us] (type:uint64_t)
+                valid_points              : Number of valid points (up-to 5 waypoints are possible) (type:uint8_t)
+                pos_x                     : X-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                pos_y                     : Y-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                pos_z                     : Z-coordinate of starting bezier point, set to NaN if not being used [m] (type:float)
+                delta                     : Bezier time horizon, set to NaN if velocity/acceleration should not be incorporated [s] (type:float)
+                pos_yaw                   : Yaw, set to NaN for unchanged [rad] (type:float)
 
                 '''
                 return self.send(self.trajectory_representation_bezier_encode(time_usec, valid_points, pos_x, pos_y, pos_z, delta, pos_yaw), force_mavlink1=force_mavlink1)
-
-        def debug_float_array_encode(self, time_usec, name, array_id, data=0):
-                '''
-                Large debug/prototyping array. The message uses the maximum available
-                payload for data. The array_id and name fields are
-                used to discriminate between messages in code and in
-                user interfaces (respectively). Do not use in
-                production code.
-
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                name                      : Name, for human-friendly display in a Ground Control Station (char)
-                array_id                  : Unique ID used to discriminate between arrays (uint16_t)
-                data                      : data (float)
-
-                '''
-                return MAVLink_debug_float_array_message(time_usec, name, array_id, data)
-
-        def debug_float_array_send(self, time_usec, name, array_id, data=0, force_mavlink1=False):
-                '''
-                Large debug/prototyping array. The message uses the maximum available
-                payload for data. The array_id and name fields are
-                used to discriminate between messages in code and in
-                user interfaces (respectively). Do not use in
-                production code.
-
-                time_usec                 : Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number. (uint64_t)
-                name                      : Name, for human-friendly display in a Ground Control Station (char)
-                array_id                  : Unique ID used to discriminate between arrays (uint16_t)
-                data                      : data (float)
-
-                '''
-                return self.send(self.debug_float_array_encode(time_usec, name, array_id, data), force_mavlink1=force_mavlink1)
 
