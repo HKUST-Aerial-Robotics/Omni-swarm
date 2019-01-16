@@ -109,9 +109,11 @@ class SwarmDroneProxy
         mavlink_swarm_info_t swarm_info;
         
         mavlink_msg_swarm_info_decode(&msg, &swarm_info);
-
-        if (!swarm_info.odom_vaild)
+        if (!swarm_info.odom_vaild) {
+            ROS_INFO("odom not vaild");
             return false;
+        }
+
         odom.pose.pose.position.x = swarm_info.x;
         odom.pose.pose.position.y = swarm_info.y;
         odom.pose.pose.position.z = swarm_info.z;
@@ -270,7 +272,7 @@ class SwarmDroneProxy
             }
             else {
                 if (gcs_mode)
-                    ROS_INFO("Drone %d Mavlink Parse Failed", _id);
+                    ROS_INFO("Drone %d Mavlink Parse Failed size %d", _id, s.data.size());
             }
         }
 
@@ -430,6 +432,10 @@ public:
 
             odometry_available = true;
             odometry_updated = true;
+
+            ROS_INFO("Swarm drone is in gcs mode");
+        } else {
+            ROS_INFO("Is drone mode");
         }
     }
 };
