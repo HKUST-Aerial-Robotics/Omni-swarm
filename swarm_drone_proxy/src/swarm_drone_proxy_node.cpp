@@ -46,12 +46,18 @@ class SwarmDroneProxy
     bool gcs_mode = false;
 
 
-    Odometry naive_predict(const Odometry & odom_now, double now)
+    Odometry naive_predict(const Odometry & odom_now, double now, bool debug_output=false)
     {
+        static int count = 0;
         Odometry ret = odom_now;
         // double now = ros::Time::now().toSec();
         double t_odom = odom_now.header.stamp.toSec();
-        // ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+        // if (count ++ % 100 == 0)
+        if (debug_output) {
+            ROS_INFO("Naive1 predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+        } else {
+        }
+
         ret.pose.pose.position.x += (now - t_odom) * odom_now.twist.twist.linear.x;
         ret.pose.pose.position.y += (now - t_odom) * odom_now.twist.twist.linear.y;
         ret.pose.pose.position.z += (now - t_odom) * odom_now.twist.twist.linear.z;
@@ -76,6 +82,9 @@ class SwarmDroneProxy
     {
 
         // ROS_INFO("Odom recv");
+        double t_odom = odom.header.stamp.toSec();
+        double now = ros::Time::now().toSec();
+        // ROS_INFO("Naive1 predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
         pos.x() = odom.pose.pose.position.x;
         pos.y() = odom.pose.pose.position.y;
         pos.z() = odom.pose.pose.position.z;
@@ -88,7 +97,7 @@ class SwarmDroneProxy
         quat.w() = odom.pose.pose.orientation.w;
         quat.x() = odom.pose.pose.orientation.x;
         quat.y() = odom.pose.pose.orientation.y;
-        quat.z() = odom.pose.pose.orientation.z;
+        quat.z() = odom.pose.pose.orientation.z;        
 
         self_odom = odom;
 
@@ -115,7 +124,9 @@ class SwarmDroneProxy
         odom.pose.pose.orientation.x = swarm_info.q1;
         odom.pose.pose.orientation.y = swarm_info.q2;
         odom.pose.pose.orientation.z = swarm_info.q3;
-
+        
+        odom.header.stamp = ros::Time::now();
+        odom.header.frame_id = "world";
         for (int i = 0; i < 10; i++)
         {
             _dis[i] = swarm_info.remote_distance[i];
@@ -155,10 +166,15 @@ class SwarmDroneProxy
     {
 
         mavlink_message_t msg;
+        double now = ros::Time::now().toSec();
 
-        mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(),
-            quat.w(), quat.x(), quat.y(), quat.z(),
-            vel.x(), vel.y(), vel.z(), dis);
+        auto odom = naive_predict(self_odom, now, false);
+        auto pos = odom.pose.pose.position;
+        auto vel = odom.twist.twist.linear;
+        auto quat = odom.pose.pose.orientation;
+        mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x, pos.y, pos.z,
+            quat.w, quat.x, quat.y, quat.z,
+            vel.x, vel.y, vel.z, dis);
 
         send_mavlink_message(msg);
     }
@@ -228,12 +244,11 @@ class SwarmDroneProxy
             auto s = info.datas[i];
             nav_msgs::Odometry odom;
 
-
             std::vector<float> _dis(10);
             bool ret = parse_mavlink_data(s.data, odom, _dis);
-            ROS_INFO("recv odom   %4.3f", odom.pose.pose.position.x);
+            // ROS_INFO("recv odom   %4.3f", odom.pose.pose.position.x);
             odom = naive_predict_dt(odom, forward_predict_time);
-            ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
+            // ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
             if (ret)
             {
                 id_n_distance[_id] = _dis;
@@ -247,7 +262,7 @@ class SwarmDroneProxy
                     drone_odom_pubs[_id] = nh.advertise<Odometry>(name, 1);
                 }
                 drone_odom_pubs[_id].publish(odom);
-                ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
+                // ROS_INFO("recv odom p %4.3f", odom.pose.pose.position.x);
 
                 // printf("%d id selfidforce %d\n", _id, force_self_id);
                 if (_id == force_self_id)
@@ -379,19 +394,17 @@ public:
     {
         ROS_INFO("Start SWARM Drone Proxy");
 
-        std::string vins_topic ="";
         nh.param<int>("force_self_id", force_self_id, -1);
         nh.param<double>("forward_predict_time", forward_predict_time , 0.02);
         nh.param<bool>("gcs_mode", gcs_mode, false);
         // read /vins_estimator/odometry and send to uwb by mavlink
-        local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &SwarmDroneProxy::on_local_odometry_recv, this);
-        swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this);
-        swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this);
-        swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 1);
-        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
-        swarm_cmd_sub = nh.subscribe("/swarm_drones/send_swarm_command", 1, &SwarmDroneProxy::on_send_swarm_commands, this);
-        drone_cmd_pub = nh.advertise<drone_onboard_command>("/drone_commander/onboard_command", 1);
-
+        local_odometry_sub = nh.subscribe("/vin_estimator/imu_propagate", 1, &SwarmDroneProxy::on_local_odometry_recv, this, ros::TransportHints().tcpNoDelay());
+        swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this, ros::TransportHints().tcpNoDelay());
+        swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this, ros::TransportHints().tcpNoDelay());
+        swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 10);
+        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
+        swarm_cmd_sub = nh.subscribe("/swarm_drones/send_swarm_command", 10, &SwarmDroneProxy::on_send_swarm_commands, this, ros::TransportHints().tcpNoDelay());
+        drone_cmd_pub = nh.advertise<drone_onboard_command>("/drone_commander/onboard_command", 10);
         if (gcs_mode) {
             pos.x() = 0;
             pos.y() = 0;
@@ -426,5 +439,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "swarm_drone_proxy");
     ros::NodeHandle nh("swarm_drone_proxy");
     new SwarmDroneProxy(nh);
+    // ros::AsyncSpinner spinner(4);
+    // spinner.start();
     ros::spin();
+    ros::waitForShutdown();
 }

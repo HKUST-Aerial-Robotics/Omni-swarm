@@ -44,8 +44,8 @@ public:
     {
         MDetector.setDictionary("ARUCO_MIP_36h12");
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
-        left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left, this);
-        right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right, this);
+        left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left, this, ros::TransportHints().tcpNoDelay());
+        right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right, this, ros::TransportHints().tcpNoDelay());
     }
 
     void read_camera_params(std::string left_camera, std::string right_camera) {

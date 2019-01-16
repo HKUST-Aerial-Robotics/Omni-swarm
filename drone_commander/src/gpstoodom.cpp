@@ -40,11 +40,11 @@ main(int argc, char** argv)
   set_local_pos_reference.call(localPosReferenceSetter);
 
   ros::Subscriber local_pos_sub = nh.subscribe("/dji_sdk_1/dji_sdk/local_position",
-                                               10, &local_position_callback);
+                                               10, &local_position_callback, ros::TransportHints().tcpNoDelay());
   ros::Subscriber imu_sub =
-    nh.subscribe("/dji_sdk_1/dji_sdk/imu", 10, &imu_callback);
+    nh.subscribe("/dji_sdk_1/dji_sdk/imu", 10, &imu_callback, ros::TransportHints().tcpNoDelay());
   ros::Subscriber velocity_sub =
-    nh.subscribe("/dji_sdk_1/dji_sdk/velocity", 10, &velocity_callback);
+    nh.subscribe("/dji_sdk_1/dji_sdk/velocity", 10, &velocity_callback, ros::TransportHints().tcpNoDelay());
 
   ros::Rate r(50);
   while (ros::ok())

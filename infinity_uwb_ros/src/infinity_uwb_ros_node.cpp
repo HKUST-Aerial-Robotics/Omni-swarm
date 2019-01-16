@@ -23,7 +23,7 @@ public:
         remote_node_pub = nh.advertise<remote_uwb_info>("remote_nodes", 1);
         broadcast_data_pub = nh.advertise<incoming_broadcast_data>("incoming_broadcast_data",1);
 
-        recv_bdmsg = nh.subscribe("send_broadcast_data", 1, &UWBRosNodeofNode::on_send_broadcast_req, this);   
+        recv_bdmsg = nh.subscribe("send_broadcast_data", 1, &UWBRosNodeofNode::on_send_broadcast_req, this, ros::TransportHints().tcpNoDelay());   
         fast_timer = nh.createTimer(ros::Duration(0.005), &UWBRosNodeofNode::fast_timer_callback, this);
         slow_timer = nh.createTimer(ros::Duration(0.02), &UWBRosNodeofNode::send_broadcast_data_callback, this);
     }

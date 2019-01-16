@@ -145,12 +145,12 @@ public:
         state.control_auth = DCMD::CTRL_AUTH_RC;
     }
     void init_subscribes() {
-        vo_sub = nh.subscribe("visual_odometry", 1, &DroneCommander::vo_callback, this);
-        onboard_cmd_sub = nh.subscribe("onboard_command", 10, &DroneCommander::onboard_cmd_callback, this);
-        flight_status_sub = nh.subscribe("flight_status", 1, &DroneCommander::flight_status_callback, this);
-        rc_sub = nh.subscribe("rc", 1, &DroneCommander::rc_callback, this);
-        ctrl_dev_sub = nh.subscribe("control_device", 1, &DroneCommander::ctrl_dev_callback, this);
-        fc_att_sub = nh.subscribe("fc_attitude", 1, &DroneCommander::fc_attitude_callback, this);
+        vo_sub = nh.subscribe("visual_odometry", 1, &DroneCommander::vo_callback, this, ros::TransportHints().tcpNoDelay());
+        onboard_cmd_sub = nh.subscribe("onboard_command", 10, &DroneCommander::onboard_cmd_callback, this, ros::TransportHints().tcpNoDelay());
+        flight_status_sub = nh.subscribe("flight_status", 1, &DroneCommander::flight_status_callback, this, ros::TransportHints().tcpNoDelay());
+        rc_sub = nh.subscribe("rc", 1, &DroneCommander::rc_callback, this, ros::TransportHints().tcpNoDelay());
+        ctrl_dev_sub = nh.subscribe("control_device", 1, &DroneCommander::ctrl_dev_callback, this, ros::TransportHints().tcpNoDelay());
+        fc_att_sub = nh.subscribe("fc_attitude", 1, &DroneCommander::fc_attitude_callback, this, ros::TransportHints().tcpNoDelay());
     }
 
     void vo_callback(const nav_msgs::Odometry & _odom);
