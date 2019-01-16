@@ -174,6 +174,7 @@ class SwarmDroneProxy
         auto pos = odom.pose.pose.position;
         auto vel = odom.twist.twist.linear;
         auto quat = odom.pose.pose.orientation;
+        ROS_INFO("Send avail %d, xyz %3.2f %3.2f %3.2f", odometry_available, pos.x, pos.y, pos.z);
         mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x, pos.y, pos.z,
             quat.w, quat.x, quat.y, quat.z,
             vel.x, vel.y, vel.z, dis);
@@ -400,7 +401,7 @@ public:
         nh.param<double>("forward_predict_time", forward_predict_time , 0.02);
         nh.param<bool>("gcs_mode", gcs_mode, false);
         // read /vins_estimator/odometry and send to uwb by mavlink
-        local_odometry_sub = nh.subscribe("/vin_estimator/imu_propagate", 1, &SwarmDroneProxy::on_local_odometry_recv, this, ros::TransportHints().tcpNoDelay());
+        local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &SwarmDroneProxy::on_local_odometry_recv, this, ros::TransportHints().tcpNoDelay());
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &SwarmDroneProxy::on_remote_nodes_data_recv, this, ros::TransportHints().tcpNoDelay());
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1, &SwarmDroneProxy::on_swarm_fused_data_recv, this, ros::TransportHints().tcpNoDelay());
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 10);

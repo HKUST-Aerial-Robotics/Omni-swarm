@@ -155,7 +155,10 @@ target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
 )
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> b286b2b7b7a2bce6f3b2d62b35b831e5dfc48e0e
 #############
 ## Install ##
 #############
