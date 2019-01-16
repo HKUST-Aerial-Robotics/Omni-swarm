@@ -189,19 +189,19 @@ DJISDKNode::initFlightControl(ros::NodeHandle& nh)
 {
   flight_control_sub = nh.subscribe<sensor_msgs::Joy>(
     "dji_sdk/flight_control_setpoint_generic", 10,
-    &DJISDKNode::flightControlSetpointCallback, this);
+    &DJISDKNode::flightControlSetpointCallback, this, ros::TransportHints().tcpNoDelay());
 
   flight_control_position_yaw_sub = nh.subscribe<sensor_msgs::Joy>(
     "dji_sdk/flight_control_setpoint_ENUposition_yaw", 10,
-    &DJISDKNode::flightControlPxPyPzYawCallback, this);
+    &DJISDKNode::flightControlPxPyPzYawCallback, this, ros::TransportHints().tcpNoDelay());
 
   flight_control_velocity_yawrate_sub = nh.subscribe<sensor_msgs::Joy>(
     "dji_sdk/flight_control_setpoint_ENUvelocity_yawrate", 10,
-    &DJISDKNode::flightControlVxVyVzYawrateCallback, this);
+    &DJISDKNode::flightControlVxVyVzYawrateCallback, this, ros::TransportHints().tcpNoDelay());
 
   flight_control_rollpitch_yawrate_vertpos_sub = nh.subscribe<sensor_msgs::Joy>(
     "dji_sdk/flight_control_setpoint_rollpitch_yawrate_zposition", 10,
-    &DJISDKNode::flightControlRollPitchPzYawrateCallback, this);
+    &DJISDKNode::flightControlRollPitchPzYawrateCallback, this, ros::TransportHints().tcpNoDelay());
 
   return true;
 }

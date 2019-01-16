@@ -140,10 +140,10 @@ public:
 
         state_pub = nh.advertise<swarm_msgs::drone_pos_control_state>("drone_pos_control_state", 10);
         
-        odom_sub = nh.subscribe("odometry", 1 , &DronePosControl::OnVisualOdometry, this);
-        drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnSwarmPosCommand, this);
-        fc_att_sub = nh.subscribe("fc_attitude", 1, &DronePosControl::onFCAttitude, this);
-        imu_data_sub = nh.subscribe("fc_imu", 1, &DronePosControl::on_imu_data, this);
+        odom_sub = nh.subscribe("odometry", 1 , &DronePosControl::OnVisualOdometry, this, ros::TransportHints().tcpNoDelay());
+        drone_pos_cmd_sub = nh.subscribe("drone_pos_cmd", 1 , &DronePosControl::OnSwarmPosCommand, this, ros::TransportHints().tcpNoDelay());
+        fc_att_sub = nh.subscribe("fc_attitude", 1, &DronePosControl::onFCAttitude, this, ros::TransportHints().tcpNoDelay());
+        imu_data_sub = nh.subscribe("fc_imu", 1, &DronePosControl::on_imu_data, this, ros::TransportHints().tcpNoDelay());
         control_pub = nh.advertise<sensor_msgs::Joy>("dji_sdk_control", 1);
 
         start_time = last_cmd_ts = ros::Time::now();

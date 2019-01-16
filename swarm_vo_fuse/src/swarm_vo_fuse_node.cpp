@@ -155,8 +155,8 @@ public:
     UWBFuserNode(ros::NodeHandle & _nh):
         nh(_nh)
     {
-        recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this);
-        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate",1,&UWBFuserNode::on_drone_odom_recv, this);
+        recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data",1,&UWBFuserNode::on_remote_drones_poses_recieved, this, ros::TransportHints().tcpNoDelay());
+        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate",1,&UWBFuserNode::on_drone_odom_recv, this, ros::TransportHints().tcpNoDelay());
         int frame_num = 0, thread_num , min_frame_num;
         float acpt_cost = 0.4;  
 
@@ -177,8 +177,8 @@ public:
 
         uwbfuse = new UWBVOFuser(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
        
-        fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 1);
-        fused_drone_rel_data_pub = nh.advertise<swarm_fused_relative>("/swarm_drones/swarm_drone_fused_relative", 1);
+        fused_drone_data_pub = nh.advertise<swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
+        fused_drone_rel_data_pub = nh.advertise<swarm_fused_relative>("/swarm_drones/swarm_drone_fused_relative", 10);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
         uwbfuse->callback = [&](const ID2Vector3d & id2vec, const ID2Vector3d & id2vel, const ID2Quat & id2quat, ros::Time ts) {
             swarm_fused fused;
