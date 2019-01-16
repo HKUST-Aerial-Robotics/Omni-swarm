@@ -174,7 +174,6 @@ class SwarmDroneProxy
         auto pos = odom.pose.pose.position;
         auto vel = odom.twist.twist.linear;
         auto quat = odom.pose.pose.orientation;
-        ROS_INFO("Send avail %d, xyz %3.2f %3.2f %3.2f", odometry_available, pos.x, pos.y, pos.z);
         mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x, pos.y, pos.z,
             quat.w, quat.x, quat.y, quat.z,
             vel.x, vel.y, vel.z, dis);
