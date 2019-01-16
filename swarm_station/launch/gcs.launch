@@ -3,11 +3,11 @@
         <arg name="serial_name" value="/dev/ttyUSB0" />
         <arg name="baudrate" value="921600"/>
     </include>
-    <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="log">
+    <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="screen">
        <param name='gcs_mode' value="true" type="bool"/>
     </node>
-    <!-- <node pkg="swarm_station" name="swarm_station" type="swarm_station_joy.py" output="screen">
-    </node>  -->
+    <node pkg="swarm_station" name="swarm_station" type="swarm_display.py" output="screen">
+    </node>
     <!-- <include file="$(find mocap_optitrack)/launch/mocap.launch"> -->
     <!-- </include> -->
 </launch>
