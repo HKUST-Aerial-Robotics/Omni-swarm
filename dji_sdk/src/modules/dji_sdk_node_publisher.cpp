@@ -14,7 +14,13 @@
 #include <sensor_msgs/Joy.h>
 #include <tf/tf.h>
 
-#define _TICK2ROSTIME(tick) (ros::Duration((double)(tick) / 1000.0))
+#define _TICK2ROSTIME(tick) (ros::Duration((double)(tick) / 1000000.0))
+
+ros::Duration timestamp2rostime(Telemetry::TimeStamp ts) {
+    // ROS_INFO("ts ms %f ns %f", ((double)ts.time_ms)/1e3, ((double)ts.time_ns)/1e6);
+    // ROS_INFO("ts ms %d ns %d", ts.time_ms, ts.time_ns);
+    return ros::Duration((double)(ts.time_ns) / 1e6); 
+}
 
 void
 DJISDKNode::SDKBroadcastCallback(Vehicle* vehicle, RecvContainer recvFrame,
@@ -427,7 +433,7 @@ DJISDKNode::publish10HzData(Vehicle* vehicle, RecvContainer recvFrame,
   {
     if (p->curr_align_state == ALIGNED)
     {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
+      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ns);
     }
     else
     {
@@ -533,7 +539,7 @@ DJISDKNode::publish50HzData(Vehicle* vehicle, RecvContainer recvFrame,
   {
     if (p->curr_align_state == ALIGNED)
     {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
+      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ns);
     }
     else
     {
@@ -718,7 +724,7 @@ DJISDKNode::publish100HzData(Vehicle* vehicle, RecvContainer recvFrame,
   {
     if (p->curr_align_state == ALIGNED)
     {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
+      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ns);
     }
     else
     {
@@ -808,13 +814,16 @@ DJISDKNode::publish400HzData(Vehicle* vehicle, RecvContainer recvFrame,
 
   if (p->align_time_with_FC)
   {
-    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms);
+    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ns);
     if (p->curr_align_state == ALIGNED)
     {
-      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
+      // ROS_INFO("ts %dms", packageTimeStamp.time_ms);
+      // ROS_INFO("ts %fms", _TICK2ROSTIME(packageTimeStamp.time_ns).toSec()*1000);
+      msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ns);
     }
     else
     {
+      ROS_INFO_THROTTLE(1.0, "align failed");
       return;
     }
   }
