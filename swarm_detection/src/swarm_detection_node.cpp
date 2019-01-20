@@ -61,9 +61,7 @@ public:
     void detect_cv_image(const cv::Mat & _img, int camera_id) {
         int src_rows = _img.rows;
         int src_cols = _img.cols;
-        cv::Mat img( src_rows, src_cols, CV_8UC1 );
-        cv::Mat img_source = _img;
-        colorToGrey(img_source, img);
+        cv::Mat img = _img;
         marker_array ma = MDetector.detect(img);
         for(auto m: ma){
             std::cout<<m<<std::endl;    
