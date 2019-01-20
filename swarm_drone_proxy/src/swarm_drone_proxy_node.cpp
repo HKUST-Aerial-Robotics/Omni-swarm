@@ -170,10 +170,10 @@ class SwarmDroneProxy
         mavlink_message_t msg;
         double now = ros::Time::now().toSec();
 
-        auto odom = naive_predict(self_odom, now, false);
-        auto pos = odom.pose.pose.position;
-        auto vel = odom.twist.twist.linear;
-        auto quat = odom.pose.pose.orientation;
+        // auto odom = naive_predict(self_odom, now, false);
+        auto pos = self_odom.pose.pose.position;
+        auto vel = self_odom.twist.twist.linear;
+        auto quat = self_odom.pose.pose.orientation;
         mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x, pos.y, pos.z,
             quat.w, quat.x, quat.y, quat.z,
             vel.x, vel.y, vel.z, dis);
