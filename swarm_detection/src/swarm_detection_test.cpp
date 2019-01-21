@@ -1,8 +1,21 @@
 #include <ros/ros.h>
 #include <swarm_detection/drone_pose_estimator.h>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 
 typedef std::vector<aruco::Marker> marker_array;
+
+
+Pose from_cv_matrix(cv::Mat mat) {
+    Eigen::Matrix4d T;
+    Eigen::Matrix3d rot;
+    Pose pose;
+    cv::cv2eigen(mat, T);
+    pose.position = T.block<3, 1>(0, 3);
+    pose.attitude = T.block<3, 3>(0, 0);
+
+    return pose;
+}
 
 int main(int argc, char* argv[]) {
     ROS_INFO("Start test detection");
@@ -12,7 +25,19 @@ int main(int argc, char* argv[]) {
     cv::Mat img_right =cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/sample/image_right.png");
 
     std::string left_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/dji_stereo/left.yaml";
-    std::string right_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/dji_stereo/left.yaml";
+    std::string right_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/dji_stereo/right.yaml";
+
+    corner_array CorALeft;
+    corner_array CorARight;
+    cv::FileStorage fs_yaml("/home/xuhao/mf2_home/SwarmConfig/dji_stereo/dji_stereo.yaml", cv::FileStorage::READ);
+
+    cv::Mat left_cam_pose;
+    cv::Mat right_cam_pose;
+
+    fs_yaml["body_T_cam0"] >> left_cam_pose;
+    fs_yaml["body_T_cam1"] >> right_cam_pose;
+
+
         
     Eigen::Quaterniond left_att(1, 0, 0, 0);
     Eigen::Vector3d left_pos(0, 0, 0);
@@ -23,36 +48,40 @@ int main(int argc, char* argv[]) {
     marker_array ma_left = MDetector.detect(img_left);
     marker_array ma_right = MDetector.detect(img_right);
 
-    Camera cam_left(left_cam_defs, left_att, left_pos);
-    Camera cam_right(right_cam_defs, right_att, right_pos);
+    Camera cam_left(left_cam_defs, from_cv_matrix(left_cam_pose));
+    Camera cam_right(right_cam_defs, from_cv_matrix(right_cam_pose));
 
+    ROS_INFO("Left cam position %f %f %f", cam_left.pos().x(), cam_left.pos().y(), cam_left.pos().z());
     DroneMarker marker0(0, 0, 0.0888);
 
-    corner_array CorALeft;
-    corner_array CorARight;
 
+
+    
+    
     for(auto m: ma_left){
         for (int i = 0 ;i < 4; i++){
             MarkerCornerObservsed mco(i, &marker0);
-            mco.observed_point.x() = (m[i].x - 640 )/2.0;// /2 because the downsample of our camera model
-            mco.observed_point.y() = (m[i].y - 512 )/2.0;
+            mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
+            mco.observed_point.y() = (m[i].y)/2.0;
+
+            std::cout << mco.observed_point << std::endl;
             CorALeft.push_back(mco);
         }
         
         std::cout<<m<<std::endl;    
-//        m.draw(img_left);
+        m.draw(img_left);
     }
 
     for(auto m: ma_right){
         for (int i = 0 ;i < 4; i++){
             MarkerCornerObservsed mco(i, &marker0);
-            mco.observed_point.x() = (m[i].x - 640)/2.0;// /2 because the downsample of our camera model
-            mco.observed_point.y() = (m[i].y - 512)/2.0;
+            mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
+            mco.observed_point.y() = (m[i].y)/2.0;
             CorARight.push_back(mco);
         }
         
         std::cout<<m<<std::endl;    
-        m.draw(img_right);
+//        m.draw(img_left);
     }
 
     camera_array ca;
