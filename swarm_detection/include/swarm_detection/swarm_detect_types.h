@@ -10,8 +10,8 @@ using namespace Eigen;
 using namespace ceres;
 
 struct Pose {
-    Eigen::Vector3d position;
-    Eigen::Quaterniond attitude;
+    Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
+    Eigen::Quaterniond attitude = Eigen::Quaterniond(1, 0, 0, 0);
 
     void to_vector(double ret[]) {
         ret[0] = attitude.w();
@@ -22,6 +22,9 @@ struct Pose {
         ret[4] = position.x();
         ret[5] = position.y();
         ret[6] = position.z();
+    }
+    Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
+        return attitude * point + position;
     }
 };
 
@@ -197,16 +200,16 @@ struct DroneMarker {
     Eigen::Vector3d rel_corner_pos(int corner_no) const {
     switch (corner_no) {
         case 0:
-            return Eigen::Vector3d(0, - size/2, size/2);
+            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, size/2));
             break;
         case 1:
-            return Eigen::Vector3d(0, size/2, size/2);
+            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, size/2));
             break;
         case 2:
-            return Eigen::Vector3d(0, size/2, -size/2);
+            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, -size/2));
             break;
         case 3:
-            return Eigen::Vector3d(0, - size/2, -size/2);
+            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, -size/2));
             break;
     }
     return Eigen::Vector3d(0, 0, 0);

@@ -46,7 +46,8 @@ int main(int argc, char* argv[]) {
     Camera cam_right(right_cam_defs, from_cv_matrix(right_cam_pose));
 
     ROS_INFO("Left cam position %f %f %f", cam_left.pos().x(), cam_left.pos().y(), cam_left.pos().z());
-    DroneMarker marker0(0, 0, 0.0888);
+    DroneMarker marker0(0, 0, 0.0886);
+    marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
 
 
 
@@ -90,7 +91,8 @@ int main(int argc, char* argv[]) {
     
     SwarmDroneDefs _sdef;
     DronePoseEstimator estimator(_sdef, ca);
-    estimator.mat_to_draw = img_left;
+    estimator.mat_to_draw_1 = img_left;
+    estimator.mat_to_draw_2 = img_right;
 //    estimator.mat_to_draw = img_right;
 
 

@@ -24,7 +24,8 @@ public:
     //point_by_cam is point corre to camera. length must equal to camera
     //marker is the id of these markers
     //All this marker must belong to one drone
-    cv::Mat mat_to_draw;
+    cv::Mat mat_to_draw_1;
+    cv::Mat mat_to_draw_2;
     bool enable_drawing = true;
     double estimate_drone_pose(std::vector<corner_array> & point_by_cam);
     double estimate_drone_pose(std::vector<corner_array> & point_by_cam, Pose initial_pose);
