@@ -9,6 +9,22 @@
 using namespace Eigen;
 using namespace ceres;
 
+struct Pose {
+    Eigen::Vector3d position;
+    Eigen::Quaterniond attitude;
+
+    void to_vector(double ret[]) {
+        ret[0] = attitude.w();
+        ret[1] = attitude.x();
+        ret[2] = attitude.y();
+        ret[3] = attitude.z();
+
+        ret[4] = position.x();
+        ret[5] = position.y();
+        ret[6] = position.z();
+    }
+};
+
 template<typename T>
 void
 worldToCameraTransform(const T* const q_cam_odo, const T* const t_cam_odo,
@@ -142,8 +158,8 @@ struct Camera {
             project_to_camera(p_odo, att_odo, P, p);
     }
 
-    Camera(const std::string& filename, Eigen::Quaterniond _att, Eigen::Vector3d _pos):
-        att_on_drone(_att), pos_on_drone(_pos)
+    Camera(const std::string& filename, Pose _pose):
+        pose(_pose)
     {
         camera_model = new camodocal::CataCamera;
         camodocal::CataCamera::Parameters params = camera_model->getParameters();
@@ -158,15 +174,14 @@ struct Camera {
 
 
 
-    Vector3d pos_on_drone;
-    Quaterniond att_on_drone;
+    Pose pose;
 
     Quaterniond att() const {
-        return att_on_drone;
+        return pose.attitude;
     }
 
     Vector3d pos() const {
-        return pos_on_drone;
+        return pose.position;
     }
 };
 
@@ -176,9 +191,7 @@ struct DroneMarker {
     int id;
     int drone_id;
     double size;
-
-    Eigen::Vector3d on_drone_pos;
-    Eigen::Quaterniond on_drone_att;
+    Pose pose;
 
     //Corner position on the drone
     Eigen::Vector3d rel_corner_pos(int corner_no) const {
@@ -229,21 +242,7 @@ struct SwarmDroneDefs {
     std::map<int, DroneMarker> markers;
 };
 
-struct Pose {
-    Eigen::Vector3d pos;
-    Eigen::Quaterniond quat;
 
-    void to_vector(double ret[]) {
-        ret[0] = quat.w();
-        ret[1] = quat.x();
-        ret[2] = quat.y();
-        ret[3] = quat.z();
-
-        ret[4] = pos.x();
-        ret[5] = pos.y();
-        ret[6] = pos.z();
-    }
-};
 
 typedef std::vector<Camera*> camera_array;
 typedef std::vector<MarkerCornerObservsed> corner_array;

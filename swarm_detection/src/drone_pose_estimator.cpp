@@ -20,22 +20,17 @@ DronePoseEstimator::DronePoseEstimator(SwarmDroneDefs  & _r_drone_defs, camera_a
 double DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point_by_cam){
     assert(point_by_cam.size() == self_ca.size());
     Pose pose;
-    for (int i = 0; i < 10; i++) {
-        pose.pos.x() = rand_FloatRange(-0.3, 0.3);
-        pose.pos.y() = rand_FloatRange(-0.3, 0.3);
-        pose.pos.z() = rand_FloatRange(0.1, 0.5);
+    pose.position.x() = rand_FloatRange(-0.3, 0.3);
+    pose.position.y() = rand_FloatRange(-0.3, 0.3);
+    pose.position.z() = rand_FloatRange(0.1, 0.5);
 
-        pose.quat = Quaterniond(AngleAxisd(
-            rand_FloatRange(-3.14, 3.14),
-            Vector3d(rand_FloatRange(-1, 1), rand_FloatRange(-1, 1), rand_FloatRange(-1, 1))
-        ));
+    pose.attitude = Quaterniond(AngleAxisd(
+        rand_FloatRange(-3.14, 3.14),
+        Vector3d(rand_FloatRange(-1, 1), rand_FloatRange(-1, 1), rand_FloatRange(-1, 1))
+    ));
 
-        double cost = this->estimate_drone_pose(point_by_cam, pose);
-        if (cost < 1.0) {
-            return cost;
-        }
-    }
-
+    double cost = this->estimate_drone_pose(point_by_cam, pose);
+    return cost;
 }
 
 void DronePoseEstimator::draw(double x[], std::vector<corner_array> & point_by_cam) {
@@ -47,16 +42,16 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> & point_by_c
         auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
         auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
         cv::Point p;
-        p.x = predict_point(0)*2 + 640;
-        p.y = predict_point(1)*2 + 512;
+        p.x = predict_point(0)*2;
+        p.y = predict_point(1)*2;
         printf("p3d %f %f %f ,pp %d %d\n",point3d(0), point3d(1), point3d(2), p.x, p.y);
-        cv::circle(new_to_draw, p, 10, cv::Scalar(0, 0,255), -1);
+        cv::circle(new_to_draw, p, 10, cv::Scalar(0, 0,255), 2);
 
-        p.x = mco.observed_point.x()*2 + 640;
-        p.y = mco.observed_point.y()*2 + 512;
+        p.x = mco.observed_point.x()*2;
+        p.y = mco.observed_point.y()*2;
         printf("op %d %d\n", p.x, p.y);
 
-        cv::circle(new_to_draw, p, 10, cv::Scalar(255,0,0), -1);
+        cv::circle(new_to_draw, p, 15, cv::Scalar(255,0,0), 2);
 
     }
 
