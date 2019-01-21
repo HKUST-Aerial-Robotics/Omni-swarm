@@ -12,16 +12,23 @@
 using namespace Eigen;
 
 class DronePoseEstimator {
-    SwarmDroneDefs drone_defs;
-    camera_array & ca;
-public:
-    DronePoseEstimator(SwarmDroneDefs & _drone_defs, camera_array & _ca);
+    SwarmDroneDefs remote_drone_defs;
+    camera_array & self_ca;
 
+public:
+    DronePoseEstimator(SwarmDroneDefs & _r_drone_defs, camera_array & _sca);
+
+    double estimate_loss = 10000;
+    double x[7];
+    Pose estimated;
     //point_by_cam is point corre to camera. length must equal to camera
     //marker is the id of these markers
     //All this marker must belong to one drone
-    Pose estimate_drone_pose(std::vector<corner_array> & point_by_cam);
-    Pose estimate_drone_pose(std::vector<corner_array> & point_by_cam, Pose initial_pose);
+    cv::Mat mat_to_draw;
+    bool enable_drawing = true;
+    double estimate_drone_pose(std::vector<corner_array> & point_by_cam);
+    double estimate_drone_pose(std::vector<corner_array> & point_by_cam, Pose initial_pose);
+    void draw(double x[], std::vector<corner_array> & point_by_cam);
 };
 
 
