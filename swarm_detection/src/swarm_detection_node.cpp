@@ -6,7 +6,12 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <swarm_detection/drone_pose_estimator.h>
+#include <swarm_msgs/armarker_detected.h>
+#include <swarm_msgs/armarker_corner.h>
+
+using namespace swarm_msgs;
 namespace enc = sensor_msgs::image_encodings;
+
 void colorToGrey(cv::Mat& image_in, cv::Mat& image_out )
 {   
 
@@ -38,6 +43,12 @@ class ARMarkerDetectorNode {
 
     ros::Subscriber left_image_sub;
     ros::Subscriber right_image_sub;
+    ros::Publisher armarker_pub;
+    bool is_show;
+    double duration;
+
+    ros::Time last_lcam_ts;
+    ros::Time last_rcam_ts;
 public:
     ARMarkerDetectorNode(ros::NodeHandle & _nh):
         nh(_nh)
@@ -46,6 +57,13 @@ public:
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
         left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left, this, ros::TransportHints().tcpNoDelay());
         right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right, this, ros::TransportHints().tcpNoDelay());
+        armarker_pub = nh.advertise<armarker_detected >("armarker_detected", 1);
+
+        nh.param("is_show", is_show, false);
+        nh.param("duration", duration, 1.0);
+
+        last_lcam_ts = ros::Time::now() - ros::Duration(1000000);
+        last_rcam_ts = ros::Time::now() - ros::Duration(1000000);
     }
 
     void read_camera_params(std::string left_camera, std::string right_camera) {
@@ -58,34 +76,60 @@ public:
         //Send to drone pose estimator
     }
 
-    void detect_cv_image(const cv::Mat & _img, int camera_id) {
+    void detect_cv_image(const cv::Mat & _img, int camera_id, ros::Time stamp) {
+
+        armarker_detected ad;
+        ad.header.stamp = stamp;
+        ad.self_drone_id = -1;// -1 means this drone
+        ad.camera_id = camera_id;
+
         int src_rows = _img.rows;
         int src_cols = _img.cols;
         cv::Mat img = _img;
         marker_array ma = MDetector.detect(img);
         for(auto m: ma){
-            std::cout<<m<<std::endl;    
-            m.draw(img);
-            // aruco::CvDrawingUtils::draw3dAxis(im, m, camera);
+            std::cout<<m<<std::endl;  
+            if (is_show) {
+                m.draw(img);
+            }
+            armarker_corner ac;
+            for (int i = 0; i < 4; i++) {
+                ac.marker_id = m.id;
+                ac.corner_id = i;
+                ac.x = m[i].x;
+                ac.y = m[i].y;
+                ad.corner_detected.push_back(ac);
+            }
+            
+        }
+
+        armarker_pub.publish(ad);
+        if (is_show) {
+            cv::resize(img, img, cv::Size(640, 512));
+            if (camera_id == 0)
+                cv::imshow("left", img);
+            if (camera_id == 1)
+                cv::imshow("right", img);
+            cv::waitKey(10);
         }
 
 
-        if (camera_id == 0)
-            cv::imshow("left", img);
-        if (camera_id == 1)
-            cv::imshow("right", img);
-        cv::waitKey(10);
-
-
-        //Run swarm pose estimator
     }
 
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
-        image_cb(msg, 0);
+        if ((msg->header.stamp - last_lcam_ts).toSec() > duration) {
+            image_cb(msg, 0);
+            last_lcam_ts = msg->header.stamp;
+        }
+
     }
 
     void image_cb_right(const sensor_msgs::ImageConstPtr& msg) {
-        image_cb(msg, 1);
+        if ((msg->header.stamp - last_rcam_ts).toSec() > duration) {
+            image_cb(msg, 1);
+            last_rcam_ts = msg->header.stamp;
+        }
+
     }
 
     void image_cb(const sensor_msgs::ImageConstPtr& msg, int camera_id)
@@ -95,7 +139,7 @@ public:
         {
             cv_ptr = cv_bridge::toCvShare(msg, enc::BGR8);
 
-            this->detect_cv_image(cv_ptr->image, camera_id);
+            this->detect_cv_image(cv_ptr->image, camera_id, msg->header.stamp);
         }
         catch (cv_bridge::Exception& e)
         {
@@ -113,6 +157,7 @@ int main(int argc,char **argv)
     ROS_INFO("Inited swarm detection");
     ARMarkerDetectorNode ar_node(nh);
     
-    ros::spin();
-
+    ros::AsyncSpinner spinner(2);
+    spinner.start();
+    ros::waitForShutdown();
 }

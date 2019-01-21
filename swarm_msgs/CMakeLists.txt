@@ -63,6 +63,8 @@ add_message_files(
   drone_commander_state.msg
   drone_onboard_command.msg
   swarm_remote_command.msg
+  armarker_corner.msg
+  armarker_detected.msg
 )
 
 ## Generate services in the 'srv' folder
