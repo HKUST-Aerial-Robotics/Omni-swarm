@@ -39,12 +39,6 @@ int main(int argc, char* argv[]) {
 
 
         
-    Eigen::Quaterniond left_att(1, 0, 0, 0);
-    Eigen::Vector3d left_pos(0, 0, 0);
-
-    Eigen::Quaterniond right_att(1, 0, 0, 0);
-    Eigen::Vector3d right_pos(0, 0.135, 0);
-
     marker_array ma_left = MDetector.detect(img_left);
     marker_array ma_right = MDetector.detect(img_right);
 
