@@ -8,7 +8,7 @@
 
 using namespace Eigen;
 using namespace ceres;
-
+// namespace SwarmDetection {}
 struct Pose {
     Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
     Eigen::Quaterniond attitude = Eigen::Quaterniond(1, 0, 0, 0);

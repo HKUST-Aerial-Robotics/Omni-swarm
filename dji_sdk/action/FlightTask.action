@@ -1,9 +1,0 @@
-#goal definition
-uint8 task
-uint8 TASK_LANDING = 6
----
-#result definition
-bool accept
----
-#feedback
-bool result

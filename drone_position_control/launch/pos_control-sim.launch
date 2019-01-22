@@ -1,9 +1,0 @@
-<launch>
-<node pkg="drone_position_control" name="drone_position_control" type="drone_position_control_node" output="screen">
-    <rosparam command="load" file="$(find drone_position_control)/launch/pos_control_param.yaml" />
-    <remap from="/drone_position_control/odometry" to="/dji_sdk_1/dji_sdk/simulation/odom"/>
-    <remap from="/drone_position_control/fc_attitude" to="/dji_sdk_1/dji_sdk/attitude"/>
-    <remap from="/drone_position_control/dji_sdk_control" to="/dji_sdk_1/dji_sdk/flight_control_setpoint_generic"/>
-    <remap from="/drone_position_control/fc_imu" to="/dji_sdk_1/dji_sdk/imu"/>
-</node>
-</launch>

@@ -349,7 +349,7 @@ class SwarmDroneProxy
 
     void on_send_swarm_commands(swarm_msgs::swarm_remote_command rcmd) {
         mavlink_message_t msg;
-        swarm_msgs::drone_onboard_command & cmd = rcmd.cmd;
+        swarmtal_msgs::drone_onboard_command & cmd = rcmd.cmd;
         // mavlink_msg_swarm_info_pack(0, 0, &msg, odometry_available, pos.x(), pos.y(), pos.z(),
         //     quat.w(), quat.x(), quat.y(), quat.z(),
         //     vel.x(), vel.y(), vel.z(), dis);
@@ -366,7 +366,7 @@ class SwarmDroneProxy
         ROS_INFO("Recv swarm remote command to %d", cmd.target_id);        
         if (cmd.target_id == -1 || cmd.target_id == this->self_id) {
             //Cmd apply to this
-            drone_onboard_command dcmd;
+            swarmtal_msgs::drone_onboard_command dcmd;
             dcmd.command_type = cmd.command_type;
             dcmd.param1 = cmd.param1;
             dcmd.param2 = cmd.param2;
@@ -406,7 +406,7 @@ public:
         swarm_sourcedata_pub = nh.advertise<swarm_drone_source_data>("/swarm_drones/swarm_drone_source_data", 10);
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
         swarm_cmd_sub = nh.subscribe("/swarm_drones/send_swarm_command", 10, &SwarmDroneProxy::on_send_swarm_commands, this, ros::TransportHints().tcpNoDelay());
-        drone_cmd_pub = nh.advertise<drone_onboard_command>("/drone_commander/onboard_command", 10);
+        drone_cmd_pub = nh.advertise<swarmtal_msgs::drone_onboard_command>("/drone_commander/onboard_command", 10);
         if (gcs_mode) {
             pos.x() = 0;
             pos.y() = 0;
