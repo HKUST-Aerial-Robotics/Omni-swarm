@@ -1,8 +1,0 @@
-#goal definition
-bool reqSDKControl
----
-#result definition
-bool accept
----
-#feedback
-bool isSDKControl
