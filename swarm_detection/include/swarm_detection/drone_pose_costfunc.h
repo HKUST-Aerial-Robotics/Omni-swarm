@@ -111,10 +111,10 @@ struct DronePoseReprojectionError {
 
     // Factory to hide the construction of the CostFunction object from
     // the client code.
-    static ceres::DynamicAutoDiffCostFunction<DronePoseReprojectionError, 4>* 
+    static ceres::DynamicAutoDiffCostFunction<DronePoseReprojectionError, 7>* 
         Create(std::vector<corner_array> _point_by_cam, camera_array _ca) {
         return (new ceres::DynamicAutoDiffCostFunction<
-                DronePoseReprojectionError, 4>(
+                DronePoseReprojectionError, 7>(
                     new DronePoseReprojectionError( _point_by_cam, _ca)));
     }
 

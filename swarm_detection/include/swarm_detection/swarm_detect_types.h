@@ -28,6 +28,11 @@ struct Pose {
     }
 };
 
+
+
+//Output q, t equal to T_{camtoimu}^-1*T_{imu}^-1
+//That's (T_{imu} T_{camtoimu})^-1
+// Thatis T_{cam}^-1
 template<typename T>
 void
 worldToCameraTransform(const T* const q_cam_odo, const T* const t_cam_odo,
@@ -73,50 +78,7 @@ worldToCameraTransform(const T* const q_cam_odo, const T* const t_cam_odo,
     q[3] = q0[0];
 }
 
-struct CameraPinholes {
-    Eigen::Affine3d trans;
-    double fx, fy, cx, cy;
-    double k1, k2, p1, p2;
-    int size_w;
-    int size_h;
 
-    template <typename T> inline
-    void project_to_camera(const T point3d[3], T point[2])  const {
-        point[0] = point3d[0] / point3d[2];
-        point[1] = point3d[1] / point3d[2];
-
-        T d_u[2];
-        distortion(point, d_u);
-        point[0] = point[0] + d_u[0];
-        point[1] = point[1] + d_u[1];
-
-        point[0] = fx * point[0] + cx;
-        point[1] = fy * point[1] + cy;
-    }
-
-    template <typename T> inline
-    void distortion(const T point[2], T d_u[2]) const {
-        T mx2_u = point[0] * point[0];
-        T my2_u = point[1] * point[1];
-        T mxy_u = point[0] * point[1];
-        T rho2_u = mx2_u + my2_u;
-        T rad_dist_u = k1 * rho2_u + k2 * rho2_u * rho2_u;
-
-        d_u[0] = point[0] * rad_dist_u + 2.0 * p1 * mxy_u + p2 * (rho2_u + 2.0 * mx2_u);
-        d_u[1] = point[1] * rad_dist_u + 2.0 * p2 * mxy_u + p1 * (rho2_u + 2.0 * my2_u);
-    }
-
-    Vector3d pos_on_drone;
-    Quaterniond att_on_drone;
-
-    Quaterniond att() const {
-        return att_on_drone;
-    }
-
-    Vector3d pos() const {
-        return pos_on_drone;
-    }
-};
 
 struct Camera {
     int size_w;

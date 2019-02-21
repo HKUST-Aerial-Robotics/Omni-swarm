@@ -2,6 +2,8 @@
 #include <swarm_detection/drone_pose_estimator.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <time.h>
+
 
 typedef std::vector<aruco::Marker> marker_array;
 
@@ -19,6 +21,9 @@ Pose from_cv_matrix(cv::Mat mat) {
 
 int main(int argc, char* argv[]) {
     ROS_INFO("Start test detection");
+     srand(time(NULL));
+
+
     aruco::MarkerDetector MDetector;
     MDetector.setDictionary("ARUCO_MIP_36h12");
     cv::Mat img_left = cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/sample/image_left.png");
