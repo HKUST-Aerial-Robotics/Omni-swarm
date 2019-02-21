@@ -86,7 +86,7 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> & point_by_c
 
 double DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point_by_cam, Pose initial_pose) {
     Problem ba_problem;
-    ceres::DynamicAutoDiffCostFunction<DronePoseReprojectionError, 4>* 
+    ceres::DynamicAutoDiffCostFunction<DronePoseReprojectionError, 7>* 
         cost_func = DronePoseReprojectionError::Create(point_by_cam, self_ca);
     int num_res = 0;
     for (auto ca : point_by_cam) {

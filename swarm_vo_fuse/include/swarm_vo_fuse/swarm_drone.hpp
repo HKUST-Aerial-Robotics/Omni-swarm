@@ -2,6 +2,10 @@
 #include <eigen3/Eigen/Dense>
 #include <map>
 
+
+namespace Swarm {
+
+class Node
 class DroneFrame {
     int _id;
     std::map<int, float> distance;
@@ -14,4 +18,6 @@ public:
     {
 
     }
-};
+}
+}
+;
