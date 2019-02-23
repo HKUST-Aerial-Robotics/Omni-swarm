@@ -8,6 +8,7 @@
 #include <time.h>
 #include <thread>  
 #include <unistd.h>
+#include "swarm_types.hpp"
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -22,29 +23,20 @@ typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
 // #define USE_BIAS
+//TODO:Rewrite with swarm types
 
 class SwarmDistanceResidual : public CostFunction {
     Vector3d Anntenna; 
-    inline int param_index(int i) const
-    {
-        //Convert index of matrix and vector to id
-        int j= ids[i];
 
-        //Conver id to param index
-        int k = id_to_index.at(j);
-
-        return k - 1;
-    }
-
-    inline void Zik_the_ik(int i, Vector3d& Zik, double&thetaik, double const * Zxyzth) const
-    {
+    inline void Zik_the_ik(int idi, Vector3d & Zik, double & thetaik, double const * Zxyzth) const {
         Zik.x() = 0;
         Zik.y() = 0;
         Zik.z() = 0;
         thetaik = 0;
-        i = param_index(i);
-        if (i >= 0)
-        {
+
+        //What does this stand for?
+        int i = id2index(idi);
+        if (i >= 0) {
             Zik.x() = Zxyzth[i*4];
             Zik.y() = Zxyzth[i*4 + 1];
             Zik.z() = Zxyzth[i*4 + 2];
@@ -54,8 +46,7 @@ class SwarmDistanceResidual : public CostFunction {
     }
 
 
-    inline Matrix3d rho_mat(double th) const
-    {
+    static inline Matrix3d rho_mat(double th) const {
         Matrix3d rho;
         rho <<  cos(th), sin(th), 0,
                 -sin(th), cos(th), 0,
@@ -64,8 +55,7 @@ class SwarmDistanceResidual : public CostFunction {
         return rho;
     }
 
-    inline Matrix3d partial_rho_by_theta(double th) const
-    {
+    static inline Matrix3d partial_rho_by_theta(double th) const {
         Matrix3d rho;
         rho <<  -sin(th), cos(th), 0,
                 -cos(th), -sin(th), 0,
@@ -75,14 +65,14 @@ class SwarmDistanceResidual : public CostFunction {
     }
 
 
-    inline void Zji_theji(int j, int i, Vector3d& Zji, double&thetaji, double const * Zxyzth) const
+    inline void Z_idji_theji(int idj, int idi, Vector3d& Zji, double&thetaji, double const * Zxyzth) const
     {
         double ztheik = 0;
         double zthejk = 0;
-        Vector3d Zik;
-        Vector3d Zjk;
-        Zik_the_ik(i, Zik, ztheik, Zxyzth);
-        Zik_the_ik(j, Zjk, zthejk, Zxyzth);
+        Vector3d Zik(0, 0, 0);
+        Vector3d Zjk(0 ,0, 0);
+        Zik_the_ik(idi, Zik, ztheik, Zxyzth);
+        Zik_the_ik(idj, Zjk, zthejk, Zxyzth);
         
         Matrix3d rho_inv = rho_mat(-ztheik);
         Zji = rho_inv*(Zjk - Zik);
@@ -91,38 +81,33 @@ class SwarmDistanceResidual : public CostFunction {
 
     
 
-    inline Eigen::Vector3d partial_Zji_by_Zdelta_k(int j, int i, int delta, int m, double const * Zxyzth) const
-    {
+    inline Eigen::Vector3d partial_Zji_by_Zdelta_k(int idj, int idi, int id_delta, int m, double const * Zxyzth) const {
 
         double ztheik = 0;
         double zthejk = 0;
-        Vector3d Zik;
-        Vector3d Zjk;
-        Zik_the_ik(i, Zik, ztheik, Zxyzth);
-        Zik_the_ik(j, Zjk, zthejk, Zxyzth);
+        Vector3d Zik(0, 0, 0);
+        Vector3d Zjk(0, 0 ,0);
+
+        Zik_the_ik(idi, Zik, ztheik, Zxyzth);
+        Zik_the_ik(idj, Zjk, zthejk, Zxyzth);
         Vector3d ret(0,0,0);
 
-        if (delta == i)
-        {
-            if(m == 3) // Is theta axis
-            {
+        if (id_delta == idi) {
+            if(m == 3) {// Is theta axis 
                 Eigen::Matrix3d prhoT = partial_rho_by_theta(ztheik).transpose();
                 return prhoT * (Zjk - Zik);
             }
-            else
-            {
+            else {
                 ret(m) = 1;
             }
             return -rho_mat(-ztheik)*ret;
         }
 
-        if (delta == j)
-        {
-            if (m==3)
-            {
+        if (id_delta == idj) {
+            if (m==3) {
                 return Eigen::Vector3d(0,0,0);
             }
-            else{
+            else {
                 ret(m) = 1;
             }
             return rho_mat(-ztheik)*ret;
@@ -131,24 +116,24 @@ class SwarmDistanceResidual : public CostFunction {
     }
 
 
-    inline double Jacobian_y_ij_by_Z_delta_m(int i, int j, int delta, int m, Eigen::Vector3d _rel_dir, double const * Zxyzth) const
-    {
-        if(delta != i && delta != j )
+    inline double Jacobian_y_idij_by_Z_delta_m(int idi, int idj, int iddelta, int m, Eigen::Vector3d _rel_dir, double const * Zxyzth) const {
+        if(iddelta != idi && iddelta != idj)
             return 0;
         double Ztheji = 0;
-        Eigen::Vector3d Zji;
-        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
-        Eigen::Vector3d ret = partial_Zji_by_Zdelta_k(j, i, delta, m, Zxyzth);
+        Eigen::Vector3d Zji(0, 0 ,0);
+        Z_idji_theji(idj, idi, Zji, Ztheji, Zxyzth);
+        Eigen::Vector3d ret = partial_Zji_by_Zdelta_k(idj, idi, iddelta, m, Zxyzth);
         if (m==3)
         {
-            if (i == delta)
+            if (idi == iddelta)
             {
-                ret =  ret - partial_rho_by_theta(Ztheji) *  (self_pos[j] + self_quat[j] * Anntenna);
+                //Conver
+                ret =  ret - partial_rho_by_theta(Ztheji) *  (get_drone_self_pos(idj) + get_drone_self_quat(idj) * Anntenna);
             }
 
-            if (j == delta)
+            if (idj == iddelta)
             {
-                ret =  ret + partial_rho_by_theta(Ztheji) * (self_pos[j] + self_quat[j] * Anntenna);
+                ret =  ret + partial_rho_by_theta(Ztheji) * (get_drone_self_pos(idj) + get_drone_self_quat(idj) * Anntenna);
             }
         }
         return _rel_dir.dot(ret);
@@ -171,15 +156,17 @@ class SwarmDistanceResidual : public CostFunction {
 
         int residual_num = drone_num_now * (drone_num_now - 1) / 2;
 
-        for (int i = 0; i < drone_num_now; i++)
+
+        auto nodes = swarm_frame.node_id_list;
+        for (int i = 0; i < nodes.size(); i++)
         {
-            for (int j = i + 1; j < drone_num_now ; j++)
+            int idi = nodes[i];
+            for (int j = i + 1; j < nodes.size() ; j++)
             {
-
-
-                Eigen::Vector3d _rel = distance_j_i(j, i, Zxyzth);
+                int idj = nodes[j];
+                Eigen::Vector3d _rel = distance_idj_idi(idj, idi, Zxyzth);
                 // Because dis_matrix(i,j) != dis_matrix(j, i), so we use average instead
-                double d_bar = (dis_matrix(i,j) + dis_matrix(j,i)) * 0.5; 
+                double d_bar = (dis_measure_idj2i(idi, idj) + dis_measure_idj2i(idj, idi)) * 0.5; 
 #ifdef USE_BIAS
                 residual[count] = (_rel.norm() - d_bar - bias_ij(i, j, Zxyzth));
 #else
@@ -188,18 +175,15 @@ class SwarmDistanceResidual : public CostFunction {
                 // printf("Bias %d %d %f\n", i, j, bias_ij(i, j, Zxyzth));
 
                 if (need_jacobians) {
-                    for (int m =0; m<4 ; m++)
-                    {
-                        if (param_index(i) >= 0)
-                        {
-                            double jac_im = Jacobian_y_ij_by_Z_delta_m(i, j, i, m, _rel/_rel.norm(), Zxyzth);
-                            jacobians[0][count*num_params() + param_index(i)*4+m] = jac_im;
+                    for (int m =0; m<4 ; m++) {
+                        if (id2index(i) >= 0) {
+                            double jac_im = Jacobian_y_idij_by_Z_delta_m(idi, idj, idi, m, _rel/_rel.norm(), Zxyzth);
+                            jacobians[0][count*num_params() + id2index(idi)*4+m] = jac_im;
                         }
 
-                        if (param_index(j) >= 0)
-                        {
-                            double jac_jm = Jacobian_y_ij_by_Z_delta_m(i, j, j, m, _rel/_rel.norm(), Zxyzth);
-                            jacobians[0][count*num_params() + param_index(j)*4+m] = jac_jm;
+                        if (id2index(j) >= 0) {
+                            double jac_jm = Jacobian_y_idij_by_Z_delta_m(idi, idj, idj, m, _rel/_rel.norm(), Zxyzth);
+                            jacobians[0][count*num_params() + id2index(idj)*4+m] = jac_jm;
                         }
 
                     }
@@ -215,10 +199,10 @@ class SwarmDistanceResidual : public CostFunction {
 
         //TODO:
         //Has issue when drone_num < drone_num_total
+        //??????????
 #ifdef USE_BIAS
         if (need_jacobians ) {
-            for (int i = 0; i < drone_num_total * (drone_num_total - 1) /2; i++)
-            {
+            for (int i = 0; i < drone_num_total * (drone_num_total - 1) /2; i++) {
                 // printf("drone_num %d %d :%d\n",drone_num_total,drone_num_total * (drone_num_total - 1) /2, i);
                 jacobians[0][i*num_params() + (drone_num_total-1)*4 + i] = -1;
             }
@@ -227,78 +211,71 @@ class SwarmDistanceResidual : public CostFunction {
         return true;
     }
 public:
-    SwarmDistanceResidual(const Eigen::MatrixXd & _dis_matrix,
-                const vec_array & _self_pos, 
-                const vec_array & _self_vel, 
-                const quat_array & _self_quat, 
-                const std::vector<unsigned int>& _ids,
-                std::map<int, int> _id2index,
-                Eigen::Vector3d anntena_pos,
-                int _drone_num_total
-                ): 
-            dis_matrix(_dis_matrix), 
-            self_vel(_self_vel), 
-            self_pos(_self_pos), 
-            self_quat(_self_quat), 
-            id_to_index(_id2index), 
-            ids(_ids),
-            Anntenna(anntena_pos),
-            drone_num_total(_drone_num_total)
+    SwarmDistanceResidual(swarm::SwarmFrame _sf): 
+            swarm_frame(_sf)
         {
-
-            int drone_num_now = _ids.size();
+            int drone_num_now = swarm_frame.node_map.size();
             set_num_residuals(drone_num_now * (drone_num_now-1) / 2);
             mutable_parameter_block_sizes()->push_back(num_params());
         }
 
-    Vector3d est_id_pose_in_k(int j, int i, double const * Zxyzth, bool estimate_antenna = false) const
+    Vector3d est_id_pose_in_k(int idj, int idi, double const * Zxyzth, bool estimate_antenna = false) const
     {
+        //TODO: fix this function
         double Ztheji = 0;
-        Eigen::Vector3d Zji;
-        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
+        Eigen::Vector3d Zji(0, 0, 0);
+
+        Z_idji_theji(idj, idi, Zji, Ztheji, Zxyzth);
         
         Matrix3d rho_ji = rho_mat(Ztheji);
         Vector3d  _rel(0,0,0);
+
         if (estimate_antenna)
         {
-            _rel =  Zji + rho_ji * (self_pos[j] + self_quat[j] * Anntenna);
+            _rel =  Zji + rho_ji * (get_drone_self_pos(idj) + get_drone_self_quat(idj) * Anntenna);
         }
         else {
-            _rel = Zji + rho_ji * self_pos[j];
+            _rel = Zji + rho_ji * get_drone_self_pos(idj);
         }
         return _rel;
     }
 
-    Vector3d est_id_vel_in_k(int j, int i, double const * Zxyzth) const
+    Vector3d est_id_vel_in_k(int idj, int idi, double const * Zxyzth) const
     {
         double Ztheji = 0;
-        Eigen::Vector3d Zji;
-        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
+        Eigen::Vector3d Zji(0, 0, 0);
+
+        Z_idji_theji(idj, idi, Zji, Ztheji, Zxyzth);
         
         Matrix3d rho_ji = rho_mat(Ztheji);
-        Vector3d  _rel = rho_ji * self_vel[j];
+
+        Vector3d  _rel = rho_ji * get_drone_self_vel(idj);
 
         return _rel;
     }
 
-    Quaterniond est_id_quat_in_k(int j, int i, double const * Zxyzth) const
-    {
+    Quaterniond est_id_quat_in_k(int idj, int idi, double const * Zxyzth) const {
         double Ztheji = 0;
-        Eigen::Vector3d Zji;
-        Zji_theji(j, i, Zji, Ztheji, Zxyzth);
+        Eigen::Vector3d Zji(0, 0, 0);
+
+        Z_idji_theji(idj, idi, Zji, Ztheji, Zxyzth);
         
         Quaterniond _quat = AngleAxisd(-Ztheji, Vector3d::UnitZ()) * self_quat[j];
         return _quat;
     }
     
-    inline Eigen::Vector3d distance_j_i(int j, int i, double const* Zxyzth) const
-    {
-        Eigen::Vector3d  _rel = est_id_pose_in_k(j, i, Zxyzth, true) - (self_pos[i] + self_quat[i] * Anntenna);
+    inline Eigen::Vector3d distance_idj_idi(int idj, int idi, double const* Zxyzth) const {
+        Eigen::Vector3d  _rel = est_id_pose_in_k(idj, idi, Zxyzth, true) - (get_drone_self_pos(idi) + get_drone_self_quat(idi) * Anntenna);
         return _rel;
     }
 
-    inline double bias_ij(int i, int j, double const * Zxyzth) const
-    {
+    inline double bias_idi_idj(int idi, int idj, double const * Zxyzth) const {
+        int i = id2index(idi);
+        int j = id2index(idj);
+        return bias_ij(i, j, Zxyzth);
+    }
+
+    inline double bias_ij(int i, int j, double const * Zxyzth) const {
         if (i == j)
             return 0;
         
@@ -319,14 +296,36 @@ public:
 
 
 private:
-    Eigen::MatrixXd dis_matrix;
-    vec_array self_pos;
-    vec_array self_vel;
-    quat_array self_quat;
 
-    std::vector<unsigned int> ids;
-    std::map<int, int> id_to_index;
+    Eigen::Vector3d get_drone_self_pos(int _id) const {
+        return swarm_frame.node_map.at(_id).self_pose.position;
+    }
 
+    Eigen::Vector3d get_drone_self_vel(int _id) const {
+        return swarm_frame.node_map.at(_id).self_vel;
+    }
+
+    Eigen::Quaterniond get_drone_self_quat(int _id) const{
+        return swarm_frame.node_map.at(_id).attitude;
+    }
+
+    int id2index(int _id) const {
+        return id_index_map.at(_id);
+    }
+
+    int index2id(int index) const {
+        assert(index < all_node.size() && "A is not equal to B");
+        return all_nodes.at(index);
+    }
+
+    double dis_measure_idj2i(int idj, int idi) const {
+        return (swarm_frame.dis_mat.at(idj)).at(idi);
+    }
+
+    swarm::SwarmFrame swarm_frame;
+
+    std::vector<int> all_nodes;
+    std::map<int, int> id_index_map;
 
     int drone_num_total = -1;
     int num_params() const
