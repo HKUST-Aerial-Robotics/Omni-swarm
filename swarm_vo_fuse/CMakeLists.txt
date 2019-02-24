@@ -10,13 +10,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  rosmsg
-  std_msgs
-  geometry_msgs
-  swarm_msgs
-)
+        roscpp
+        rospy
+        rosmsg
+        std_msgs
+        geometry_msgs
+        swarm_msgs
+        swarm_detection
+        camera_model)
 find_package(Ceres REQUIRED)
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +112,7 @@ find_package(Ceres REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES swarm_vo_fuse
- CATKIN_DEPENDS roscpp rospy std_msgs  swarm_msgs
+        CATKIN_DEPENDS roscpp rospy std_msgs swarm_msgs swarm_detection
 #  DEPENDS system_lib
 )
 
@@ -140,7 +141,11 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/swarm_vo_fuse_node.cpp)
+add_executable(${PROJECT_NAME}_node
+        include/swarm_vo_fuse/swarm_types.hpp
+        include/swarm_vo_fuse/swarm_vo_costfunc.hpp
+        include/swarm_vo_fuse/swarm_vo_fuser.hpp
+        src/swarm_vo_fuse_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,8 +159,9 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-  ${CERES_LIBRARIES}
+        ${catkin_LIBRARIES}
+        ${CERES_LIBRARIES}
+        ${camera_model_LIBRARIES}
 )
 
 #############
