@@ -181,7 +181,6 @@ target_link_libraries(${PROJECT_NAME}_test
   aruco
   ${PROJECT_NAME}
   ${camera_model_LIBRARIES}
-
 )
 
 #############

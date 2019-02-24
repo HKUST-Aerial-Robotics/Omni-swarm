@@ -26,6 +26,8 @@ struct Pose {
     Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
         return attitude * point + position;
     }
+
+    Pose() {}
 };
 
 
@@ -153,9 +155,9 @@ struct Camera {
 
 struct DroneMarker {
     //Trans is relative to own drone
-    int id;
+    int id = -1;
     int drone_id;
-    double size;
+    double size = 0;
     Pose pose;
 
     //Corner position on the drone
@@ -178,7 +180,7 @@ struct DroneMarker {
 }
 
     DroneMarker(int _id, int _drone_id, double _size):
-        size(_size), id(_id), drone_id(_drone_id)
+            id(_id), drone_id(_drone_id), size(_size)
     {}
 
 };
@@ -187,8 +189,8 @@ typedef std::map<int, DroneMarker*> marker_dict;
 
 class MarkerCornerObservsed {
 public:
-    int corner_no;
-    Eigen::Vector2d observed_point;
+    int corner_no = -1;
+    Eigen::Vector2d observed_point = Eigen::Vector2d(0, 0);
     DroneMarker * marker = nullptr;
     Eigen::Vector3d rel_corner_pos() const {
         assert(marker!=nullptr && "Must like corner to a marker before use relative corner position");
@@ -199,6 +201,10 @@ public:
         corner_no(_corner_no), marker(_marker)
     {
 
+    }
+
+    MarkerCornerObservsed() :
+            corner_no(-1), marker(nullptr) {
     }
 };
 
