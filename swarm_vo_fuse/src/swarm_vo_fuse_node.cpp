@@ -202,9 +202,13 @@ private:
 
     int self_id = -1;
 
-    void load_nodes_from_file(std::string path) {
+    void load_nodes_from_file(const std::string &path) {
         // TODO :
         // Load all_ar_markers and all_node_defs
+        //No armarker now, so load nodes with uwb module only
+        for (int _id = 0; _id < 10; _id++) {
+            all_node_defs[_id] = Node::createDroneNode(_id);
+        }
     }
 
 public:
