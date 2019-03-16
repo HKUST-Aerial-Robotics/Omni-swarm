@@ -8,6 +8,17 @@
 
 using namespace Eigen;
 using namespace ceres;
+
+inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
+    Eigen::Vector3d rpy;
+    rpy.x() = atan2(2 * (quat.w() * quat.x() + quat.y() * quat.z()),
+                    1 - 2 * (quat.x() * quat.x() + quat.y() * quat.y()));
+    rpy.y() = asin(2 * (quat.w() * quat.y() - quat.z() * quat.x()));
+    rpy.z() = atan2(2 * (quat.w() * quat.z() + quat.x() * quat.y()),
+                    1 - 2 * (quat.y() * quat.y() + quat.z() * quat.z()));
+    return rpy;
+}
+
 // namespace SwarmDetection {}
 struct Pose {
     Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
@@ -27,6 +38,29 @@ struct Pose {
         return attitude * point + position;
     }
 
+    Eigen::Vector3d rpy() {
+        return quat2eulers(attitude);
+    }
+
+    Pose(Eigen::Isometry3d trans) {
+        position = trans.translation();
+        attitude = trans.rotation();
+    }
+
+    Eigen::Isometry3d to_isometry() {
+        Eigen::Isometry3d a = Eigen::Translation3d(position) * attitude;
+        return a;
+    }
+
+    void print() {
+        auto _rpy = rpy();
+        printf("T %3.3f %3.3f %3.3f RPY %3.1f %3.1f %3.1f\n",
+               position.x(), position.y(), position.z(),
+               _rpy.x() * 57.3,
+               _rpy.y() * 57.3,
+               _rpy.z() * 57.3
+        );
+    }
     Pose() {}
 };
 
@@ -87,6 +121,14 @@ struct Camera {
     int size_h;
     camodocal::CataCamera * camera_model;
     std::vector<double> m_intrinsic_params;
+
+    Eigen::Vector2d undist_point(Eigen::Vector2d p) {
+        Eigen::Vector3d pundist_3d;
+        camera_model->liftProjective(p, pundist_3d);
+        Eigen::Vector2d ret(pundist_3d.x() / pundist_3d.z(), pundist_3d.y() / pundist_3d.z());
+
+        return ret;
+    }
 
     template <typename T> inline
     void project_to_camera(
@@ -191,6 +233,8 @@ class MarkerCornerObservsed {
 public:
     int corner_no = -1;
     Eigen::Vector2d observed_point = Eigen::Vector2d(0, 0);
+    Eigen::Vector2d p_undist = Eigen::Vector2d(0, 0);
+
     DroneMarker * marker = nullptr;
     Eigen::Vector3d rel_corner_pos() const {
         assert(marker!=nullptr && "Must like corner to a marker before use relative corner position");
