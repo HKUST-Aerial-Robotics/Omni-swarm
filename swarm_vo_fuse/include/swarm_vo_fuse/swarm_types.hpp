@@ -30,6 +30,7 @@ namespace swarm {
         Vector3d anntena_pos = Vector3d(0, 0, 0);
 
 
+
         void load_cameras(const std::string &path) {
             //TODO:
             //Load camera from path
@@ -65,6 +66,7 @@ namespace swarm {
         }
 
         static Node *createDroneNode(int _id,
+                                     const std::string &node_config_path = "",
                                      const std::string &camera_config_path = "",
                                      const std::string &marker_config_path = ""
         ) {
@@ -73,6 +75,10 @@ namespace swarm {
             node->has_vo = true;
             node->has_uwb = true;
             node->has_global_pose = false;
+
+            //TODO:
+            //Temp code
+            node->anntena_pos = Vector3d(0, -0.083, 0.078);
             return node;
         }
 
@@ -82,6 +88,10 @@ namespace swarm {
 
         Vector3d get_global_velocity() const {
             return global_velocity;
+        }
+
+        Vector3d get_anntena_pos() const {
+            return anntena_pos;
         }
     };
 

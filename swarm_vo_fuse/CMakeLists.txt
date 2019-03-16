@@ -145,7 +145,7 @@ add_executable(${PROJECT_NAME}_node
         include/swarm_vo_fuse/swarm_types.hpp
         include/swarm_vo_fuse/swarm_vo_costfunc.hpp
         include/swarm_vo_fuse/swarm_vo_fuser.hpp
-        src/swarm_vo_fuse_node.cpp)
+        src/swarm_vo_fuse_node.cpp include/swarm_vo_fuse/swarm_relpose_costfunc.h)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
