@@ -6,8 +6,8 @@
         <remap from="~right_camera" to="/mynteye/right/image_raw"/>
         <param name="is_show" type="bool" value="$(arg is_show)" />        
         <param name="duration" type="double" value="0.001" />
-        <param name="left_cam_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/left.yaml" />
-        <param name="right_cam_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/right.yaml" />
-        <param name="vo_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml" />
+        <param name="left_cam_def" type="string" value="/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml" />
+        <param name="right_cam_def" type="string" value="/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/right.yaml" />
+        <param name="vo_def" type="string" value="/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml" />
     </node>
 </launch>

@@ -26,15 +26,15 @@ int main(int argc, char* argv[]) {
 
     aruco::MarkerDetector MDetector;
     MDetector.setDictionary("ARUCO_MIP_36h12");
-    cv::Mat img_left = cv::imread("/home/dji/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-left-high.png");
-    cv::Mat img_right = cv::imread("/home/dji/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-right-high.png");
+    cv::Mat img_left = cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-left-high.png");
+    cv::Mat img_right = cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-right-high.png");
 
-    std::string left_cam_defs = "/home/dji/SwarmConfig/mini_mynteye_stereo/left.yaml";
-    std::string right_cam_defs = "/home/dji/SwarmConfig/mini_mynteye_stereo/right.yaml";
+    std::string left_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml";
+    std::string right_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/right.yaml";
 
     corner_array CorALeft;
     corner_array CorARight;
-    cv::FileStorage fs_yaml("/home/dji/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml",
+    cv::FileStorage fs_yaml("/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml",
                             cv::FileStorage::READ);
 
     cv::Mat left_cam_pose;
@@ -64,6 +64,7 @@ int main(int argc, char* argv[]) {
             MarkerCornerObservsed mco(i, &marker0);
             mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
             mco.observed_point.y() = (m[i].y)/2.0;
+            mco.p_undist = cam_left.undist_point(mco.observed_point);
 
             std::cout << mco.observed_point << std::endl;
             CorALeft.push_back(mco);
@@ -78,6 +79,8 @@ int main(int argc, char* argv[]) {
             MarkerCornerObservsed mco(i, &marker0);
             mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
             mco.observed_point.y() = (m[i].y)/2.0;
+            mco.p_undist = cam_right.undist_point(mco.observed_point);
+
             CorARight.push_back(mco);
         }
         

@@ -57,10 +57,12 @@ public:
     StereoDronePoseEstimator(const std::string &_left_cam_def,
                              const std::string &_right_cam_def,
                              const std::string &_vo_config) {
+
+        std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
+
         cv::FileStorage fs_yaml(_vo_config, cv::FileStorage::READ);
         cv::Mat left_cam_pose;
         cv::Mat right_cam_pose;
-
         fs_yaml["body_T_cam0"] >> left_cam_pose;
         fs_yaml["body_T_cam1"] >> right_cam_pose;
 
@@ -85,7 +87,7 @@ public:
                 MarkerCornerObservsed mco(i, &marker0);
                 mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
                 mco.observed_point.y() = (m[i].y) / 2.0;
-
+                mco.p_undist = cam_left->undist_point(mco.observed_point);
                 std::cout << mco.observed_point << std::endl;
                 CorALeft.push_back(mco);
             }
@@ -100,6 +102,8 @@ public:
                 MarkerCornerObservsed mco(i, &marker0);
                 mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
                 mco.observed_point.y() = (m[i].y) / 2.0;
+                mco.p_undist = cam_right->undist_point(mco.observed_point);
+
                 CorARight.push_back(mco);
             }
             std::cout << m << std::endl;
@@ -151,15 +155,26 @@ public:
         MDetector.setDictionary("ARUCO_MIP_36h12");
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
 
+        std::string left_cam_def;
+        std::string right_cam_def;
+        std::string vo_def;
+
         nh.param("is_show", is_show, false);
+        nh.param<std::string>("left_cam_def", left_cam_def,
+                              "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml");
+        nh.param<std::string>("right_cam_def", right_cam_def,
+                              "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/right.yaml");
+        nh.param<std::string>("vo_def", vo_def,
+                              "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml");
+
         nh.param("duration", duration, 1.0);
 
         last_lcam_ts = ros::Time::now() - ros::Duration(1000000);
         last_rcam_ts = ros::Time::now() - ros::Duration(1000000);
         stereodronepos_est = new StereoDronePoseEstimator(
-                "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml",
-                "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/right.yaml",
-                "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml");
+                left_cam_def,
+                right_cam_def,
+                vo_def);
 
         armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 1);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
