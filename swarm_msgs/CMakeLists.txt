@@ -26,6 +26,7 @@ add_message_files(
   swarm_fused.msg
   swarm_fused_relative.msg
   swarm_remote_command.msg
+        swarm_drone_source_data.msg
   armarker_corner.msg
   armarker_detected.msg
         node_frame.msg

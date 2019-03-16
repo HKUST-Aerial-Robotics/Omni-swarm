@@ -35,52 +35,54 @@ double DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point
 
 void DronePoseEstimator::draw(double x[], std::vector<corner_array> & point_by_cam) {
     auto err = new DronePoseReprojectionError( point_by_cam, self_ca);
-    cv::Mat new_to_draw1 = mat_to_draw_1;
-    cv::Mat new_to_draw2 = mat_to_draw_2;
+    cv::Mat &new_to_draw1 = mat_to_draw_1;
+    cv::Mat &new_to_draw2 = mat_to_draw_2;
     const Camera * cam_def = self_ca[0];
     for (auto mco : point_by_cam[0]) {
-        // std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
+//         std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
         auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
         auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
         cv::Point p;
         p.x = predict_point(0)*2;
         p.y = predict_point(1)*2;
-        // printf("p3d %f %f %f ,pp %d %d\n",point3d(0), point3d(1), point3d(2), p.x, p.y);
+        printf("p3d %f %f %f ,pp %d %d\n", point3d(0), point3d(1), point3d(2), p.x, p.y);
         cv::circle(new_to_draw1, p, 10, cv::Scalar(0, 0,255), 2);
 
         p.x = mco.observed_point.x()*2;
         p.y = mco.observed_point.y()*2;
-        // printf("op %d %d\n", p.x, p.y);
+        printf("op %d %d\n", p.x, p.y);
 
         cv::circle(new_to_draw1, p, 15, cv::Scalar(255,0,0), 2);
     }
 
     cam_def = self_ca[1];
+
     for (auto mco : point_by_cam[1]) {
-        // std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
+//         std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
         auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
         auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
         cv::Point p;
         p.x = predict_point(0)*2;
         p.y = predict_point(1)*2;
-        // printf("p3d %f %f %f ,pp %d %d\n",point3d(0), point3d(1), point3d(2), p.x, p.y);
+//         printf("p3d %f %f %f ,pp %d %d\n",point3d(0), point3d(1), point3d(2), p.x, p.y);
         cv::circle(new_to_draw2, p, 10, cv::Scalar(0, 0,255), 2);
 
         p.x = mco.observed_point.x()*2;
         p.y = mco.observed_point.y()*2;
-        // printf("op %d %d\n", p.x, p.y);
+        printf("op %d %d\n", p.x, p.y);
 
         cv::circle(new_to_draw2, p, 15, cv::Scalar(255,0,0), 2);
 
     }
 
+    cv::Mat showMat;
+    hconcat(new_to_draw1, new_to_draw2, showMat);
+    cv::resize(showMat, showMat, cv::Size(1280, 400));
+    cv::imshow("predict", showMat);
+//    cv::imshow("predict1", new_to_draw1);
+//    cv::imshow("predict2", new_to_draw2);
 
-    cv::resize(new_to_draw1, new_to_draw1, cv::Size(640, 512));
-    cv::resize(new_to_draw2, new_to_draw2, cv::Size(640, 512));
-
-    cv::imshow("predict_1", new_to_draw1);
-    cv::imshow("predict_2", new_to_draw2);
-    cv::waitKey(-1);
+    cv::waitKey(30);
 
 }
 
@@ -97,7 +99,7 @@ double DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point
     cost_func ->SetNumResiduals(num_res);
     cost_func->AddParameterBlock(7);
 
-    double x[7];
+    double x[7] = {0};
     initial_pose.to_vector(x);
     printf("Init Quat %3.2f %3.2f %3.2f %3.2f pos %3.2f %3.2f %3.2f\n\n",
         x[0],x[1],x[2],x[3],x[4],x[5],x[6]);
@@ -127,7 +129,7 @@ double DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> & point
     
     ceres::Solver::Summary summary;
     ceres::Solve(options, &ba_problem, &summary);
-    std::cout << summary.BriefReport() <<summary.total_time_in_seconds *1000 << "ms\n";
+    std::cout << summary.BriefReport() << "  " << summary.total_time_in_seconds * 1000 << "ms\n";
 
     printf("Quat %3.2f %3.2f %3.2f %3.2f pos %3.3f %3.3f %3.3f\n\n",
         x[0],x[1],x[2],x[3],x[4],x[5],x[6]);
