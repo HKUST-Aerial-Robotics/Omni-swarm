@@ -49,21 +49,26 @@ class ARMarkerDetectorNode {
 
     ros::Time last_lcam_ts;
     ros::Time last_rcam_ts;
+
+
+    cv::Mat last_left;
+    cv::Mat last_right;
 public:
     ARMarkerDetectorNode(ros::NodeHandle & _nh):
-        nh(_nh)
-    {
+        nh(_nh) {
         MDetector.setDictionary("ARUCO_MIP_36h12");
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
-        left_image_sub = nh.subscribe("left_camera", 1, &ARMarkerDetectorNode::image_cb_left, this, ros::TransportHints().tcpNoDelay());
-        right_image_sub = nh.subscribe("right_camera", 1, &ARMarkerDetectorNode::image_cb_right, this, ros::TransportHints().tcpNoDelay());
-        armarker_pub = nh.advertise<armarker_detected >("armarker_detected", 1);
 
         nh.param("is_show", is_show, false);
         nh.param("duration", duration, 1.0);
 
         last_lcam_ts = ros::Time::now() - ros::Duration(1000000);
         last_rcam_ts = ros::Time::now() - ros::Duration(1000000);
+
+        armarker_pub = nh.advertise<armarker_detected >("armarker_detected", 1);
+        left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this, ros::TransportHints().tcpNoDelay());
+        right_image_sub = nh.subscribe("right_camera", 10, &ARMarkerDetectorNode::image_cb_right, this, ros::TransportHints().tcpNoDelay());
+
     }
 
     void read_camera_params(std::string left_camera, std::string right_camera) {
@@ -76,40 +81,47 @@ public:
         //Send to drone pose estimator
     }
 
-    void detect_cv_image(const cv::Mat & _img, int camera_id, ros::Time stamp) {
+    void detect_cv_image(cv::Mat & _limg, cv::Mat & _rimg, ros::Time stamp) {
+        cv::Mat limg = _limg;
+        // _limg.copyTo(limg);
+        cv::Mat rimg = _rimg;
+        // _rimg.copyTo(rimg);
 
         armarker_detected ad;
         ad.header.stamp = stamp;
         ad.self_drone_id = -1;// -1 means this drone
-        ad.camera_id = camera_id;
+        // ad.camera_id = camera_id;
 
-        int src_rows = _img.rows;
-        int src_cols = _img.cols;
-        cv::Mat img = _img;
-        marker_array ma = MDetector.detect(img);
-        for(auto m: ma){
+        int src_rows = limg.rows;
+        int src_cols = limg.cols;
+        assert(src_rows == rimg.rows && "Must same rows left and right");
+        assert(src_cols == rimg.cols && "Must same rows left and right");
+
+
+        ROS_INFO("r %d c %d", src_rows, src_cols);
+
+        marker_array mal = MDetector.detect(limg);
+        marker_array mar = MDetector.detect(rimg);
+        
+
+        for(auto m: mal){
             std::cout<<m<<std::endl;  
             if (is_show) {
-                m.draw(img);
+                m.draw(limg);
             }
-            armarker_corner ac;
-            for (int i = 0; i < 4; i++) {
-                ac.marker_id = m.id;
-                ac.corner_id = i;
-                ac.x = m[i].x;
-                ac.y = m[i].y;
-                ad.corner_detected.push_back(ac);
-            }
-            
         }
 
-        armarker_pub.publish(ad);
+        for(auto m: mar){
+            std::cout<<m<<std::endl;  
+            if (is_show) {
+                m.draw(rimg);
+            }
+        }
+
         if (is_show) {
-            cv::resize(img, img, cv::Size(640, 512));
-            if (camera_id == 0)
-                cv::imshow("left", img);
-            if (camera_id == 1)
-                cv::imshow("right", img);
+            hconcat(limg, rimg, limg);
+            cv::resize(limg, limg, cv::Size(src_cols, src_rows/2));
+            cv::imshow("Detection", limg);
             cv::waitKey(10);
         }
 
@@ -118,16 +130,18 @@ public:
 
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_lcam_ts).toSec() > duration) {
-            image_cb(msg, 0);
             last_lcam_ts = msg->header.stamp;
+            ROS_INFO("Left!");            
+            image_cb(msg, 0);
         }
 
     }
 
     void image_cb_right(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_rcam_ts).toSec() > duration) {
-            image_cb(msg, 1);
             last_rcam_ts = msg->header.stamp;
+            ROS_INFO("Right!");                        
+            image_cb(msg, 1);
         }
 
     }
@@ -135,11 +149,18 @@ public:
     void image_cb(const sensor_msgs::ImageConstPtr& msg, int camera_id)
     {
         cv_bridge::CvImageConstPtr cv_ptr;
-        try
-        {
+        try {
             cv_ptr = cv_bridge::toCvShare(msg, enc::BGR8);
+            if (camera_id == 0) {
+                last_left = cv_ptr->image;
+            } else {
+                last_right = cv_ptr->image;
+            }
 
-            this->detect_cv_image(cv_ptr->image, camera_id, msg->header.stamp);
+            if (fabs((last_lcam_ts - last_rcam_ts).toSec()) < 0.01) {
+                this->detect_cv_image(last_left, last_right, last_lcam_ts);
+            }
+
         }
         catch (cv_bridge::Exception& e)
         {
@@ -157,7 +178,9 @@ int main(int argc,char **argv)
     ROS_INFO("Inited swarm detection");
     ARMarkerDetectorNode ar_node(nh);
     
-    ros::AsyncSpinner spinner(2);
-    spinner.start();
+    // ros::AsyncSpinner spinner(4);
+    // spinner.start();
+    ros::Duration(3.0).sleep();
+    ros::spin();
     ros::waitForShutdown();
 }
