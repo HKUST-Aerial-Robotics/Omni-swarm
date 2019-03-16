@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         swarm_msgs
         swarm_detection
-        camera_model)
+        camera_models)
 find_package(Ceres REQUIRED)
 
 ## System dependencies are found with CMake's conventions
@@ -161,7 +161,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
         ${CERES_LIBRARIES}
-        ${camera_model_LIBRARIES}
+        ${camera_models_LIBRARIES}
 )
 
 #############

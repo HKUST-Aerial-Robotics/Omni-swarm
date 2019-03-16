@@ -26,15 +26,16 @@ int main(int argc, char* argv[]) {
 
     aruco::MarkerDetector MDetector;
     MDetector.setDictionary("ARUCO_MIP_36h12");
-    cv::Mat img_left = cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/sample/image_left.png");
-    cv::Mat img_right =cv::imread("/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_detection/sample/image_right.png");
+    cv::Mat img_left = cv::imread("/home/dji/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-left-high.png");
+    cv::Mat img_right = cv::imread("/home/dji/swarm_ws/src/swarm_pkgs/swarm_detection/data/mynt-right-high.png");
 
-    std::string left_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/dji_stereo/left.yaml";
-    std::string right_cam_defs = "/home/xuhao/mf2_home/SwarmConfig/dji_stereo/right.yaml";
+    std::string left_cam_defs = "/home/dji/SwarmConfig/mini_mynteye_stereo/left.yaml";
+    std::string right_cam_defs = "/home/dji/SwarmConfig/mini_mynteye_stereo/right.yaml";
 
     corner_array CorALeft;
     corner_array CorARight;
-    cv::FileStorage fs_yaml("/home/xuhao/mf2_home/SwarmConfig/dji_stereo/dji_stereo.yaml", cv::FileStorage::READ);
+    cv::FileStorage fs_yaml("/home/dji/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml",
+                            cv::FileStorage::READ);
 
     cv::Mat left_cam_pose;
     cv::Mat right_cam_pose;

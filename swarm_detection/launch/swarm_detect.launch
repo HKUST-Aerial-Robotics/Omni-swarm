@@ -1,6 +1,10 @@
 <launch>
-    <node pkg="swarm_detection" name="swarm_detection" type="swarm_detection_node" output="screen"> 
-        <remap from="/swarm_detection/left_camera" to="/stereo/left/image_raw"/>
-        <remap from="/swarm_detection/right_camera" to="/stereo/right/image_raw"/>
+    <arg name="is_show" default="true" />
+
+    <node pkg="swarm_detection" name="swarm_detection" type="swarm_detection_node" output="screen" > 
+        <remap from="~left_camera" to="/mynteye/left/image_raw"/>
+        <remap from="~right_camera" to="/mynteye/right/image_raw"/>
+        <param name="is_show" type="bool" value="$(arg is_show)" />        
+        <param name="duration" type="double" value="0.001" />        
     </node>
 </launch>
