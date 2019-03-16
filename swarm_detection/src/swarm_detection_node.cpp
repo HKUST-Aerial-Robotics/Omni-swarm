@@ -82,7 +82,6 @@ public:
         ad.header.stamp = stamp;
         ad.self_drone_id = -1;// -1 means this drone
         ad.camera_id = camera_id;
-
         int src_rows = _img.rows;
         int src_cols = _img.cols;
         cv::Mat img = _img;
