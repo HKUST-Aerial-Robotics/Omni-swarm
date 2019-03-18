@@ -22,6 +22,7 @@ Pose from_cv_matrix(cv::Mat mat) {
 int main(int argc, char* argv[]) {
     ROS_INFO("Start test detection");
      srand(time(NULL));
+    ros::Time::init();
 
 
     aruco::MarkerDetector MDetector;
@@ -109,5 +110,5 @@ int main(int argc, char* argv[]) {
 
 //    cv::imshow("left", img_left);
 //    cv::imshow("right", img_right);
-//    cv::waitKey(-1);
+    cv::waitKey(-1);
 }

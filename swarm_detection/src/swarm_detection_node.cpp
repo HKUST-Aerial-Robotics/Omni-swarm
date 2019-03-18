@@ -257,7 +257,7 @@ public:
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_lcam_ts).toSec() > duration) {
             last_lcam_ts = msg->header.stamp;
-            ROS_INFO("Left!");            
+//            ROS_INFO("Left!");
             image_cb(msg, 0);
         }
 
@@ -266,7 +266,7 @@ public:
     void image_cb_right(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_rcam_ts).toSec() > duration) {
             last_rcam_ts = msg->header.stamp;
-            ROS_INFO("Right!");                        
+//            ROS_INFO("Right!");
             image_cb(msg, 1);
         }
 

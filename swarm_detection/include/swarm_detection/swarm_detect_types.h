@@ -167,6 +167,29 @@ struct Camera {
             project_to_camera(p_odo, att_odo, P, p);
     }
 
+    template<typename T>
+    inline
+    void project_to_camera_undist(
+            const Eigen::Matrix<T, 3, 1> &P,
+            Eigen::Matrix<T, 2, 1> &p) const {
+
+
+        T P_w[3];
+        P_w[0] = T(P(0)) - T(pos()(0));
+        P_w[1] = T(P(1)) - T(pos()(1));
+        P_w[2] = T(P(2)) - T(pos()(2));
+
+        // Convert quaternion from Eigen convention (x, y, z, w)
+        // to Ceres convention (w, x, y, z)
+        T q_ceres[4] = {T(-att().coeffs()[3]), T(att().coeffs()[0]), T(att().coeffs()[1]), T(att().coeffs()[2])};
+
+        T P_c[3];
+        ceres::QuaternionRotatePoint(q_ceres, P_w, P_c);
+
+        p(0) = P_c[0] / P_c[2];
+        p(1) = P_c[1] / P_c[2];
+    }
+
     Camera(const std::string& filename, Pose _pose):
         pose(_pose)
     {

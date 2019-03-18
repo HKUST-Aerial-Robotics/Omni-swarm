@@ -20,9 +20,6 @@ inline void ApplyTrans2Point(const T pose[7],const T point[3], T p[3]) {
     p[0] += pose[4];
     p[1] += pose[5];
     p[2] += pose[6];
-//    p[0] = pose[4] + point[0];
-//    p[1] = pose[5] + point[1];
-//    p[2] = pose[6] + point[2];
 }
 
 template <typename T>
@@ -89,6 +86,18 @@ struct DronePoseReprojectionError {
         return predict_point;
     }
 
+    template<typename T>
+    Eigen::Matrix<T, 2, 1>
+    PredictPointUndist(const Camera *cam_def, const MarkerCornerObservsed &mco, const T *pose) const {
+        Eigen::Matrix<T, 3, 1> P = Point3dtoProj(cam_def, mco, pose);
+        Eigen::Matrix<T, 2, 1> predict_point;
+
+        cam_def->project_to_camera_undist(P, predict_point);
+
+        return predict_point;
+    }
+
+
     template <typename T>
     bool operator()(T const* const* parameters,
                     T* residuals) const {
@@ -99,10 +108,10 @@ struct DronePoseReprojectionError {
         for (int i = 0; i < point_by_cam.size(); i ++) {
             const Camera * cam_def = cam_array[i];
             for (auto mco : point_by_cam[i]) {
-                Eigen::Matrix<T, 2, 1> predict_point = PredictPoint(cam_def, mco, pose);
-                residuals[res_count] = predict_point(0) - mco.observed_point.x();
+                Eigen::Matrix<T, 2, 1> predict_point = PredictPointUndist(cam_def, mco, pose);
+                residuals[res_count] = predict_point(0) - mco.p_undist.x();
                 res_count ++;
-                residuals[res_count] = predict_point(1) - mco.observed_point.y();
+                residuals[res_count] = predict_point(1) - mco.p_undist.y();
                 res_count ++;
             }
         }
