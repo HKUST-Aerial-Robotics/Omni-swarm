@@ -31,6 +31,7 @@ add_message_files(
   armarker_detected.msg
         node_frame.msg
         swarm_frame.msg
+        node_detected.msg
 )
 
 

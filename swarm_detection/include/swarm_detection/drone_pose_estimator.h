@@ -31,6 +31,7 @@ public:
     cv::Mat mat_to_draw_1;
     cv::Mat mat_to_draw_2;
     bool enable_drawing = true;
+    bool use_ba = false;
 
     Pose estimate_drone_pose(std::vector<corner_array> &point_by_cam);
 
