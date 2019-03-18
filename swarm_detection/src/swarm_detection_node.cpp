@@ -10,6 +10,10 @@
 #include <swarm_msgs/armarker_corner.h>
 #include <opencv2/aruco.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <swarm_msgs/node_detected.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <functional>
+#include <stdlib.h>
 
 using namespace swarm_msgs;
 namespace enc = sensor_msgs::image_encodings;
@@ -53,11 +57,16 @@ class StereoDronePoseEstimator {
     Camera *cam_left;
     Camera *cam_right;
     bool is_show = true;
+    bool use_ba = true;
 public:
-    StereoDronePoseEstimator(const std::string &_left_cam_def,
-                             const std::string &_right_cam_def,
-                             const std::string &_vo_config,
-                             bool _is_show=true) {
+    std::function<void(ros::Time stamp,int,Pose)> callback;
+    StereoDronePoseEstimator(
+            const std::string &_left_cam_def,
+            const std::string &_right_cam_def,
+            const std::string &_vo_config,
+            std::function<void(ros::Time stamp, int,Pose)> _callback,
+            bool _is_show=true,
+            bool _use_ba=true): callback(_callback) {
 
         std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
 
@@ -66,6 +75,7 @@ public:
         cv::Mat right_cam_pose;
         fs_yaml["body_T_cam0"] >> left_cam_pose;
         fs_yaml["body_T_cam1"] >> right_cam_pose;
+        use_ba = _use_ba;
 
         is_show = _is_show;
 
@@ -76,7 +86,7 @@ public:
     void ProcessMarkers(marker_array ma_left, marker_array ma_right) {
     }
 
-    void ProcessMarkerOfNode(aruco::Marker *marker_left, aruco::Marker *marker_right, cv::Mat limg, cv::Mat rimg) {
+    void ProcessMarkerOfNode(ros::Time stamp, aruco::Marker *marker_left, aruco::Marker *marker_right, cv::Mat limg, cv::Mat rimg) {
         DroneMarker marker0(0, 0, 0.0886);
         marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
         corner_array CorALeft;
@@ -123,6 +133,7 @@ public:
 
         SwarmDroneDefs _sdef;
         DronePoseEstimator estimator(_sdef, ca);
+        estimator.use_ba = use_ba;
         if (is_show) {
             estimator.mat_to_draw_1 = limg;
             estimator.mat_to_draw_2 = rimg;
@@ -130,7 +141,10 @@ public:
         } else {
             estimator.enable_drawing = false;
         }
-        estimator.estimate_drone_pose(p_by_cam);
+        Pose pose = estimator.estimate_drone_pose(p_by_cam);
+
+        callback(stamp, 0, pose);
+
     }
 };
 
@@ -144,6 +158,9 @@ class ARMarkerDetectorNode {
     ros::Subscriber left_image_sub;
     ros::Subscriber right_image_sub;
     ros::Publisher armarker_pub;
+    ros::Publisher node_detected_pub;
+    std::map<int, ros::Publisher> remote_relative_poses_pub;
+
     bool is_show = false;
     double duration = 0;
 
@@ -164,8 +181,10 @@ public:
         std::string left_cam_def;
         std::string right_cam_def;
         std::string vo_def;
+        bool use_ba;
 
         nh.param("is_show", is_show, false);
+        nh.param("use_ba", use_ba, true);
         nh.param<std::string>("left_cam_def", left_cam_def,
                               "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml");
         nh.param<std::string>("right_cam_def", right_cam_def,
@@ -175,19 +194,52 @@ public:
 
         nh.param("duration", duration, 1.0);
 
-        last_lcam_ts = ros::Time::now() - ros::Duration(1000000);
-        last_rcam_ts = ros::Time::now() - ros::Duration(1000000);
+        last_lcam_ts = ros::Time(0);
+        last_rcam_ts = ros::Time(0);
         stereodronepos_est = new StereoDronePoseEstimator(
                 left_cam_def,
                 right_cam_def,
                 vo_def,
-                is_show);
+                [&](ros::Time stamp, int _id, Pose pose){
+                    this->on_node_detected(stamp, _id, pose);
+                },
+                is_show,
+                use_ba);
 
-        armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 1);
+        armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 100);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
                                       ros::TransportHints().tcpNoDelay());
         right_image_sub = nh.subscribe("right_camera", 10, &ARMarkerDetectorNode::image_cb_right, this,
                                        ros::TransportHints().tcpNoDelay());
+        node_detected_pub = nh.advertise<swarm_msgs::node_detected>("node_detected", 100);
+
+    }
+
+    void on_node_detected(ros::Time stamp, int _id, Pose pose) {
+
+        if (remote_relative_poses_pub.find(_id) == remote_relative_poses_pub.end()) {
+            char tname[100] = {0};
+            sprintf(tname, "relative_pose_%03d", _id);
+            ROS_INFO("Detected new node %d, publish to %s", _id, tname);
+            remote_relative_poses_pub[_id] = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>(tname, 100);
+        }
+
+        ros::Publisher & _pub = remote_relative_poses_pub[_id];
+        geometry_msgs::PoseWithCovarianceStamped pcs;
+        pcs.header.stamp = stamp;
+
+        //Todo, should be self frame
+        pcs.header.frame_id = "world";
+        pcs.pose.pose.position.x = pose.position.x();
+        pcs.pose.pose.position.y = pose.position.y();
+        pcs.pose.pose.position.z = pose.position.z();
+
+        pcs.pose.pose.orientation.w = pose.attitude.w();
+        pcs.pose.pose.orientation.x = pose.attitude.x();
+        pcs.pose.pose.orientation.y = pose.attitude.y();
+        pcs.pose.pose.orientation.z = pose.attitude.z();
+
+        _pub.publish(pcs);
 
     }
 
@@ -201,7 +253,7 @@ public:
         //Send to drone pose estimator
     }
 
-    void detect_cv_image(cv::Mat &limg, cv::Mat &rimg, ros::Time stamp) {
+    void detect_cv_image(ros::Time stamp, cv::Mat &limg, cv::Mat &rimg) {
 
         int src_rows = limg.rows;
         int src_cols = limg.cols;
@@ -216,7 +268,7 @@ public:
         assert(src_cols == rimg.cols && "Must same rows left and right");
 
 
-        ROS_INFO("r %d c %d", src_rows, src_cols);
+//        ROS_INFO("r %d c %d", src_rows, src_cols);
         marker_array mal = MDetector.detect(limg);
         marker_array mar = MDetector.detect(rimg);
 
@@ -232,19 +284,19 @@ public:
 
 
         if (marker_left != nullptr || marker_right != nullptr) {
-            stereodronepos_est->ProcessMarkerOfNode(marker_left, marker_right, limg, rimg);
+            stereodronepos_est->ProcessMarkerOfNode(stamp, marker_left, marker_right, limg, rimg);
         }
 /*
 
         for(auto m: mal){
-            std::cout<<m<<std::endl;  
+            std::cout<<m<<std::endl;
             if (is_show) {
                 m.draw(limg);
             }
         }
 
         for(auto m: mar){
-            std::cout<<m<<std::endl;  
+            std::cout<<m<<std::endl;
             if (is_show) {
                 m.draw(rimg);
             }
@@ -292,8 +344,8 @@ public:
 //                cv::imshow("Right", last_right);
             }
 
-            if (fabs((last_lcam_ts - last_rcam_ts).toSec()) < 0.01) {
-                this->detect_cv_image(last_left, last_right, last_lcam_ts);
+            if (fabs((last_lcam_ts - last_rcam_ts).toSec()) < 0.005) {
+                this->detect_cv_image(last_lcam_ts, last_left, last_right);
             }
 
         }
