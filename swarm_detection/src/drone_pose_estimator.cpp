@@ -4,7 +4,6 @@
 #include <ros/ros.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
-
 using namespace ros;
 
 inline float rand_FloatRange(float a, float b)
@@ -196,15 +195,11 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 
     double x[7] = {0};
     initial_pose.to_vector(x);
-//    printf("Init Quat %3.2f %3.2f %3.2f %3.2f pos %3.2f %3.2f %3.2f\n\n",
-//        x[0],x[1],x[2],x[3],x[4],x[5],x[6]);
 
-/*
-    if (enable_drawing) {
-        draw(x, point_by_cam, "PNP");
-    }
-*/
-    ba_problem.AddResidualBlock(cost_func,NULL, x);
+//    ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+//    ba_problem.AddParameterBlock(x, 7, local_parameterization);
+
+    ba_problem.AddResidualBlock(cost_func, NULL, x);
 
     Pose pose;
     ceres::Solver::Options options;
@@ -216,14 +211,14 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
     std::cout << summary.BriefReport() << "  " << summary.total_time_in_seconds * 1000 << "ms\n";
 
 
-    pose.position.x() = x[4];
-    pose.position.y() = x[5];
-    pose.position.z() = x[6];
+    pose.position.x() = x[0];
+    pose.position.y() = x[1];
+    pose.position.z() = x[2];
 
-    pose.attitude.x() = x[1];
-    pose.attitude.y() = x[2];
-    pose.attitude.z() = x[3];
-    pose.attitude.w() = x[0];
+    pose.attitude.x() = x[4];
+    pose.attitude.y() = x[5];
+    pose.attitude.z() = x[6];
+    pose.attitude.w() = x[3];
 
     pose.attitude.normalize();
     printf("Final pose");

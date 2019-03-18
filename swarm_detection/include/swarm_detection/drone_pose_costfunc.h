@@ -1,52 +1,50 @@
 #pragma once
 #include <swarm_detection/swarm_detect_types.h>
 
-
-
 template <typename T>
 inline void InverseTrans(const T pose[7], T pose_output[7]) {
+    pose_output[3] = -pose[3];
+    pose_output[4] = pose[4];
+    pose_output[5] = pose[5];
+    pose_output[6] = pose[6];
     pose_output[0] = - pose[0];
-    pose_output[1] = pose[1];
-    pose_output[2] = pose[2];
-    pose_output[3] = pose[3];
-    pose_output[4] = - pose[4];
-    pose_output[5] = - pose[5];
-    pose_output[6] = - pose[6];
+    pose_output[1] = -pose[1];
+    pose_output[2] = -pose[2];
 }
 
 template <typename T>
 inline void ApplyTrans2Point(const T pose[7],const T point[3], T p[3]) {
-    QuaternionRotatePoint(pose, point, p);
-    p[0] += pose[4];
-    p[1] += pose[5];
-    p[2] += pose[6];
+    QuaternionRotatePoint(pose + 3, point, p);
+    p[0] += pose[0];
+    p[1] += pose[1];
+    p[2] += pose[2];
 }
 
 template <typename T>
 inline void MultiplyTrans(const T posea[7],const T poseb[7], T ret[7]) {
-    QuaternionProduct(posea, poseb, ret);
+    QuaternionProduct(posea + 3, poseb + 3, ret + 3);
     T pointb[3] ;
     T respoint[3];
-    
-    pointb[0] = poseb[4];
-    pointb[1] = poseb[5];
-    pointb[2] = poseb[6];
 
-    QuaternionRotatePoint(posea, pointb, respoint);
-    ret[4] = respoint[0] + posea[0];
-    ret[5] = respoint[1] + posea[1];
-    ret[6] = respoint[2] + posea[2];
+    pointb[0] = poseb[0];
+    pointb[1] = poseb[1];
+    pointb[2] = poseb[2];
+
+    QuaternionRotatePoint(posea + 3, pointb, respoint);
+    ret[0] = respoint[0] + posea[0];
+    ret[1] = respoint[1] + posea[1];
+    ret[2] = respoint[2] + posea[2];
 }
 
 template <typename T>
 inline void TransFromVecQuat(const Vector3d vec, const Quaterniond quat,T trans[7]) {
-    trans[0] = T(quat.w());
-    trans[1] = T(quat.x());
-    trans[2] = T(quat.y());
-    trans[3] = T(quat.z());
-    trans[4] = T(vec.x());
-    trans[5] = T(vec.y());
-    trans[6] = T(vec.z());
+    trans[3] = T(quat.w());
+    trans[4] = T(quat.x());
+    trans[5] = T(quat.y());
+    trans[6] = T(quat.z());
+    trans[0] = T(vec.x());
+    trans[1] = T(vec.y());
+    trans[2] = T(vec.z());
 }
 
 
