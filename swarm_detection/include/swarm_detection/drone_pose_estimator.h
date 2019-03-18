@@ -27,9 +27,12 @@ public:
     cv::Mat mat_to_draw_1;
     cv::Mat mat_to_draw_2;
     bool enable_drawing = true;
-    double estimate_drone_pose(std::vector<corner_array> & point_by_cam);
-    double estimate_drone_pose(std::vector<corner_array> & point_by_cam, Pose initial_pose);
-    void draw(double x[], std::vector<corner_array> & point_by_cam);
+
+    Pose estimate_drone_pose(std::vector<corner_array> &point_by_cam);
+
+    Pose estimate_drone_pose(std::vector<corner_array> &point_by_cam, Pose initial_pose);
+
+    void draw(double x[], std::vector<corner_array> &point_by_cam, std::string name = "BA");
 };
 
 
