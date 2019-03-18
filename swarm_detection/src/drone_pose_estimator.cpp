@@ -111,8 +111,15 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
         }
     }
     if (useful_camera_count > 1 && use_ba) {
-        this->estimate_drone_pose(point_by_cam, pose);
+        pose = this->estimate_drone_pose(point_by_cam, pose);
     } else {
+        if (useful_camera_count > 1) {
+            if (enable_drawing) {
+                double x[7] = {0};
+                pose.to_vector(x);
+                draw(x, point_by_cam);
+            }
+        }
         printf("Not use ba or drone Seen by single camera, no need for BA");
     }
     return pose;
