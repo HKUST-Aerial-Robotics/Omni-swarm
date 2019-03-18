@@ -52,11 +52,12 @@ typedef std::vector<aruco::Marker> marker_array;
 class StereoDronePoseEstimator {
     Camera *cam_left;
     Camera *cam_right;
-
+    bool is_show = true;
 public:
     StereoDronePoseEstimator(const std::string &_left_cam_def,
                              const std::string &_right_cam_def,
-                             const std::string &_vo_config) {
+                             const std::string &_vo_config,
+                             bool _is_show=true) {
 
         std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
 
@@ -66,6 +67,7 @@ public:
         fs_yaml["body_T_cam0"] >> left_cam_pose;
         fs_yaml["body_T_cam1"] >> right_cam_pose;
 
+        is_show = _is_show;
 
         cam_left = new Camera(_left_cam_def, from_cv_matrix(left_cam_pose));
         cam_right = new Camera(_right_cam_def, from_cv_matrix(right_cam_pose));
@@ -121,9 +123,13 @@ public:
 
         SwarmDroneDefs _sdef;
         DronePoseEstimator estimator(_sdef, ca);
-        estimator.mat_to_draw_1 = limg;
-        estimator.mat_to_draw_2 = rimg;
-
+        if (is_show) {
+            estimator.mat_to_draw_1 = limg;
+            estimator.mat_to_draw_2 = rimg;
+            estimator.enable_drawing = true;
+        } else {
+            estimator.enable_drawing = false;
+        }
         estimator.estimate_drone_pose(p_by_cam);
     }
 };
@@ -174,7 +180,8 @@ public:
         stereodronepos_est = new StereoDronePoseEstimator(
                 left_cam_def,
                 right_cam_def,
-                vo_def);
+                vo_def,
+                is_show);
 
         armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 1);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
