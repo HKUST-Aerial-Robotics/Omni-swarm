@@ -8,7 +8,11 @@
 #include "ceres/ceres.h"
 #include <swarm_detection/drone_pose_costfunc.h>
 // #include
+
+#include "local_pose_parameter.h"
+
 #include <aruco/aruco.h>
+
 using namespace Eigen;
 
 class DronePoseEstimator {

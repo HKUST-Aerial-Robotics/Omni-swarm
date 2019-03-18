@@ -1,0 +1,79 @@
+//
+// Created by xuhao on 3/18/19.
+//
+
+#ifndef SRC_LOCAL_POSE_PARAMETER_H
+#define SRC_LOCAL_POSE_PARAMETER_H
+// Moved from VINS-Fusion
+/*******************************************************
+ * Copyright (C) 2019, Aerial Robotics Group, Hong Kong University of Science and Technology
+ *
+ * This file is part of VINS.
+ *
+ * Licensed under the GNU General Public License v3.0;
+ * you may not use this file except in compliance with the License.
+ *******************************************************/
+
+#pragma once
+
+#include <eigen3/Eigen/Dense>
+#include <ceres/ceres.h>
+
+class PoseLocalParameterization : public ceres::LocalParameterization {
+    virtual bool Plus(const double *x, const double *delta, double *x_plus_delta) const;
+
+    virtual bool ComputeJacobian(const double *x, double *jacobian) const;
+
+    virtual int GlobalSize() const { return 7; };
+
+    virtual int LocalSize() const { return 6; };
+};
+
+/*******************************************************
+ * Copyright (C) 2019, Aerial Robotics Group, Hong Kong University of Science and Technology
+ *
+ * This file is part of VINS.
+ *
+ * Licensed under the GNU General Public License v3.0;
+ * you may not use this file except in compliance with the License.
+ *******************************************************/
+template<typename Derived>
+static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta) {
+    typedef typename Derived::Scalar Scalar_t;
+
+    Eigen::Quaternion<Scalar_t> dq;
+    Eigen::Matrix<Scalar_t, 3, 1> half_theta = theta;
+    half_theta /= static_cast<Scalar_t>(2.0);
+    dq.w() = static_cast<Scalar_t>(1.0);
+    dq.x() = half_theta.x();
+    dq.y() = half_theta.y();
+    dq.z() = half_theta.z();
+    return dq;
+}
+
+bool PoseLocalParameterization::Plus(const double *x, const double *delta, double *x_plus_delta) const {
+    Eigen::Map<const Eigen::Vector3d> _p(x);
+    Eigen::Map<const Eigen::Quaterniond> _q(x + 3);
+
+    Eigen::Map<const Eigen::Vector3d> dp(delta);
+
+    Eigen::Quaterniond dq = deltaQ(Eigen::Map<const Eigen::Vector3d>(delta + 3));
+
+    Eigen::Map<Eigen::Vector3d> p(x_plus_delta);
+    Eigen::Map<Eigen::Quaterniond> q(x_plus_delta + 3);
+
+    p = _p + dp;
+    q = (_q * dq).normalized();
+
+    return true;
+}
+
+bool PoseLocalParameterization::ComputeJacobian(const double *x, double *jacobian) const {
+    Eigen::Map<Eigen::Matrix<double, 7, 6, Eigen::RowMajor>> j(jacobian);
+    j.topRows<6>().setIdentity();
+    j.bottomRows<1>().setZero();
+
+    return true;
+}
+
+#endif //SRC_LOCAL_POSE_PARAMETER_H

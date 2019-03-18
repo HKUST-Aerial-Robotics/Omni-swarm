@@ -25,14 +25,14 @@ struct Pose {
     Eigen::Quaterniond attitude = Eigen::Quaterniond(1, 0, 0, 0);
 
     void to_vector(double ret[]) {
-        ret[0] = attitude.w();
-        ret[1] = attitude.x();
-        ret[2] = attitude.y();
-        ret[3] = attitude.z();
+        ret[3] = attitude.w();
+        ret[4] = attitude.x();
+        ret[5] = attitude.y();
+        ret[6] = attitude.z();
 
-        ret[4] = position.x();
-        ret[5] = position.y();
-        ret[6] = position.z();
+        ret[0] = position.x();
+        ret[1] = position.y();
+        ret[2] = position.z();
     }
     Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
         return attitude * point + position;
@@ -138,7 +138,7 @@ struct Camera {
 
 
         std::vector<T> intrinsic_params(m_intrinsic_params.begin(), m_intrinsic_params.end());
-        
+
         T t_cam_odo[3] = {T(pos()(0)), T(pos()(1)), T(pos()(2))};
         T q_cam_odo[4] = {T(att().coeffs()(0)), T(att().coeffs()(1)), T(att().coeffs()(2)), T(att().coeffs()(3))};
 
@@ -172,8 +172,6 @@ struct Camera {
     void project_to_camera_undist(
             const Eigen::Matrix<T, 3, 1> &P,
             Eigen::Matrix<T, 2, 1> &p) const {
-
-
         T P_w[3];
         P_w[0] = T(P(0)) - T(pos()(0));
         P_w[1] = T(P(1)) - T(pos()(1));
@@ -184,7 +182,7 @@ struct Camera {
         T q_ceres[4] = {T(-att().coeffs()[3]), T(att().coeffs()[0]), T(att().coeffs()[1]), T(att().coeffs()[2])};
 
         T P_c[3];
-        ceres::QuaternionRotatePoint(q_ceres, P_w, P_c);
+        ceres::UnitQuaternionRotatePoint(q_ceres, P_w, P_c);
 
         p(0) = P_c[0] / P_c[2];
         p(1) = P_c[1] / P_c[2];

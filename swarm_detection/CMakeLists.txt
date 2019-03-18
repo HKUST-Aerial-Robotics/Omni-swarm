@@ -47,7 +47,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/drone_pose_estimator.cpp include/swarm_detection/drone_pose_estimator.h
-)
+        include/swarm_detection/local_pose_parameter.h)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
