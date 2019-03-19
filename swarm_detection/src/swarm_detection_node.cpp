@@ -1,5 +1,4 @@
 #include <iostream>
-#include <aruco/aruco.h>
 #include <opencv2/opencv.hpp>
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -17,6 +16,9 @@
 
 using namespace swarm_msgs;
 namespace enc = sensor_msgs::image_encodings;
+
+typedef std::vector<cv::Point2f> CVMarkerCorners;
+typedef std::vector<CVMarkerCorners> marker_array;
 
 Pose from_cv_matrix(cv::Mat mat) {
     Eigen::Matrix4d T;
@@ -50,7 +52,6 @@ void colorToGrey(cv::Mat& image_in, cv::Mat& image_out )
         }
     }
 }
-typedef std::vector<aruco::Marker> marker_array;
 
 
 class StereoDronePoseEstimator {
@@ -86,39 +87,37 @@ public:
     void ProcessMarkers(marker_array ma_left, marker_array ma_right) {
     }
 
-    void ProcessMarkerOfNode(ros::Time stamp, aruco::Marker *marker_left, aruco::Marker *marker_right, cv::Mat limg, cv::Mat rimg) {
-        DroneMarker marker0(0, 0, 0.0886);
+    void ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
+        DroneMarker marker0(0, 0, 0.1);
         marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
         corner_array CorALeft;
         corner_array CorARight;
 
-
-        if (marker_left != nullptr) {
-            auto m = *marker_left;
+        if (!marker_left.empty()) {
+            auto m = marker_left;
             for (int i = 0; i < 4; i++) {
                 MarkerCornerObservsed mco(i, &marker0);
-                mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
-                mco.observed_point.y() = (m[i].y) / 2.0;
+                mco.observed_point.x() = (double)(marker_left[i].x) / 2.0;// /2 because the downsample of our camera model
+                mco.observed_point.y() = (double)(marker_left[i].y) / 2.0;
                 mco.p_undist = cam_left->undist_point(mco.observed_point);
                 std::cout << mco.observed_point << std::endl;
                 CorALeft.push_back(mco);
             }
 
-            std::cout << m << std::endl;
+//            std::cout << m << std::endl;
 //            m.draw(img_left);
         }
 
-        if (marker_right != nullptr) {
-            auto m = *marker_right;
+        if (!marker_right.empty()) {
             for (int i = 0; i < 4; i++) {
                 MarkerCornerObservsed mco(i, &marker0);
-                mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
-                mco.observed_point.y() = (m[i].y) / 2.0;
+                mco.observed_point.x() = (marker_right[i].x) / 2.0;// /2 because the downsample of our camera model
+                mco.observed_point.y() = (marker_right[i].y) / 2.0;
                 mco.p_undist = cam_right->undist_point(mco.observed_point);
 
                 CorARight.push_back(mco);
             }
-            std::cout << m << std::endl;
+//            std::cout << m << std::endl;
         }
 
         camera_array ca;
@@ -151,9 +150,6 @@ public:
 
 class ARMarkerDetectorNode {
     ros::NodeHandle & nh;
-    aruco::MarkerDetector MDetector;
-    aruco::CameraParameters camera_left;
-    aruco::CameraParameters camera_right;
 
     ros::Subscriber left_image_sub;
     ros::Subscriber right_image_sub;
@@ -167,6 +163,7 @@ class ARMarkerDetectorNode {
     ros::Time last_lcam_ts;
     ros::Time last_rcam_ts;
 
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
 
     cv::Mat last_left;
     cv::Mat last_right;
@@ -175,7 +172,6 @@ class ARMarkerDetectorNode {
 public:
     ARMarkerDetectorNode(ros::NodeHandle & _nh):
             nh(_nh) {
-        MDetector.setDictionary("ARUCO_MIP_36h12");
         // local_odometry_sub = nh.subscribe(vins_topic, 1, &SwarmDroneProxy::on_local_odometry_recv, this);
 
         std::string left_cam_def;
@@ -243,10 +239,6 @@ public:
 
     }
 
-    void read_camera_params(std::string left_camera, std::string right_camera) {
-        
-    }
-
     void run_swarm_pose_estimatior(marker_array left_cam_marker, marker_array right_cam_marker) {
         //Divide marker array to drones
 
@@ -254,7 +246,7 @@ public:
     }
 
     void detect_cv_image(ros::Time stamp, cv::Mat &limg, cv::Mat &rimg) {
-
+        ros::Time start = ros::Time::now();
         int src_rows = limg.rows;
         int src_cols = limg.cols;
 
@@ -269,48 +261,29 @@ public:
 
 
 //        ROS_INFO("r %d c %d", src_rows, src_cols);
-        marker_array mal = MDetector.detect(limg);
-        marker_array mar = MDetector.detect(rimg);
+        std::vector<int> ids_left, ids_right;
+        marker_array mal, mar;
+        cv::aruco::detectMarkers(limg, dictionary, mal, ids_left);
+        cv::aruco::detectMarkers(rimg, dictionary, mar, ids_right);
 
-        aruco::Marker *marker_left = nullptr;
-        aruco::Marker *marker_right = nullptr;
-        if (mal.size() > 0) {
-            marker_left = &mal[0];
+        CVMarkerCorners marker_left;
+        CVMarkerCorners marker_right;
+
+        if (!mal.empty()) {
+            marker_left = mal[0];
         }
 
-        if (mar.size() > 0) {
-            marker_right = &mar[0];
-        }
-
-
-        if (marker_left != nullptr || marker_right != nullptr) {
-            stereodronepos_est->ProcessMarkerOfNode(stamp, marker_left, marker_right, limg, rimg);
-        }
-/*
-
-        for(auto m: mal){
-            std::cout<<m<<std::endl;
-            if (is_show) {
-                m.draw(limg);
-            }
-        }
-
-        for(auto m: mar){
-            std::cout<<m<<std::endl;
-            if (is_show) {
-                m.draw(rimg);
-            }
+        if (!mar.empty()) {
+            marker_right = mar[0];
         }
 
 
-        if (is_show) {
-            cv::Mat out;
-            hconcat(limg, rimg, out);
-            cv::resize(out, out, cv::Size(src_cols, src_rows/2));
-            cv::imshow("Detection", out);
+        if (!marker_left.empty() || !marker_right.empty() ) {
+            stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[0], marker_left, marker_right, limg, rimg);
         }
-  */
 
+        double total_compute_time = (ros::Time::now() - start).toSec();
+        ROS_INFO("Total Compute Time %3.2ms", total_compute_time*1000);
     }
 
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
