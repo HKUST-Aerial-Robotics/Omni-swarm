@@ -155,34 +155,38 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
         cv::circle(new_to_draw1, p, 15, cv::Scalar(255,0,0), 2);
     }
 
-    cam_def = self_ca[1];
+    if (point_by_cam.size() > 1) {
 
-    for (auto mco : point_by_cam[1]) {
-//         std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
-        auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
-        auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
-        cv::Point p;
-        p.x = predict_point(0)*2;
-        p.y = predict_point(1)*2;
+        cam_def = self_ca[1];
 
-        if (name == "BA") {
-            cv::circle(new_to_draw2, p, 3, cv::Scalar(0, 0, 255), -1);
-        } else {
-            cv::circle(new_to_draw2, p, 10, cv::Scalar(0, 255, 255), 2);
+        for (auto mco : point_by_cam[1]) {
+            //         std::cout << "mco pos" << mco.rel_corner_pos() << std::endl;
+            auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
+            auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
+            cv::Point p;
+            p.x = predict_point(0) * 2;
+            p.y = predict_point(1) * 2;
+
+            if (name == "BA") {
+                cv::circle(new_to_draw2, p, 3, cv::Scalar(0, 0, 255), -1);
+            } else {
+                cv::circle(new_to_draw2, p, 10, cv::Scalar(0, 255, 255), 2);
+            }
+
+            p.x = mco.observed_point.x() * 2;
+            p.y = mco.observed_point.y() * 2;
+            //        printf("op %d %d\n", p.x, p.y);
+
+            cv::circle(new_to_draw2, p, 15, cv::Scalar(255, 0, 0), 2);
+
         }
-
-        p.x = mco.observed_point.x()*2;
-        p.y = mco.observed_point.y()*2;
-//        printf("op %d %d\n", p.x, p.y);
-
-        cv::circle(new_to_draw2, p, 15, cv::Scalar(255,0,0), 2);
-
+        cv::Mat showMat;
+        hconcat(new_to_draw1, new_to_draw2, showMat);
+        cv::resize(showMat, showMat, cv::Size(1280, 400));
+        cv::imshow("predict", showMat);
+    } else {
+        cv::imshow("predict", new_to_draw1);
     }
-
-    cv::Mat showMat;
-    hconcat(new_to_draw1, new_to_draw2, showMat);
-    cv::resize(showMat, showMat, cv::Size(1280, 400));
-    cv::imshow("predict", showMat);
 
     cv::waitKey(10);
 

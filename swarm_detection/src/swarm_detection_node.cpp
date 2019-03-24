@@ -58,7 +58,7 @@ class StereoDronePoseEstimator {
     Camera *cam_left;
     Camera *cam_right;
     bool is_show = true;
-    bool use_ba = true;
+    bool use_stereo = true;
 public:
     std::function<void(ros::Time stamp,int,Pose)> callback;
     StereoDronePoseEstimator(
@@ -67,7 +67,7 @@ public:
             const std::string &_vo_config,
             std::function<void(ros::Time stamp, int,Pose)> _callback,
             bool _is_show=true,
-            bool _use_ba=true): callback(_callback) {
+            bool _use_stereo = true) : callback(_callback) {
 
         std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
 
@@ -76,7 +76,7 @@ public:
         cv::Mat right_cam_pose;
         fs_yaml["body_T_cam0"] >> left_cam_pose;
         fs_yaml["body_T_cam1"] >> right_cam_pose;
-        use_ba = _use_ba;
+        use_stereo = _use_stereo;
 
         is_show = _is_show;
 
@@ -104,20 +104,19 @@ public:
                 CorALeft.push_back(mco);
             }
 
-//            std::cout << m << std::endl;
-//            m.draw(img_left);
         }
 
-        if (!marker_right.empty()) {
-            for (int i = 0; i < 4; i++) {
-                MarkerCornerObservsed mco(i, &marker0);
-                mco.observed_point.x() = (marker_right[i].x) / 2.0;// /2 because the downsample of our camera model
-                mco.observed_point.y() = (marker_right[i].y) / 2.0;
-                mco.p_undist = cam_right->undist_point(mco.observed_point);
+        if (use_stereo) {
+            if (!marker_right.empty()) {
+                for (int i = 0; i < 4; i++) {
+                    MarkerCornerObservsed mco(i, &marker0);
+                    mco.observed_point.x() = (marker_right[i].x) / 2.0;// /2 because the downsample of our camera model
+                    mco.observed_point.y() = (marker_right[i].y) / 2.0;
+                    mco.p_undist = cam_right->undist_point(mco.observed_point);
 
-                CorARight.push_back(mco);
+                    CorARight.push_back(mco);
+                }
             }
-//            std::cout << m << std::endl;
         }
 
         camera_array ca;
@@ -127,15 +126,20 @@ public:
         ca.push_back(cam_left);
         p_by_cam.push_back(CorALeft);
 
-        ca.push_back(cam_right);
-        p_by_cam.push_back(CorARight);
+        if (use_stereo) {
+            ca.push_back(cam_right);
+            p_by_cam.push_back(CorARight);
+        }
 
         SwarmDroneDefs _sdef;
         DronePoseEstimator estimator(_sdef, ca);
-        estimator.use_ba = use_ba;
+        estimator.use_ba = use_stereo;
         if (is_show) {
             estimator.mat_to_draw_1 = limg;
-            estimator.mat_to_draw_2 = rimg;
+            if (use_stereo) {
+                estimator.mat_to_draw_2 = rimg;
+            }
+
             estimator.enable_drawing = true;
         } else {
             estimator.enable_drawing = false;
@@ -167,6 +171,7 @@ class ARMarkerDetectorNode {
 
     cv::Mat last_left;
     cv::Mat last_right;
+    bool use_stereo = false;
 
     StereoDronePoseEstimator *stereodronepos_est = nullptr;
 public:
@@ -177,10 +182,9 @@ public:
         std::string left_cam_def;
         std::string right_cam_def;
         std::string vo_def;
-        bool use_ba;
 
         nh.param("is_show", is_show, false);
-        nh.param("use_ba", use_ba, true);
+        nh.param("use_stereo", use_stereo, true);
         nh.param<std::string>("left_cam_def", left_cam_def,
                               "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml");
         nh.param<std::string>("right_cam_def", right_cam_def,
@@ -200,13 +204,16 @@ public:
                     this->on_node_detected(stamp, _id, pose);
                 },
                 is_show,
-                use_ba);
+                use_stereo);
 
         armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 100);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
                                       ros::TransportHints().tcpNoDelay());
-        right_image_sub = nh.subscribe("right_camera", 10, &ARMarkerDetectorNode::image_cb_right, this,
-                                       ros::TransportHints().tcpNoDelay());
+
+        if (use_stereo) {
+            right_image_sub = nh.subscribe("right_camera", 10, &ARMarkerDetectorNode::image_cb_right, this,
+                                           ros::TransportHints().tcpNoDelay());
+        }
         node_detected_pub = nh.advertise<swarm_msgs::node_detected>("node_detected", 100);
 
     }
@@ -255,16 +262,20 @@ public:
         ad.self_drone_id = -1;// -1 means this drone
         // ad.camera_id = camera_id;
 
-
-        assert(src_rows == rimg.rows && "Must same rows left and right");
-        assert(src_cols == rimg.cols && "Must same rows left and right");
+        if (!use_stereo) {
+            assert(src_rows == rimg.rows && "Must same rows left and right");
+            assert(src_cols == rimg.cols && "Must same rows left and right");
+        }
 
 
 //        ROS_INFO("r %d c %d", src_rows, src_cols);
         std::vector<int> ids_left, ids_right;
         marker_array mal, mar;
         cv::aruco::detectMarkers(limg, dictionary, mal, ids_left);
-        cv::aruco::detectMarkers(rimg, dictionary, mar, ids_right);
+
+        if (use_stereo) {
+            cv::aruco::detectMarkers(rimg, dictionary, mar, ids_right);
+        }
 
         CVMarkerCorners marker_left;
         CVMarkerCorners marker_right;
@@ -273,7 +284,9 @@ public:
             marker_left = mal[0];
         }
 
-        if (!mar.empty()) {
+
+        if (use_stereo) {
+            //Deal with stereo
             marker_right = mar[0];
         }
 
@@ -317,10 +330,13 @@ public:
 //                cv::imshow("Right", last_right);
             }
 
-            if (fabs((last_lcam_ts - last_rcam_ts).toSec()) < 0.005) {
+            if (use_stereo) {
+                if (fabs((last_lcam_ts - last_rcam_ts).toSec()) < 0.005) {
+                    this->detect_cv_image(last_lcam_ts, last_left, last_right);
+                }
+            } else if (camera_id == 0) {
                 this->detect_cv_image(last_lcam_ts, last_left, last_right);
             }
-
         }
         catch (cv_bridge::Exception& e)
         {
@@ -340,7 +356,7 @@ int main(int argc,char **argv)
 
     // ros::AsyncSpinner spinner(4);
     // spinner.start();
-    ros::Duration(3.0).sleep();
+//    ros::Duration(3.0).sleep();
     ros::spin();
     ros::waitForShutdown();
 }
