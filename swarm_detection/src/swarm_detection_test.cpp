@@ -45,70 +45,70 @@ int main(int argc, char* argv[]) {
     fs_yaml["body_T_cam1"] >> right_cam_pose;
 
 
-        
-    marker_array ma_left = MDetector.detect(img_left);
-    marker_array ma_right = MDetector.detect(img_right);
-
     Camera cam_left(left_cam_defs, from_cv_matrix(left_cam_pose));
     Camera cam_right(right_cam_defs, from_cv_matrix(right_cam_pose));
 
-    ROS_INFO("Left cam position %f %f %f", cam_left.pos().x(), cam_left.pos().y(), cam_left.pos().z());
-    DroneMarker marker0(0, 0, 0.0886);
-    marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
+    for (int i = 0; i < 100; i++) {
+        marker_array ma_left = MDetector.detect(img_left);
+        marker_array ma_right = MDetector.detect(img_right);
 
 
+        ROS_INFO("Left cam position %f %f %f", cam_left.pos().x(), cam_left.pos().y(), cam_left.pos().z());
+        DroneMarker marker0(0, 0, 0.0886);
+        marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
 
-    
-    
-    for(auto m: ma_left){
-        for (int i = 0 ;i < 4; i++){
-            MarkerCornerObservsed mco(i, &marker0);
-            mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
-            mco.observed_point.y() = (m[i].y)/2.0;
-            mco.p_undist = cam_left.undist_point(mco.observed_point);
 
-            std::cout << mco.observed_point << std::endl;
-            CorALeft.push_back(mco);
+        for (auto m: ma_left) {
+            for (int i = 0; i < 4; i++) {
+                MarkerCornerObservsed mco(i, &marker0);
+                mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
+                mco.observed_point.y() = (m[i].y) / 2.0;
+                mco.p_undist = cam_left.undist_point(mco.observed_point);
+
+                std::cout << mco.observed_point << std::endl;
+                CorALeft.push_back(mco);
+            }
+
+//        std::cout<<m<<std::endl;
+            m.draw(img_left);
         }
-        
-        std::cout<<m<<std::endl;    
-        m.draw(img_left);
-    }
 
-    for(auto m: ma_right){
-        for (int i = 0 ;i < 4; i++){
-            MarkerCornerObservsed mco(i, &marker0);
-            mco.observed_point.x() = (m[i].x)/2.0;// /2 because the downsample of our camera model
-            mco.observed_point.y() = (m[i].y)/2.0;
-            mco.p_undist = cam_right.undist_point(mco.observed_point);
+        for (auto m: ma_right) {
+            for (int i = 0; i < 4; i++) {
+                MarkerCornerObservsed mco(i, &marker0);
+                mco.observed_point.x() = (m[i].x) / 2.0;// /2 because the downsample of our camera model
+                mco.observed_point.y() = (m[i].y) / 2.0;
+                mco.p_undist = cam_right.undist_point(mco.observed_point);
 
-            CorARight.push_back(mco);
-        }
-        
-        std::cout<<m<<std::endl;    
+                CorARight.push_back(mco);
+            }
+
+//        std::cout<<m<<std::endl;
 //        m.draw(img_left);
-    }
+        }
 
-    camera_array ca;
+        camera_array ca;
 
 
-    std::vector<corner_array> p_by_cam;
-    ca.push_back(&cam_left);
-    p_by_cam.push_back(CorALeft);
+        std::vector<corner_array> p_by_cam;
+        ca.push_back(&cam_left);
+        p_by_cam.push_back(CorALeft);
 
-     ca.push_back(&cam_right);
-     p_by_cam.push_back(CorARight);
-    
-    SwarmDroneDefs _sdef;
-    DronePoseEstimator estimator(_sdef, ca);
-    estimator.mat_to_draw_1 = img_left;
-    estimator.mat_to_draw_2 = img_right;
+        ca.push_back(&cam_right);
+        p_by_cam.push_back(CorARight);
+
+        SwarmDroneDefs _sdef;
+        DronePoseEstimator estimator(_sdef, ca);
+        estimator.enable_drawing = false;
+        estimator.mat_to_draw_1 = img_left;
+        estimator.mat_to_draw_2 = img_right;
 //    estimator.mat_to_draw = img_right;
 
 
-    estimator.estimate_drone_pose(p_by_cam);
+        estimator.estimate_drone_pose(p_by_cam);
 
 //    cv::imshow("left", img_left);
 //    cv::imshow("right", img_right);
-    cv::waitKey(-1);
+//    cv::waitKey(-1);
+    }
 }

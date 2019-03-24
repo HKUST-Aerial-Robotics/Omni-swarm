@@ -1,5 +1,5 @@
 <launch>
-    <arg name="use_ba" default="false" />
+    <arg name="use_stereo" default="false"/>
     <arg name="is_show" default="true" />
 
     <node pkg="swarm_detection" name="swarm_detection" type="swarm_detection_node" output="screen" > 
@@ -10,6 +10,6 @@
         <param name="left_cam_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/left.yaml" />
         <param name="right_cam_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/right.yaml" />
         <param name="vo_def" type="string" value="/home/dji/SwarmConfig/mini_mynteye_stereo/mini_mynteye_stereo_imu.yaml" />
-        <param name="use_ba" type="bool" value="$(arg use_ba)" />
+        <param name="use_stereo" type="bool" value="$(arg use_stereo)"/>
     </node>
 </launch>
