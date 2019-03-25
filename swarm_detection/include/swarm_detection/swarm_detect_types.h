@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <aruco/aruco.h>
 #include <camodocal/camera_models/CataCamera.h>
+#include <geometry_msgs/Pose.h>
 
 using namespace Eigen;
 using namespace ceres;
@@ -50,6 +51,29 @@ struct Pose {
     Eigen::Isometry3d to_isometry() {
         Eigen::Isometry3d a = Eigen::Translation3d(position) * attitude;
         return a;
+    }
+
+    Pose(geometry_msgs::Pose p) {
+        attitude.w() = p.orientation.w;
+        attitude.x() = p.orientation.x;
+        attitude.y() = p.orientation.y;
+        attitude.z() = p.orientation.z;
+
+        position.x() = p.position.x;
+        position.y() = p.position.y;
+        position.z() = p.position.z;
+    }
+
+    geometry_msgs::Pose to_ros_pose () {
+        geometry_msgs::Pose pose;
+        pose.orientation.w = attitude.w();
+        pose.orientation.x = attitude.x();
+        pose.orientation.y = attitude.y();
+        pose.orientation.z = attitude.z();
+        pose.position.x = position.x();
+        pose.position.y = position.y();
+        pose.position.z = position.z();
+        return pose;
     }
 
     void print() {

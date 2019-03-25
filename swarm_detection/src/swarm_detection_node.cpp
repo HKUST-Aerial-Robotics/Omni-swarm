@@ -13,6 +13,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <functional>
 #include <stdlib.h>
+#include <swarm_msgs/swarm_detected.h>
 
 using namespace swarm_msgs;
 namespace enc = sensor_msgs::image_encodings;
@@ -87,7 +88,7 @@ public:
     void ProcessMarkers(marker_array ma_left, marker_array ma_right) {
     }
 
-    void ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
+    Pose ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
         DroneMarker marker0(0, 0, 0.1);
         marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
         corner_array CorALeft;
@@ -144,10 +145,11 @@ public:
         } else {
             estimator.enable_drawing = false;
         }
-        Pose pose = estimator.estimate_drone_pose(p_by_cam);
 
-        callback(stamp, 0, pose);
+        Pose ret = estimator.estimate_drone_pose(p_by_cam);
+        callback(stamp, _id, ret);
 
+        return ret;
     }
 };
 
@@ -158,7 +160,7 @@ class ARMarkerDetectorNode {
     ros::Subscriber left_image_sub;
     ros::Subscriber right_image_sub;
     ros::Publisher armarker_pub;
-    ros::Publisher node_detected_pub;
+    ros::Publisher swarm_detected_pub;
     std::map<int, ros::Publisher> remote_relative_poses_pub;
 
     bool is_show = false;
@@ -221,7 +223,7 @@ public:
             right_image_sub = nh.subscribe("right_camera", 10, &ARMarkerDetectorNode::image_cb_right, this,
                                            ros::TransportHints().tcpNoDelay());
         }
-        node_detected_pub = nh.advertise<swarm_msgs::node_detected>("node_detected", 100);
+        swarm_detected_pub = nh.advertise<swarm_msgs::swarm_detected>("swarm_detected", 100);
 
     }
 
@@ -298,8 +300,24 @@ public:
         }
 
 
-        if (!marker_left.empty() || !marker_right.empty() ) {
-            stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[0], marker_left, marker_right, limg, rimg);
+        if (use_stereo) {
+            //Not implement yet
+        } else if (!marker_left.empty()) {
+
+            swarm_detected sd;
+            sd.header.stamp = stamp;
+
+            for (int i = 0; i < marker_left.size(); i++) {
+                Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
+
+                node_detected nd;
+                nd.header.stamp = stamp;
+                nd.relpose.pose = posei.to_ros_pose();
+//                nd.relpose.covariance =
+                sd.detected_nodes.push_back(nd);
+            }
+
+            swarm_detected_pub.publish(sd);
         }
 
         double total_compute_time = (ros::Time::now() - start).toSec();

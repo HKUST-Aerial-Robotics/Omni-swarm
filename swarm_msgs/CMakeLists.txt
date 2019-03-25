@@ -19,19 +19,20 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate messages in the 'msg' folder
 add_message_files(
-  FILES
-  remote_uwb_info.msg
-  incoming_broadcast_data.msg
-  data_buffer.msg
-  swarm_fused.msg
-  swarm_fused_relative.msg
-  swarm_remote_command.msg
+        FILES
+        remote_uwb_info.msg
+        incoming_broadcast_data.msg
+        data_buffer.msg
+        swarm_fused.msg
+        swarm_fused_relative.msg
+        swarm_remote_command.msg
         swarm_drone_source_data.msg
-  armarker_corner.msg
-  armarker_detected.msg
+        armarker_corner.msg
+        armarker_detected.msg
         node_frame.msg
         swarm_frame.msg
         node_detected.msg
+        swarm_detected.msg
 )
 
 
