@@ -141,7 +141,6 @@ public:
             }
 
             estimator.enable_drawing = true;
-            ROS_INFO("Will showing");
         } else {
             estimator.enable_drawing = false;
         }
@@ -310,7 +309,7 @@ public:
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_lcam_ts).toSec() > duration) {
             last_lcam_ts = msg->header.stamp;
-           ROS_INFO("Left!");
+        //    ROS_INFO("Left!");
             image_cb(msg, 0);
         }
 
