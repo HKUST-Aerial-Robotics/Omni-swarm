@@ -128,7 +128,7 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
     cv::Mat &new_to_draw1 = mat_to_draw_1;
     cv::Mat &new_to_draw2 = mat_to_draw_2;
     const Camera * cam_def = self_ca[0];
-    printf("Draw : %s\n", name.c_str());
+    // printf("Draw : %s\n", name.c_str());
     double res[8] = {0};
 
     for (auto mco : point_by_cam[0]) {
