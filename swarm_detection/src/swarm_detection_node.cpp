@@ -67,7 +67,7 @@ public:
             const std::string &_vo_config,
             std::function<void(ros::Time stamp, int,Pose)> _callback,
             bool _is_show=true,
-            bool _use_stereo = true) : callback(_callback) {
+            bool _use_stereo = false) : callback(_callback) {
 
         std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
 
@@ -141,6 +141,7 @@ public:
             }
 
             estimator.enable_drawing = true;
+            ROS_INFO("Will showing");
         } else {
             estimator.enable_drawing = false;
         }
@@ -184,7 +185,14 @@ public:
         std::string vo_def;
 
         nh.param("is_show", is_show, false);
-        nh.param("use_stereo", use_stereo, true);
+        nh.param("use_stereo", use_stereo, false);
+        
+        if (use_stereo) {
+            ROS_INFO("Will use stereo");
+        } else {
+            ROS_INFO("Use single camera only");            
+        }
+
         nh.param<std::string>("left_cam_def", left_cam_def,
                               "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml");
         nh.param<std::string>("right_cam_def", right_cam_def,
@@ -262,7 +270,7 @@ public:
         ad.self_drone_id = -1;// -1 means this drone
         // ad.camera_id = camera_id;
 
-        if (!use_stereo) {
+        if (use_stereo) {
             assert(src_rows == rimg.rows && "Must same rows left and right");
             assert(src_cols == rimg.cols && "Must same rows left and right");
         }
@@ -296,13 +304,13 @@ public:
         }
 
         double total_compute_time = (ros::Time::now() - start).toSec();
-        ROS_INFO("Total Compute Time %3.2ms", total_compute_time*1000);
+        ROS_INFO("Total Compute Time %3.2fms", total_compute_time*1000);
     }
 
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
         if ((msg->header.stamp - last_lcam_ts).toSec() > duration) {
             last_lcam_ts = msg->header.stamp;
-//            ROS_INFO("Left!");
+           ROS_INFO("Left!");
             image_cb(msg, 0);
         }
 
