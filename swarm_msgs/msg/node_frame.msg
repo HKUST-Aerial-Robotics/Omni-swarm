@@ -11,3 +11,5 @@ armarker_detected[] cam0_markers
 
 #Cam 1 is right cam
 armarker_detected[] cam1_markers
+
+swarm_detected detected
