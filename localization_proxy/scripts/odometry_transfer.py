@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from __future__ import print_function
+
+import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
-import math
-import numpy as np
 from pyquaternion import Quaternion
 
 pub = rospy.Publisher("/vins_estimator/odometry_ned", Odometry, queue_size=1)

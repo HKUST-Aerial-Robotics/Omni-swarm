@@ -1,5 +1,5 @@
 <launch>
-    <!-- <node pkg="swarm_drone_proxy" name="swarm_drone_proxy" type="swarm_drone_proxy_node" output="log">
+    <!-- <node pkg="localization_proxy" name="localization_proxy" type="swarm_drone_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
     </node> -->
     <param name="use_sim_time" value="true" type="bool" />

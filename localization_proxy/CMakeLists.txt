@@ -109,7 +109,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include
-#  LIBRARIES swarm_drone_proxy
+        #  LIBRARIES localization_proxy
   CATKIN_DEPENDS roscpp rosmsg rospy std_msgs geometry_msgs nav_msgs swarm_msgs
 #  DEPENDS system_lib
 )
@@ -127,7 +127,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/swarm_drone_proxy.cpp
+#   src/${PROJECT_NAME}/localization_proxy.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -138,7 +138,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/swarm_drone_proxy_node.cpp)
+add_executable(${PROJECT_NAME}_node src/localization_proxy.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
