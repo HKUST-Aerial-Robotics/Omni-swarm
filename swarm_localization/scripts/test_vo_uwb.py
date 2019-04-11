@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import numpy as np
+import copy
 import math
-import matplotlib.pyplot as plt
-import time
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import numpy.linalg as LA
 import random
 from scipy.optimize import minimize
-import copy
 
 matplotlib.rc('figure', figsize=(20, 15))
 fig = plt.figure()
