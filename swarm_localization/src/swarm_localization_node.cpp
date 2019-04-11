@@ -12,7 +12,7 @@
 #include <ctime>
 #include <thread>
 #include <unistd.h>
-#include "swarm_vo_fuse/swarm_vo_fuser.hpp"
+#include "swarm_localization/swarm_localization.hpp"
 #include "swarm_msgs/swarm_fused.h"
 #include "swarm_msgs/swarm_fused_relative.h"
 #include <geometry_msgs/Point.h>
@@ -20,6 +20,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
+#include <swarm_detection/swarm_detect_types.h>
 
 
 using ceres::CostFunction;
@@ -31,9 +32,10 @@ using ceres::Covariance;
 
 using namespace Eigen;
 using namespace nav_msgs;
+using namespace swarm_msgs;
 
 
-class UWBFuserNode {
+class SwarmLocalizationNode {
 
     void add_drone_id(int _id) {
         this->remote_ids_arr.push_back(_id);
@@ -100,13 +102,17 @@ class UWBFuserNode {
         return nf;
     }
 
+    SwarmFrame swarm_frame_from_msg(const swarm_msgs::swarm_frame &_sf) {
+
+    }
+
     double t_last = 0;
 protected:
-    void on_remote_drones_poses_recieve(const swarm_msgs::swarm_frame &_sf) {
+    void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
 
         // ROS_INFO("Recv remote drone poses");
 
-        swarm::SwarmFrame sf;
+        SwarmFrame sf;
 
         sf.stamp = _sf.header.stamp;
 
@@ -212,13 +218,13 @@ private:
     }
 
 public:
-
-    UWBFuserNode(ros::NodeHandle &_nh) :
+    SwarmLocalizationNode(ros::NodeHandle &_nh) :
             nh(_nh) {
-        recv_remote_drones = nh.subscribe("/swarm_drones/swarm_drone_source_data", 1,
-                                          &UWBFuserNode::on_remote_drones_poses_recieve, this,
+        recv_remote_drones = nh.subscribe("/swarm_drones/swarm_frame", 1,
+                                          &SwarmLocalizationNode::on_swarmframe_recv, this,
                                           ros::TransportHints().tcpNoDelay());
-        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate", 1, &UWBFuserNode::on_drone_odom_recv, this,
+        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate", 1,
+                                           &SwarmLocalizationNode::on_drone_odom_recv, this,
                                            ros::TransportHints().tcpNoDelay());
         int frame_num = 0, thread_num, min_frame_num;
         float acpt_cost = 0.4;
@@ -376,11 +382,11 @@ int main(int argc, char **argv) {
     //Use time as seed
     srand(time(NULL));
 
-    ros::init(argc, argv, "swarm_vo_fuse");
+    ros::init(argc, argv, "swarm_localization");
 
-    ros::NodeHandle nh("swarm_vo_fuse");
+    ros::NodeHandle nh("swarm_localization");
 
-    UWBFuserNode uwbfusernode(nh);
+    SwarmLocalizationNode uwbfusernode(nh);
 
     ros::spin();
 

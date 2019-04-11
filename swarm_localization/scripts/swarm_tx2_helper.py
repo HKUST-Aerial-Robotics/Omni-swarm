@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
-from dji_sdk.srv import SetHardSync
 import time
+from dji_sdk.srv import SetHardSync
 
 if __name__ == "__main__":
     #Enable chicken blood mode

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(swarm_vo_fuse)
+project(swarm_localization)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 set(CMAKE_BUILD_TYPE "Release")
@@ -111,7 +111,7 @@ find_package(Ceres REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include
-#  LIBRARIES swarm_vo_fuse
+        #  LIBRARIES swarm_localization
         CATKIN_DEPENDS roscpp rospy std_msgs swarm_msgs swarm_detection
 #  DEPENDS system_lib
 )
@@ -130,7 +130,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/swarm_vo_fuse.cpp
+#   src/${PROJECT_NAME}/swarm_localization.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -142,10 +142,10 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node
-        include/swarm_vo_fuse/swarm_types.hpp
-        include/swarm_vo_fuse/swarm_vo_costfunc.hpp
-        include/swarm_vo_fuse/swarm_vo_fuser.hpp
-        src/swarm_vo_fuse_node.cpp include/swarm_vo_fuse/swarm_relpose_costfunc.h)
+        include/swarm_localization/swarm_types.hpp
+        include/swarm_localization/localiztion_costfunction.hpp
+        include/swarm_localization/swarm_localization.hpp
+        src/swarm_localization_node.cpp include/swarm_localization/swarm_relpose_costfunc.h)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

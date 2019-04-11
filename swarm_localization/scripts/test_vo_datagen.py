@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-from swarm_msgs.msg import swarm_drone_source_data
-from geometry_msgs.msg import PoseStamped, Pose
-from nav_msgs.msg import Odometry
-import numpy as np
 import math
-import matplotlib.pyplot as plt
-import time
 import matplotlib
-import numpy.linalg as LA
-import random
-import copy
+import matplotlib.pyplot as plt
+import numpy as np
 import rospy
+from geometry_msgs.msg import Pose
+from nav_msgs.msg import Odometry
+from swarm_msgs.msg import swarm_drone_source_data
 
 
 class SimulateDronesEnv(object):

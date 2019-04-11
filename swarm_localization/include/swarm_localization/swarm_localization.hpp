@@ -9,9 +9,9 @@
 #include <time.h>
 #include <thread>
 #include <unistd.h>
-#include "swarm_vo_costfunc.hpp"
+#include "localiztion_costfunction.hpp"
 #include <functional>
-#include <swarm_vo_fuse/swarm_types.hpp>
+#include <swarm_localization/swarm_types.hpp>
 
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;

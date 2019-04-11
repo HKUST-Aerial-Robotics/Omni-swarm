@@ -52,7 +52,8 @@ class LocalProxy {
     ros::Subscriber local_odometry_sub;
     ros::Subscriber swarm_data_sub;
     ros::Subscriber swarm_rel_sub;
-    ros::Publisher swarm_frame_pub, swarm_frame_nosd_pub;
+    ros::Subscriber swarm_detect_sub;
+    ros::Publisher swarm_frame_pub, swarm_frame_nosd_pub, swarm_frame_pub;
     ros::Publisher uwb_senddata_pub;
 
     uint8_t buf[10000] = {0};
@@ -70,12 +71,12 @@ class LocalProxy {
     int force_self_id = -1;
     int self_id = -1;
 
-    std::vector<swarm_frame> sf_window;
+    std::vector<swarm_frame> sf_queue;
 
     void on_swarm_detected(const swarm_msgs::swarm_detected &sd) {
         int i = find_sf_swarm_detected(sd);
         if (i > 0) {
-            swarm_frame &_sf = sf_window[i];
+            swarm_frame &_sf = sf_queue[i];
             for (int j = 0; j < _sf.node_frames.size(); j++) {
                 if (_sf.node_frames[j].id == sd.self_drone_id) {
                     _sf.node_frames[j].detected = sd;
@@ -87,13 +88,13 @@ class LocalProxy {
     }
 
     void on_node_detected_msg(mavlink_message_t &msg) {
-
+        //process remode node detected
     }
 
     int find_sf_swarm_detected(const swarm_msgs::swarm_detected &sd) {
-        for (int i = sf_window.size() - 1; i >= 0; i--) {
-            if ((sf_window[i].header.stamp - sd.header.stamp).toSec() < 0.02) {
-                ROS_INFO("Find sf correspond to sd, dt %3.2fms", (sf_window[i].header.stamp - sd.header.stamp).toSec());
+        for (int i = sf_queue.size() - 1; i >= 0; i--) {
+            if ((sf_queue[i].header.stamp - sd.header.stamp).toSec() < 0.02) {
+                ROS_INFO("Find sf correspond to sd, dt %3.2fms", (sf_queue[i].header.stamp - sd.header.stamp).toSec());
                 return i;
             }
         }
@@ -232,8 +233,14 @@ class LocalProxy {
         }
     }
 
-    void process_swarm_frame_window() {
-
+    void process_swarm_frame_queue() {
+        //In queue for 5 frame to wait detection
+        while (sf_queue.size() > 5) {
+            auto sf0 = sf_queue[0];
+            swarm_frame_pub.publish(sf0);
+            ROS_INFO("Queue is len that 5, send to fuse");
+            sf_queue.erase(sf_queue.begin());
+        }
     }
 
     void on_remote_nodes_data_recv(const remote_uwb_info &info) {
@@ -343,8 +350,10 @@ class LocalProxy {
 
         if (odometry_available && odometry_updated) {
             odometry_updated = false;
-            sf_window.push_back(sf);
+            sf_queue.push_back(sf);
             swarm_frame_nosd_pub.publish(sf);
+
+            process_swarm_frame_queue();
         }
     }
 
@@ -367,8 +376,12 @@ public:
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1,
                                      &LocalProxy::on_swarm_fused_data_recv, this, ros::TransportHints().tcpNoDelay());
 
+        swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected,
+                                        ros::TransportHints().tcpNoDelay());
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
+
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_without_detection", 10);
+        swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
 
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
     }

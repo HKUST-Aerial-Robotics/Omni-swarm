@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-import rospy
-# import rospy as loginfo
-from visualization_msgs.msg import Marker
-from swarm_msgs.msg import swarm_fused
-import numpy as np
-import random
-from std_msgs.msg import ColorRGBA
-from geometry_msgs.msg import Point
 import copy
 import math
 import matplotlib.pyplot as plt
+import random
+import rospy
+from geometry_msgs.msg import Point
 from std_msgs.msg import Float32
+from swarm_msgs.msg import swarm_fused
+# import rospy as loginfo
+from visualization_msgs.msg import Marker
 
 
 class SwarmVOVisual:

@@ -101,6 +101,7 @@ namespace swarm {
         bool vo_available = false;
         bool dists_available = false;
         bool corners_available = false;
+        bool has_detect_relpose = false;
         Node *node = nullptr;
         int id = -1;
 
@@ -109,8 +110,12 @@ namespace swarm {
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         std::vector<corner_array> corner_by_cams;
+        std::vector<int, Pose> detected_nodes;
+        std::vector<int, Eigen::Vector3d> detected_nodes_poscov;
+        std::vector<int, Eigen::Vector3d> detected_nodes_angcov;
 
         ros::Time stamp;
+        int ts;
 
         NodeFrame(Node *_node) :
                 node(_node) {
@@ -169,6 +174,7 @@ namespace swarm {
         std::vector<int> node_id_list;
 
         ros::Time stamp;
+        int ts;
 
         int swarm_size() {
             return id2nodeframe.size();

@@ -35,6 +35,19 @@ struct Pose {
         ret[1] = position.y();
         ret[2] = position.z();
     }
+
+    template<typename T>
+    void to_vector(T ret[]) {
+        ret[3] = T(attitude.w());
+        ret[4] = T(attitude.x());
+        ret[5] = T(attitude.y());
+        ret[6] = T(attitude.z());
+
+        ret[0] = T(position.x());
+        ret[1] = T(position.y());
+        ret[2] = T(position.z());
+    }
+
     Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
         return attitude * point + position;
     }
