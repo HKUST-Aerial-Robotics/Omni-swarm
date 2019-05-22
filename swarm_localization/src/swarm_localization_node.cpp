@@ -146,7 +146,7 @@ protected:
             sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
         }
 
-        uwbfuse->id_to_index = ids_index_in_arr;
+//        uwbfuse->id_to_index = ids_index_in_arr;
         uwbfuse->all_nodes = remote_ids_arr;
 
         double t_now = _sf.header.stamp.toSec();
@@ -154,7 +154,7 @@ protected:
         // printf("Tnow %f\n", t_now);
 
         if (t_now - t_last > 1 / force_freq) {
-            uwbfuse->add_new_data_tick(sf);
+            uwbfuse->add_new_swarm_frame(sf);
             std_msgs::Float32 cost;
             cost.data = this->uwbfuse->solve();
             t_last = t_now;
@@ -195,13 +195,14 @@ private:
     std::string frame_id = "";
 
     std::map<int, ros::Publisher> remote_drone_odom_pubs;
-    UWBVOFuser *uwbfuse = nullptr;
+    SwarmLocalizationSolver *uwbfuse = nullptr;
 
     std::vector<int> remote_ids_arr;
     std::set<int> remote_ids_set;
     std::map<int, int> ids_index_in_arr;
     std::map<int, Node *> all_node_defs;
     std::map<int, DroneMarker *> all_ar_markers;
+
 
     ros::Timer timer;
 
@@ -249,7 +250,7 @@ public:
 
         Eigen::Vector3d ann_pos(anntenna_pos_x, anntenna_pos_y, anntenna_pos_z);
 
-        uwbfuse = new UWBVOFuser(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
+        uwbfuse = new SwarmLocalizationSolver(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
 
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(
@@ -370,7 +371,7 @@ public:
 
         ROS_INFO("Will use %d number of keyframe\n", frame_num);
         uwbfuse->max_frame_number = frame_num;
-        uwbfuse->id_to_index = ids_index_in_arr;
+//        uwbfuse->id_to_index = ids_index_in_arr;
     }
 };
 
