@@ -1,6 +1,0 @@
-<launch>
-    <node pkg="infinity_uwb_ros" name="uwb_node" type="infinity_uwb_ros_node" output="screen"> 
-        <param name="serial_name" value="/dev/ttyS0" />
-        <param name="baudrate" value="3000000" type="int" />
-    </node>
-</launch>

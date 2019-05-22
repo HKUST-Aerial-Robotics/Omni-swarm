@@ -34,12 +34,21 @@ float rand_FloatRange(float a, float b) {
 }
 
 
-class UWBVOFuser {
+class SwarmLocalizationSolver {
 
     CostFunction *
-    _setup_cost_function(const SwarmFrame &sf) {
+    _setup_cost_function_by_sf(SwarmFrame &sf) {
         CostFunction *cost_function =
-                new SwarmDistanceResidual(sf, all_nodes, id_to_index);
+                (new ceres::DynamicAutoDiffCostFunction<
+                        SwarmFrameError, 7>(new SwarmFrameError(sf, all_nodes, id_stamp_pose[sf.ts])));
+        return cost_function;
+    }
+
+    CostFunction *
+    _setup_cost_function_by_sf_win(std::vector<SwarmFrame> &sf_win) {
+        CostFunction *cost_function =
+                new ceres::DynamicAutoDiffCostFunction<
+                        SwarmHorizonError, 7>(new SwarmHorizonError(sf_win, all_nodes, id_stamp_pose));
         return cost_function;
     }
 
@@ -49,13 +58,9 @@ class UWBVOFuser {
     unsigned int solve_count = 0;
     const double min_accept_keyframe_movement = 0.2;
 
-    double Zxyzth[1000] = {0};
-
-
-    double covariance_xx[10000] = {};
+    std::vector<double*> _swarm_est_poses;
 
 public:
-    std::map<int, int> id_to_index;
     std::vector<int> all_nodes;
     unsigned int max_frame_number = 20;
     unsigned int min_frame_number = 10;
@@ -70,10 +75,11 @@ public:
     int last_problem_ptr = 0;
     bool finish_init = false;
 
-    std::vector<Eigen::Vector3d> last_key_frame_self_pos;
-    std::vector<bool> last_key_frame_has_id;
     std::map<int, Vector3d> est_pos;
     std::map<int, Vector3d> est_vel;
+
+    IDStampPose id_stamp_pose;
+
 
     ros::Time last_est_time_tick = ros::Time::now();
 
@@ -82,52 +88,15 @@ public:
 
     bool has_new_keyframe = false;
 
-    double _ZxyTest[1000] = {0};
 
-
-    UWBVOFuser(int _max_frame_number, int _min_frame_number, const Eigen::Vector3d &_ann_pos, double _acpt_cost = 0.4,
+    SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, const Eigen::Vector3d &_ann_pos, double _acpt_cost = 0.4,
                int _thread_num = 4) :
             max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
-            thread_num(_thread_num), acpt_cost(_acpt_cost), ann_pos(_ann_pos), last_key_frame_self_pos(100),
-            last_key_frame_has_id(100) {
-        random_init_Zxyz(Zxyzth);
+            thread_num(_thread_num), acpt_cost(_acpt_cost), ann_pos(_ann_pos) {
     }
 
-    void random_init_Zxyz(double *_Zxyzth, int start = 0, int end = 100) {
-        for (int i = start; i < end; i++) {
-            _Zxyzth[i * 4] = rand_FloatRange(-30, 30);
-            _Zxyzth[i * 4 + 1] = rand_FloatRange(-30, 30);
-            _Zxyzth[i * 4 + 2] = rand_FloatRange(-30, 30);
-            _Zxyzth[i * 4 + 3] = rand_FloatRange(0, 6.28);
-        }
-
-        for (unsigned int i = (end - 1) * 4; i < (end - 1) * 4 + drone_num * (drone_num - 1) / 2; i++) {
-            _Zxyzth[i] = rand_FloatRange(-0.1, 0.1);
-        }
-    }
-
-    void constrain_Z() {
-        for (int i = 0; i < 9; i++) {
-            Zxyzth[i * 4 + 3] = fmodf(Zxyzth[i * 4 + 3], 2 * M_PI);
-        }
-    }
-
-    //If drone num increase, the previous bias should move after
-    void move_bias(int prev_drone_num, int new_drone_num) {
+    void random_init_pose(std::vector<double*> _est_poses, int start = 0, int end = 100) {
         //TODO:
-        //Should move from (prev_drone_num - 1) * 4 : (prev_drone_num - 1) * 4 + (prev_drone_num - 1)*prev_drone_num / 2
-        //to (new_drone_num - 1) * 4 : (new_drone_num - 1) * 4 + ???
-
-        if (prev_drone_num == 0) {
-            ROS_INFO("First init with %d drone", new_drone_num);
-
-            for (int i = (new_drone_num - 1) * 4;
-                 i < (new_drone_num - 1) * 4 + (new_drone_num - 1) * new_drone_num / 2; i++) {
-                Zxyzth[i] = 0;
-            }
-        }
-        //Also we should init Zxyz
-        random_init_Zxyz(Zxyzth, prev_drone_num, new_drone_num);
     }
 
     bool detect_outlier(const SwarmFrame &sf) {
@@ -156,11 +125,11 @@ public:
             return _ids;
         }
 
+
         for (auto _id : _ids) {
-            int _index = (id_to_index)[_id];
-            if (last_key_frame_has_id[_index]) {
-                Eigen::Vector3d _diff = sf.position(_id) - last_key_frame_self_pos[_index];
-                if (_diff.norm() > min_accept_keyframe_movement) {
+            if (sf_sld_win.back().HasID(_id)) {
+                Eigen::Vector3d _diff = sf.position(_id) - sf_sld_win.back().position(_id);
+                if (_diff.norm() > min_accept_keyframe_movement || sf.HasDetect(_id)) {
                     ret.push_back(_id);
                     node_kf_count[_id] += 1;
                 }
@@ -198,7 +167,7 @@ public:
     }
 
 
-    void add_new_data_tick(const SwarmFrame &sf) {
+    void add_new_swarm_frame(const SwarmFrame &sf) {
         process_frame_clear();
         if (detect_outlier(sf)) {
             ROS_INFO("Outlier detected!");
@@ -210,26 +179,21 @@ public:
         std::vector<int> is_kf_list = judge_is_key_frame(sf);
         if (!is_kf_list.empty()) {
 
-            std::fill(last_key_frame_has_id.begin(), last_key_frame_has_id.end(), 0);
-
-            for (auto _id : _ids) {
-                // ROS_INFO("lf %d %f %f %f", _id, self_pos[_id].x(),self_pos[_id].y(),self_pos[_id].z() );
-                int _index = (id_to_index)[_id];
-                last_key_frame_self_pos[_index] = sf.position(_id);
-                last_key_frame_has_id[_index] = true;
-            }
             has_new_keyframe = true;
 
             sf_sld_win.push_back(sf);
+            id_stamp_pose[sf.ts] = std::map<int, int>();
+            for (auto it: sf.id2nodeframe) {
+                int _id = it.first;
+                _swarm_est_poses.push_back(new double[7]);
+                memset(_swarm_est_poses.back(), 0, 7* sizeof(double));
+                id_stamp_pose[sf.ts][_id] =  _swarm_est_poses.size() - 1;
+            }
 
         }
 
-        if (finish_init)
-            EvaluateEstPosition(sf, true);
-
         if (_ids.size() > drone_num) {
             //For here the drone num increase
-            move_bias(drone_num, _ids.size());
             drone_num = _ids.size();
         }
     }
@@ -240,13 +204,11 @@ public:
 
     // Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
 
-
-    void EvaluateEstPosition(const SwarmFrame &sf, bool call_cb = false) {
+    void PredictSwarm(const SwarmFrame &sf, bool call_cb = false) {
 
         ID2Vector3d id2vec;
         ID2Vector3d id2vel;
         ID2Quat id2quat;
-        SwarmDistanceResidual swarmRes(sf, all_nodes, id_to_index);
         auto _ids = sf.node_id_list;
         int drone_num_now = _ids.size();
 
@@ -258,6 +220,7 @@ public:
             }
         }
 
+        /*
         for (unsigned int i = 0; i < _ids.size(); i++) {
             int _id = _ids[i];
             Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
@@ -291,6 +254,7 @@ public:
         }
 
         printf("\n\n");
+        */
 
         if (callback != nullptr && call_cb)
             (callback)(id2vec, id2vel, id2quat, sf.stamp);
@@ -305,16 +269,17 @@ public:
 
         // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
 
+        std::vector<double*> _est_poses;
         for (int i = 0; i < max_number; i++) {
-            random_init_Zxyz(_ZxyTest, start_drone_num, drone_num);
-            double c = solve_once(_ZxyTest, false);
+            random_init_pose(_est_poses, start_drone_num, drone_num);
+            double c = solve_once(_est_poses, false);
             ROS_INFO("Got better cost %f", c);
 
             if (c < cost) {
                 ROS_INFO("Got better cost %f", c);
                 cost_updated = true;
                 cost_now = cost = c;
-                memcpy(Zxyzth, _ZxyTest, 1000 * sizeof(double));
+                _swarm_est_poses = _est_poses;
                 if (i > min_number) {
                     return true;
                 }
@@ -341,7 +306,7 @@ public:
             }
 
         } else if (has_new_keyframe) {
-            cost_now = solve_once(this->Zxyzth, true);
+            cost_now = solve_once(this->_swarm_est_poses, true);
         }
 
         if (cost_now > acpt_cost)
@@ -353,7 +318,7 @@ public:
         return sf_sld_win.size();
     }
 
-    double solve_once(double *_zxyzth, bool report = false) {
+    double solve_once(std::vector<double*> swarm_est_poses, bool report = false) {
 
         Problem problem;
 
@@ -362,18 +327,16 @@ public:
 
         has_new_keyframe = false;
 
-        for (const SwarmFrame &sf : sf_sld_win) {
+        for (int i = 0; i < sf_sld_win.size(); i++ ) {
+            SwarmFrame &sf = sf_sld_win[i];
             problem.AddResidualBlock(
-                    _setup_cost_function(sf),
+                    _setup_cost_function_by_sf(sf),
                     nullptr,
-                    Zxyzth
+                    swarm_est_poses[i]
             );
         }
 
-        for (unsigned int i = (drone_num - 1) * 4; i < (drone_num - 1) * 4 + (drone_num - 1) * drone_num / 2; i++) {
-            problem.SetParameterLowerBound(_zxyzth, i, -0.15);
-            problem.SetParameterUpperBound(_zxyzth, i, 0.15);
-        }
+        problem.AddResidualBlock(_setup_cost_function_by_sf_win(sf_sld_win), nullptr, _swarm_est_poses);
 
         last_problem_ptr = sliding_window_size();
 
@@ -402,65 +365,28 @@ public:
         // std::cout << summary.FullReport()<< "\n";
 
 
-        Covariance::Options cov_options;
-        Covariance covariance(cov_options);
+        if (solve_count % 10 == 0)
+            auto sf = sf_sld_win.back();
 
-        std::vector<std::pair<const double *, const double *> > covariance_blocks;
-        covariance_blocks.push_back(std::make_pair(_zxyzth, _zxyzth));
-        // bool ret = covariance.Compute(covariance_blocks, &problem);
-        bool ret = false;
-
-        auto sf = sf_sld_win.back();
-
-        EvaluateEstPosition(sf, true);
-
-        if (ret) {
-            covariance.GetCovarianceBlock(_zxyzth, _zxyzth, covariance_xx);
-            if (solve_count % 10 == 0)
-                for (int _id : sf.node_id_list) {
-                    int i = id_to_index[_id];
-                    ROS_INFO(
-                            "i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f covr %3.2f %3.2f %3.2f %3.2f\n",
-                            i,
-                            _id,
-                            Zxyzth[i * 4],
-                            Zxyzth[i * 4 + 1],
-                            Zxyzth[i * 4 + 2],
-                            Zxyzth[i * 4 + 3],
-                            est_pos[_id].x(),
-                            est_pos[_id].y(),
-                            est_pos[_id].z(),
-                            sf.position(_id).x(),
-                            sf.position(_id).y(),
-                            sf.position(_id).z(),
-                            covariance_xx[(i * 4) * (drone_num - 1) * 4 + (i * 4)],
-                            covariance_xx[(i * 4 + 1) * (drone_num - 1) * 4 + (i * 4 + 1)],
-                            covariance_xx[(i * 4 + 2) * (drone_num - 1) * 4 + (i * 4 + 2)],
-                            covariance_xx[(i * 4 + 3) * (drone_num - 1) * 4 + (i * 4 + 3)]
-                    );
-                }
-        } else {
-            if (solve_count % 10 == 0)
-                auto sf = sf_sld_win.back();
-            for (int _id : sf.node_id_list) {
-                int i = id_to_index[_id];
-                ROS_INFO(
-                        "i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n",
-                        i,
-                        _id,
-                        Zxyzth[i * 4],
-                        Zxyzth[i * 4 + 1],
-                        Zxyzth[i * 4 + 2],
-                        Zxyzth[i * 4 + 3],
-                        est_pos[_id].x(),
-                        est_pos[_id].y(),
-                        est_pos[_id].z(),
-                        sf.position(_id).x(),
-                        sf.position(_id).y(),
-                        sf.position(_id).z()
-                );
-            }
-        }
+        /*
+        for (int _id : sf.node_id_list) {
+            int i = id_to_index[_id];
+            ROS_INFO(
+                    "i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n",
+                    i,
+                    _id,
+                    Zxyzth[i * 4],
+                    Zxyzth[i * 4 + 1],
+                    Zxyzth[i * 4 + 2],
+                    Zxyzth[i * 4 + 3],
+                    est_pos[_id].x(),
+                    est_pos[_id].y(),
+                    est_pos[_id].z(),
+                    sf.position(_id).x(),
+                    sf.position(_id).y(),
+                    sf.position(_id).z()
+            );
+        }*/
 
         solve_count++;
 

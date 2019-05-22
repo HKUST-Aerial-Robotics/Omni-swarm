@@ -53,7 +53,7 @@ class LocalProxy {
     ros::Subscriber swarm_data_sub;
     ros::Subscriber swarm_rel_sub;
     ros::Subscriber swarm_detect_sub;
-    ros::Publisher swarm_frame_pub, swarm_frame_nosd_pub, swarm_frame_pub;
+    ros::Publisher swarm_frame_pub, swarm_frame_nosd_pub;
     ros::Publisher uwb_senddata_pub;
 
     uint8_t buf[10000] = {0};
@@ -376,7 +376,7 @@ public:
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1,
                                      &LocalProxy::on_swarm_fused_data_recv, this, ros::TransportHints().tcpNoDelay());
 
-        swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected,
+        swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected, this,
                                         ros::TransportHints().tcpNoDelay());
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
 

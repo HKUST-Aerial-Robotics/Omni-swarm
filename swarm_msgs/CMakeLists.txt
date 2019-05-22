@@ -20,9 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
         FILES
-        remote_uwb_info.msg
-        incoming_broadcast_data.msg
-        data_buffer.msg
         swarm_fused.msg
         swarm_fused_relative.msg
         swarm_remote_command.msg

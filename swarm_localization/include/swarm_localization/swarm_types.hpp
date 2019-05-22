@@ -110,9 +110,9 @@ namespace swarm {
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         std::vector<corner_array> corner_by_cams;
-        std::vector<int, Pose> detected_nodes;
-        std::vector<int, Eigen::Vector3d> detected_nodes_poscov;
-        std::vector<int, Eigen::Vector3d> detected_nodes_angcov;
+        std::map<int, Pose> detected_nodes;
+        std::map<int, Eigen::Vector3d> detected_nodes_poscov;
+        std::map<int, Eigen::Vector3d> detected_nodes_angcov;
 
         ros::Time stamp;
         int ts;
@@ -180,32 +180,39 @@ namespace swarm {
             return id2nodeframe.size();
         }
 
-        bool HasUWB(int id) const {
+        bool HasUWB(const int id) const {
             return id2nodeframe.at(id).node->HasUWB();
         }
 
-        bool HasDis(int idj, int idi) const {
+        bool HasDis(const int idj, const int idi) const {
             if (dis_mat.find(idj) == dis_mat.end()) {
                 return false;
             }
             return dis_mat.at(idj).find(idi) != dis_mat.at(idj).end();
         }
 
-        double distance(int idj, int idi) const {
+        bool HasID(const int _id) const{
+            return (id2nodeframe.find(_id) == id2nodeframe.end());
+        }
+
+        bool HasDetect(const int _id) const {
+            //TODO:
+        }
+        double distance(const int idj, const int idi) const {
             assert(HasDis(idj, idi) && "Require distance not have");
 
             return dis_mat.at(idj).at(idi);
         }
 
-        Vector3d position(int id) const {
+        Vector3d position(const int id) const {
             return id2nodeframe.at(id).position();
         }
 
-        Vector3d velocity(int id) const {
+        Vector3d velocity(const int id) const {
             return id2nodeframe.at(id).velocity();
         }
 
-        Quaterniond attitude(int id) const {
+        Quaterniond attitude(const int id) const {
             return id2nodeframe.at(id).attitude();
         }
 

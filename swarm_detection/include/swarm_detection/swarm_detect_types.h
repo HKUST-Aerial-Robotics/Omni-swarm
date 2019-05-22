@@ -89,6 +89,11 @@ struct Pose {
         return pose;
     }
 
+    //A^-1B
+    static Pose DeltaPose(const Pose & a, const Pose & b) {
+        return Pose();
+    }
+
     void print() {
         auto _rpy = rpy();
         printf("T %3.3f %3.3f %3.3f RPY %3.1f %3.1f %3.1f\n",
