@@ -225,10 +225,11 @@ static void mavlink_test_node_detected(uint8_t system_id, uint8_t component_id, 
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_node_detected_t packet_in = {
-        17235,17339,17443,17547,17651,17755,17859,17963,18067,18171,65
+        17235,17339,17443,17547,17651,17755,17859,17963,18067,18171,18275,199
     };
     mavlink_node_detected_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
+        packet1.ts = packet_in.ts;
         packet1.x = packet_in.x;
         packet1.y = packet_in.y;
         packet1.z = packet_in.z;
@@ -254,12 +255,12 @@ static void mavlink_test_node_detected(uint8_t system_id, uint8_t component_id, 
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_detected_pack(system_id, component_id, &msg , packet1.target_id , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
+    mavlink_msg_node_detected_pack(system_id, component_id, &msg , packet1.target_id , packet1.ts , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
     mavlink_msg_node_detected_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_detected_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.target_id , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
+    mavlink_msg_node_detected_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.target_id , packet1.ts , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
     mavlink_msg_node_detected_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
@@ -272,7 +273,7 @@ static void mavlink_test_node_detected(uint8_t system_id, uint8_t component_id, 
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
         
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_detected_send(MAVLINK_COMM_1 , packet1.target_id , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
+    mavlink_msg_node_detected_send(MAVLINK_COMM_1 , packet1.target_id , packet1.ts , packet1.x , packet1.y , packet1.z , packet1.corx , packet1.cory , packet1.corz , packet1.q0 , packet1.q1 , packet1.q2 , packet1.q3 );
     mavlink_msg_node_detected_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
@@ -289,17 +290,21 @@ static void mavlink_test_drone_status(uint8_t system_id, uint8_t component_id, m
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_drone_status_t packet_in = {
-        5,72,139,206,17,84,151
+        17.0,45.0,73.0,101.0,53,120,187,254,65,132,199
     };
     mavlink_drone_status_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
+        packet1.bat_vol = packet_in.bat_vol;
+        packet1.x = packet_in.x;
+        packet1.y = packet_in.y;
+        packet1.z = packet_in.z;
         packet1.flight_status = packet_in.flight_status;
         packet1.control_auth = packet_in.control_auth;
         packet1.commander_mode = packet_in.commander_mode;
         packet1.rc_valid = packet_in.rc_valid;
         packet1.onboard_cmd_valid = packet_in.onboard_cmd_valid;
         packet1.sdk_valid = packet_in.sdk_valid;
-        packet1.bat_vol = packet_in.bat_vol;
+        packet1.vo_valid = packet_in.vo_valid;
         
         
 #ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
@@ -314,12 +319,12 @@ static void mavlink_test_drone_status(uint8_t system_id, uint8_t component_id, m
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_drone_status_pack(system_id, component_id, &msg , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.bat_vol );
+    mavlink_msg_drone_status_pack(system_id, component_id, &msg , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.vo_valid , packet1.bat_vol , packet1.x , packet1.y , packet1.z );
     mavlink_msg_drone_status_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_drone_status_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.bat_vol );
+    mavlink_msg_drone_status_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.vo_valid , packet1.bat_vol , packet1.x , packet1.y , packet1.z );
     mavlink_msg_drone_status_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
@@ -332,7 +337,7 @@ static void mavlink_test_drone_status(uint8_t system_id, uint8_t component_id, m
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
         
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_drone_status_send(MAVLINK_COMM_1 , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.bat_vol );
+    mavlink_msg_drone_status_send(MAVLINK_COMM_1 , packet1.flight_status , packet1.control_auth , packet1.commander_mode , packet1.rc_valid , packet1.onboard_cmd_valid , packet1.sdk_valid , packet1.vo_valid , packet1.bat_vol , packet1.x , packet1.y , packet1.z );
     mavlink_msg_drone_status_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
