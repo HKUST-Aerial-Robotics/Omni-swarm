@@ -1,0 +1,12 @@
+<launch>
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
+       <param name="force_freq" value="10" type="double" />
+       <param name="max_accept_cost" value="0.15" type="double" />
+       <param name="max_keyframe_num" value="100" type="int" />
+       <param name="min_keyframe_num" value="10" type="int" />
+       <param name="thread_num" value="4" type="int" />
+       <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes_test.yaml" type="string" />
+    </node>
+    <node pkg="swarm_localization" name="test_datagen" type="test_vo_datagen.py" output="screen">
+    </node>
+</launch>
