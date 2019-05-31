@@ -6,6 +6,9 @@
 #include <vector>
 #include <swarm_detection/swarm_detect_types.h>
 #include <ros/ros.h>
+#include "yaml-cpp/yaml.h"
+#include <exception>
+
 
 
 typedef std::map<int, double> DisMap;
@@ -15,7 +18,6 @@ namespace swarm {
 
     class Node {
     protected:
-        int id = -1;
         std::vector<Camera *> camera;
         std::map<int, DroneMarker> markers;
 
@@ -24,6 +26,8 @@ namespace swarm {
         bool has_global_pose = false;
         bool has_armarkers = false;
         bool has_global_velocity = false;
+        bool is_static = false;
+        bool has_camera = false;
 
         Pose global_pose;
         Eigen::Vector3d global_velocity = Vector3d(0, 0, 0);
@@ -42,6 +46,7 @@ namespace swarm {
         }
 
     public:
+        int id = -1;
 
         bool HasCamera() const {
             return !camera.empty();
@@ -59,27 +64,39 @@ namespace swarm {
             return has_global_pose;
         }
 
+        bool IsStatic() const {
+            return is_static;
+        }
+
+        bool HasArmarker() const {
+            return has_armarkers;
+        }
+
 
         Node(int _id) :
                 id(_id) {
 
         }
 
-        static Node *createDroneNode(int _id,
-                                     const std::string &node_config_path = "",
-                                     const std::string &camera_config_path = "",
-                                     const std::string &marker_config_path = ""
-        ) {
-            Node *node = new Node(_id);
-            node->load_cameras(camera_config_path);
-            node->has_vo = true;
-            node->has_uwb = true;
-            node->has_global_pose = false;
-
-            //TODO:
-            //Temp code
-            node->anntena_pos = Vector3d(0, -0.083, 0.078);
-            return node;
+        Node(int _id, const YAML::Node & config):
+            id(_id){
+            try {
+//                ROS_INFO("Is parsing node %d", _id);
+                has_uwb = config["has_uwb"].as<bool>();
+                has_vo = config["has_vo"].as<bool>();
+                has_camera = config["has_camera"].as<bool>();
+                has_global_pose = config["has_global_pose"].as<bool>();
+                has_armarkers = config["has_armarkers"].as<bool>();
+                is_static = config["is_static"].as<bool>();
+                if (has_uwb) {
+                    this->anntena_pos = Vector3d( config["anntena_pos"][0].as<double>(),
+                            config["anntena_pos"][1].as<double>(),
+                            config["anntena_pos"][2].as<double>());
+                }}
+            catch (YAML::ParserException & e){
+                ROS_ERROR("Error while parsing node config %d: %s, exit", _id, e.what());
+                exit(-1);
+            }
         }
 
         Pose get_global_pose() const {
@@ -103,7 +120,7 @@ namespace swarm {
         bool corners_available = false;
         bool has_detect_relpose = false;
         Node *node = nullptr;
-        int id = -1;
+        int64_t id = -1;
 
         DisMap dis_map;
         Pose self_pose;
@@ -116,6 +133,7 @@ namespace swarm {
 
         ros::Time stamp;
         int ts;
+        bool is_valid = false;
 
         NodeFrame(Node *_node) :
                 node(_node) {
@@ -167,6 +185,11 @@ namespace swarm {
         }
     };
 
+    struct SwarmFrameState {
+        std::map<int, Pose> node_poses;
+        std::map<int, Vector3d> node_vels;
+    };
+
     class SwarmFrame {
     public:
         std::map<int, NodeFrame> id2nodeframe;
@@ -174,7 +197,7 @@ namespace swarm {
         std::vector<int> node_id_list;
 
         ros::Time stamp;
-        int ts;
+        int64_t ts;
 
         int swarm_size() {
             return id2nodeframe.size();
@@ -196,7 +219,10 @@ namespace swarm {
         }
 
         bool HasDetect(const int _id) const {
-            //TODO:
+            if (id2nodeframe.at(_id).has_detect_relpose) {
+                return true;
+            }
+            return false;
         }
         double distance(const int idj, const int idi) const {
             assert(HasDis(idj, idi) && "Require distance not have");

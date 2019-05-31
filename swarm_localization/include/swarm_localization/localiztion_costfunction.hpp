@@ -82,20 +82,43 @@ struct SwarmFrameError {
     SwarmFrame sf;
     std::vector<int> all_nodes;
     std::map<int, int> id2poseindex;
+    int self_id = -1;
+    bool is_lastest_frame = false;
 
+    template<typename T>
+    void get_pose(int _id, T const *const *_poses, T * t_pose) const {
+        if (_id == self_id && is_lastest_frame) {
+
+            //May have risk of returning this t_pose
+            Pose _pose =  sf.id2nodeframe.at(_id).pose();
+            _pose.to_vector(t_pose);
+            return;
+        } else {
+            t_pose[0] =  _poses[id2poseindex.at(_id)][0];
+            t_pose[1] =  _poses[id2poseindex.at(_id)][1];
+            t_pose[2] =  _poses[id2poseindex.at(_id)][2];
+            t_pose[3] =  _poses[id2poseindex.at(_id)][3];
+            t_pose[4] =  _poses[id2poseindex.at(_id)][4];
+            t_pose[5] =  _poses[id2poseindex.at(_id)][5];
+            t_pose[6] =  _poses[id2poseindex.at(_id)][6];
+        }
+
+    }
 
     template<typename T>
     void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
-        const T *posea = _poses[id2poseindex.at(ida)];
-        const T *poseb = _poses[id2poseindex.at(ida)];
+        T posea[7] , poseb[7];
+        get_pose(ida, _poses, posea);
+        get_pose(idb, _poses, poseb);
         DeltaPose(posea, poseb, relpose);
     }
 
     template<typename T>
     T node_distance(int idi, int idj, T const *const *_poses) const {
         //If consider bias here?
-        const T *posea = _poses[id2poseindex.at(idi)];
-        const T *poseb = _poses[id2poseindex.at(idj)];
+        T posea[7] , poseb[7];
+        get_pose(idi, _poses, posea);
+        get_pose(idj, _poses, poseb);
         return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
                     + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
                     + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
@@ -163,10 +186,11 @@ struct SwarmFrameError {
     }
 
 
-    SwarmFrameError(SwarmFrame &_sf, std::vector<int> &_all_nodes, std::map<int, int> &_id2poseindex) :
+    SwarmFrameError(SwarmFrame &_sf, std::vector<int> &_all_nodes, std::map<int, int> &_id2poseindex, bool _is_lastest_frame=false) :
             sf(std::move(_sf)),
             all_nodes(std::move(_all_nodes)),
-            id2poseindex(std::move(_id2poseindex)) {
+            id2poseindex(std::move(_id2poseindex)),
+            is_lastest_frame(_is_lastest_frame) {
     }
 
 
@@ -178,6 +202,9 @@ struct SwarmHorizonError {
     std::vector<SwarmFrame> sf_windows;
     std::vector<int> all_nodes;
     IDStampPose idstamppose;
+
+    int last_ts = -1;
+    int self_id = -1;
 
     std::map<int, std::vector<NodeFrame>> horizon_frames;
     std::map<int, std::vector<Pose>> delta_poses;
@@ -208,7 +235,28 @@ struct SwarmHorizonError {
 
             }
         }
+        last_ts = sf_windows.back().ts;
 
+    }
+
+    template<typename T>
+    void get_pose(int _id, int ts, T const *const *_poses, T * t_pose) const {
+
+        if (_id == self_id && ts == last_ts) {
+
+            //May have risk of returning this t_pose
+            Pose _pose = sf_windows.back().id2nodeframe.at(_id).pose();
+            _pose.to_vector(t_pose);
+            return;
+        } else {
+            t_pose[0] =  _poses[idstamppose.at(_id).at(ts)][0];
+            t_pose[1] =  _poses[idstamppose.at(_id).at(ts)][1];
+            t_pose[2] =  _poses[idstamppose.at(_id).at(ts)][2];
+            t_pose[3] =  _poses[idstamppose.at(_id).at(ts)][3];
+            t_pose[4] =  _poses[idstamppose.at(_id).at(ts)][4];
+            t_pose[5] =  _poses[idstamppose.at(_id).at(ts)][5];
+            t_pose[6] =  _poses[idstamppose.at(_id).at(ts)][6];
+        }
     }
 
     template<typename T>
@@ -219,10 +267,10 @@ struct SwarmHorizonError {
             int _id = it.first;
             auto frames = it.second;
 
-            for (int i = 0; i < frames.size() - 1; i++) {
+            for (unsigned int i = 0; i < frames.size() - 1; i++) {
                 //estimate deltapose
                 Pose _mea_dpose = delta_poses.at(_id)[i]; // i to i + 1 Pose
-                T mea_dpose[7];
+                T mea_dpose[7], est_posea[7], est_poseb[7];
 
                 _mea_dpose.to_vector(mea_dpose);
 
@@ -230,9 +278,8 @@ struct SwarmHorizonError {
                 int tsb = horizon_frames.at(_id)[i].ts;
 
                 //
-
-                const T *est_posea = _poses[idstamppose.at(_id).at(tsa)];
-                const T *est_poseb = _poses[idstamppose.at(_id).at(tsb)];
+                get_pose(_id, tsa, _poses, est_posea);
+                get_pose(_id, tsb, _poses, est_poseb);
 
                 T est_dpose[7];
 
@@ -248,5 +295,6 @@ struct SwarmHorizonError {
                 res_count = res_count + 6;
             }
         }
+        return true;
     }
 };

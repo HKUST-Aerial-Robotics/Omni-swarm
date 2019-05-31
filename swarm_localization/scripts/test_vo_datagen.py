@@ -8,21 +8,22 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
-from swarm_msgs.msg import swarm_drone_source_data
+from swarm_msgs.msg import swarm_frame, node_frame
 
 
 class SimulateDronesEnv(object):
     def __init__(self, drone_num = 10, enable_pub_swarm = True, self_id = 0, pattern="RANDOM_WALK"):
-        self.drone_pos =  np.array([[ 3.70093261,  0.61551406,   2.36836231],
-            [  1.5152637, -1.0210859,   1.42497852],
-            [ -6.87888708,  -7.30557088,  -2.98264606],
-            [-14.95149762, -28.57279825,  -3.99203142],
-            [ -5.6960475,   24.00769547,   3.45203488],
-            [ -2.68213756,  23.92113782, -37.85933024],
-            [ -5.47757494, -33.02566431,   8.23437282],
-            [-34.94482282, -19.9569567,  -10.87550255],
-            [-19.89705788,  -0.04917075, -44.4819556 ],
-            [ 10.18059028,   1.6724144,  -34.09760646]])[0:drone_num]
+        self.drone_pos =  np.array([
+            [0, 0, 0],
+            [-1.48147416 , 2.7661877,   .20343478],
+            [ -3.3077791 ,  -1.87719654,  2.30700117],
+            [-3.50198334, -2.12191708,  .77340531],
+            [-2.59650833,  -.95609427, 1.10679965],
+            [-1.24850392,  .58565513,  .74885159],
+            [ 3.30543244, -1.61200742, 1.19166553],
+            [  1.25038821, -2.35836745,   1.3823983 ],
+            [  1.73040171,  -5.20697205,  2.1825567 ],
+            [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
  
         # self.drone_vel = np.random.randn(drone_num,3) * 5
         self.drone_vel = np.zeros((drone_num, 3))
@@ -38,15 +39,15 @@ class SimulateDronesEnv(object):
         # print(self.base_coor)
         self.base_coor = np.array([
             [0, 0, 0],
-            [-1.48147416 , 2.7661877,   1.20343478],
-            [ -3.3077791 ,  -9.87719654,  14.30700117],
-            [-35.50198334, -21.12191708,  32.77340531],
-            [-22.59650833,  -2.95609427, -20.10679965],
-            [-31.24850392,  19.58565513,  -4.74885159],
-            [ 33.30543244, -13.61200742, -10.19166553],
-            [  7.25038821, -20.35836745,   5.3823983 ],
-            [  8.73040171,  -5.20697205,  23.1825567 ],
-            [ 11.51975686,   3.42533134,   3.74197347]])[0:drone_num]
+            [-1.48147416 , 2.7661877,   .20343478],
+            [ -3.3077791 ,  -1.87719654,  2.30700117],
+            [-3.50198334, -2.12191708,  .77340531],
+            [-2.59650833,  -.95609427, 1.10679965],
+            [-1.24850392,  .58565513,  .74885159],
+            [ 3.30543244, -1.61200742, 1.19166553],
+            [  1.25038821, -2.35836745,   1.3823983 ],
+            [  1.73040171,  -5.20697205,  2.1825567 ],
+            [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
 
         self.base_coor[[self.self_id,0]] = self.base_coor[[0,self.self_id]]
         self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
@@ -58,18 +59,51 @@ class SimulateDronesEnv(object):
         print("Base_coor", self.base_coor)
 
 
-        self.poses_pub = rospy.Publisher("/swarm_drones/swarm_drone_source_data", swarm_drone_source_data, queue_size=1)
+        self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
         self.self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
         self.tm = rospy.Timer(rospy.Duration(0.1), self.update)
 
 
-    def update_vel(self, dt):
-        move_num = 1
-        # self.drone_vel = self.drone_vel + np.random.randn(self.drone_num, 3) *2* dt - self.drone_pos * 0.05*dt
-        # self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0.1* dt - self.drone_pos[0:move_num] * 0.1*dt
-        self.drone_vel[0:move_num] = self.drone_vel[0:move_num] + np.random.randn(move_num, 3) *0* dt - self.drone_pos[0:move_num] * 0.1*dt
-        
+    def update_vel(self, dt, move_num=None):
+        # move_num = 1
+        if move_num is None:
+            move_num = self.drone_num
+        self.drone_vel[:,0:2] = self.drone_vel[:,0:2] + np.random.randn(move_num, 2) *0.1* dt - self.drone_pos[:, 0:2] * 0.1*dt
+        self.drone_vel[:,2] = self.drone_vel[:,2] + np.random.randn(1) *0.02* dt
+        # print(self.drone_vel[:,2] + np.random.randn(1) *0.02* dt)
+        # print(self.drone_pos)
 
+    def generate_node_frame(self, i, Xii, Vii, ts):
+        _nf = node_frame()
+
+        pose = Pose()
+        pose.orientation.w = 1
+        pose.orientation.x = 0
+        pose.orientation.y = 0
+        pose.orientation.z = 0
+        pose.position.x = Xii[i][0]
+        pose.position.y = Xii[i][1]
+        pose.position.z = Xii[i][2]
+
+
+        odom = Odometry()
+        odom.pose.pose = pose
+
+        # odom.header.frame_id = "my_frame"
+        odom.twist.twist.linear.x = Vii[i][0]
+        odom.twist.twist.linear.y = Vii[i][1]
+        odom.twist.twist.linear.z = Vii[i][2]
+
+        _nf.header.stamp = ts
+        _nf.odometry = odom
+        _nf.vo_available = True
+        _nf.id = i
+
+        for j in range(drone_num):
+            if i!=j:
+                _nf.dismap_ids.append(j)
+                _nf.dismap_dists.append(self.drone_dis[i][j])
+        return _nf
 
     def update(self, e, dt=0.1, show=False):
         self.update_vel(dt)
@@ -86,11 +120,12 @@ class SimulateDronesEnv(object):
                    self.drone_dis[i][j] = self.drone_dis[j][i] = 0
         if show and self.count % 10 == 0:
             # ax.set_title(f"Time: {self.count*dt:4.2f}")
+            ax = plt.subplot(111)
             ax.clear()
             ax.scatter(self.drone_pos[:,0], self.drone_pos[:,1], self.drone_pos[:,2],s=100, c=self.colors)
             ax.quiver(self.drone_pos[:,0], self.drone_pos[:,1], self.drone_pos[:,2],
                 self.drone_vel[:,0], self.drone_vel[:,1], self.drone_vel[:,2])
-            fig.tight_layout(pad=0.1, w_pad=0.1, h_pad=0.1)
+            # fig.tight_layout(pad=0.1, w_pad=0.1, h_pad=0.1)
 
             plt.pause(0.1)
 
@@ -109,54 +144,24 @@ class SimulateDronesEnv(object):
 
         # print("DronePos", self.drone_pos)
         # print("Xii", Xii)
-        rpos = swarm_drone_source_data()
-        rpos.self_id = self.self_id
-        rpos.drone_num = self.drone_num
-        rpos.ids = range(self.drone_num)
-        rpos.active = [True for i in range(self.drone_num)]
-        rpos.distance_matrix = [0 for j in range(self.drone_num*self.drone_num)]
-        rpos.distance_time = [0 for j in range(self.drone_num*self.drone_num)]
+        ts = rospy.get_rostime()
+        sf = swarm_frame()
+        sf.header.stamp = ts
+        sf.self_id = self.self_id
         for i in range(self.drone_num):
-            pose = Pose()
-            pose.orientation.w = 1
-            pose.orientation.x = 0
-            pose.orientation.y = 0
-            pose.orientation.z = 0
-            pose.position.x = Xii[i][0]
-            pose.position.y = Xii[i][1]
-            pose.position.z = Xii[i][2]
-
-
-            odom = Odometry()
-            odom.pose.pose = pose
-
-            # odom.header.frame_id = "my_frame"
-            odom.twist.twist.linear.x = Vii[i][0]
-            odom.twist.twist.linear.y = Vii[i][1]
-            odom.twist.twist.linear.z = Vii[i][2]
-
-            rpos.drone_self_odoms.append(odom)
-
-            if i == self.self_id:
-                odom.header.frame_id = "world"
-                self.self_odom_pub.publish(odom) 
-
-        for i in range(self.drone_num):
-            for j in range(self.drone_num):
-                rpos.distance_matrix[i*self.drone_num + j]  = self.drone_dis[i][j]
-                rpos.distance_time[i*self.drone_num + j] = 0
+            _nf = self.generate_node_frame(i, Xii, Vii, ts)
+            sf.node_frames.append(_nf)
 
         self.count = self.count + 1
         if self.enable_pub_swarm:
-            rpos.self_frame_id =  "world"
-            self.poses_pub.publish(rpos)
+            self.sf_pub.publish(sf)
 
 
 if __name__ == "__main__":
     # plt.ion()
     print("Starting vo data generation")
     rospy.init_node("vo_data_gen")
-    drone_num = rospy.get_param('~drone_num', 10)
+    drone_num = rospy.get_param('~drone_num', 4)
     self_id = rospy.get_param("~self_id", 0)
     enable_pub_swarm = rospy.get_param("~enable_pub_drone_source", True)
     env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_pub_swarm=enable_pub_swarm)

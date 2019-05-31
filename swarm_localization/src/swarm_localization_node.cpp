@@ -17,7 +17,7 @@
 #include "swarm_msgs/swarm_fused_relative.h"
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Vector3.h>
-
+#include "yaml-cpp/yaml.h"
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
 #include <swarm_detection/swarm_detect_types.h>
@@ -69,8 +69,13 @@ class SwarmLocalizationNode {
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) {
 
         //TODO: Deal with global pose
+        if (all_node_defs.find(_nf.id) == all_node_defs.end()) {
+            ROS_ERROR("No such node %d", _nf.id);
+            exit(-1);
+        }
         NodeFrame nf(all_node_defs[_nf.id]);
         nf.stamp = _nf.header.stamp;
+        nf.ts = nf.stamp.toNSec();
         nf.frame_available = true;
         nf.vo_available = _nf.vo_available;
         nf.dists_available = !_nf.dismap_ids.empty();
@@ -97,35 +102,47 @@ class SwarmLocalizationNode {
             nf.self_vel.x() = _nf.odometry.twist.twist.linear.x;
             nf.self_vel.y() = _nf.odometry.twist.twist.linear.y;
             nf.self_vel.z() = _nf.odometry.twist.twist.linear.z;
+        } else {
+            if (nf.node->HasVO()) {
+                ROS_WARN("Node %d invalid: No vo now", _nf.id);
+            }
+            nf.is_valid = false;
         }
 
         return nf;
     }
 
     SwarmFrame swarm_frame_from_msg(const swarm_msgs::swarm_frame &_sf) {
-
-    }
-
-    double t_last = 0;
-protected:
-    void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
-
-        // ROS_INFO("Recv remote drone poses");
-
         SwarmFrame sf;
 
         sf.stamp = _sf.header.stamp;
-
-        int _self_id = _sf.self_id;
+        sf.ts = sf.stamp.toNSec();
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
             sf.node_id_list.push_back(_nf.id);
         }
 
+        for (auto it : sf.id2nodeframe) {
+            for (auto it_d :it.second.detected_nodes) {
+                sf.id2nodeframe[it_d.first].has_detect_relpose = true;
+                sf.id2nodeframe[it.first].has_detect_relpose = true;
+            }
+        }
+        return sf;
+    }
+
+    double t_last = 0;
+protected:
+    void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
+        //TODO:Fix when nodeframe invaild!!!!
+        ROS_INFO("Recv swarm frame with %ld nodes", _sf.node_frames.size());
+        SwarmFrame sf = swarm_frame_from_msg(_sf);
+
+
+        int _self_id = _sf.self_id;
         frame_id = "world";
 
         uwbfuse->self_id = _self_id;
-
 
         if (remote_ids_arr.empty()) {
             //This is first time of receive data
@@ -210,12 +227,39 @@ private:
     int self_id = -1;
 
     void load_nodes_from_file(const std::string &path) {
-        // TODO :
-        // Load all_ar_markers and all_node_defs
-        //No armarker now, so load nodes with uwb module only
-        for (int _id = 0; _id < 10; _id++) {
-            all_node_defs[_id] = Node::createDroneNode(_id);
+        try {
+            ROS_INFO("Loading swarmconfig from %s", path.c_str());
+            YAML::Node nodes_config = YAML::LoadFile(path)["nodes"];
+            for(YAML::iterator it=nodes_config.begin();it!=nodes_config.end();++it) {
+                    int node_id = it->first.as<int>();
+                    const YAML::Node & _node_config = it->second;
+                    ROS_INFO("Parsing node %d", node_id);
+                    Node *new_node = new Node(node_id, _node_config);
+                    all_node_defs[node_id] = new_node;
+                    ROS_INFO("NODE %d static:%d vo %d uwb %d armarker %d",
+                             new_node->id,
+                             new_node->IsStatic(),
+                             new_node->HasVO(),
+                             new_node->HasUWB(),
+                             new_node->HasArmarker()
+                    );
+                }
+
+        } catch (std::exception & e) {
+            ROS_ERROR("Error while parsing config file:%s, exit",e.what());
+            exit(-1);
         }
+
+    }
+
+    void PredictSwarm(const swarm_frame &_sf) {
+        SwarmFrame sf = swarm_frame_from_msg(_sf);
+        SwarmFrameState sfs;
+        if (this->uwbfuse->PredictSwarm(sf, sfs)) {
+
+
+        }
+
     }
 
 public:
@@ -230,34 +274,56 @@ public:
         int frame_num = 0, thread_num, min_frame_num;
         float acpt_cost = 0.4;
 
-        std::string all_node_configs_path = "/home/dji/SwarmConfig/all_node_configs/";
+        std::string swarm_node_config;
 
-        float anntenna_pos_x = 0, anntenna_pos_y = 0, anntenna_pos_z = 0.27;
 
-        nh.param<int>("max_keyframe_num", frame_num, 20);
+        nh.param<int>("max_keyframe_num", frame_num, 100);
         nh.param<int>("min_keyframe_num", min_frame_num, 10);
-        nh.param<float>("force_freq", force_freq, 10);
+        nh.param<float>("force_freq", force_freq, 1);
         nh.param<float>("max_accept_cost", acpt_cost, 0.4);
         nh.param<int>("thread_num", thread_num, 4);
 
-        nh.param<float>("anntenna_pos/x", anntenna_pos_x, 0);
-        nh.param<float>("anntenna_pos/y", anntenna_pos_y, 0);
-        nh.param<float>("anntenna_pos/z", anntenna_pos_z, 0.27);
+        nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes_test.yaml");
 
-        nh.param<std::string>("all_node_configs", all_node_configs_path, "/home/dji/SwarmConfig/all_node_configs/");
+        load_nodes_from_file(swarm_node_config);
 
-        load_nodes_from_file(all_node_configs_path);
-
-        Eigen::Vector3d ann_pos(anntenna_pos_x, anntenna_pos_y, anntenna_pos_z);
-
-        uwbfuse = new SwarmLocalizationSolver(frame_num, min_frame_num, ann_pos, acpt_cost, thread_num);
+        uwbfuse = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num);
 
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(
                 "/swarm_drones/swarm_drone_fused_relative", 10);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
-        uwbfuse->callback = [&](const ID2Vector3d &id2vec, const ID2Vector3d &id2vel, const ID2Quat &id2quat,
-                                ros::Time ts) {
+
+
+        ROS_INFO("Will use %d number of keyframe\n", frame_num);
+        uwbfuse->max_frame_number = frame_num;
+//        uwbfuse->id_to_index = ids_index_in_arr;
+    }
+};
+
+
+int main(int argc, char **argv) {
+
+    ROS_INFO("SWARM VO FUSE ROS\nIniting\n");
+
+    //Use time as seed
+    srand(time(NULL));
+
+    ros::init(argc, argv, "swarm_localization");
+
+    ros::NodeHandle nh("swarm_localization");
+
+    SwarmLocalizationNode uwbfusernode(nh);
+
+    ros::spin();
+
+    return 0;
+}
+
+
+/*
+            Odometry odom_now = sfs.node_poses[self_id];
+
             swarm_msgs::swarm_fused fused;
             swarm_msgs::swarm_fused_relative relative_fused;
 
@@ -365,31 +431,4 @@ public:
             }
 
             fused_drone_data_pub.publish(fused);
-            fused_drone_rel_data_pub.publish(relative_fused);
-            return;
-        };
-
-        ROS_INFO("Will use %d number of keyframe\n", frame_num);
-        uwbfuse->max_frame_number = frame_num;
-//        uwbfuse->id_to_index = ids_index_in_arr;
-    }
-};
-
-
-int main(int argc, char **argv) {
-
-    ROS_INFO("SWARM VO FUSE ROS\nIniting\n");
-
-    //Use time as seed
-    srand(time(NULL));
-
-    ros::init(argc, argv, "swarm_localization");
-
-    ros::NodeHandle nh("swarm_localization");
-
-    SwarmLocalizationNode uwbfusernode(nh);
-
-    ros::spin();
-
-    return 0;
-}
+            fused_drone_rel_data_pub.publish(relative_fused);*/
