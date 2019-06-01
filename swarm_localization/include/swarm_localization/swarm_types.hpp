@@ -132,7 +132,7 @@ namespace swarm {
         std::map<int, Eigen::Vector3d> detected_nodes_angcov;
 
         ros::Time stamp;
-        int ts;
+        int64_t ts;
         bool is_valid = false;
 
         NodeFrame(Node *_node) :
@@ -195,6 +195,8 @@ namespace swarm {
         std::map<int, NodeFrame> id2nodeframe;
         std::map<int, DisMap> dis_mat;
         std::vector<int> node_id_list;
+
+        int self_id = -1;
 
         ros::Time stamp;
         int64_t ts;
