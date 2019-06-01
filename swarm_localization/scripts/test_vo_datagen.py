@@ -61,17 +61,17 @@ class SimulateDronesEnv(object):
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
         self.self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
-        self.tm = rospy.Timer(rospy.Duration(0.1), self.update)
+        self.tm = rospy.Timer(rospy.Duration(0.01), self.update)
 
 
     def update_vel(self, dt, move_num=None):
         # move_num = 1
         if move_num is None:
             move_num = self.drone_num
-        self.drone_vel[:,0:2] = self.drone_vel[:,0:2] + np.random.randn(move_num, 2) *0.1* dt - self.drone_pos[:, 0:2] * 0.1*dt
-        self.drone_vel[:,2] = self.drone_vel[:,2] + np.random.randn(1) *0.02* dt
+        self.drone_vel[:,0:2] = self.drone_vel[:,0:2] + np.random.randn(move_num, 2) *0.05 * dt - self.drone_pos[:, 0:2] * 0.01*dt
+        self.drone_vel[:,2] = self.drone_vel[:,2] + np.random.randn(1) *0.02* dt - self.drone_pos[:,2] * 0.1*dt
         # print(self.drone_vel[:,2] + np.random.randn(1) *0.02* dt)
-        # print(self.drone_pos)
+        print(self.drone_pos)
 
     def generate_node_frame(self, i, Xii, Vii, ts):
         _nf = node_frame()

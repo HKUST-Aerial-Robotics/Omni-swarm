@@ -79,6 +79,7 @@ class SwarmLocalizationNode {
         nf.frame_available = true;
         nf.vo_available = _nf.vo_available;
         nf.dists_available = !_nf.dismap_ids.empty();
+        nf.id = _nf.id;
 
         assert(_nf.dismap_ids.size() == _nf.dismap_dists.size() && "Dismap ids and distance must equal size");
 
@@ -117,6 +118,7 @@ class SwarmLocalizationNode {
 
         sf.stamp = _sf.header.stamp;
         sf.ts = sf.stamp.toNSec();
+        sf.self_id = _sf.self_id;
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
             sf.node_id_list.push_back(_nf.id);
@@ -135,9 +137,8 @@ class SwarmLocalizationNode {
 protected:
     void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
         //TODO:Fix when nodeframe invaild!!!!
-        ROS_INFO("Recv swarm frame with %ld nodes", _sf.node_frames.size());
+//        ROS_INFO("Recv swarm frame with %ld nodes", _sf.node_frames.size());
         SwarmFrame sf = swarm_frame_from_msg(_sf);
-
 
         int _self_id = _sf.self_id;
         frame_id = "world";
@@ -279,7 +280,7 @@ public:
 
         nh.param<int>("max_keyframe_num", frame_num, 100);
         nh.param<int>("min_keyframe_num", min_frame_num, 10);
-        nh.param<float>("force_freq", force_freq, 1);
+        nh.param<float>("force_freq", force_freq, 10);
         nh.param<float>("max_accept_cost", acpt_cost, 0.4);
         nh.param<int>("thread_num", thread_num, 4);
 

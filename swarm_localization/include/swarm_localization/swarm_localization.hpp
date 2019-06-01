@@ -31,34 +31,38 @@ float rand_FloatRange(float a, float b) {
     return ((b - a) * ((float) rand() / RAND_MAX)) + a;
 }
 
+typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
+typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 
 class SwarmLocalizationSolver {
 
     CostFunction *
-    _setup_cost_function_by_sf(SwarmFrame &sf, std::vector<double*> &swarm_est_poses) {
-        ceres::DynamicAutoDiffCostFunction<
-                SwarmFrameError, 7> *cost_function =
-                new ceres::DynamicAutoDiffCostFunction<
-                        SwarmFrameError, 7>(new SwarmFrameError(sf, all_nodes, id_stamp_pose[sf.ts]));
+    _setup_cost_function_by_sf(SwarmFrame &sf, std::vector<double*> &swarm_est_poses, bool is_lastest_frame) {
+        SwarmFrameError * sferror = new SwarmFrameError(sf, all_nodes, id_stamp_pose[sf.ts], is_lastest_frame);
+        int res_num = sferror->residual_count();
+        auto cost_function  = new SFErrorCost(sferror);
         int poses_num = swarm_est_poses.size();
-        ROS_INFO("Poses num %d", poses_num);
+        ROS_INFO("Poses num %d res num %d", poses_num, res_num);
         for (int i =0;i < poses_num; i ++){
             cost_function->AddParameterBlock(7);
         }
-
+        cost_function->SetNumResiduals(res_num);
         return cost_function;
     }
 
     CostFunction *
     _setup_cost_function_by_sf_win(std::vector<SwarmFrame> &sf_win, std::vector<double*> &swarm_est_poses) {
-        ceres::DynamicAutoDiffCostFunction<
-                SwarmHorizonError, 7> *cost_function =
-                new ceres::DynamicAutoDiffCostFunction<
-                        SwarmHorizonError, 7>(new SwarmHorizonError(sf_win, all_nodes, id_stamp_pose));
+        auto she = new SwarmHorizonError(sf_win, all_nodes, id_stamp_pose);
+
+        HorizonCost *cost_function = new HorizonCost(she);
+        int res_num = she->residual_count();
+
         int poses_num = swarm_est_poses.size();
         for (int i =0;i < poses_num; i ++){
             cost_function->AddParameterBlock(7);
         }
+        ROS_INFO("SFHorizon res %d", res_num);
+        cost_function->SetNumResiduals(res_num);
         return cost_function;
     }
 
@@ -128,7 +132,7 @@ public:
                     double * _p = new double[7];
                     init_pose(it.first, i, _p);
                     _est_poses.push_back(_p);
-                    id_stamp_pose[sf.ts][_id] =  _swarm_est_poses.size() - 1;
+                    id_stamp_pose[sf.ts][_id] =  _est_poses.size() - 1;
 
                 }
             } else {
@@ -140,7 +144,7 @@ public:
                         double * _p = new double[7];
                         init_pose(it.first, i, _p);
                         _est_poses.push_back(_p);
-                        id_stamp_pose[sf.ts][_id] =  _swarm_est_poses.size() - 1;
+                        id_stamp_pose[sf.ts][_id] = _est_poses.size() - 1;
                     }
 
                 }
@@ -373,8 +377,9 @@ public:
 
         for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
             SwarmFrame &sf = sf_sld_win[i];
+            bool is_lastest_frame = (i==sf_sld_win.size()-1);
             problem.AddResidualBlock(
-                    _setup_cost_function_by_sf(sf, swarm_est_poses),
+                    _setup_cost_function_by_sf(sf, swarm_est_poses, is_lastest_frame),
                     nullptr,
                     swarm_est_poses
             );

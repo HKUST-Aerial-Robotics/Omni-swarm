@@ -61,7 +61,7 @@ struct Pose {
         attitude = trans.rotation();
     }
 
-    Eigen::Isometry3d to_isometry() {
+    Eigen::Isometry3d to_isometry() const {
         Eigen::Isometry3d a = Eigen::Translation3d(position) * attitude;
         return a;
     }
@@ -91,7 +91,21 @@ struct Pose {
 
     //A^-1B
     static Pose DeltaPose(const Pose & a, const Pose & b) {
-        return Pose();
+        //Check this!!!
+        Pose p;
+        p.position = a.attitude.inverse()*(b.position - a.position);
+        p.attitude = a.attitude.inverse()*b.attitude;
+            /*
+        Eigen::Isometry3d dT = a.to_isometry().inverse()*b.to_isometry();
+        Pose p_tmp(dT);
+
+        printf("Res manual");
+        p.print();
+
+        printf("Res eigen");
+        p.print();
+*/
+        return p;
     }
 
     void print() {

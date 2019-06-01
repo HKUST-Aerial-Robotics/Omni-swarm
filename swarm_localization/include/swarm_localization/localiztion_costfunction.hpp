@@ -24,12 +24,12 @@ typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
 
-#define VO_DRIFT_METER 0.001
-#define VO_ERROR_ANGLE 0.001
+#define VO_DRIFT_METER 0.01
+#define VO_ERROR_ANGLE 0.01
 #define DISTANCE_MEASURE_ERROR 0.1
 
 //idstamppose[id][stamp] -> pose index in poses
-typedef std::map<int, std::map<int, int>> IDStampPose;
+typedef std::map<int64_t, std::map<int, int>> IDStampPose;
 
 
 template<typename T>
@@ -45,6 +45,7 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
 
     QuaternionProduct(qa, poseb, q_error);
 
+    //Ceres q is at last
     //Quaternion State Error
     error[3] = q_error[1] / ang_cov.x();
     error[4] = q_error[2] / ang_cov.y();
@@ -70,12 +71,13 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
     a_inv[6] = posea[6];
 
     QuaternionProduct(a_inv + 3, poseb + 3, dpose + 3);
-    T respoint[3];
+    T tmp[3];
 
-    QuaternionRotatePoint(posea + 3, poseb, respoint);
-    dpose[0] = respoint[0] + posea[0];
-    dpose[1] = respoint[1] + posea[1];
-    dpose[2] = respoint[2] + posea[2];
+    tmp[0] = poseb[0] + a_inv[0];
+    tmp[1] = poseb[1] + a_inv[1];
+    tmp[2] = poseb[2] + a_inv[2];
+
+    QuaternionRotatePoint(a_inv + 3, tmp, dpose);
 }
 
 struct SwarmFrameError {
@@ -87,6 +89,7 @@ struct SwarmFrameError {
 
     template<typename T>
     void get_pose(int _id, T const *const *_poses, T * t_pose) const {
+//        printf("%d", _id);
         if (_id == self_id && is_lastest_frame) {
 
             //May have risk of returning this t_pose
@@ -158,6 +161,32 @@ struct SwarmFrameError {
         return res_count;
     }
 
+    int residual_count() {
+        int res_count = 0;
+        for (auto it : sf.id2nodeframe) {
+//            auto _id = it.first;
+            NodeFrame &_nf = it.second;
+
+            //First we come to distance error
+            if (_nf.frame_available) {
+
+                if (_nf.dists_available) {
+                    for (auto it : _nf.dis_map) {
+                        res_count++;
+                    }
+                }
+
+                if (_nf.has_detect_relpose) {
+                    for (auto it: _nf.detected_nodes) {
+                        res_count = res_count + 6;
+                    }
+                }
+
+            }
+        }
+        return res_count;
+    }
+
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
         int res_count = 0;
@@ -186,11 +215,12 @@ struct SwarmFrameError {
     }
 
 
-    SwarmFrameError(SwarmFrame &_sf, std::vector<int> &_all_nodes, std::map<int, int> &_id2poseindex, bool _is_lastest_frame=false) :
+    SwarmFrameError(const SwarmFrame &_sf, const std::vector<int> &_all_nodes, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame) :
             sf(std::move(_sf)),
             all_nodes(std::move(_all_nodes)),
             id2poseindex(std::move(_id2poseindex)),
             is_lastest_frame(_is_lastest_frame) {
+            self_id = _sf.self_id;
     }
 
 
@@ -203,19 +233,19 @@ struct SwarmHorizonError {
     std::vector<int> all_nodes;
     IDStampPose idstamppose;
 
-    int last_ts = -1;
+    int64_t last_ts = -1;
     int self_id = -1;
 
     std::map<int, std::vector<NodeFrame>> horizon_frames;
     std::map<int, std::vector<Pose>> delta_poses;
 
-    SwarmHorizonError(std::vector<SwarmFrame> &_sf_win, std::vector<int> &_all_nodes, IDStampPose &_idstamppose) :
+    SwarmHorizonError(const std::vector<SwarmFrame> &_sf_win, const std::vector<int> &_all_nodes, const IDStampPose &_idstamppose) :
             sf_windows(std::move(_sf_win)),
             all_nodes(std::move(_all_nodes)),
             idstamppose(std::move(_idstamppose)) {
         //TODO:Setup horizon frames
 
-        for (const SwarmFrame & _sf : _sf_win) {
+        for (const SwarmFrame & _sf : sf_windows) {
             for (auto it : _sf.id2nodeframe) {
                 int _id = it.first;
                 auto _nf = it.second;
@@ -223,12 +253,23 @@ struct SwarmHorizonError {
                 if (horizon_frames.find(_id) == horizon_frames.end()) {
                     horizon_frames[_id] = std::vector<NodeFrame>();
                     delta_poses[_id] = std::vector<Pose>();
-                }
+                } else {
 
-                if (horizon_frames[_id].size() > 1) {
+
                     delta_poses[_id].push_back(
                             Pose::DeltaPose(horizon_frames[_id].back().pose(), _nf.pose())
                     );
+                    /*
+                    ROS_INFO("Horz %f %f %f nf %f %f %f D %f %f %f",
+                             horizon_frames[_id].back().pose().position.x(),
+                             horizon_frames[_id].back().pose().position.y(),
+                             horizon_frames[_id].back().pose().position.z(),
+                             _nf.pose().position.x(),
+                             _nf.pose().position.y(),
+                             _nf.pose().position.z(),
+                             delta_poses[_id].back().position.x(),
+                             delta_poses[_id].back().position.y(),
+                             delta_poses[_id].back().position.z());*/
                 }
 
                 horizon_frames[_id].push_back(_nf);
@@ -236,11 +277,12 @@ struct SwarmHorizonError {
             }
         }
         last_ts = sf_windows.back().ts;
+        self_id = sf_windows.back().self_id;
 
     }
 
     template<typename T>
-    void get_pose(int _id, int ts, T const *const *_poses, T * t_pose) const {
+    void get_pose(int _id, int64_t ts, T const *const *_poses, T * t_pose) const {
 
         if (_id == self_id && ts == last_ts) {
 
@@ -249,14 +291,25 @@ struct SwarmHorizonError {
             _pose.to_vector(t_pose);
             return;
         } else {
-            t_pose[0] =  _poses[idstamppose.at(_id).at(ts)][0];
-            t_pose[1] =  _poses[idstamppose.at(_id).at(ts)][1];
-            t_pose[2] =  _poses[idstamppose.at(_id).at(ts)][2];
-            t_pose[3] =  _poses[idstamppose.at(_id).at(ts)][3];
-            t_pose[4] =  _poses[idstamppose.at(_id).at(ts)][4];
-            t_pose[5] =  _poses[idstamppose.at(_id).at(ts)][5];
-            t_pose[6] =  _poses[idstamppose.at(_id).at(ts)][6];
+            t_pose[0] =  _poses[idstamppose.at(ts).at(_id)][0];
+            t_pose[1] =  _poses[idstamppose.at(ts).at(_id)][1];
+            t_pose[2] =  _poses[idstamppose.at(ts).at(_id)][2];
+            t_pose[3] =  _poses[idstamppose.at(ts).at(_id)][3];
+            t_pose[4] =  _poses[idstamppose.at(ts).at(_id)][4];
+            t_pose[5] =  _poses[idstamppose.at(ts).at(_id)][5];
+            t_pose[6] =  _poses[idstamppose.at(ts).at(_id)][6];
         }
+    }
+
+    int residual_count() {
+        int res_count = 0;
+        for (auto it: horizon_frames) {
+            auto frames = it.second;
+            for (unsigned int i = 0; i < frames.size() - 1; i++) {
+                res_count = res_count + 6;
+            }
+        }
+        return res_count;
     }
 
     template<typename T>
@@ -274,8 +327,8 @@ struct SwarmHorizonError {
 
                 _mea_dpose.to_vector(mea_dpose);
 
-                int tsa = horizon_frames.at(_id)[i].ts;
-                int tsb = horizon_frames.at(_id)[i].ts;
+                int64_t tsa = horizon_frames.at(_id)[i].ts;
+                int64_t tsb = horizon_frames.at(_id)[i+1].ts;
 
                 //
                 get_pose(_id, tsa, _poses, est_posea);
@@ -286,9 +339,9 @@ struct SwarmHorizonError {
 
                 DeltaPose(est_posea, est_poseb, est_dpose);
 
-                Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER * _mea_dpose.position.norm();
-                Eigen::Vector3d ang_cov = Eigen::Vector3d(0.1, 0.1, 0.1) * VO_ERROR_ANGLE;
-
+                Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;// * _mea_dpose.position.norm();
+                Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
+//                printf("Pos cov %f %f %f", pos_cov.x(), pos_cov.y(), pos_cov.z());
                 pose_error(est_dpose, mea_dpose, _residual + res_count,
                            pos_cov, ang_cov);
 
