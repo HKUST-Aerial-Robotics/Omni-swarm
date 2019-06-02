@@ -164,8 +164,8 @@ protected:
             sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
         }
 
-//        uwbfuse->id_to_index = ids_index_in_arr;
-        uwbfuse->all_nodes = remote_ids_arr;
+        //
+
 
         double t_now = _sf.header.stamp.toSec();
 
