@@ -217,7 +217,7 @@ namespace swarm {
         }
 
         bool HasID(const int _id) const{
-            return (id2nodeframe.find(_id) == id2nodeframe.end());
+            return (id2nodeframe.find(_id) != id2nodeframe.end());
         }
 
         bool HasDetect(const int _id) const {

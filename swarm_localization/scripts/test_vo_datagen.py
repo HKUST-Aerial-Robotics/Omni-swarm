@@ -56,10 +56,10 @@ class SimulateDronesEnv(object):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/data/"
         self.data_paths = [
-            ("2019-3-6-fast-circle.csv", 262),
+            ("log_2019-10-15-2-17-circle.csv", 102),
+            # ("2019-3-6-fast-circle.csv", 262),
             ("2019-3-6-sweep-hover-y.csv", 48),
             ("realsense_2019_5_15_loop.csv", 20),
-            ("log_2019-10-15-2-17-circle.csv", 253),
             ("circle-3s-no-gc-fix.csv", 18)
         ]
 
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # plt.ion()
     print("Starting vo data generation")
     rospy.init_node("vo_data_gen")
-    drone_num = rospy.get_param('~drone_num', 5)
+    drone_num = rospy.get_param('~drone_num', 4)
     self_id = rospy.get_param("~self_id", 0)
     enable_pub_swarm = rospy.get_param("~enable_pub_drone_source", True)
     env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_pub_swarm=enable_pub_swarm)
