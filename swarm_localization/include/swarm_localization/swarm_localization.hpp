@@ -319,7 +319,7 @@ public:
         std::vector<double*> _est_poses;
         for (int i = 0; i < max_number; i++) {
             random_init_pose(_est_poses, start_drone_num, drone_num);
-            double c = solve_once(_est_poses, false);
+            double c = solve_once(_est_poses, true);
             ROS_INFO("Got better cost %f", c);
 
             if (c < cost) {
@@ -352,8 +352,8 @@ public:
                 last_drone_num = drone_num;
                 ROS_INFO("Finish init\n");
             }
-
         } else if (has_new_keyframe) {
+            //Need to move poses in vector!!!!
             cost_now = solve_once(this->_swarm_est_poses, true);
         }
 
@@ -411,7 +411,7 @@ public:
         // if (solve_count % 10 == 0)
         std::cout << "\n\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
                   << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
-        // std::cout << summary.FullReport()<< "\n";
+//         std::cout << summary.BriefReport()<< "\n";
 
 
         if (solve_count % 10 == 0)
