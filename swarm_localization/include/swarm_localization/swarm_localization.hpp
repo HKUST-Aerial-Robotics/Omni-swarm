@@ -103,7 +103,7 @@ public:
     }
 
     void random_init_pose(EstimatePoses & est_poses, EstimatePosesIDTS & est_poses2, int start = 0, int end = 100) {
-        for(int i = 0;i < sf_sld_win.size(); i++) {
+        for(unsigned int i = 0;i < sf_sld_win.size(); i++) {
             for (auto it : sf_sld_win[i].id2nodeframe) {
                     auto sf = sf_sld_win[i];
                     int _id = it.first;
@@ -138,7 +138,7 @@ public:
 
     std::vector<int> judge_is_key_frame(const SwarmFrame &sf) {
 
-        auto _ids = sf.node_id_list;
+        const std::vector<int>& _ids = sf.node_id_list;
         std::vector<int> ret(0);
         if (_ids.size() < 2)
             return ret;
@@ -162,10 +162,12 @@ public:
                 if (_diff.norm() > min_accept_keyframe_movement || sf.HasDetect(_id)) {
                     ret.push_back(_id);
                     node_kf_count[_id] += 1;
+//                    ROS_INFO("SF %ld is kf of %d: DIFF %3.2f HAS %d", sf.ts, _id, _diff.norm(), sf.HasDetect(_id));
                 }
             } else {
                 ret.push_back(_id);
                 node_kf_count[_id] += 1;
+                ROS_INFO("Last frame no id %d; Adding", _id);
             }
         }
         return ret;
@@ -213,6 +215,7 @@ public:
             has_new_keyframe = true;
             sf_sld_win.push_back(sf);
             all_sf[sf.ts] = sf;
+            ROS_INFO("New key frame found, sld win size %d", sf_sld_win.size());
         }
 
         if (_ids.size() > drone_num) {

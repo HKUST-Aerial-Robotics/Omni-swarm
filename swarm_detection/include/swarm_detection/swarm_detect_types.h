@@ -95,7 +95,8 @@ struct Pose {
         Pose p;
         p.position = a.attitude.inverse()*(b.position - a.position);
         p.attitude = a.attitude.inverse()*b.attitude;
-            /*
+
+        /*
         Eigen::Isometry3d dT = a.to_isometry().inverse()*b.to_isometry();
         Pose p_tmp(dT);
 
@@ -103,8 +104,7 @@ struct Pose {
         p.print();
 
         printf("Res eigen");
-        p.print();
-*/
+        p.print();*/
         return p;
     }
 

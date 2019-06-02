@@ -240,7 +240,7 @@ struct SwarmHorizonError {
             ts2poseindex(_ts2poseindex),
             is_self_node(_is_self_node){
 
-        for (int i = 1; i< _nf_win.size(); i++) {
+        for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose()));
 //            printf("ID %d TS %ld DPOSE ", _nf.id, (_nf.ts/1000000)%1000000);
