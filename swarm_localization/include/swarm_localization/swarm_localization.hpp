@@ -12,7 +12,8 @@
 #include "localiztion_costfunction.hpp"
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
-
+#include <set>
+#include "swarm_detection/local_pose_parameter.h"
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
@@ -34,48 +35,29 @@ float rand_FloatRange(float a, float b) {
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 
+//Poses is dict of timestamp and then id;
+//state<ts,id>
+typedef std::map<int64_t, std::map<int,double*>> EstimatePoses;
+typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
+
 class SwarmLocalizationSolver {
 
-    CostFunction *
-    _setup_cost_function_by_sf(SwarmFrame &sf, std::vector<double*> &swarm_est_poses, bool is_lastest_frame) {
-        SwarmFrameError * sferror = new SwarmFrameError(sf, all_nodes, id_stamp_pose[sf.ts], is_lastest_frame);
-        int res_num = sferror->residual_count();
-        auto cost_function  = new SFErrorCost(sferror);
-        int poses_num = swarm_est_poses.size();
-        ROS_INFO("Poses num %d res num %d", poses_num, res_num);
-        for (int i =0;i < poses_num; i ++){
-            cost_function->AddParameterBlock(7);
-        }
-        cost_function->SetNumResiduals(res_num);
-        return cost_function;
-    }
-
-    CostFunction *
-    _setup_cost_function_by_sf_win(std::vector<SwarmFrame> &sf_win, std::vector<double*> &swarm_est_poses) {
-        auto she = new SwarmHorizonError(sf_win, all_nodes, id_stamp_pose);
-
-        HorizonCost *cost_function = new HorizonCost(she);
-        int res_num = she->residual_count();
-
-        int poses_num = swarm_est_poses.size();
-        for (int i =0;i < poses_num; i ++){
-            cost_function->AddParameterBlock(7);
-        }
-        ROS_INFO("SFHorizon res %d", res_num);
-        cost_function->SetNumResiduals(res_num);
-        return cost_function;
-    }
 
     std::vector<SwarmFrame> sf_sld_win;
+    std::map<int64_t, SwarmFrame> all_sf;
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
     const double min_accept_keyframe_movement = 0.2;
 
-    std::vector<double*> _swarm_est_poses;
+//    std::vector<double*> _swarm_est_poses;
+//
+
+    EstimatePoses swarm_poses_state;
+    EstimatePosesIDTS nodeid_ts_poses;
 
 public:
-    std::vector<int> all_nodes;
+    std::set<int> all_nodes;
     unsigned int max_frame_number = 20;
     unsigned int min_frame_number = 10;
     unsigned int last_drone_num = 0;
@@ -89,8 +71,6 @@ public:
 
     std::map<int, Vector3d> est_pos;
     std::map<int, Vector3d> est_vel;
-
-    IDStampPose id_stamp_pose;
 
 
     ros::Time last_est_time_tick = ros::Time::now();
@@ -122,36 +102,31 @@ public:
         _p[6] = 0;
     }
 
-    void random_init_pose(std::vector<double*> &_est_poses, int start = 0, int end = 100) {
-        _est_poses.clear();
+    void random_init_pose(EstimatePoses & est_poses, EstimatePosesIDTS & est_poses2, int start = 0, int end = 100) {
         for(int i = 0;i < sf_sld_win.size(); i++) {
-            if (i!=sf_sld_win.size()-1) {
-                for (auto it : sf_sld_win[i].id2nodeframe) {
+            for (auto it : sf_sld_win[i].id2nodeframe) {
                     auto sf = sf_sld_win[i];
                     int _id = it.first;
-                    double * _p = new double[7];
-                    init_pose(it.first, i, _p);
-                    _est_poses.push_back(_p);
-                    id_stamp_pose[sf.ts][_id] =  _est_poses.size() - 1;
-
-                }
-            } else {
-                ROS_INFO("Is last frame, avoid self id %d", self_id);
-                for (auto it : sf_sld_win[i].id2nodeframe) {
-                    if (it.first != self_id) {
-                        auto sf = sf_sld_win[i];
-                        int _id = it.first;
-                        double * _p = new double[7];
+                    auto _p = new double[7];
+                    if (_id != self_id) {
                         init_pose(it.first, i, _p);
-                        _est_poses.push_back(_p);
-                        id_stamp_pose[sf.ts][_id] = _est_poses.size() - 1;
+                    } else {
+                        it.second.pose().to_vector(_p);
                     }
 
+                    if (est_poses.find(sf.ts) == est_poses.end()) {
+                        est_poses[sf.ts] = std::map<int, double*>();
+                    }
+
+                    if(est_poses2.find(_id) == est_poses2.end()) {
+                        est_poses2[_id] = std::map<int64_t, double*>();
+                    }
+                    est_poses[sf.ts][_id] = _p;
+                    est_poses2[_id][sf.ts] = _p;
                 }
             }
 
-        }
-        ROS_INFO("EST %d poses", _est_poses.size());
+//        ROS_INFO("EST %d poses", _est_poses.size());
     }
 
     bool detect_outlier(const SwarmFrame &sf) {
@@ -230,16 +205,14 @@ public:
         }
 
         auto _ids = sf.node_id_list;
-
+        for (int _id : _ids) {
+            all_nodes.insert(_id);
+        }
         std::vector<int> is_kf_list = judge_is_key_frame(sf);
         if (!is_kf_list.empty()) {
-
             has_new_keyframe = true;
-
             sf_sld_win.push_back(sf);
-            id_stamp_pose[sf.ts] = std::map<int, int>();
-
-
+            all_sf[sf.ts] = sf;
         }
 
         if (_ids.size() > drone_num) {
@@ -269,42 +242,6 @@ public:
 
         return true;
 
-        /*
-        for (unsigned int i = 0; i < _ids.size(); i++) {
-            int _id = _ids[i];
-            Eigen::Vector3d pos = swarmRes.est_id_pose_in_k(i, self_ptr, Zxyzth);
-            Eigen::Vector3d vel = swarmRes.est_id_vel_in_k(i, self_ptr, Zxyzth);
-            Eigen::Quaterniond quat = swarmRes.est_id_quat_in_k(i, self_ptr, Zxyzth);
-
-            est_pos[_id] = pos;
-            est_vel[_id] = vel;
-            id2vec[_id] = pos;
-            id2vel[_id] = vel;
-            id2quat[_id] = quat;
-
-            printf("Id %d pos %3.2f %3.2f %3.2f dis27 %3.2f\n", _id, pos.x(), pos.y(), pos.z(),
-                   (pos - est_pos[7]).norm());
-        }
-
-        printf("\nDistance Matrix\n\t\t");
-        for (int i = 0; i < drone_num_now; i++) {
-            int _id_i = _ids[i];
-            printf("%d:\t", _id_i);
-        }
-
-        for (auto idi : _ids) {
-            printf("\nE/M/B%d:\t", idi);
-            for (auto idj : _ids) {
-                double est_d = swarmRes.distance_idj_idi(idj, idi, Zxyzth).norm();
-                double bias = swarmRes.bias_ij(idi, idj, Zxyzth);
-                printf("%3.2f:%3.2f:%3.2f\t", est_d, (sf.distance(idj, idi) + sf.distance(idi, idj)) / 2, bias);
-            }
-
-        }
-
-        printf("\n\n");
-        */
-
 
     }
 
@@ -316,17 +253,19 @@ public:
 
         // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
 
-        std::vector<double*> _est_poses;
+        EstimatePoses _est_poses;
+        EstimatePosesIDTS _est_poses_idts;
         for (int i = 0; i < max_number; i++) {
-            random_init_pose(_est_poses, start_drone_num, drone_num);
-            double c = solve_once(_est_poses, true);
+            random_init_pose(_est_poses,  _est_poses_idts, start_drone_num, drone_num);
+            double c = solve_once(_est_poses,  _est_poses_idts,  true);
             ROS_INFO("Got better cost %f", c);
 
             if (c < cost) {
                 ROS_INFO("Got better cost %f", c);
                 cost_updated = true;
                 cost_now = cost = c;
-                _swarm_est_poses = _est_poses;
+                swarm_poses_state = _est_poses;
+                nodeid_ts_poses = _est_poses_idts;
                 if (i > min_number) {
                     return true;
                 }
@@ -353,8 +292,7 @@ public:
                 ROS_INFO("Finish init\n");
             }
         } else if (has_new_keyframe) {
-            //Need to move poses in vector!!!!
-            cost_now = solve_once(this->_swarm_est_poses, true);
+            cost_now = solve_once(this->swarm_poses_state, this->nodeid_ts_poses, true);
         }
 
         if (cost_now > acpt_cost)
@@ -366,26 +304,115 @@ public:
         return sf_sld_win.size();
     }
 
-    double solve_once(std::vector<double*> &swarm_est_poses, bool report = false) {
+    CostFunction *
+    _setup_cost_function_by_sf(SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) {
+        //Here we will only send
+        SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, is_lastest_frame);
+        int res_num = sferror->residual_count();
+        auto cost_function  = new SFErrorCost(sferror);
+        int poses_num = id2poseindex.size();
+//        ROS_INFO("SF at %ld Poses num %d res num %d", sf.ts, poses_num, res_num);
+        for (int i =0;i < poses_num; i ++){
+            cost_function->AddParameterBlock(7);
+        }
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    }
+
+
+
+    void setup_problem_with_sferror(EstimatePoses & swarm_est_poses, Problem& problem, SwarmFrame& sf, bool is_lastest_frame) {
+        std::vector<double*> pose_state;
+        std::map<int, int> id2poseindex;
+        int64_t ts = sf.ts;
+        for(auto it : sf.id2nodeframe) {
+            int _id = it.first;
+            if (is_lastest_frame && _id == self_id) {
+                continue;
+            } else {
+                pose_state.push_back(swarm_est_poses[ts][_id]);
+                id2poseindex[_id] = pose_state.size() - 1;
+                ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+                problem.AddParameterBlock(swarm_est_poses[ts][_id], 7, local_parameterization);
+
+            }
+        }
+
+        problem.AddResidualBlock(
+                _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame),
+                nullptr,
+                pose_state
+        );
+    }
+
+    CostFunction *
+    _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, std::map<int64_t, int> ts2poseindex, bool is_self) {
+        auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
+
+        auto cost_function = new HorizonCost(she);
+        int res_num = she->residual_count();
+
+        int poses_num = nf_win.size();
+        if (is_self) {
+            poses_num = nf_win.size() - 1;
+        }
+        for (int i =0;i < poses_num; i ++){
+            cost_function->AddParameterBlock(7);
+        }
+//        ROS_INFO("SFHorizon res %d", res_num);
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    }
+
+    void setup_problem_with_sfherror(EstimatePosesIDTS est_poses_idts, Problem& problem, int _id) {
+        if (est_poses_idts[_id].size() < 2) {
+            ROS_INFO("Frame nums for id %d is to small:%ld", _id, est_poses_idts[_id].size());
+            return;
+        }
+
+//        ROS_INFO("Setup problem for id %d", _id);
+        std::vector<NodeFrame> nf_win;
+        std::vector<double*> pose_win;
+        std::map<int64_t, int> ts2poseindex;
+
+        auto nfs = est_poses_idts[_id];
+        for (auto it: nfs) {
+            auto ts = it.first;
+//            ROS_INFO("NODE %d TS %ld", _id, ts);
+            pose_win.push_back(it.second);
+            nf_win.push_back(all_sf[ts].id2nodeframe[_id]);
+            ts2poseindex[ts] = nf_win.size() - 1;
+
+//            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+//            problem.AddParameterBlock(it.second, 7, local_parameterization);
+        }
+
+        if (_id == self_id) {
+            //Delete last one that don't need to estimate
+            pose_win.erase(pose_win.end() - 1);
+        }
+
+        problem.AddResidualBlock(_setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id), nullptr, pose_win);
+
+    }
+
+    double solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report = false) {
 
         Problem problem;
 
 //        if (solve_count % 10 == 0)
-        printf("TICK %d Trying to solve size %d, poses %d\n", solve_count, sliding_window_size(), swarm_est_poses.size());
+        printf("TICK %d Trying to solve size %d, poses %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
 
         has_new_keyframe = false;
 
         for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
-            SwarmFrame &sf = sf_sld_win[i];
-            bool is_lastest_frame = (i==sf_sld_win.size()-1);
-            problem.AddResidualBlock(
-                    _setup_cost_function_by_sf(sf, swarm_est_poses, is_lastest_frame),
-                    nullptr,
-                    swarm_est_poses
-            );
+            this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
         }
 
-        problem.AddResidualBlock(_setup_cost_function_by_sf_win(sf_sld_win, swarm_est_poses), nullptr, swarm_est_poses);
+        for (int _id: all_nodes) {
+            this->setup_problem_with_sfherror(est_poses_idts, problem, _id);
+        }
+
 
         last_problem_ptr = sliding_window_size();
 
@@ -394,6 +421,7 @@ public:
         options.max_num_iterations = 200;
         options.num_threads = thread_num;
         Solver::Summary summary;
+
         // options.minimizer_progress_to_stdout = true;
         options.trust_region_strategy_type = ceres::DOGLEG;
 
@@ -408,34 +436,29 @@ public:
             return equv_cost;
         }
 
+
+
         // if (solve_count % 10 == 0)
         std::cout << "\n\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
                   << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
-//         std::cout << summary.BriefReport()<< "\n";
+        for (auto it : est_poses_idts) {
+            auto id = it.first;
+            ROS_INFO("\n\nID %d ", id);
+
+            for(auto it2 : it.second) {
+                auto ts = it2.first;
+                double* pose = it2.second;
+                auto pose_vo = all_sf[ts].id2nodeframe[id].pose();
+                ROS_INFO("TS %ld POS %3.4f %3.4f %3.4f QUAT %3.2f %3.2f %3.2f %3.2f", (ts/1000000)%1000000, pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6]);
+                ROS_INFO("POSVO        %3.4f %3.4f %3.4f QUAT %3.2f %3.2f %3.2f %3.2f",
+                        pose_vo.position.x(), pose_vo.position.y(), pose_vo.position.z(), pose_vo.attitude.w(), pose_vo.attitude.x(),pose_vo.attitude.y(), pose_vo.attitude.z());
+            }
+        }
 
 
         if (solve_count % 10 == 0)
             auto sf = sf_sld_win.back();
 
-        /*
-        for (int _id : sf.node_id_list) {
-            int i = id_to_index[_id];
-            ROS_INFO(
-                    "i %d id %d x %5.4f y %5.4f z %5.4f :dyaw %5.4f estpos %5.4f %5.4f %5.4f self %3.2f %3.2f %3.2f\n",
-                    i,
-                    _id,
-                    Zxyzth[i * 4],
-                    Zxyzth[i * 4 + 1],
-                    Zxyzth[i * 4 + 2],
-                    Zxyzth[i * 4 + 3],
-                    est_pos[_id].x(),
-                    est_pos[_id].y(),
-                    est_pos[_id].z(),
-                    sf.position(_id).x(),
-                    sf.position(_id).y(),
-                    sf.position(_id).z()
-            );
-        }*/
 
         solve_count++;
 

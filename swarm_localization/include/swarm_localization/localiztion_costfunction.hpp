@@ -26,7 +26,7 @@ typedef std::vector<Quaterniond> quat_array;
 
 #define VO_DRIFT_METER 0.01
 #define VO_ERROR_ANGLE 0.01
-#define DISTANCE_MEASURE_ERROR 0.1
+#define DISTANCE_MEASURE_ERROR 0.01
 
 //idstamppose[id][stamp] -> pose index in poses
 typedef std::map<int64_t, std::map<int, int>> IDStampPose;
@@ -82,7 +82,6 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
 
 struct SwarmFrameError {
     SwarmFrame sf;
-    std::vector<int> all_nodes;
     std::map<int, int> id2poseindex;
     int self_id = -1;
     bool is_lastest_frame = false;
@@ -97,13 +96,14 @@ struct SwarmFrameError {
             _pose.to_vector(t_pose);
             return;
         } else {
-            t_pose[0] =  _poses[id2poseindex.at(_id)][0];
-            t_pose[1] =  _poses[id2poseindex.at(_id)][1];
-            t_pose[2] =  _poses[id2poseindex.at(_id)][2];
-            t_pose[3] =  _poses[id2poseindex.at(_id)][3];
-            t_pose[4] =  _poses[id2poseindex.at(_id)][4];
-            t_pose[5] =  _poses[id2poseindex.at(_id)][5];
-            t_pose[6] =  _poses[id2poseindex.at(_id)][6];
+            int index = id2poseindex.at(_id);
+            t_pose[0] =  _poses[index][0];
+            t_pose[1] =  _poses[index][1];
+            t_pose[2] =  _poses[index][2];
+            t_pose[3] =  _poses[index][3];
+            t_pose[4] =  _poses[index][4];
+            t_pose[5] =  _poses[index][5];
+            t_pose[6] =  _poses[index][6];
         }
 
     }
@@ -215,9 +215,8 @@ struct SwarmFrameError {
     }
 
 
-    SwarmFrameError(const SwarmFrame &_sf, const std::vector<int> &_all_nodes, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame) :
+    SwarmFrameError(const SwarmFrame &_sf, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame) :
             sf(std::move(_sf)),
-            all_nodes(std::move(_all_nodes)),
             id2poseindex(std::move(_id2poseindex)),
             is_lastest_frame(_is_lastest_frame) {
             self_id = _sf.self_id;
@@ -229,124 +228,81 @@ struct SwarmFrameError {
 
 //Error for correlation vo drift
 struct SwarmHorizonError {
-    std::vector<SwarmFrame> sf_windows;
-    std::vector<int> all_nodes;
-    IDStampPose idstamppose;
-
+    const std::vector<NodeFrame> nf_windows;
+    std::map<int64_t, int> ts2poseindex;
     int64_t last_ts = -1;
-    int self_id = -1;
 
-    std::map<int, std::vector<NodeFrame>> horizon_frames;
-    std::map<int, std::vector<Pose>> delta_poses;
+    std::vector<Pose> delta_poses;
 
-    SwarmHorizonError(const std::vector<SwarmFrame> &_sf_win, const std::vector<int> &_all_nodes, const IDStampPose &_idstamppose) :
-            sf_windows(std::move(_sf_win)),
-            all_nodes(std::move(_all_nodes)),
-            idstamppose(std::move(_idstamppose)) {
-        //TODO:Setup horizon frames
+    bool is_self_node = false;
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node) :
+            nf_windows(_nf_win),
+            ts2poseindex(_ts2poseindex),
+            is_self_node(_is_self_node){
 
-        for (const SwarmFrame & _sf : sf_windows) {
-            for (auto it : _sf.id2nodeframe) {
-                int _id = it.first;
-                auto _nf = it.second;
-
-                if (horizon_frames.find(_id) == horizon_frames.end()) {
-                    horizon_frames[_id] = std::vector<NodeFrame>();
-                    delta_poses[_id] = std::vector<Pose>();
-                } else {
-
-
-                    delta_poses[_id].push_back(
-                            Pose::DeltaPose(horizon_frames[_id].back().pose(), _nf.pose())
-                    );
-                    /*
-                    ROS_INFO("Horz %f %f %f nf %f %f %f D %f %f %f",
-                             horizon_frames[_id].back().pose().position.x(),
-                             horizon_frames[_id].back().pose().position.y(),
-                             horizon_frames[_id].back().pose().position.z(),
-                             _nf.pose().position.x(),
-                             _nf.pose().position.y(),
-                             _nf.pose().position.z(),
-                             delta_poses[_id].back().position.x(),
-                             delta_poses[_id].back().position.y(),
-                             delta_poses[_id].back().position.z());*/
-                }
-
-                horizon_frames[_id].push_back(_nf);
-
-            }
+        for (int i = 1; i< _nf_win.size(); i++) {
+            auto _nf = _nf_win[i];
+            delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose()));
+//            printf("ID %d TS %ld DPOSE ", _nf.id, (_nf.ts/1000000)%1000000);
+//            delta_poses.back().print();
+//            printf("\n");
         }
-        last_ts = sf_windows.back().ts;
-        self_id = sf_windows.back().self_id;
-
+        last_ts = nf_windows.back().ts;
     }
 
     template<typename T>
-    void get_pose(int _id, int64_t ts, T const *const *_poses, T * t_pose) const {
+    void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
 
-        if (_id == self_id && ts == last_ts) {
-
-            //May have risk of returning this t_pose
-            Pose _pose = sf_windows.back().id2nodeframe.at(_id).pose();
+        if (is_self_node && ts == last_ts) {
+            Pose _pose = nf_windows.back().pose();
             _pose.to_vector(t_pose);
             return;
         } else {
-            t_pose[0] =  _poses[idstamppose.at(ts).at(_id)][0];
-            t_pose[1] =  _poses[idstamppose.at(ts).at(_id)][1];
-            t_pose[2] =  _poses[idstamppose.at(ts).at(_id)][2];
-            t_pose[3] =  _poses[idstamppose.at(ts).at(_id)][3];
-            t_pose[4] =  _poses[idstamppose.at(ts).at(_id)][4];
-            t_pose[5] =  _poses[idstamppose.at(ts).at(_id)][5];
-            t_pose[6] =  _poses[idstamppose.at(ts).at(_id)][6];
+            int index = ts2poseindex.at(ts);
+            t_pose[0] =  _poses[index][0];
+            t_pose[1] =  _poses[index][1];
+            t_pose[2] =  _poses[index][2];
+            t_pose[3] =  _poses[index][3];
+            t_pose[4] =  _poses[index][4];
+            t_pose[5] =  _poses[index][5];
+            t_pose[6] =  _poses[index][6];
         }
     }
 
     int residual_count() {
-        int res_count = 0;
-        for (auto it: horizon_frames) {
-            auto frames = it.second;
-            for (unsigned int i = 0; i < frames.size() - 1; i++) {
-                res_count = res_count + 6;
-            }
-        }
-        return res_count;
+        return (nf_windows.size()-1)*6;
     }
 
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
 
         int res_count = 0;
-        for (auto it: horizon_frames) {
-            int _id = it.first;
-            auto frames = it.second;
+        for (unsigned int i = 0; i < nf_windows.size() - 1; i++) {
+            //estimate deltapose
+            Pose _mea_dpose = delta_poses[i]; // i to i + 1 Pose
+            T mea_dpose[7], est_posea[7], est_poseb[7];
 
-            for (unsigned int i = 0; i < frames.size() - 1; i++) {
-                //estimate deltapose
-                Pose _mea_dpose = delta_poses.at(_id)[i]; // i to i + 1 Pose
-                T mea_dpose[7], est_posea[7], est_poseb[7];
+            _mea_dpose.to_vector(mea_dpose);
 
-                _mea_dpose.to_vector(mea_dpose);
+            int64_t tsa = nf_windows[i].ts;
+            int64_t tsb = nf_windows[i+1].ts;
 
-                int64_t tsa = horizon_frames.at(_id)[i].ts;
-                int64_t tsb = horizon_frames.at(_id)[i+1].ts;
+            //
+            get_pose(tsa, _poses, est_posea);
+            get_pose(tsb, _poses, est_poseb);
 
-                //
-                get_pose(_id, tsa, _poses, est_posea);
-                get_pose(_id, tsb, _poses, est_poseb);
-
-                T est_dpose[7];
+            T est_dpose[7];
 
 
-                DeltaPose(est_posea, est_poseb, est_dpose);
+            DeltaPose(est_posea, est_poseb, est_dpose);
 
-                Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;// * _mea_dpose.position.norm();
-                Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
+            Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;// * _mea_dpose.position.norm();
+            Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
 //                printf("Pos cov %f %f %f", pos_cov.x(), pos_cov.y(), pos_cov.z());
-                pose_error(est_dpose, mea_dpose, _residual + res_count,
-                           pos_cov, ang_cov);
+            pose_error(est_dpose, mea_dpose, _residual + res_count,
+                       pos_cov, ang_cov);
 
-                res_count = res_count + 6;
-            }
+            res_count = res_count + 6;
         }
         return true;
     }
