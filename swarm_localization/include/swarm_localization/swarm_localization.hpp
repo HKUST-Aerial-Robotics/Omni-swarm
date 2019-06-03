@@ -87,9 +87,9 @@ public:
             thread_num(_thread_num), acpt_cost(_acpt_cost) {
     }
 
-    void init_pose(int _id, int tick, double * _p) {
+    void init_pose(int _id, int64_t ts, double * _p) {
         if (_id == self_id) {
-            sf_sld_win[tick].id2nodeframe[_id].pose().to_vector(_p);
+            all_sf[ts].id2nodeframe[_id].pose().to_vector(_p);
             return;
         }
         _p[0] = rand_FloatRange(-3, 3);
@@ -105,24 +105,17 @@ public:
     void random_init_pose(EstimatePoses & est_poses, EstimatePosesIDTS & est_poses2, int start = 0, int end = 100) {
         for(unsigned int i = 0;i < sf_sld_win.size(); i++) {
             for (auto it : sf_sld_win[i].id2nodeframe) {
-                    auto sf = sf_sld_win[i];
-                    int _id = it.first;
-                    auto _p = new double[7];
-                    if (_id != self_id) {
-                        init_pose(it.first, i, _p);
-                    } else {
-                        it.second.pose().to_vector(_p);
-                    }
+                auto sf = sf_sld_win[i];
+                int _id = it.first;
+                auto _p = est_poses[sf.ts][_id];
+                if (_id != self_id) {
+                    init_pose(it.first, i, _p);
+                } else {
+                    it.second.pose().to_vector(_p);
+                }
 
-                    if (est_poses.find(sf.ts) == est_poses.end()) {
-                        est_poses[sf.ts] = std::map<int, double*>();
-                    }
-
-                    if(est_poses2.find(_id) == est_poses2.end()) {
-                        est_poses2[_id] = std::map<int64_t, double*>();
-                    }
-                    est_poses[sf.ts][_id] = _p;
-                    est_poses2[_id][sf.ts] = _p;
+                est_poses[sf.ts][_id] = _p;
+                est_poses2[_id][sf.ts] = _p;
                 }
             }
 
@@ -198,6 +191,32 @@ public:
         }
     }
 
+    void add_as_keyframe(const SwarmFrame &sf) {
+        sf_sld_win.push_back(sf);
+        all_sf[sf.ts] = sf;
+        EstimatePoses & est_poses = swarm_poses_state;
+        EstimatePosesIDTS & est_poses2 = nodeid_ts_poses;
+        for (auto it : sf.id2nodeframe) {
+            int _id = it.first;
+            auto _p = new double[7];
+            if (_id != self_id) {
+                init_pose(it.first, sf.ts, _p);
+            } else {
+                it.second.pose().to_vector(_p);
+            }
+
+            if (est_poses.find(sf.ts) == est_poses.end()) {
+                est_poses[sf.ts] = std::map<int, double*>();
+            }
+
+            if(est_poses2.find(_id) == est_poses2.end()) {
+                est_poses2[_id] = std::map<int64_t, double*>();
+            }
+            est_poses[sf.ts][_id] = _p;
+            est_poses2[_id][sf.ts] = _p;
+        }
+    }
+
 
     void add_new_swarm_frame(const SwarmFrame &sf) {
         process_frame_clear();
@@ -213,9 +232,8 @@ public:
         std::vector<int> is_kf_list = judge_is_key_frame(sf);
         if (!is_kf_list.empty()) {
             has_new_keyframe = true;
-            sf_sld_win.push_back(sf);
-            all_sf[sf.ts] = sf;
-            ROS_INFO("New key frame found, sld win size %d", sf_sld_win.size());
+            add_as_keyframe(sf);
+            ROS_INFO("New key frame found, sld win size %ld", sf_sld_win.size());
         }
 
         if (_ids.size() > drone_num) {
@@ -256,8 +274,9 @@ public:
 
         // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
 
-        EstimatePoses _est_poses;
-        EstimatePosesIDTS _est_poses_idts;
+        EstimatePoses & _est_poses = swarm_poses_state;
+        EstimatePosesIDTS & _est_poses_idts = nodeid_ts_poses;
+
         for (int i = 0; i < max_number; i++) {
             random_init_pose(_est_poses,  _est_poses_idts, start_drone_num, drone_num);
             double c = solve_once(_est_poses,  _est_poses_idts,  true);
@@ -267,8 +286,6 @@ public:
                 ROS_INFO("Got better cost %f", c);
                 cost_updated = true;
                 cost_now = cost = c;
-                swarm_poses_state = _est_poses;
-                nodeid_ts_poses = _est_poses_idts;
                 if (i > min_number) {
                     return true;
                 }
@@ -386,8 +403,8 @@ public:
             nf_win.push_back(all_sf[ts].id2nodeframe[_id]);
             ts2poseindex[ts] = nf_win.size() - 1;
 
-//            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
-//            problem.AddParameterBlock(it.second, 7, local_parameterization);
+            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+            problem.AddParameterBlock(it.second, 7, local_parameterization);
         }
 
         if (_id == self_id) {
@@ -409,7 +426,7 @@ public:
         has_new_keyframe = false;
 
         for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
-            this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
+//            this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
         }
 
         for (int _id: all_nodes) {
@@ -421,6 +438,7 @@ public:
 
         ceres::Solver::Options options;
         options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+        options.max_num_iterations = 200;
         options.max_num_iterations = 200;
         options.num_threads = thread_num;
         Solver::Summary summary;
