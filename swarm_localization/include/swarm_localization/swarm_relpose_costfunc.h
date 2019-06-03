@@ -15,7 +15,7 @@
 #include <time.h>
 #include <thread>
 #include <unistd.h>
-#include "swarm_vo_fuse/swarm_types.hpp"
+#include "swarm_types.hpp"
 
 using namespace swarm;
 

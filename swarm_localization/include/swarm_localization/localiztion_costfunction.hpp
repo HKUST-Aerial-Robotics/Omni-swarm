@@ -44,17 +44,17 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     qa[3] = posea[6];
 
     QuaternionProduct(qa, poseb+3, q_error);
-    const T scale = T(1) / sqrt(q_error[0] * q_error[0] +
-                                q_error[1] * q_error[1] +
-                                q_error[2] * q_error[2] +
-                                q_error[3] * q_error[3]);
+//    const T scale = T(1) / sqrt(q_error[0] * q_error[0] +
+//                                q_error[1] * q_error[1] +
+//                                q_error[2] * q_error[2] +
+//                                q_error[3] * q_error[3]);
 
-    QuaternionToAngleAxis(q_error, error+3);
+//    QuaternionToAngleAxis(q_error, error+3);
     //Ceres q is at last
     //Quaternion State Error
-    error[3] = error[3] / ang_cov.x();
-    error[4] = error[4] / ang_cov.y();
-    error[5] = error[5] / ang_cov.z();
+    error[3] = q_error[1] / ang_cov.x();
+    error[4] = q_error[2] / ang_cov.y();
+    error[5] = q_error[3] / ang_cov.z();
 
 //    error[3] = error[4] = error[5] = T(0);
     error[0] = (posea[0] - poseb[0]) / pos_cov.x();
@@ -248,7 +248,9 @@ struct SwarmHorizonError {
 
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
+//            std::cout << i << ":" << _nf_win[i-1].pose().position << std::endl;
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose()));
+//            delta_poses.push_back(Pose());
 //            printf("ID %d TS %ld DPOSE ", _nf.id, (_nf.ts/1000000)%1000000);
 //            delta_poses.back().print();
 //            printf("\n");
@@ -297,17 +299,53 @@ struct SwarmHorizonError {
             get_pose(tsa, _poses, est_posea);
             get_pose(tsb, _poses, est_poseb);
 
-            T est_dpose[7];
+
+            Eigen::Map<const Eigen::Matrix<T, 3, 1> > p_a(est_posea);
+            Eigen::Quaternion<T> q_a;
+            q_a.w() = est_posea[3];
+            q_a.x() = est_posea[4];
+            q_a.y() = est_posea[5];
+            q_a.z() = est_posea[6];
+
+            Eigen::Map<const Eigen::Matrix<T, 3, 1> > p_b(est_poseb);
+            Eigen::Quaternion<T> q_b;
+            q_b.w() = est_poseb[3];
+            q_b.x() = est_poseb[4];
+            q_b.y() = est_poseb[5];
+            q_b.z() = est_poseb[6];
 
 
-            DeltaPose(est_posea, est_poseb, est_dpose);
+            Eigen::Quaternion<T> q_a_inverse = q_a.inverse();
+            Eigen::Quaternion<T> q_ab_estimated = q_a_inverse * q_b;
+            Eigen::Matrix<T, 3, 1> p_ab_estimated = q_a_inverse * (p_b - p_a);
 
-            Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;// * _mea_dpose.position.norm();
-            Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
-//                printf("Pos cov %f %f %f", pos_cov.x(), pos_cov.y(), pos_cov.z());
-            pose_error(est_dpose, mea_dpose, _residual + res_count,
-                       pos_cov, ang_cov);
+            /*
+            std::cerr << "PA " << p_a << std::endl;
+            std::cerr << "QA " << Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_posea+3) << std::endl;
 
+            std::cerr << "PB " << p_b << std::endl;
+            std::cerr << "QB " << Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_poseb+3) << std::endl;
+
+            std::cout << "PAB" << _mea_dpose.position << std::endl;
+            std::cout << "PABEST" << p_ab_estimated << std::endl;
+            */
+            Eigen::Quaternion<T> delta_q =
+                    _mea_dpose.attitude.template cast<T>() * q_ab_estimated.conjugate();
+
+
+//            Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;
+//            Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
+
+            Eigen::Map<Eigen::Matrix<T, 6, 1> > residuals(_residual + res_count);
+            residuals.template block<3, 1>(0, 0) =
+                    (p_ab_estimated - _mea_dpose.position.template cast<T>())  / VO_DRIFT_METER;
+            //Add this from 5->113
+            residuals.template block<3, 1>(3, 0) = T(2.0) * delta_q.vec() / VO_ERROR_ANGLE;
+            //Add this 113->534
+//            T est_dpose[7];
+//            DeltaPose(est_posea, est_poseb, est_dpose);
+//            pose_error(est_dpose, mea_dpose, _residual + res_count,
+//                       pos_cov, ang_cov);
             res_count = res_count + 6;
         }
         return true;

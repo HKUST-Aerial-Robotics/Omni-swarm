@@ -83,6 +83,7 @@ class SimulateDronesEnv(object):
             [  -1.73040171,  -5.20697205,  2.1825567 ],
             [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
         # self.base_coor = np.random.rand(4, 3) * 0.1
+        self.base_coor = np.zeros((drone_num, 3))
 
         self.drone_pos = self.base_coor.copy()
 
@@ -93,6 +94,8 @@ class SimulateDronesEnv(object):
 
         # print("Initial pos", self.drone_pos)
         print("Base_coor", self.base_coor)
+
+        self.distance_noise = 0
 
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
@@ -199,7 +202,7 @@ class SimulateDronesEnv(object):
                     dy = self.drone_pos[i][1] - self.drone_pos[j][1]
                     dz = self.drone_pos[i][2] - self.drone_pos[j][2]
                     # self.drone_dis[i][j] = self.drone_dis[j][i] = np.clip(math.sqrt(dx*dx + dy*dy + dz*dz),0,None)
-                    self.drone_dis[i][j] = self.drone_dis[j][i] = np.clip(math.sqrt(dx*dx + dy*dy + dz*dz) + np.random.randn()*0.1,0,None)
+                    self.drone_dis[i][j] = self.drone_dis[j][i] = np.clip(math.sqrt(dx*dx + dy*dy + dz*dz) + np.random.randn()*self.distance_noise, 0, None)
                 else:
                    self.drone_dis[i][j] = self.drone_dis[j][i] = 0
         if show and self.count % 10 == 0:
