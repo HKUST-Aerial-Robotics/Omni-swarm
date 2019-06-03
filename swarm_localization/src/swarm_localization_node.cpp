@@ -282,7 +282,7 @@ public:
         nh.param<int>("min_keyframe_num", min_frame_num, 20);
         nh.param<float>("force_freq", force_freq, 10);
         nh.param<float>("max_accept_cost", acpt_cost, 0.4);
-        nh.param<int>("thread_num", thread_num, 4);
+        nh.param<int>("thread_num", thread_num, 1);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes_test.yaml");
 
