@@ -24,9 +24,9 @@ typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
 
-#define VO_DRIFT_METER 0.01
-#define VO_ERROR_ANGLE 0.01
-#define DISTANCE_MEASURE_ERROR 0.01
+#define VO_DRIFT_METER 0.1
+#define VO_ERROR_ANGLE 0.1
+#define DISTANCE_MEASURE_ERROR 1.0
 
 //idstamppose[id][stamp] -> pose index in poses
 typedef std::map<int64_t, std::map<int, int>> IDStampPose;
@@ -44,16 +44,19 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     qa[3] = posea[6];
 
     QuaternionProduct(qa, poseb+3, q_error);
+    const T scale = T(1) / sqrt(q_error[0] * q_error[0] +
+                                q_error[1] * q_error[1] +
+                                q_error[2] * q_error[2] +
+                                q_error[3] * q_error[3]);
 
+    QuaternionToAngleAxis(q_error, error+3);
     //Ceres q is at last
     //Quaternion State Error
-//    error[3] = q_error[1] / ang_cov.x();
-//    error[4] = q_error[2] / ang_cov.y();
-//    error[5] = q_error[3] / ang_cov.z();
-    error[3] = q_error[1] / ang_cov.x();
-    error[4] = q_error[2] / ang_cov.y();
-    error[5] = q_error[3] / ang_cov.z();
+    error[3] = error[3] / ang_cov.x();
+    error[4] = error[4] / ang_cov.y();
+    error[5] = error[5] / ang_cov.z();
 
+//    error[3] = error[4] = error[5] = T(0);
     error[0] = (posea[0] - poseb[0]) / pos_cov.x();
     error[1] = (posea[1] - poseb[1]) / pos_cov.y();
     error[2] = (posea[2] - poseb[2]) / pos_cov.z();

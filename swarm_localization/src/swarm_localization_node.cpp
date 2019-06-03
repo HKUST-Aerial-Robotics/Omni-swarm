@@ -279,7 +279,7 @@ public:
 
 
         nh.param<int>("max_keyframe_num", frame_num, 100);
-        nh.param<int>("min_keyframe_num", min_frame_num, 10);
+        nh.param<int>("min_keyframe_num", min_frame_num, 20);
         nh.param<float>("force_freq", force_freq, 10);
         nh.param<float>("max_accept_cost", acpt_cost, 0.4);
         nh.param<int>("thread_num", thread_num, 4);
