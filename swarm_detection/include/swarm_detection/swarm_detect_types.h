@@ -77,6 +77,17 @@ struct Pose {
         position.z() = p.position.z;
     }
 
+    Pose(double v[]) {
+        attitude.w() = v[3];
+        attitude.x() = v[4];
+        attitude.y() = v[5];
+        attitude.z() = v[6];
+
+        position.x() = v[0];
+        position.y() = v[1];
+        position.z() = v[2];
+    }
+
     geometry_msgs::Pose to_ros_pose () {
         geometry_msgs::Pose pose;
         pose.orientation.w = attitude.w();
@@ -87,6 +98,22 @@ struct Pose {
         pose.position.y = position.y();
         pose.position.z = position.z();
         return pose;
+    }
+
+    friend Pose operator*(Pose a, Pose b) {
+        Pose p;
+        p.position = a.attitude*(b.position + a.position);
+        p.attitude = a.attitude*b.attitude;
+
+        Eigen::Isometry3d dT = a.to_isometry()*b.to_isometry();
+        Pose p_tmp(dT);
+
+//        printf("Res manual");
+//        p.print();
+//
+//        printf("Res eigen");
+//        p.print();
+        return p;
     }
 
     //A^-1B

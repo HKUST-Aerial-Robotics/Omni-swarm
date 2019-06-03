@@ -82,7 +82,7 @@ class SimulateDronesEnv(object):
             [  1.25038821, -2.35836745,   1.3823983 ],
             [  -1.73040171,  -5.20697205,  2.1825567 ],
             [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
-
+        # self.base_coor = np.random.rand(4, 3) * 0.1
 
         self.drone_pos = self.base_coor.copy()
 
