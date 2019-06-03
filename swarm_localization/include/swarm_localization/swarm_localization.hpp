@@ -403,8 +403,8 @@ public:
             nf_win.push_back(all_sf[ts].id2nodeframe[_id]);
             ts2poseindex[ts] = nf_win.size() - 1;
 
-            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
-            problem.AddParameterBlock(it.second, 7, local_parameterization);
+//            ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
+//            problem.AddParameterBlock(it.second, 7, local_parameterization);
         }
 
         if (_id == self_id) {
@@ -426,7 +426,7 @@ public:
         has_new_keyframe = false;
 
         for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
-//            this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
+            this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
         }
 
         for (int _id: all_nodes) {
