@@ -43,10 +43,13 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     qa[2] = posea[5];
     qa[3] = posea[6];
 
-    QuaternionProduct(qa, poseb, q_error);
+    QuaternionProduct(qa, poseb+3, q_error);
 
     //Ceres q is at last
     //Quaternion State Error
+//    error[3] = q_error[1] / ang_cov.x();
+//    error[4] = q_error[2] / ang_cov.y();
+//    error[5] = q_error[3] / ang_cov.z();
     error[3] = q_error[1] / ang_cov.x();
     error[4] = q_error[2] / ang_cov.y();
     error[5] = q_error[3] / ang_cov.z();
