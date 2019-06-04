@@ -189,6 +189,10 @@ struct Pose {
         return this->rpy().z();
     }
 
+    inline Eigen::Quaterniond attitude_yaw_only() const {
+        return (Eigen::Quaterniond) AngleAxisd(yaw(), Vector3d::UnitZ());
+    }
+
     void print() {
         auto _rpy = rpy();
         printf("T %3.3f %3.3f %3.3f RPY %3.1f %3.1f %3.1f\n",

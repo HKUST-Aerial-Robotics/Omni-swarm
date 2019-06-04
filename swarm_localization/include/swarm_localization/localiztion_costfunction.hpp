@@ -24,8 +24,8 @@ typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
 
-#define VO_DRIFT_METER 0.1
-#define VO_ERROR_ANGLE 0.001
+#define VO_DRIFT_METER 0.01
+#define VO_ERROR_ANGLE 0.01
 #define DISTANCE_MEASURE_ERROR 1.0
 
 // Pose in this file use only x, y, z, yaw
