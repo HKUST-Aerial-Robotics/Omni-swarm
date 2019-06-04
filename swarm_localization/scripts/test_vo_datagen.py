@@ -95,7 +95,7 @@ class SimulateDronesEnv(object):
         # print("Initial pos", self.drone_pos)
         print("Base_coor", self.base_coor)
 
-        self.distance_noise = 0
+        self.distance_noise = 0.1
 
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
