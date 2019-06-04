@@ -118,7 +118,7 @@ struct Pose {
         position.z() = v[2];
     }
 
-    geometry_msgs::Pose to_ros_pose () {
+    geometry_msgs::Pose to_ros_pose () const {
         geometry_msgs::Pose pose;
         pose.orientation.w = attitude.w();
         pose.orientation.x = attitude.x();

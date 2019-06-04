@@ -83,7 +83,7 @@ class SimulateDronesEnv(object):
             [  -1.73040171,  -5.20697205,  2.1825567 ],
             [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
         # self.base_coor = np.random.rand(4, 3) * 0.1
-        self.base_coor = np.zeros((drone_num, 3))
+        # self.base_coor = np.zeros((drone_num, 3))
 
         self.drone_pos = self.base_coor.copy()
 
@@ -111,7 +111,8 @@ class SimulateDronesEnv(object):
         self.tick = 0
         self.load_datas()
 
-        self.tm = rospy.Timer(rospy.Duration(0.1), self.update)
+        self.tstart = rospy.get_rostime()
+        self.tm = rospy.Timer(rospy.Duration(0.02), self.update)
 
 
     def load_datas(self):
@@ -185,10 +186,9 @@ class SimulateDronesEnv(object):
                 _nf.dismap_dists.append(self.drone_dis[i][j])
         return _nf
 
-    def update(self, e, dt=0.1, show=False):
+    def update(self, e, show=False):
         if e.last_real is not None:
-            dt = (e.current_real - e.last_real).to_sec()
-            self.tick = self.tick + int(dt*50)
+            self.tick = int((rospy.get_rostime() - self.tstart).to_sec()*50)
             # print(dt)
         for i in range(self.drone_num):
             # print(self.data[i])

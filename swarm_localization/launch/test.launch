@@ -3,10 +3,10 @@
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
         <rosparam>
             force_freq: 1
-            max_accept_cost: 0.15
-            max_keyframe_num: 30
+            max_accept_cost: 1.0
+            max_keyframe_num: 20
             min_keyframe_num: 10
-            thread_num: 1
+            thread_num: 4
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes_test.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
