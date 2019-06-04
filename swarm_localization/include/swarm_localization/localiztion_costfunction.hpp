@@ -25,8 +25,12 @@ typedef std::vector<Quaterniond> quat_array;
 
 
 #define VO_DRIFT_METER 0.1
-#define VO_ERROR_ANGLE 0.1
+#define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 1.0
+
+// Pose in this file use only x, y, z, yaw
+//                            0  1  2   3
+
 
 //idstamppose[id][stamp] -> pose index in poses
 typedef std::map<int64_t, std::map<int, int>> IDStampPose;
@@ -34,56 +38,33 @@ typedef std::map<int64_t, std::map<int, int>> IDStampPose;
 
 template<typename T>
 inline void pose_error(const T *posea, const T *poseb, T *error,
-                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0, 0, 0),
-                       Eigen::Vector3d ang_cov = Eigen::Vector3d(0, 0, 0)) {
-    T qa[4];
-    T q_error[4];
-    qa[0] = -posea[3];
-    qa[1] = posea[4];
-    qa[2] = posea[5];
-    qa[3] = posea[6];
-
-    QuaternionProduct(qa, poseb+3, q_error);
-//    const T scale = T(1) / sqrt(q_error[0] * q_error[0] +
-//                                q_error[1] * q_error[1] +
-//                                q_error[2] * q_error[2] +
-//                                q_error[3] * q_error[3]);
-
-//    QuaternionToAngleAxis(q_error, error+3);
-    //Ceres q is at last
-    //Quaternion State Error
-    error[3] = q_error[1] / ang_cov.x();
-    error[4] = q_error[2] / ang_cov.y();
-    error[5] = q_error[3] / ang_cov.z();
-
-//    error[3] = error[4] = error[5] = T(0);
+                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.01, 0.01, 0.01),
+                       double ang_cov = 0.01) {
     error[0] = (posea[0] - poseb[0]) / pos_cov.x();
     error[1] = (posea[1] - poseb[1]) / pos_cov.y();
     error[2] = (posea[2] - poseb[2]) / pos_cov.z();
+    error[3] = wrap_angle(poseb[3] - posea[3]) / ang_cov;
+}
+
+template<typename T>
+inline void YawRotatePoint(T yaw, const T * vec, T * ret) {
+    ret[0] = cos(yaw) * vec[0] - sin(yaw)*vec[1];
+    ret[1] = sin(yaw) * vec[0] + cos(yaw)*vec[1];
+    ret[2] = vec[2];
 }
 
 
 //dpose = a^-1.b
 template<typename T>
 inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
-    T a_inv[7];
-    a_inv[0] = -posea[0];
-    a_inv[1] = -posea[1];
-    a_inv[2] = -posea[2];
-
-    a_inv[3] = -posea[3];
-    a_inv[4] = posea[4];
-    a_inv[5] = posea[5];
-    a_inv[6] = posea[6];
-
-    QuaternionProduct(a_inv + 3, poseb + 3, dpose + 3);
+    dpose[3] = wrap_angle(poseb[3] - posea[3]);
     T tmp[3];
 
-    tmp[0] = poseb[0] + a_inv[0];
-    tmp[1] = poseb[1] + a_inv[1];
-    tmp[2] = poseb[2] + a_inv[2];
+    tmp[0] = poseb[0] - posea[0];
+    tmp[1] = poseb[1] - posea[1];
+    tmp[2] = poseb[2] - posea[2];
 
-    QuaternionRotatePoint(a_inv + 3, tmp, dpose);
+    YawRotatePoint(-posea[3], tmp, dpose);
 }
 
 struct SwarmFrameError {
@@ -99,7 +80,7 @@ struct SwarmFrameError {
 
             //May have risk of returning this t_pose
             Pose _pose =  sf.id2nodeframe.at(_id).pose();
-            _pose.to_vector(t_pose);
+            _pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
             int index = id2poseindex.at(_id);
@@ -107,9 +88,6 @@ struct SwarmFrameError {
             t_pose[1] =  _poses[index][1];
             t_pose[2] =  _poses[index][2];
             t_pose[3] =  _poses[index][3];
-            t_pose[4] =  _poses[index][4];
-            t_pose[5] =  _poses[index][5];
-            t_pose[6] =  _poses[index][6];
         }
 
     }
@@ -152,17 +130,17 @@ struct SwarmFrameError {
 //            Detected pose error
             int _id = it.first;
             Pose _rel_pose = it.second;
-            T rel_pose[7];
-            _rel_pose.to_vector(rel_pose);
+            T rel_pose[4];
+            _rel_pose.to_vector_xyzyaw(rel_pose);
 
-            T relpose_est[7];
+            T relpose_est[4];
             estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
             Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id];
             Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id];
 
-            pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov);
-            res_count = res_count + 6;
+            pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
+            res_count = res_count + 4;
         }
         return res_count;
     }
@@ -184,7 +162,7 @@ struct SwarmFrameError {
 
                 if (_nf.has_detect_relpose) {
                     for (auto it: _nf.detected_nodes) {
-                        res_count = res_count + 6;
+                        res_count = res_count + 4;
                     }
                 }
 
@@ -249,7 +227,7 @@ struct SwarmHorizonError {
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
 //            std::cout << i << ":" << _nf_win[i-1].pose().position << std::endl;
-            delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose()));
+            delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
 //            delta_poses.push_back(Pose());
 //            printf("ID %d TS %ld DPOSE ", _nf.id, (_nf.ts/1000000)%1000000);
 //            delta_poses.back().print();
@@ -263,7 +241,7 @@ struct SwarmHorizonError {
 
         if (is_self_node && ts == last_ts) {
             Pose _pose = nf_windows.back().pose();
-            _pose.to_vector(t_pose);
+            _pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
             int index = ts2poseindex.at(ts);
@@ -271,14 +249,11 @@ struct SwarmHorizonError {
             t_pose[1] =  _poses[index][1];
             t_pose[2] =  _poses[index][2];
             t_pose[3] =  _poses[index][3];
-            t_pose[4] =  _poses[index][4];
-            t_pose[5] =  _poses[index][5];
-            t_pose[6] =  _poses[index][6];
         }
     }
 
     int residual_count() {
-        return (nf_windows.size()-1)*6;
+        return (nf_windows.size()-1)*4;
     }
 
     template<typename T>
@@ -288,9 +263,9 @@ struct SwarmHorizonError {
         for (unsigned int i = 0; i < nf_windows.size() - 1; i++) {
             //estimate deltapose
             Pose _mea_dpose = delta_poses[i]; // i to i + 1 Pose
-            T mea_dpose[7], est_posea[7], est_poseb[7];
+            T mea_dpose[4], est_posea[4], est_poseb[4];
 
-            _mea_dpose.to_vector(mea_dpose);
+            _mea_dpose.to_vector_xyzyaw(mea_dpose);
 
             int64_t tsa = nf_windows[i].ts;
             int64_t tsb = nf_windows[i+1].ts;
@@ -300,53 +275,25 @@ struct SwarmHorizonError {
             get_pose(tsb, _poses, est_poseb);
 
 
-            Eigen::Map<const Eigen::Matrix<T, 3, 1> > p_a(est_posea);
-            Eigen::Quaternion<T> q_a;
-            q_a.w() = est_posea[3];
-            q_a.x() = est_posea[4];
-            q_a.y() = est_posea[5];
-            q_a.z() = est_posea[6];
+           Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;
+           Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
 
-            Eigen::Map<const Eigen::Matrix<T, 3, 1> > p_b(est_poseb);
-            Eigen::Quaternion<T> q_b;
-            q_b.w() = est_poseb[3];
-            q_b.x() = est_poseb[4];
-            q_b.y() = est_poseb[5];
-            q_b.z() = est_poseb[6];
-
-
-            Eigen::Quaternion<T> q_a_inverse = q_a.inverse();
-            Eigen::Quaternion<T> q_ab_estimated = q_a_inverse * q_b;
-            Eigen::Matrix<T, 3, 1> p_ab_estimated = q_a_inverse * (p_b - p_a);
+           T est_dpose[4];
+           DeltaPose(est_posea, est_poseb, est_dpose);
+           pose_error(est_dpose, mea_dpose, _residual + res_count,
+                      pos_cov, ang_cov.z());
 
             /*
-            std::cerr << "PA " << p_a << std::endl;
-            std::cerr << "QA " << Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_posea+3) << std::endl;
+            if (nf_windows[0].id == 0 && i==0 ) {
+                printf("ID %d i %d tsa %d", nf_windows[0].id, i, (tsa/1000000)%1000000);
+                std::cout <<"residual"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_dpose) << std::endl;
+                std::cout <<"esta"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_posea) << std::endl;
+                std::cout <<"estb"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_poseb) << std::endl;
+                std::cout <<"mea dpose"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(mea_dpose) << std::endl;
+                std::cout <<"est dpose"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_dpose) << "\n\n\n" << std::endl;
+            }*/
+            res_count = res_count + 4;
 
-            std::cerr << "PB " << p_b << std::endl;
-            std::cerr << "QB " << Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_poseb+3) << std::endl;
-
-            std::cout << "PAB" << _mea_dpose.position << std::endl;
-            std::cout << "PABEST" << p_ab_estimated << std::endl;
-            */
-            Eigen::Quaternion<T> delta_q =
-                    _mea_dpose.attitude.template cast<T>() * q_ab_estimated.conjugate();
-
-
-//            Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;
-//            Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
-
-            Eigen::Map<Eigen::Matrix<T, 6, 1> > residuals(_residual + res_count);
-            residuals.template block<3, 1>(0, 0) =
-                    (p_ab_estimated - _mea_dpose.position.template cast<T>())  / VO_DRIFT_METER;
-            //Add this from 5->113
-            residuals.template block<3, 1>(3, 0) = T(2.0) * delta_q.vec() / VO_ERROR_ANGLE;
-            //Add this 113->534
-//            T est_dpose[7];
-//            DeltaPose(est_posea, est_poseb, est_dpose);
-//            pose_error(est_dpose, mea_dpose, _residual + res_count,
-//                       pos_cov, ang_cov);
-            res_count = res_count + 6;
         }
         return true;
     }

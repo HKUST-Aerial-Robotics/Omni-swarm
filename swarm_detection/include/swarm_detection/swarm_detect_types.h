@@ -20,6 +20,17 @@ inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
     return rpy;
 }
 
+template<typename T>
+T wrap_angle(T angle) {
+    while (angle > M_PI) {
+        angle = angle - 2*M_PI;
+    }
+
+    while (angle < -M_PI) {
+        angle = angle + 2*M_PI;
+    }
+    return angle;
+}
 // namespace SwarmDetection {}
 struct Pose {
     Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
@@ -48,11 +59,27 @@ struct Pose {
         ret[2] = T(position.z());
     }
 
+    template<typename T>
+    void to_vector_xyzyaw(T ret[]) {
+        /*
+        ret[3] = T(attitude.w());
+        ret[4] = T(attitude.x());
+        ret[5] = T(attitude.y());
+        ret[6] = T(attitude.z());
+        */
+        ret[0] = T(position.x());
+        ret[1] = T(position.y());
+        ret[2] = T(position.z());
+
+        //TODO:Rewrite this!!!
+        ret[3] = T(yaw());
+    }
+
     Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
         return attitude * point + position;
     }
 
-    Eigen::Vector3d rpy() {
+    Eigen::Vector3d rpy() const {
         return quat2eulers(attitude);
     }
 
@@ -77,12 +104,15 @@ struct Pose {
         position.z() = p.position.z;
     }
 
-    Pose(double v[]) {
-        attitude.w() = v[3];
-        attitude.x() = v[4];
-        attitude.y() = v[5];
-        attitude.z() = v[6];
-
+    Pose(double v[], bool xyzyaw=false) {
+        if (xyzyaw) {
+            this->attitude = AngleAxisd(v[3], Vector3d::UnitZ());
+        } else {
+            attitude.w() = v[3];
+            attitude.x() = v[4];
+            attitude.y() = v[5];
+            attitude.z() = v[6];
+        }
         position.x() = v[0];
         position.y() = v[1];
         position.z() = v[2];
@@ -117,11 +147,31 @@ struct Pose {
     }
 
     //A^-1B
-    static Pose DeltaPose(const Pose & a, const Pose & b) {
+    static Pose DeltaPose(const Pose & a, const Pose & b, bool use_yaw_only = false) {
         //Check this!!!
         Pose p;
-        p.position = a.attitude.inverse()*(b.position - a.position);
-        p.attitude = a.attitude.inverse()*b.attitude;
+        if (!use_yaw_only) {
+            p.position = a.attitude.inverse()*(b.position - a.position);
+            p.attitude = a.attitude.inverse()*b.attitude;
+        } else {
+            /*
+            dpose[3] = wrap_angle(poseb[3] - posea[3]);
+            T tmp[3];
+            tmp[0] = poseb[0] - posea[0];
+            tmp[1] = poseb[1] - posea[1];
+            tmp[2] = poseb[2] - posea[2];
+
+            YawRotatePoint(-posea[3], tmp, dpose);*/
+            double dyaw = b.yaw() - a.yaw();
+            Eigen::Vector3d dp = b.position - a.position;
+            p.attitude = (Eigen::Quaterniond) AngleAxisd(dyaw, Vector3d::UnitZ());
+
+            p.position.x() = cos(-a.yaw()) * dp.x() - sin(-a.yaw()) * dp.y();
+            p.position.y() = sin(-a.yaw()) * dp.x() + cos(-a.yaw()) * dp.y();
+            p.position.z() = dp.z();
+            
+            // p.position = AngleAxisd(-a.yaw(), Vector3d::UnitZ()) * dp;
+        }
 
         /*
         Eigen::Isometry3d dT = a.to_isometry().inverse()*b.to_isometry();
@@ -133,6 +183,10 @@ struct Pose {
         printf("Res eigen");
         p.print();*/
         return p;
+    }
+
+    inline double yaw() const {
+        return this->rpy().z();
     }
 
     void print() {
