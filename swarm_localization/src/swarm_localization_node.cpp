@@ -170,7 +170,11 @@ protected:
         double t_now = _sf.header.stamp.toSec();
 
         // printf("Tnow %f\n", t_now);
-
+        auto _sfs = uwbfuse->PredictSwarm(sf);
+        for (auto it: _sfs.node_poses) {
+            this->pub_posevel_id(it.first, it.second, _sfs.node_vels[it.first], sf.stamp);
+        }
+        
         if (t_now - t_last > 1 / force_freq) {
             uwbfuse->add_new_swarm_frame(sf);
             std_msgs::Float32 cost;
@@ -180,13 +184,25 @@ protected:
                 solving_cost_pub.publish(cost);
         }
 
+        
 
+    }
+
+    void pub_posevel_id(unsigned int id, const Pose & pose, const Eigen::Vector3d vel, ros::Time stamp) {
+        Odometry odom;
+        odom.header.stamp = stamp;
+        odom.header.frame_id = "world";
+        odom.pose.pose = pose.to_ros_pose();
+        odom.twist.twist.linear.x = vel.x();
+        odom.twist.twist.linear.y = vel.y();
+        odom.twist.twist.linear.z = vel.z();
+        pub_odom_id(id, odom);
     }
 
     void pub_odom_id(unsigned int id, const Odometry &odom) {
         if (remote_drone_odom_pubs.find(id) == remote_drone_odom_pubs.end()) {
             char name[100] = {0};
-            sprintf(name, "/swarm_drones/drone_%d_odom", id);
+            sprintf(name, "/swarm_drones/est_drone_%d_odom", id);
             remote_drone_odom_pubs[id] = nh.advertise<Odometry>(name, 1);
         }
 
@@ -256,10 +272,6 @@ private:
     void PredictSwarm(const swarm_frame &_sf) {
         SwarmFrame sf = swarm_frame_from_msg(_sf);
         SwarmFrameState sfs;
-        if (this->uwbfuse->PredictSwarm(sf, sfs)) {
-
-
-        }
 
     }
 
@@ -299,8 +311,6 @@ public:
 
 
         ROS_INFO("Will use %d number of keyframe\n", frame_num);
-        uwbfuse->max_frame_number = frame_num;
-//        uwbfuse->id_to_index = ids_index_in_arr;
     }
 };
 
@@ -322,116 +332,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
-
-/*
-            Odometry odom_now = sfs.node_poses[self_id];
-
-            swarm_msgs::swarm_fused fused;
-            swarm_msgs::swarm_fused_relative relative_fused;
-
-
-            ros::Time ts_now = odom_now.header.stamp;
-            double dt = (ts_now - ts).toSec();
-
-            fused.header.stamp = ts_now;
-            relative_fused.header.stamp = ts_now;
-
-            // ROS_INFO("tnow %f, ts %f, dt %f", ts_now.toSec(), ts.toSec(), dt);
-
-            Eigen::Vector3d self_pos;
-            Eigen::Vector3d self_vel;
-            Eigen::Quaterniond self_quat;
-
-            self_pos.x() = odom_now.pose.pose.position.x;
-            self_pos.y() = odom_now.pose.pose.position.y;
-            self_pos.z() = odom_now.pose.pose.position.z;
-
-            self_vel.x() = odom_now.twist.twist.linear.x;
-            self_vel.y() = odom_now.twist.twist.linear.y;
-            self_vel.z() = odom_now.twist.twist.linear.z;
-
-            self_quat.w() = odom_now.pose.pose.orientation.w;
-            self_quat.x() = odom_now.pose.pose.orientation.x;
-            self_quat.y() = odom_now.pose.pose.orientation.y;
-            self_quat.z() = odom_now.pose.pose.orientation.z;
-            // printf("Pubing !\n");
-            for (auto it : id2vec) {
-                Quaterniond quat = id2quat.at(it.first);
-
-                geometry_msgs::Point p, rel_p;
-                geometry_msgs::Vector3 v, rel_v;
-                geometry_msgs::Quaternion q;
-
-                if (it.first == this->self_id) {
-                    p.x = self_pos.x();
-                    p.y = self_pos.y();
-                    p.z = self_pos.z();
-
-                    v.x = self_vel.x();
-                    v.y = self_vel.y();
-                    v.z = self_vel.z();
-
-                    rel_p.x = 0;
-                    rel_p.y = 0;
-                    rel_p.z = 0;
-
-                    rel_v.x = 0;
-                    rel_v.y = 0;
-                    rel_v.z = 0;
-
-                    q = odom_now.pose.pose.orientation;
-                } else {
-
-                    p.x = it.second.x() + id2vel.at(it.first).x() * dt;
-                    p.y = it.second.y() + id2vel.at(it.first).y() * dt;
-                    p.z = it.second.z() + id2vel.at(it.first).z() * dt;
-
-                    //May cause error
-                    v.x = id2vel.at(it.first).x();
-                    v.y = id2vel.at(it.first).y();
-                    v.z = id2vel.at(it.first).z();
-
-
-                    rel_p.x = it.second.x() - self_pos.x();
-                    rel_p.y = it.second.y() - self_pos.y();
-                    rel_p.z = it.second.z() - self_pos.z();
-                    rel_v.x = id2vel.at(it.first).x() - self_vel.x();
-                    rel_v.y = id2vel.at(it.first).y() - self_vel.y();
-                    rel_v.z = id2vel.at(it.first).z() - self_vel.z();
-
-                    q.w = quat.w();
-                    q.x = quat.x();
-                    q.y = quat.y();
-                    q.z = quat.z();
-                }
-
-                fused.ids.push_back(it.first);
-                fused.remote_drone_position.push_back(p);
-                fused.remote_drone_velocity.push_back(v);
-                fused.remote_drone_attitude.push_back(q);
-
-                Eigen::Quaterniond rel_quat = self_quat.inverse() * quat;
-                Vector3d euler = rel_quat.toRotationMatrix().eulerAngles(0, 1, 2);
-                double rel_yaw = euler.z();
-
-                relative_fused.ids.push_back(it.first);
-                relative_fused.relative_drone_position.push_back(rel_p);
-                relative_fused.relative_drone_velocity.push_back(rel_v);
-                relative_fused.relative_drone_yaw.push_back(rel_yaw);
-
-                Odometry odom;
-                odom.header.frame_id = frame_id;
-                odom.header.stamp = odom_now.header.stamp;
-                odom.pose.pose.position = p;
-
-                odom.pose.pose.orientation = q;
-                odom.twist.twist.linear = v;
-                if (it.first != self_id)
-                    pub_odom_id(it.first, odom);
-                else
-                    pub_odom_id(it.first, odom_now);
-            }
-
-            fused_drone_data_pub.publish(fused);
-            fused_drone_rel_data_pub.publish(relative_fused);*/
