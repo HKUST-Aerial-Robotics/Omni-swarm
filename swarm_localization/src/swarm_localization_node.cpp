@@ -12,7 +12,7 @@
 #include <ctime>
 #include <thread>
 #include <unistd.h>
-#include "swarm_localization/swarm_localization.hpp"
+#include "swarm_localization/swarm_localization_solver.hpp"
 #include "swarm_msgs/swarm_fused.h"
 #include "swarm_msgs/swarm_fused_relative.h"
 #include <geometry_msgs/Point.h>
@@ -280,8 +280,8 @@ public:
 
         nh.param<int>("max_keyframe_num", frame_num, 100);
         nh.param<int>("min_keyframe_num", min_frame_num, 20);
-        nh.param<float>("force_freq", force_freq, 10);
-        nh.param<float>("max_accept_cost", acpt_cost, 0.4);
+        nh.param<float>("force_freq", force_freq, 10.0f);
+        nh.param<float>("max_accept_cost", acpt_cost, 0.4f);
         nh.param<int>("thread_num", thread_num, 1);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes_test.yaml");
@@ -289,6 +289,8 @@ public:
         load_nodes_from_file(swarm_node_config);
 
         uwbfuse = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num);
+
+        nh.param<double>("initial_random_noise", uwbfuse->initial_random_noise, 1.0);
 
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(

@@ -1,11 +1,15 @@
 <launch>
+    <arg name="rand" default="1.0" />
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
-       <param name="force_freq" value="10" type="double" />
-       <param name="max_accept_cost" value="0.15" type="double" />
-       <param name="max_keyframe_num" value="100" type="int" />
-       <param name="min_keyframe_num" value="10" type="int" />
-       <param name="thread_num" value="4" type="int" />
-       <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes_test.yaml" type="string" />
+        <rosparam>
+            force_freq: 1
+            max_accept_cost: 0.15
+            max_keyframe_num: 30
+            min_keyframe_num: 10
+            thread_num: 1
+        </rosparam>
+        <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes_test.yaml" type="string" />
+        <param name="initial_random_noise" value="$(arg rand)" type="double" />
     </node>
     <node pkg="swarm_localization" name="test_datagen" type="test_vo_datagen.py" output="screen">
     </node>
