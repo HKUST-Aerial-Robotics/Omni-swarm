@@ -60,7 +60,15 @@ class SimulateDronesEnv(object):
             # ("2019-3-6-fast-circle.csv", 262),
             ("2019-3-6-sweep-hover-y.csv", 48),
             ("realsense_2019_5_15_loop.csv", 20),
-            ("circle-3s-no-gc-fix.csv", 18)
+            ("circle-3s-no-gc-fix.csv", 18),
+            
+            ("2019-3-6-sweep-hover-y.csv", 38),
+            ("realsense_2019_5_15_loop.csv", 15),
+            ("circle-3s-no-gc-fix.csv", 18),
+
+            ("2019-3-6-sweep-hover-y.csv", 43),
+            ("realsense_2019_5_15_loop.csv", 10),
+            ("circle-3s-no-gc-fix.csv", 25)
         ]
 
         self.drone_num = drone_num
@@ -105,7 +113,12 @@ class SimulateDronesEnv(object):
             rospy.Publisher("/swarm_drones_sim/odom1", Odometry, queue_size=1),
             rospy.Publisher("/swarm_drones_sim/odom2", Odometry, queue_size=1),
             rospy.Publisher("/swarm_drones_sim/odom3", Odometry, queue_size=1),
-            rospy.Publisher("/swarm_drones_sim/odom4", Odometry, queue_size=1)
+            rospy.Publisher("/swarm_drones_sim/odom4", Odometry, queue_size=1),
+            rospy.Publisher("/swarm_drones_sim/odom5", Odometry, queue_size=1),
+            rospy.Publisher("/swarm_drones_sim/odom6", Odometry, queue_size=1),
+            rospy.Publisher("/swarm_drones_sim/odom7", Odometry, queue_size=1),
+            rospy.Publisher("/swarm_drones_sim/odom8", Odometry, queue_size=1),
+            rospy.Publisher("/swarm_drones_sim/odom9", Odometry, queue_size=1)
         ]
 
         self.tick = 0

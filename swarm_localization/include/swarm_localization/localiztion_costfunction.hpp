@@ -74,7 +74,7 @@ struct SwarmFrameError {
     bool is_lastest_frame = false;
 
     template<typename T>
-    void get_pose(int _id, T const *const *_poses, T * t_pose) const {
+    inline void get_pose(int _id, T const *const *_poses, T * t_pose) const {
 //        printf("%d", _id);
         if (_id == self_id && is_lastest_frame) {
 
@@ -93,7 +93,7 @@ struct SwarmFrameError {
     }
 
     template<typename T>
-    void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
+    inline void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
         T posea[7] , poseb[7];
         get_pose(ida, _poses, posea);
         get_pose(idb, _poses, poseb);
@@ -102,7 +102,7 @@ struct SwarmFrameError {
 
     //Need add anntena position here!
     template<typename T>
-    T node_distance(int idi, int idj, T const *const *_poses) const {
+    inline T node_distance(int idi, int idj, T const *const *_poses) const {
         //If consider bias here?
         T posea[7] , poseb[7];
         get_pose(idi, _poses, posea);
@@ -114,7 +114,7 @@ struct SwarmFrameError {
 
 
     template<typename T>
-    int nodeframe_distance_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
+    inline int nodeframe_distance_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (auto it : _nf.dis_map) {
             int _idj = it.first;
             T _dis = T(it.second);
@@ -126,7 +126,7 @@ struct SwarmFrameError {
     }
 
     template<typename T>
-    int nodeframe_relpose_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
+    inline int nodeframe_relpose_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (auto it: _nf.detected_nodes) {
 //            Detected pose error
             int _id = it.first;
@@ -238,7 +238,7 @@ struct SwarmHorizonError {
     }
 
     template<typename T>
-    void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
+    inline void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
 
         if (is_self_node && ts == last_ts) {
             Pose _pose = nf_windows.back().pose();
