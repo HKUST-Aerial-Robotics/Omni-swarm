@@ -100,6 +100,7 @@ struct SwarmFrameError {
         DeltaPose(posea, poseb, relpose);
     }
 
+    //Need add anntena position here!
     template<typename T>
     T node_distance(int idi, int idj, T const *const *_poses) const {
         //If consider bias here?

@@ -40,7 +40,7 @@ add_executable(${PROJECT_NAME}_node
         include/swarm_localization/swarm_types.hpp
         include/swarm_localization/localiztion_costfunction.hpp
         include/swarm_localization/swarm_localization_solver.hpp
-        src/swarm_localization_node.cpp include/swarm_localization/swarm_relpose_costfunc.h
+        src/swarm_localization_node.cpp
         src/swarm_localization_solver.cpp)
 
 
