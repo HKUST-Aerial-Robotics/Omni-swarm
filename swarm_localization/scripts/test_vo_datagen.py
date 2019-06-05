@@ -52,7 +52,7 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, enable_pub_swarm = True, self_id = 0):
+    def __init__(self, drone_num = 10, self_id = 0):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/data/"
         self.data_paths = [
@@ -68,7 +68,6 @@ class SimulateDronesEnv(object):
         self.colors = matplotlib.cm.rainbow(np.linspace(0, 1, drone_num))
         self.count = 0
         self.self_id = self_id
-        self.enable_pub_swarm = enable_pub_swarm
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
         self.base_coor = np.array([
@@ -99,6 +98,7 @@ class SimulateDronesEnv(object):
 
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
+        self.sf_pre_pub = rospy.Publisher("/swarm_drones/swarm_frame_predict", swarm_frame, queue_size=1)
         self.self_odom_pub =  rospy.Publisher("/vins_estimator/odometry", Odometry, queue_size=1)
         self.odom_pubs = [
             rospy.Publisher("/swarm_drones_sim/odom0", Odometry, queue_size=1),
@@ -113,6 +113,8 @@ class SimulateDronesEnv(object):
 
         self.tstart = rospy.get_rostime()
         self.tm = rospy.Timer(rospy.Duration(0.02), self.update)
+
+        self.sf_sld_win = []
 
 
     def load_datas(self):
@@ -240,8 +242,14 @@ class SimulateDronesEnv(object):
             sf.node_frames.append(_nf)
 
         self.count = self.count + 1
-        if self.enable_pub_swarm:
-            self.sf_pub.publish(sf)
+        self.sf_pre_pub.publish(sf)
+
+
+        self.sf_sld_win.append(sf)
+
+        if len(self.sf_sld_win) > 5:
+            self.sf_pub.publish(self.sf_sld_win.pop(0) )
+
 
 
 if __name__ == "__main__":
@@ -250,6 +258,5 @@ if __name__ == "__main__":
     rospy.init_node("vo_data_gen")
     drone_num = rospy.get_param('~drone_num', 4)
     self_id = rospy.get_param("~self_id", 0)
-    enable_pub_swarm = rospy.get_param("~enable_pub_drone_source", True)
-    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_pub_swarm=enable_pub_swarm)
+    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id)
     rospy.spin()

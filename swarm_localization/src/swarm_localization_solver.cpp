@@ -26,10 +26,7 @@
 
 
 
-void SwarmLocalizationSolver::random_init_pose(EstimatePoses & est_poses, EstimatePosesIDTS & est_poses2, int start, int end) {
-}
-
-bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) {
+bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
 
     // for (int i = 0; i  < s)
@@ -77,9 +74,9 @@ void SwarmLocalizationSolver::delete_frame_i(int i) {
     sf_sld_win.erase(sf_sld_win.begin() + i);
 }
 
-bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) {
-    for (unsigned int id : sf_sld_win[i].node_id_list) {
-        if (node_kf_count[id] < min_frame_number) {
+bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) const {
+    for (unsigned int id : sf_sld_win.at(i).node_id_list) {
+        if (node_kf_count.at(id) < min_frame_number) {
             return true;
         }
     }
@@ -99,48 +96,15 @@ void SwarmLocalizationSolver::process_frame_clear() {
 
     while (sf_sld_win.size() > max_frame_number) {
         delete_frame_i(0);
-        ROS_INFO("Clear first frame from sld win, now size %d", sf_sld_win.size());
+        ROS_INFO("Clear first frame from sld win, now size %ld", sf_sld_win.size());
     }
-}
-
-
-Pose SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_yaw_only) const {
-    if (last_kf_ts > 0 && finish_init && 
-        swarm_poses_state.at(last_kf_ts).find(nf.id)!=swarm_poses_state.at(last_kf_ts).end() ) {
-    
-        //Use last solve relative res, e.g init with last
-        int _id = nf.id;
-        Pose _last = Pose(swarm_poses_state.at(last_kf_ts).at(_id), true);
-
-        Pose last_vo = all_sf.at(last_kf_ts).id2nodeframe.at(_id).pose();
-        Pose now_vo = nf.pose();
-
-        if (attitude_yaw_only) {
-            now_vo.attitude = now_vo.attitude_yaw_only();
-            last_vo.attitude = last_vo.attitude_yaw_only();
-        }
-        Eigen::Isometry3d TnowVO = now_vo.to_isometry();
-        Eigen::Isometry3d TlastVO = last_vo.to_isometry();
-
-
-        Eigen::Isometry3d Tlast = _last.to_isometry();
-
-        Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
-
-        return transfered_now;
-
-    } else {
-        ROS_ERROR("Can't Predict Node Pose: Not inited");
-        exit(-1);
-        return Pose();
-    } 
 }
 
 void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-    EstimatePoses & est_poses = swarm_poses_state;
-    EstimatePosesIDTS & est_poses2 = nodeid_ts_poses;
+    EstimatePoses & est_poses = est_poses_tsid;
+    EstimatePosesIDTS & est_poses2 = est_poses_idts;
 
     for (auto it : sf.id2nodeframe) {
         int _id = it.first;
@@ -151,7 +115,7 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
             Pose _last;
             if (last_kf_ts > 0) {
                 //Use last solve relative res, e.g init with last
-                _last = Pose(swarm_poses_state[last_kf_ts][_id], true);
+                _last = Pose(est_poses_tsid[last_kf_ts][_id], true);
 
                 Pose last_vo = all_sf[last_kf_ts].id2nodeframe[_id].pose();
                 Pose now_vo = it.second.pose();
@@ -226,22 +190,55 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 
 // Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
 
+Pose SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_yaw_only) const {
+    if (last_saved_est_kf_ts > 0 && finish_init &&
+        est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
+
+        //Use last solve relative res, e.g init with last
+        int _id = nf.id;
+        Pose _last = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
+
+        Pose last_vo = all_sf.at(last_saved_est_kf_ts).id2nodeframe.at(_id).pose();
+        Pose now_vo = nf.pose();
+
+        if (attitude_yaw_only) {
+            now_vo.attitude = now_vo.attitude_yaw_only();
+            last_vo.attitude = last_vo.attitude_yaw_only();
+        }
+        Eigen::Isometry3d TnowVO = now_vo.to_isometry();
+        Eigen::Isometry3d TlastVO = last_vo.to_isometry();
+
+
+        Eigen::Isometry3d Tlast = _last.to_isometry();
+
+        Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
+
+        return transfered_now;
+
+    } else {
+        ROS_ERROR("Can't Predict Node Pose: Not inited");
+        exit(-1);
+        return Pose();
+    }
+}
+
 SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) const {
     SwarmFrameState sfs;
     if(!finish_init) {
         ROS_WARN("Predict swarm poses failed: SwarmLocalizationSolver not inited\n");
         return sfs;
     }
-
     
     for (auto it : sf.id2nodeframe) {
         int _id = it.first;
-        NodeFrame & nf = it.second;
-        if(swarm_poses_state.at(last_kf_ts).find(nf.id)!=swarm_poses_state.at(last_kf_ts).end()) {
-            sfs.node_poses[_id] = this->PredictNode(nf);
 
+        NodeFrame & nf = it.second;
+        if(est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end()) {
+            sfs.node_poses[_id] = this->PredictNode(nf);
             //Give node velocity predict here
             sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
+        } else {
+            ROS_WARN("No id %d found in last kf", nf.id);
         }
     }
 
@@ -256,11 +253,11 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int 
 
     // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
 
-    EstimatePoses & _est_poses = swarm_poses_state;
-    EstimatePosesIDTS & _est_poses_idts = nodeid_ts_poses;
+    EstimatePoses & _est_poses = est_poses_tsid;
+    EstimatePosesIDTS & _est_poses_idts = est_poses_idts;
 
     for (int i = 0; i < max_number; i++) {
-        random_init_pose(_est_poses,  _est_poses_idts, start_drone_num, drone_num);
+        random_init_pose(_est_poses,  _est_poses_idts);
         double c = solve_once(_est_poses,  _est_poses_idts,  true);
         ROS_INFO("Got better cost %f", c);
 
@@ -293,12 +290,47 @@ double SwarmLocalizationSolver::solve() {
         }
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        cost_now = solve_once(this->swarm_poses_state, this->nodeid_ts_poses, true);
+        cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
     if (cost_now > acpt_cost)
         finish_init = false;
+
+    if (finish_init) {
+        sync_est_poses(this->est_poses_tsid);
+    }
+
     return cost_now;
+}
+
+void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
+    for (const SwarmFrame & sf : sf_sld_win) {
+        //Only update param in sf to saved
+        for (auto it : sf.id2nodeframe) {
+            int _id = it.first;
+            const NodeFrame _nf = it.second;
+
+            if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
+                est_poses_tsid_saved[sf.ts] = std::map<int,double*>();
+            }
+            if (est_poses_idts_saved.find(_id) == est_poses_idts_saved.end()) {
+                est_poses_idts_saved[_id] = std::map<int64_t,double*>();
+            }
+
+            if (est_poses_tsid_saved[sf.ts].find(_id) == est_poses_tsid_saved[sf.ts].end()) {
+                est_poses_tsid_saved[sf.ts][_id] = new double[6];
+            }
+
+            if (est_poses_idts_saved[_id].find(sf.ts) == est_poses_idts_saved[_id].end()) {
+                est_poses_idts_saved[_id][sf.ts] = new double[6];
+            }
+
+            memcpy(est_poses_tsid_saved[sf.ts][_id], _est_poses_tsid.at(sf.ts).at(_id), 6* sizeof(double));
+            memcpy(est_poses_idts_saved[_id][sf.ts], _est_poses_tsid.at(sf.ts).at(_id), 6* sizeof(double));
+        }
+    }
+
+    last_saved_est_kf_ts = sf_sld_win.back().ts;
 }
 
 unsigned int SwarmLocalizationSolver::sliding_window_size() const {
@@ -306,13 +338,12 @@ unsigned int SwarmLocalizationSolver::sliding_window_size() const {
 }
 
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_sf(SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) {
+SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) const {
     //Here we will only send
     SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, is_lastest_frame);
     int res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     int poses_num = id2poseindex.size();
-//        ROS_INFO("SF at %ld Poses num %d res num %d", sf.ts, poses_num, res_num);
     for (int i =0;i < poses_num; i ++){
         cost_function->AddParameterBlock(4);
     }
@@ -322,7 +353,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(SwarmFrame &sf, std::map<int
 
 
 
-void SwarmLocalizationSolver::setup_problem_with_sferror(EstimatePoses & swarm_est_poses, Problem& problem, SwarmFrame& sf, bool is_lastest_frame) {
+void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, bool is_lastest_frame) const {
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
     int64_t ts = sf.ts;
@@ -331,7 +362,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(EstimatePoses & swarm_e
         if (is_lastest_frame && _id == self_id) {
             continue;
         } else {
-            pose_state.push_back(swarm_est_poses[ts][_id]);
+            pose_state.push_back(swarm_est_poses.at(ts).at(_id));
             id2poseindex[_id] = pose_state.size() - 1;
         }
     }
@@ -344,7 +375,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(EstimatePoses & swarm_e
 }
 
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, std::map<int64_t, int> ts2poseindex, bool is_self) {
+SwarmLocalizationSolver::_setup_cost_function_by_nf_win(const std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
     auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
 
     auto cost_function = new HorizonCost(she);
@@ -362,27 +393,24 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     return cost_function;
 }
 
-void SwarmLocalizationSolver::setup_problem_with_sfherror(EstimatePosesIDTS est_poses_idts, Problem& problem, int _id) {
-    if (est_poses_idts[_id].size() < 2) {
-        ROS_INFO("Frame nums for id %d is to small:%ld", _id, est_poses_idts[_id].size());
+void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id) const {
+    auto nfs = est_poses_idts.at(_id);
+
+    if (nfs.size() < 2) {
+        ROS_INFO("Frame nums for id %d is to small:%ld", _id, nfs.size());
         return;
     }
 
-//        ROS_INFO("Setup problem for id %d", _id);
     std::vector<NodeFrame> nf_win;
     std::vector<double*> pose_win;
     std::map<int64_t, int> ts2poseindex;
 
-    auto nfs = est_poses_idts[_id];
     for (auto it: nfs) {
         auto ts = it.first;
-//            ROS_INFO("NODE %d TS %ld", _id, ts);
         pose_win.push_back(it.second);
-        nf_win.push_back(all_sf[ts].id2nodeframe[_id]);
+        nf_win.push_back(all_sf.at(ts).id2nodeframe.at(_id));
         ts2poseindex[ts] = nf_win.size() - 1;
 
-        // ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
-        // problem.AddParameterBlock(it.second, 7, local_parameterization);
     }
 
     if (_id == self_id) {
