@@ -405,11 +405,14 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     std::vector<double*> pose_win;
     std::map<int64_t, int> ts2poseindex;
 
-    for (auto it: nfs) {
-        auto ts = it.first;
-        pose_win.push_back(it.second);
-        nf_win.push_back(all_sf.at(ts).id2nodeframe.at(_id));
-        ts2poseindex[ts] = nf_win.size() - 1;
+    // for (auto it: nfs) {
+    for (const SwarmFrame & sf : sf_sld_win) {
+        int64_t ts = sf.ts;
+        if (nfs.find(ts) != nfs.end()) {
+            pose_win.push_back(nfs[ts]);
+            nf_win.push_back(all_sf.at(ts).id2nodeframe.at(_id));
+            ts2poseindex[ts] = nf_win.size() - 1;
+        } 
 
     }
 
@@ -524,8 +527,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     }
 #endif
 
-
+    solve_time_count += summary.total_time_in_seconds;
     solve_count++;
+
+    ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
     // exit(-1);
     return equv_cost;
 }
