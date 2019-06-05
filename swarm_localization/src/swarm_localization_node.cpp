@@ -91,14 +91,7 @@ class SwarmLocalizationNode {
         nf.corner_by_cams.push_back(CA_from_msg(_nf.cam1_markers));
 
         if (nf.vo_available) {
-            nf.self_pose.position.x() = _nf.odometry.pose.pose.position.x;
-            nf.self_pose.position.y() = _nf.odometry.pose.pose.position.y;
-            nf.self_pose.position.z() = _nf.odometry.pose.pose.position.z;
-
-            nf.self_pose.attitude.w() = _nf.odometry.pose.pose.orientation.w;
-            nf.self_pose.attitude.x() = _nf.odometry.pose.pose.orientation.x;
-            nf.self_pose.attitude.y() = _nf.odometry.pose.pose.orientation.y;
-            nf.self_pose.attitude.z() = _nf.odometry.pose.pose.orientation.z;
+            nf.self_pose = Pose(_nf.odometry.pose.pose);
 
             nf.self_vel.x() = _nf.odometry.twist.twist.linear.x;
             nf.self_vel.y() = _nf.odometry.twist.twist.linear.y;
@@ -110,6 +103,16 @@ class SwarmLocalizationNode {
             nf.is_valid = false;
         }
 
+        for (auto nd: _nf.detected.detected_nodes) {
+            nf.detected_nodes[nd.remote_drone_id] = Pose(nd.relpose.pose);
+            auto cov = nd.relpose.covariance;
+            nf.detected_nodes_poscov[nd.remote_drone_id] = 
+                Eigen::Vector3d(cov[0], cov[6+1], cov[2*6+2]);
+
+            nf.detected_nodes_angcov[nd.remote_drone_id] = 
+                Eigen::Vector3d(cov[3*6+3], cov[4*6+4], cov[5*6+5]);
+            nf.has_detect_relpose = true;
+        }
         return nf;
     }
 
@@ -171,7 +174,6 @@ protected:
 
         // printf("Tnow %f\n", t_now);
         
-        
         if (t_now - t_last > 1 / force_freq) {
             swarm_localization_solver->add_new_swarm_frame(sf);
             std_msgs::Float32 cost;
@@ -180,9 +182,6 @@ protected:
             if (cost.data > 0)
                 solving_cost_pub.publish(cost);
         }
-
-        
-
     }
 
     void pub_posevel_id(unsigned int id, const Pose & pose, const Eigen::Vector3d vel, ros::Time stamp) {
