@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
-from swarm_msgs.msg import swarm_frame, node_frame
+from swarm_msgs.msg import swarm_frame, node_frame, node_detected, swarm_detected
 from tf.transformations import quaternion_from_euler
 
 def parse_csv_data(csv_path, lt=0, rt=1000000):
@@ -80,10 +80,11 @@ class SimulateDronesEnv(object):
         # print(self.base_coor)
         self.base_coor = np.array([
             [0, 0, 0],
-            [2.48147416 , 1.7661877,   .20343478],
-            [ -3.3077791 ,  -1.87719654,  .30700117],
-            [3.50198334, -2.12191708,  .17340531],
-            [-2.59650833,  -.95609427, .10679965],
+            [1.48147416 , 1.7661877,   .20343478],
+            [ 1.3077791 ,  -0.87719654,  .30700117],
+            [0.50198334, -0.12191708,  .17340531],
+            [0.39650833,  -.95609427, .10679965],
+
             [-1.24850392,  .58565513,  .1],
             [ 3.30543244, -1.61200742, 0],
             [  1.25038821, -2.35836745,   1.3823983 ],
@@ -94,8 +95,8 @@ class SimulateDronesEnv(object):
 
         self.drone_pos = self.base_coor.copy()
 
-        self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
         # self.base_yaw = np.zeros(drone_num)
+        self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
         self.base_yaw[self.self_id] = 0
         self.est_err_norm = []
 
@@ -136,6 +137,44 @@ class SimulateDronesEnv(object):
             self.data.append(parse_csv_data(self.data_path + p, l))
             print("{} len {}".format(p, len(self.data[-1]['pos'])))
 
+    def generate_relpose(self, target, source, tick, noisex=0.1, noisey=0.02, noisez=0.02, noiseyaw=10/57.3):
+        """    
+            double dyaw = b.yaw() - a.yaw();
+            Eigen::Vector3d dp = b.position - a.position;
+            p.attitude = (Eigen::Quaterniond) AngleAxisd(dyaw, Vector3d::UnitZ());
+
+            p.position.x() = cos(-a.yaw()) * dp.x() - sin(-a.yaw()) * dp.y();
+            p.position.y() = sin(-a.yaw()) * dp.x() + cos(-a.yaw()) * dp.y();
+            p.position.z() = dp.z();
+        """
+         
+        pos_target = self.drone_pos[target]
+        pos_source = self.drone_pos[source]
+
+        dp = pos_target - pos_source
+        ayaw = self.data[source]["rpy"][tick][2]
+        dyaw = self.data[target]["rpy"][tick][2] - self.data[source]["rpy"][tick][2]
+        px = math.cos(-ayaw) * dp[0] - math.sin(-ayaw) * dp[1]
+        py = math.sin(-ayaw) * dp[0] + math.cos(-ayaw) * dp[1]
+        pz = dp[2]
+
+        is_in_range = False
+
+        if 2.5 > px > 0 and 2 > py > -2 and 1 > pz > -1:
+            is_in_range = True
+
+        pose = Pose()
+        qx, qy, qz, qw = quaternion_from_euler(0, 0, dyaw + np.random.randn(1) * noiseyaw)
+        pose.orientation.w = qw
+        pose.orientation.x = qx
+        pose.orientation.y = qy
+        pose.orientation.z = qz
+        pose.position.x = px + np.random.randn(1) * noisex
+        pose.position.y = py + np.random.randn(1) * noisey
+        pose.position.z = pz + np.random.randn(1) * noisez
+
+        return pose, is_in_range
+
     def generate_node_frame(self, i, Xii, Vii, ts, tick):
         _nf = node_frame()
 
@@ -143,7 +182,7 @@ class SimulateDronesEnv(object):
         roll = self.data[i]["rpy"][tick][0]
         pitch = self.data[i]["rpy"][tick][1]
         yaw = self.data[i]["rpy"][tick][2]
-        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw)
+        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw - self.base_yaw[i])
         pose.orientation.w = qw
         pose.orientation.x = qx
         pose.orientation.y = qy
@@ -172,7 +211,7 @@ class SimulateDronesEnv(object):
         _nf.id = i
 
 
-
+        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw)
 
         posew = Pose()
         posew.orientation.w = qw
@@ -195,10 +234,31 @@ class SimulateDronesEnv(object):
         odomw.twist.twist.linear.z = Vii[i][2]
         self.odom_pubs[i].publish(odomw)
 
+
+        sd = swarm_detected()
+        sd.header.stamp = ts
+        sd.self_drone_id = i
+
         for j in range(drone_num):
             if i!=j:
                 _nf.dismap_ids.append(j)
                 _nf.dismap_dists.append(self.drone_dis[i][j])
+                dpose, in_range = self.generate_relpose(j, i, tick)
+                if in_range:
+                    nd = node_detected()
+                    nd.relpose.pose = dpose
+                    nd.self_drone_id = i
+                    nd.remote_drone_id = j
+                    nd.header.stamp = ts
+                    cov = nd.relpose.covariance
+                    cov[0] = 0.1
+                    cov[6+1] = cov[2*6+2] = 0.02
+                    cov[3*6+3] = cov[4*6+4] = cov[5*6+5] = 10/57.3
+                    sd.detected_nodes.append(nd)
+                    # print("In range add detected node")
+
+        if len(sd.detected_nodes) > 0:
+            _nf.detected = sd
         return _nf
 
     def update(self, e, show=False):
@@ -235,14 +295,14 @@ class SimulateDronesEnv(object):
         Vii = self.drone_vel
 
 
-        # for i in range(self.drone_num):
-        #     th = self.base_yaw[i]
-        #     mat = np.array(
-        #     [[math.cos(th), +math.sin(th), 0],
-        #     [-math.sin(th), math.cos(th), 0],
-        #     [0, 0, 1]])
-        #     Xii[i] = np.dot(mat, Xii[i])
-        #     Vii[i] = np.dot(mat, Vii[i])
+        for i in range(self.drone_num):
+            th = self.base_yaw[i]
+            mat = np.array(
+            [[math.cos(th), +math.sin(th), 0],
+            [-math.sin(th), math.cos(th), 0],
+            [0, 0, 1]])
+            Xii[i] = np.dot(mat, Xii[i])
+            Vii[i] = np.dot(mat, Vii[i])
 
         # print("DronePos", self.drone_pos)
         # print("Xii", Xii)
@@ -256,7 +316,6 @@ class SimulateDronesEnv(object):
 
         self.count = self.count + 1
         self.sf_pre_pub.publish(sf)
-
 
         self.sf_sld_win.append(sf)
 

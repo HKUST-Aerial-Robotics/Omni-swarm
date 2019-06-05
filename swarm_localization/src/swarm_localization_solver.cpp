@@ -56,7 +56,7 @@ std::vector<int> SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &s
     for (auto _id : _ids) {
         if (sf_sld_win.back().HasID(_id)) {
             Eigen::Vector3d _diff = sf.position(_id) - sf_sld_win.back().position(_id);
-            if (_diff.norm() > min_accept_keyframe_movement || sf.HasDetect(_id)) {
+            if (_diff.norm() > min_accept_keyframe_movement || (sf.HasDetect(_id) && _id==self_id)) {
                 ret.push_back(_id);
                 node_kf_count[_id] += 1;
 //                    ROS_INFO("SF %ld is kf of %d: DIFF %3.2f HAS %d", sf.ts, _id, _diff.norm(), sf.HasDetect(_id));

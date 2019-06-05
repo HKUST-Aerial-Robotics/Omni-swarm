@@ -24,10 +24,10 @@ typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
 
-#define VO_DRIFT_METER 0.01
-#define VO_ERROR_ANGLE 0.01
-#define DISTANCE_MEASURE_ERROR 1.0
-
+#define VO_DRIFT_METER 0.001
+#define VO_ERROR_ANGLE 0.001
+#define DISTANCE_MEASURE_ERROR 0.1
+#define ERROR_NORMLIZED 0.1
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -40,10 +40,10 @@ template<typename T>
 inline void pose_error(const T *posea, const T *poseb, T *error,
                        Eigen::Vector3d pos_cov = Eigen::Vector3d(0.01, 0.01, 0.01),
                        double ang_cov = 0.01) {
-    error[0] = (posea[0] - poseb[0]) / pos_cov.x();
-    error[1] = (posea[1] - poseb[1]) / pos_cov.y();
-    error[2] = (posea[2] - poseb[2]) / pos_cov.z();
-    error[3] = wrap_angle(poseb[3] - posea[3]) / ang_cov;
+    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_cov.x();
+    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
+    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
+    error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_cov;
 }
 
 template<typename T>
@@ -119,7 +119,7 @@ struct SwarmFrameError {
             int _idj = it.first;
             T _dis = T(it.second);
             //Less accuracy on distance
-            _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / DISTANCE_MEASURE_ERROR;
+            _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
             res_count++;
         }
         return res_count;
@@ -143,6 +143,7 @@ struct SwarmFrameError {
             pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
             res_count = res_count + 4;
         }
+        // ROS_INFO("Work with detected node");
         return res_count;
     }
 
