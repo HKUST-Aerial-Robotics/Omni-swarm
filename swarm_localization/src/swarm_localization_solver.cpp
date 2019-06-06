@@ -447,7 +447,11 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         int64_t ts = sf.ts;
         if (nfs.find(ts) != nfs.end()) {
             pose_win.push_back(nfs[ts]);
-            nf_win.push_back(all_sf.at(ts).id2nodeframe.at(_id));
+            const NodeFrame & _nf = all_sf.at(ts).id2nodeframe.at(_id);
+            if(_nf.is_static) {
+                return;
+            }
+            nf_win.push_back(_nf);
             ts2poseindex[ts] = nf_win.size() - 1;
         } 
 

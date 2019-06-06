@@ -147,9 +147,10 @@ class NodeFrame {
 
         Pose pose() const {
             //If has vo, return vo position
-            assert(!(node->HasVO() && !vo_available) && "Try get position on VO failed node");
+            if (!is_static) {
+                assert((node->HasVO() && vo_available) && "Try get position non non-static via VO failed node");
+            }
             
-            assert(!(vo_available && is_static) && "Non static node don't have vo");
 
             if (vo_available) {
                 return self_pose;
@@ -158,8 +159,7 @@ class NodeFrame {
                     return node->get_global_pose();
                 } else {
                     //Is unknown static node, using 0, 0, 0 position
-                    Pose _pose;
-                    return _pose;
+                    return Pose::Identity();
                 }
             }
             assert(false && "MUST STH wrong on get pose()");
