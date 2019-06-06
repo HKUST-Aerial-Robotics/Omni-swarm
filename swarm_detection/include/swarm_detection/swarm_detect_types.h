@@ -146,9 +146,7 @@ public:
         Pose p;
         p.position = a.attitude*(b.position + a.position);
         p.attitude = a.attitude*b.attitude;
-
-        Eigen::Isometry3d dT = a.to_isometry()*b.to_isometry();
-        Pose p_tmp(dT);
+        p.update_yaw();
 
 //        printf("Res manual");
 //        p.print();
@@ -165,6 +163,7 @@ public:
         if (!use_yaw_only) {
             p.position = a.attitude.inverse()*(b.position - a.position);
             p.attitude = a.attitude.inverse()*b.attitude;
+            p.update_yaw();
         } else {
             /*
             dpose[3] = wrap_angle(poseb[3] - posea[3]);
@@ -178,12 +177,16 @@ public:
             Eigen::Vector3d dp = b.position - a.position;
             p.attitude = (Eigen::Quaterniond) AngleAxisd(dyaw, Vector3d::UnitZ());
 
+            p._yaw = dyaw;
+            p.attitude_yaw_only = p.attitude;
+
             p.position.x() = cos(-a.yaw()) * dp.x() - sin(-a.yaw()) * dp.y();
             p.position.y() = sin(-a.yaw()) * dp.x() + cos(-a.yaw()) * dp.y();
             p.position.z() = dp.z();
             
             // p.position = AngleAxisd(-a.yaw(), Vector3d::UnitZ()) * dp;
         }
+
 
         return p;
     }
