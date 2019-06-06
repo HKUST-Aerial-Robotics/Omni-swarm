@@ -112,14 +112,14 @@ namespace swarm {
         }
     };
 
-    class NodeFrame {
+class NodeFrame {
     public:
         bool frame_available = false;
         bool vo_available = false;
         bool dists_available = false;
         bool corners_available = false;
         bool has_detect_relpose = false;
-        bool is_static = true;
+        bool is_static = false;
         Node *node = nullptr;
         int id = -1;
 
@@ -195,12 +195,12 @@ namespace swarm {
         }
     };
 
-    struct SwarmFrameState {
-        std::map<int, Pose> node_poses;
-        std::map<int, Vector3d> node_vels;
-    };
+struct SwarmFrameState {
+    std::map<int, Pose> node_poses;
+    std::map<int, Vector3d> node_vels;
+};
 
-    class SwarmFrame {
+class SwarmFrame {
     public:
         std::map<int, NodeFrame> id2nodeframe;
         std::map<int, DisMap> dis_mat;
