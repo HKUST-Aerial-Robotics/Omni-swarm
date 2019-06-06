@@ -77,7 +77,6 @@ public:
         ret[1] = T(position.y());
         ret[2] = T(position.z());
 
-        //TODO:Rewrite this!!!
         ret[3] = T(yaw());
     }
 
