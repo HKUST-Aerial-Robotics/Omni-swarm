@@ -6,3 +6,4 @@ cmake-build-debug
 *.png
 *.zip
 *.pyc
+swarm_localization/.vscode/

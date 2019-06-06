@@ -70,6 +70,11 @@ class SwarmLocalizationSolver {
 
     }
 
+    void init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+
+    void init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+
+
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
     CostFunction *

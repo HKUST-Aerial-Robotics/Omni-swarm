@@ -99,60 +99,100 @@ void SwarmLocalizationSolver::process_frame_clear() {
     }
 }
 
+void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
+    int _id = _nf.id;
+    EstimatePoses & est_poses = est_poses_tsid;
+    EstimatePosesIDTS & est_poses2 = est_poses_idts;
+    auto _p = new double[4];
+    if (_id != self_id) {
+        double noise = this->initial_random_noise;
+
+        Pose _last;
+        if (last_kf_ts > 0) {
+            //Use last solve relative res, e.g init with last
+
+            //TODO:If last kf don't have this node, this will fail!!!!
+            _last = Pose(est_poses_tsid[last_kf_ts][_id], true);
+
+            Pose last_vo = all_sf[last_kf_ts].id2nodeframe[_id].pose();
+            Pose now_vo = _nf.pose();
+            now_vo.set_yaw_only();
+            last_vo.set_yaw_only();
+
+            Eigen::Isometry3d TnowVO = now_vo.to_isometry();
+            Eigen::Isometry3d TlastVO = last_vo.to_isometry();
+
+            Eigen::Isometry3d Tlast = _last.to_isometry();
+
+            Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
+
+
+            transfered_now.to_vector_xyzyaw(_p);
+
+        } else {
+
+            _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
+            _last.set_att(_nf.pose().att());
+
+            _last.to_vector_xyzyaw(_p);
+        }
+    } else {
+        Pose p = _nf.pose();
+        p.to_vector_xyzyaw(_p);
+        // ROS_INFO("x y z yaw:%7.6f %7.6f %7.6f Y %7.6f", _p[0], _p[1], _p[2], _p[3]*57.3, noise);
+    }
+
+    if (est_poses.find(ts) == est_poses.end()) {
+        est_poses[ts] = std::map<int, double*>();
+    }
+
+    if(est_poses2.find(_id) == est_poses2.end()) {
+        est_poses2[_id] = std::map<int64_t, double*>();
+    }
+    est_poses[ts][_id] = _p;
+    est_poses2[_id][ts] = _p;
+}
+
+
+void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
+    int _id = _nf.id;
+    EstimatePoses & est_poses = est_poses_tsid;
+    EstimatePosesIDTS & est_poses2 = est_poses_idts;
+    double * _p = nullptr;
+    if (last_kf_ts > 0 && est_poses2.find(_id) != est_poses2.end()) {
+        _p = est_poses2[_id].begin()->second;
+    } else {
+        _p = new double[4];
+        Pose _last;
+        double noise = this->initial_random_noise;
+        _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
+        _last.set_att(_nf.pose().att());
+        _last.to_vector_xyzyaw(_p);
+    }
+
+    if (est_poses.find(ts) == est_poses.end()) {
+        est_poses[ts] = std::map<int, double*>();
+    }
+
+    if(est_poses2.find(_id) == est_poses2.end()) {
+        est_poses2[_id] = std::map<int64_t, double*>();
+    }
+    est_poses[ts][_id] = _p;
+    est_poses2[_id][ts] = _p;
+}
+
 void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-    EstimatePoses & est_poses = est_poses_tsid;
-    EstimatePosesIDTS & est_poses2 = est_poses_idts;
+
 
     for (auto it : sf.id2nodeframe) {
-        int _id = it.first;
-        auto _p = new double[4];
-        if (_id != self_id) {
-            double noise = this->initial_random_noise;
-
-            Pose _last;
-            if (last_kf_ts > 0) {
-                //Use last solve relative res, e.g init with last
-                _last = Pose(est_poses_tsid[last_kf_ts][_id], true);
-
-                Pose last_vo = all_sf[last_kf_ts].id2nodeframe[_id].pose();
-                Pose now_vo = it.second.pose();
-                now_vo.set_yaw_only();
-                last_vo.set_yaw_only();
-
-                Eigen::Isometry3d TnowVO = now_vo.to_isometry();
-                Eigen::Isometry3d TlastVO = last_vo.to_isometry();
-
-                Eigen::Isometry3d Tlast = _last.to_isometry();
-
-                Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
-
-
-                transfered_now.to_vector_xyzyaw(_p);
-
-            } else {
-
-                _last.set_pos(it.second.pose().pos() + rand_FloatRange_vec(-noise, noise));
-                _last.set_att(it.second.pose().att());
-
-                _last.to_vector_xyzyaw(_p);
-            }
+        if (it.second.is_static) {
+            ROS_INFO("Is static");
+            this->init_static_nf_in_keyframe(sf.ts, it.second);
         } else {
-            Pose p = it.second.pose();
-            p.to_vector_xyzyaw(_p);
-            // ROS_INFO("x y z yaw:%7.6f %7.6f %7.6f Y %7.6f", _p[0], _p[1], _p[2], _p[3]*57.3, noise);
+            this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
         }
-
-        if (est_poses.find(sf.ts) == est_poses.end()) {
-            est_poses[sf.ts] = std::map<int, double*>();
-        }
-
-        if(est_poses2.find(_id) == est_poses2.end()) {
-            est_poses2[_id] = std::map<int64_t, double*>();
-        }
-        est_poses[sf.ts][_id] = _p;
-        est_poses2[_id][sf.ts] = _p;
     }
 
 
