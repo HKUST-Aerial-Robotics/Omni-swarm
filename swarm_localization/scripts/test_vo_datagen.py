@@ -271,7 +271,7 @@ class SimulateDronesEnv(object):
                     sd.detected_nodes.append(nd)
                         # print("In range add detected node")
         if self.enable_detection:
-            print("dete")
+            # print("dete")
             if len(sd.detected_nodes) > 0:
                 _nf.detected = sd
         return _nf
