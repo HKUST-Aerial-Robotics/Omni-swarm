@@ -485,19 +485,20 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 
     ceres::Solver::Options options;
-    // options.linear_solver_type = ceres::DENSE_NORMAL_CHOLESKY;
+
+    //SPARSE NORMAL DOGLEG 12.5ms
+    //SPARSE NORMAL 21
+    //DENSE NORM DOGLEG 49.31ms
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.max_num_iterations = 200;
     options.num_threads = thread_num;
     Solver::Summary summary;
 
-    // options.minimizer_progress_to_stdout = true;
-    // options.trust_region_strategy_type = ceres::DOGLEG;
+     options.trust_region_strategy_type = ceres::DOGLEG;
 
-    // std::cout << "Start solving problem" << std::endl;
     ceres::Solve(options, &problem, &summary);
 
-    double equv_cost = 2 * summary.final_cost / sliding_window_size();
+    double equv_cost = summary.final_cost / sliding_window_size();
 
     equv_cost = equv_cost / (double) (drone_num * (drone_num - 1) / 2);
     equv_cost = sqrt(equv_cost);
@@ -573,5 +574,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
     // exit(-1);
+
     return equv_cost;
 }
