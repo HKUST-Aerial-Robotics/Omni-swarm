@@ -13,8 +13,8 @@ Pose from_cv_matrix(cv::Mat mat) {
     Eigen::Matrix3d rot;
     Pose pose;
     cv::cv2eigen(mat, T);
-    pose.position = T.block<3, 1>(0, 3);
-    pose.attitude = T.block<3, 3>(0, 0);
+    pose.set_pos(T.block<3, 1>(0, 3));
+    pose.set_att(Eigen::Quaterniond(T.block<3, 3>(0, 0)));
 
     return pose;
 }
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 
         ROS_INFO("Left cam position %f %f %f", cam_left.pos().x(), cam_left.pos().y(), cam_left.pos().z());
         DroneMarker marker0(0, 0, 0.0886);
-        marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
+        marker0.pose.set_pos(Eigen::Vector3d(0.1, 0, 0));
 
 
         for (auto m: ma_left) {

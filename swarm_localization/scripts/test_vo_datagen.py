@@ -52,7 +52,7 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, self_id = 0):
+    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/data/"
         self.data_paths = [
@@ -76,6 +76,7 @@ class SimulateDronesEnv(object):
         self.colors = matplotlib.cm.rainbow(np.linspace(0, 1, drone_num))
         self.count = 0
         self.self_id = self_id
+        self.enable_detection = enable_detection
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
         self.base_coor = np.array([
@@ -234,31 +235,31 @@ class SimulateDronesEnv(object):
         odomw.twist.twist.linear.z = Vii[i][2]
         self.odom_pubs[i].publish(odomw)
 
+        if self.enable_detection:
+            sd = swarm_detected()
+            sd.header.stamp = ts
+            sd.self_drone_id = i
 
-        sd = swarm_detected()
-        sd.header.stamp = ts
-        sd.self_drone_id = i
+            for j in range(drone_num):
+                if i!=j:
+                    _nf.dismap_ids.append(j)
+                    _nf.dismap_dists.append(self.drone_dis[i][j])
+                    dpose, in_range = self.generate_relpose(j, i, tick)
+                    if in_range:
+                        nd = node_detected()
+                        nd.relpose.pose = dpose
+                        nd.self_drone_id = i
+                        nd.remote_drone_id = j
+                        nd.header.stamp = ts
+                        cov = nd.relpose.covariance
+                        cov[0] = 0.1
+                        cov[6+1] = cov[2*6+2] = 0.02
+                        cov[3*6+3] = cov[4*6+4] = cov[5*6+5] = 10/57.3
+                        sd.detected_nodes.append(nd)
+                        # print("In range add detected node")
 
-        for j in range(drone_num):
-            if i!=j:
-                _nf.dismap_ids.append(j)
-                _nf.dismap_dists.append(self.drone_dis[i][j])
-                dpose, in_range = self.generate_relpose(j, i, tick)
-                if in_range:
-                    nd = node_detected()
-                    nd.relpose.pose = dpose
-                    nd.self_drone_id = i
-                    nd.remote_drone_id = j
-                    nd.header.stamp = ts
-                    cov = nd.relpose.covariance
-                    cov[0] = 0.1
-                    cov[6+1] = cov[2*6+2] = 0.02
-                    cov[3*6+3] = cov[4*6+4] = cov[5*6+5] = 10/57.3
-                    sd.detected_nodes.append(nd)
-                    # print("In range add detected node")
-
-        if len(sd.detected_nodes) > 0:
-            _nf.detected = sd
+            if len(sd.detected_nodes) > 0:
+                _nf.detected = sd
         return _nf
 
     def update(self, e, show=False):
@@ -330,5 +331,6 @@ if __name__ == "__main__":
     rospy.init_node("vo_data_gen")
     drone_num = rospy.get_param('~drone_num', 4)
     self_id = rospy.get_param("~self_id", 0)
-    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id)
+    enable_detection = rospy.get_param("detection", True)
+    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_detection =enable_detection)
     rospy.spin()

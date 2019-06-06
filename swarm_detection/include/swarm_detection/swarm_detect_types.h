@@ -32,9 +32,21 @@ T wrap_angle(T angle) {
     return angle;
 }
 // namespace SwarmDetection {}
-struct Pose {
+class Pose {
+
     Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
     Eigen::Quaterniond attitude = Eigen::Quaterniond(1, 0, 0, 0);
+    Eigen::Quaterniond attitude_yaw_only = Eigen::Quaterniond(1, 0, 0, 0);
+    double _yaw = 0;
+
+    void update_yaw() {
+        _yaw = this->rpy().z();
+        attitude_yaw_only = (Eigen::Quaterniond) AngleAxisd(_yaw, Vector3d::UnitZ());
+    }
+public:
+    static Pose Identity() {
+        return Pose();
+    }
 
     void to_vector(double ret[]) {
         ret[3] = attitude.w();
@@ -61,12 +73,6 @@ struct Pose {
 
     template<typename T>
     void to_vector_xyzyaw(T ret[]) {
-        /*
-        ret[3] = T(attitude.w());
-        ret[4] = T(attitude.x());
-        ret[5] = T(attitude.y());
-        ret[6] = T(attitude.z());
-        */
         ret[0] = T(position.x());
         ret[1] = T(position.y());
         ret[2] = T(position.z());
@@ -86,6 +92,8 @@ struct Pose {
     Pose(Eigen::Isometry3d trans) {
         position = trans.translation();
         attitude = trans.rotation();
+
+        update_yaw();
     }
 
     Eigen::Isometry3d to_isometry() const {
@@ -102,6 +110,7 @@ struct Pose {
         position.x() = p.position.x;
         position.y() = p.position.y;
         position.z() = p.position.z;
+        update_yaw();
     }
 
     Pose(double v[], bool xyzyaw=false) {
@@ -116,6 +125,9 @@ struct Pose {
         position.x() = v[0];
         position.y() = v[1];
         position.z() = v[2];
+        attitude.normalize();
+
+        update_yaw();
     }
 
     geometry_msgs::Pose to_ros_pose () const {
@@ -173,25 +185,14 @@ struct Pose {
             // p.position = AngleAxisd(-a.yaw(), Vector3d::UnitZ()) * dp;
         }
 
-        /*
-        Eigen::Isometry3d dT = a.to_isometry().inverse()*b.to_isometry();
-        Pose p_tmp(dT);
-
-        printf("Res manual");
-        p.print();
-
-        printf("Res eigen");
-        p.print();*/
         return p;
     }
 
     inline double yaw() const {
-        return this->rpy().z();
+        return _yaw;
     }
 
-    inline Eigen::Quaterniond attitude_yaw_only() const {
-        return (Eigen::Quaterniond) AngleAxisd(yaw(), Vector3d::UnitZ());
-    }
+
 
     void print() {
         auto _rpy = rpy();
@@ -202,6 +203,35 @@ struct Pose {
                _rpy.z() * 57.3
         );
     }
+
+    inline Eigen::Vector3d pos() const {
+        return position;
+    }
+
+    inline Eigen::Quaterniond att_yaw_only() const {
+        return attitude_yaw_only;
+    }
+
+    inline Eigen::Quaterniond att() const {
+        return attitude;
+    }
+
+    inline void set_att(Eigen::Quaterniond att) {
+        attitude = att;
+        update_yaw();
+    }
+
+    inline void set_pos(Eigen::Vector3d pos) {
+        position = pos;
+    }
+
+
+    inline void set_yaw_only() {
+        update_yaw();
+        attitude =  attitude_yaw_only;
+    }
+
+    
     Pose() {}
 };
 
@@ -348,11 +378,11 @@ struct Camera {
     Pose pose;
 
     Quaterniond att() const {
-        return pose.attitude;
+        return pose.att();
     }
 
     Vector3d pos() const {
-        return pose.position;
+        return pose.pos();
     }
 };
 

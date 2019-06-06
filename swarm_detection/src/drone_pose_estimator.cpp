@@ -85,8 +85,8 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
                 P = T_pnp;
 
 
-                pose.position = P;
-                pose.attitude = R;
+                pose.set_pos(P);
+                pose.set_att(Eigen::Quaterniond(R));
 
                 Eigen::Isometry3d drone_trans = pose.to_isometry();
 
@@ -219,17 +219,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
     ceres::Solve(options, &ba_problem, &summary);
     std::cout << summary.BriefReport() << "  " << summary.total_time_in_seconds * 1000 << "ms\n";
 
-
-    pose.position.x() = x[0];
-    pose.position.y() = x[1];
-    pose.position.z() = x[2];
-
-    pose.attitude.x() = x[4];
-    pose.attitude.y() = x[5];
-    pose.attitude.z() = x[6];
-    pose.attitude.w() = x[3];
-
-    pose.attitude.normalize();
+    pose = Pose(x);
     printf("Final pose");
     pose.print();
     if (enable_drawing) {

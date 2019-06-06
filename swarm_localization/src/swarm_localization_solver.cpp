@@ -20,7 +20,6 @@
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
 #include <set>
-#include "swarm_detection/local_pose_parameter.h"
 
 // #define DEBUG_OUTPUT_POSES
 
@@ -119,8 +118,8 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
 
                 Pose last_vo = all_sf[last_kf_ts].id2nodeframe[_id].pose();
                 Pose now_vo = it.second.pose();
-                now_vo.attitude = now_vo.attitude_yaw_only();
-                last_vo.attitude = last_vo.attitude_yaw_only();
+                now_vo.set_yaw_only();
+                last_vo.set_yaw_only();
 
                 Eigen::Isometry3d TnowVO = now_vo.to_isometry();
                 Eigen::Isometry3d TlastVO = last_vo.to_isometry();
@@ -133,11 +132,9 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
                 transfered_now.to_vector_xyzyaw(_p);
 
             } else {
-                _last.position.x() = rand_FloatRange(-noise, noise) + it.second.pose().position.x();
-                _last.position.y() = rand_FloatRange(-noise, noise) + it.second.pose().position.y();
-                _last.position.z() = rand_FloatRange(-noise, noise) + it.second.pose().position.z();
 
-                _last.attitude = it.second.pose().attitude;
+                _last.set_pos(it.second.pose().pos() + rand_FloatRange_vec(-noise, noise));
+                _last.set_att(it.second.pose().att());
 
                 _last.to_vector_xyzyaw(_p);
             }
@@ -202,8 +199,8 @@ Pose SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_ya
         Pose now_vo = nf.pose();
 
         if (attitude_yaw_only) {
-            now_vo.attitude = now_vo.attitude_yaw_only();
-            last_vo.attitude = last_vo.attitude_yaw_only();
+            now_vo.set_yaw_only();
+            last_vo.set_yaw_only();
         }
         Eigen::Isometry3d TnowVO = now_vo.to_isometry();
         Eigen::Isometry3d TlastVO = last_vo.to_isometry();

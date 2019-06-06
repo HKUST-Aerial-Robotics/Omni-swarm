@@ -24,6 +24,15 @@ inline float rand_FloatRange(float a, float b) {
     return ((b - a) * ((float) rand() / RAND_MAX)) + a;
 }
 
+inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
+    return Eigen::Vector3d(
+        rand_FloatRange(a, b),
+        rand_FloatRange(a, b),
+        rand_FloatRange(a, b)
+    );
+}
+
+
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 
