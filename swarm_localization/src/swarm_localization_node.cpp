@@ -207,12 +207,6 @@ protected:
         pub.publish(odom);
     }
 
-    nav_msgs::Odometry odom_now;
-
-    void on_drone_odom_recv(const nav_msgs::Odometry &odom) {
-        odom_now = odom;
-    }
-
     float force_freq = 10;
     ros::NodeHandle &nh;
 
@@ -288,9 +282,6 @@ public:
                                           &SwarmLocalizationNode::predict_swarm, this,
                                           ros::TransportHints().tcpNoDelay());
         
-        recv_drone_odom_now = nh.subscribe("/vins_estimator/imu_propagate", 1,
-                                           &SwarmLocalizationNode::on_drone_odom_recv, this,
-                                           ros::TransportHints().tcpNoDelay());
         int frame_num = 0, thread_num, min_frame_num;
         float acpt_cost = 0.4;
 
@@ -335,7 +326,7 @@ int main(int argc, char **argv) {
 
     SwarmLocalizationNode uwbfusernode(nh);
 
-    ros::MultiThreadedSpinner spinner(2); // Use 4 threads
+    ros::MultiThreadedSpinner spinner(4); // Use 4 threads
     spinner.spin();
 
     return 0;
