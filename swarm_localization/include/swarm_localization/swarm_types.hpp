@@ -119,8 +119,9 @@ namespace swarm {
         bool dists_available = false;
         bool corners_available = false;
         bool has_detect_relpose = false;
+        bool is_static = true;
         Node *node = nullptr;
-        int64_t id = -1;
+        int id = -1;
 
         DisMap dis_map;
         Pose self_pose;
@@ -137,7 +138,7 @@ namespace swarm {
 
         NodeFrame(Node *_node) :
                 node(_node) {
-
+            is_static = _node->IsStatic();
         }
 
         NodeFrame() {
@@ -147,10 +148,12 @@ namespace swarm {
         Pose pose() const {
             //If has vo, return vo position
             assert(!(node->HasVO() && !vo_available) && "Try get position on VO failed node");
+            
+            assert(!(vo_available && is_static) && "Non static node don't have vo");
 
             if (vo_available) {
                 return self_pose;
-            } else {
+            } else if(is_static){
                 if (node->HasGlobalPose()) {
                     return node->get_global_pose();
                 } else {
@@ -159,14 +162,21 @@ namespace swarm {
                     return _pose;
                 }
             }
+            assert(false && "MUST STH wrong on get pose()");
+            return Pose();
         }
 
         Eigen::Vector3d position() const {
-            return pose().position;
+            return pose().pos();
         }
 
-        Eigen::Quaterniond attitude() const {
-            return pose().attitude;
+        Eigen::Quaterniond attitude(bool yaw_only = false) const {
+            if (yaw_only) {
+                return pose().att_yaw_only();
+            } else {
+                return pose().att();
+            }
+
         }
 
         Eigen::Vector3d velocity() const {

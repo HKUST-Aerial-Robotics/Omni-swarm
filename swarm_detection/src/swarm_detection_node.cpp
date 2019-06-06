@@ -26,8 +26,8 @@ Pose from_cv_matrix(cv::Mat mat) {
     Eigen::Matrix3d rot;
     Pose pose;
     cv::cv2eigen(mat, T);
-    pose.position = T.block<3, 1>(0, 3);
-    pose.attitude = T.block<3, 3>(0, 0);
+    pose.set_pos(T.block<3, 1>(0, 3));
+    pose.set_att(Eigen::Quaterniond(T.block<3, 3>(0, 0)));
 
     return pose;
 }
@@ -90,7 +90,7 @@ public:
 
     Pose ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
         DroneMarker marker0(0, 0, 0.1);
-        marker0.pose.position = Eigen::Vector3d(0.1, 0, 0);
+        marker0.pose.set_pos(Eigen::Vector3d(0.1, 0, 0));
         corner_array CorALeft;
         corner_array CorARight;
 
@@ -242,14 +242,14 @@ public:
 
         //Todo, should be self frame
         pcs.header.frame_id = "world";
-        pcs.pose.pose.position.x = pose.position.x();
-        pcs.pose.pose.position.y = pose.position.y();
-        pcs.pose.pose.position.z = pose.position.z();
+        pcs.pose.pose.position.x = pose.pos().x();
+        pcs.pose.pose.position.y = pose.pos().y();
+        pcs.pose.pose.position.z = pose.pos().z();
 
-        pcs.pose.pose.orientation.w = pose.attitude.w();
-        pcs.pose.pose.orientation.x = pose.attitude.x();
-        pcs.pose.pose.orientation.y = pose.attitude.y();
-        pcs.pose.pose.orientation.z = pose.attitude.z();
+        pcs.pose.pose.orientation.w = pose.att().w();
+        pcs.pose.pose.orientation.x = pose.att().x();
+        pcs.pose.pose.orientation.y = pose.att().y();
+        pcs.pose.pose.orientation.z = pose.att().z();
 
         _pub.publish(pcs);
 
