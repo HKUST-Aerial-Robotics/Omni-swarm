@@ -111,10 +111,10 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
         if (last_kf_ts > 0) {
             //Use last solve relative res, e.g init with last
 
-            //TODO:If last kf don't have this node, this will fail!!!!
-            _last = Pose(est_poses_tsid[last_kf_ts][_id], true);
+            int64_t last_ts_4node = est_poses_idts[_id].rbegin()->first;
+            _last = Pose(est_poses_tsid[last_ts_4node][_id], true);
 
-            Pose last_vo = all_sf[last_kf_ts].id2nodeframe[_id].pose();
+            Pose last_vo = all_sf[last_ts_4node].id2nodeframe[_id].pose();
             Pose now_vo = _nf.pose();
             now_vo.set_yaw_only();
             last_vo.set_yaw_only();
