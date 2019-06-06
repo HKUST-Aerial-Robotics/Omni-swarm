@@ -56,11 +56,11 @@ class SimulateDronesEnv(object):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/data/"
         self.data_paths = [
-            ("log_2019-10-15-2-17-circle.csv", 102),
-            # ("2019-3-6-fast-circle.csv", 262),
-            ("2019-3-6-sweep-hover-y.csv", 48),
-            ("realsense_2019_5_15_loop.csv", 20),
-            ("circle-3s-no-gc-fix.csv", 18),
+            ("log_2019-10-15-2-17-circle.csv", 102), #0
+            ("2019-3-6-sweep-hover-y.csv", 48), #1
+            ("realsense_2019_5_15_loop.csv", 20), #2
+            ("circle-3s-no-gc-fix.csv", 18), #3
+            (None, None),#4
             
             ("2019-3-6-sweep-hover-y.csv", 38),
             ("realsense_2019_5_15_loop.csv", 15),
@@ -80,11 +80,11 @@ class SimulateDronesEnv(object):
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
         self.base_coor = np.array([
-            [0, 0, 0],
-            [1.48147416 , 1.7661877,   .20343478],
-            [ 1.3077791 ,  -0.87719654,  .30700117],
-            [0.50198334, -0.12191708,  .17340531],
-            [0.39650833,  -.95609427, .10679965],
+            [0, 0, 0], #0
+            [1.48147416 , 1.7661877,   .20343478],#1
+            [ 1.3077791 ,  -0.87719654,  .30700117], #2
+            [0.50198334, -0.12191708,  .17340531],#3
+            [0.39650833,  -.95609427, .10679965],#4
 
             [-1.24850392,  .58565513,  .1],
             [ 3.30543244, -1.61200742, 0],
@@ -105,6 +105,7 @@ class SimulateDronesEnv(object):
         print("Base_coor", self.base_coor)
 
         self.distance_noise = 0.1
+        self.static = []
 
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
@@ -135,6 +136,15 @@ class SimulateDronesEnv(object):
     def load_datas(self):
         self.data = []
         for p, l in self.data_paths:
+            if p is None:
+                self.data.append({
+                    "rpy":np.zeros((10000,3)),
+                    "pos":np.zeros((10000,3)),
+                    "vel":np.zeros((10000,3))
+                })
+                continue
+                self.static.append(True)
+            self.static.append(False)
             self.data.append(parse_csv_data(self.data_path + p, l))
             print("{} len {}".format(p, len(self.data[-1]['pos'])))
 
@@ -207,8 +217,11 @@ class SimulateDronesEnv(object):
 
 
         _nf.header.stamp = ts
-        _nf.odometry = odom
-        _nf.vo_available = True
+        if not self.static[i]:
+            _nf.vo_available = True
+            _nf.odometry = odom
+        else:
+            _nf.vo_available = False
         _nf.id = i
 
 
