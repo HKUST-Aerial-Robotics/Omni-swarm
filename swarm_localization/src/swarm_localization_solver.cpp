@@ -625,16 +625,18 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
     auto jacb = CRSMatrixToEigenMatrix(jacobian);
 
-    ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
-    auto cov = (jacb.transpose()*jacb).inverse();
+    // ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
+    auto cov = (jacb.transpose()*jacb).inverse()*ERROR_NORMLIZED*ERROR_NORMLIZED;
     ros::Time t5 = ros::Time::now();
 
     int64_t ts = sf_sld_win.back().ts;
     for (int j=0; j < cov.cols() / 4; j ++ ) {
-        if (param_indexs[j].first == ts) {
+        int j = 0;
+        if (param_indexs[j].first == ts ) {
             printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
-            printf("ID %d %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, cov(4*j,4*j), cov(4*j+1,4*j+1), cov(4*j+2,4*j+2), cov(4*j+3,4*j+3));
-            fflush(stdout);
+            printf("ID %d SD %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, sqrt(cov(4*j,4*j)), 
+                sqrt(cov(4*j+1,4*j+1)), sqrt(cov(4*j+2,4*j+2)), sqrt(cov(4*j+3,4*j+3)));
+            // fflush(stdout);
         }
     }
     printf("\n");
