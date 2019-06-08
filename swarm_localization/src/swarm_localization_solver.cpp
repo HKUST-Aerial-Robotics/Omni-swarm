@@ -615,19 +615,6 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     Covariance covariance(cov_options);
     std::vector<std::pair<const double*, const double*> > covariance_blocks;
 
-    auto sf = sf_sld_win.front();
-    for (auto it : est_poses_tsid[sf.ts]) {
-        if (it.first != self_id) {
-            covariance_blocks.push_back(std::make_pair(it.second, it.second));
-        }
-    }
-
-    ROS_INFO("Solving... covariance");
-    covariance.Compute(covariance_blocks, &problem);
-    ros::Time t4 = ros::Time::now();
-
-    ROS_INFO("Ceres compute covariance %4.3fms", (t4-t0).toSec()*1000);
-    
     Problem::EvaluateOptions evaluate_options_;
     evaluate_options_.num_threads = 1;
     evaluate_options_.apply_loss_function = true;
@@ -639,39 +626,17 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     auto cov = (jacb.transpose()*jacb).inverse();
     ros::Time t5 = ros::Time::now();
 
-    int64_t ts = 0;
+    int64_t ts = sf_sld_win.back().ts;
     for (int j=0; j < cov.cols() / 4; j ++ ) {
-        if (param_indexs[j].first > ts) {
+        if (param_indexs[j].first == ts) {
             printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
+            printf("ID %d %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, cov(4*j,4*j), cov(4*j+1,4*j+1), cov(4*j+2,4*j+2), cov(4*j+3,4*j+3));
+            fflush(stdout);
         }
-        printf("ID %d %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, cov(4*j,4*j), cov(4*j+1,4*j+1), cov(4*j+2,4*j+2), cov(4*j+3,4*j+3));
     }
     printf("\n");
 
-    ROS_INFO("Eigen compute covariance %4.3fms\n TS: %d", (t5-t4).toSec()*1000, (sf.ts/1000000)%1000000);
-
-
-    for (auto it : est_poses_tsid[sf.ts]) {
-        if (it.first != self_id) {        
-            double covariance_xx[4 * 4];
-            covariance.GetCovarianceBlock(it.second, it.second, covariance_xx);
-            printf("ID:%d cov :",
-                it.first
-            );
-            for (int j = 0; j<4; j ++) {
-                    printf("%5.4f ", covariance_xx[4*j+j]);
-            }
-            /*
-            for (int i=0;i<4;i++) {
-                for (int j = 0; j<4; j ++) {
-                    printf("%5.4f ", covariance_xx[4*i+j]);
-                }
-                printf("\n");
-            }*/
-        }
-
-        printf("\n");
-    }
+    ROS_INFO("Eigen compute covariance %4.3fms\n", (t5-t0).toSec()*1000);
 
 }
 
