@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
-#include <set>
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
@@ -108,6 +107,10 @@ class SwarmLocalizationSolver {
 
     bool has_new_keyframe = false;
 
+    void compute_covariance(Problem & problem);
+    
+    inline unsigned int sliding_window_size() const;
+
 public:
     int self_id = -1;
     unsigned int thread_num;
@@ -143,7 +146,6 @@ public:
 
     double solve();
 
-    inline unsigned int sliding_window_size() const;
 
     
 };
