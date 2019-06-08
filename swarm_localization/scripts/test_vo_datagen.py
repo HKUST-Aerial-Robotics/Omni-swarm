@@ -60,15 +60,15 @@ class SimulateDronesEnv(object):
             ("2019-3-6-sweep-hover-y.csv", 48), #1
             ("realsense_2019_5_15_loop.csv", 20), #2
             ("circle-3s-no-gc-fix.csv", 18), #3
-            (None, None),#4
+            # (None, None),#4
             
-            ("2019-3-6-sweep-hover-y.csv", 38),
-            ("realsense_2019_5_15_loop.csv", 15),
-            ("circle-3s-no-gc-fix.csv", 18),
+            ("2019-3-6-sweep-hover-y.csv", 38),#5
+            ("realsense_2019_5_15_loop.csv", 15), #6
+            ("circle-3s-no-gc-fix.csv", 18),# 7
 
-            ("2019-3-6-sweep-hover-y.csv", 43),
-            ("realsense_2019_5_15_loop.csv", 10),
-            ("circle-3s-no-gc-fix.csv", 25)
+            ("2019-3-6-sweep-hover-y.csv", 43), # 8
+            ("realsense_2019_5_15_loop.csv", 10), #9
+            ("circle-3s-no-gc-fix.csv", 25)#10
         ]
 
         self.drone_num = drone_num

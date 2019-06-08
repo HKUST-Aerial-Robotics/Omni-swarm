@@ -31,6 +31,9 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
     );
 }
 
+inline int TSShort(int64_t ts) {
+    return (ts/1000000)%10000000;
+}
 
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
@@ -39,7 +42,7 @@ typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 //state<ts,id>
 typedef std::map<int64_t, std::map<int,double*>> EstimatePoses;
 typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
-
+typedef std::vector<std::pair<int64_t, int>> TSIDArray;
 class SwarmLocalizationSolver {
 
 
@@ -81,12 +84,12 @@ class SwarmLocalizationSolver {
 
 
     void
-    setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, bool is_lastest_frame) const;
+    setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
     CostFunction *
     _setup_cost_function_by_nf_win(const std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const;
 
-    void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
+    void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id, int & count) const;
 
     double solve_once(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts, bool report = false);
     
@@ -107,8 +110,8 @@ class SwarmLocalizationSolver {
 
     bool has_new_keyframe = false;
 
-    void compute_covariance(Problem & problem);
-    
+    void compute_covariance(Problem & problem, std::vector<std::pair<int64_t, int>> param_indexs);
+
     inline unsigned int sliding_window_size() const;
 
 public:

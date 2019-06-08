@@ -390,7 +390,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
 
 
-void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, bool is_lastest_frame) const {
+void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
     int64_t ts = sf.ts;
@@ -399,8 +399,10 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         if (is_lastest_frame && _id == self_id) {
             continue;
         } else {
+            // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
             pose_state.push_back(swarm_est_poses.at(ts).at(_id));
             id2poseindex[_id] = pose_state.size() - 1;
+            param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
         }
     }
 
@@ -430,7 +432,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(const std::vector<NodeFr
     return cost_function;
 }
 
-void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id) const {
+void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id, int & count) const {
     auto nfs = est_poses_idts.at(_id);
 
     if (nfs.size() < 2) {
@@ -447,12 +449,16 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         int64_t ts = sf.ts;
         if (nfs.find(ts) != nfs.end()) {
             pose_win.push_back(nfs[ts]);
+            count ++;
             const NodeFrame & _nf = all_sf.at(ts).id2nodeframe.at(_id);
             if(_nf.is_static) {
                 return;
             }
             nf_win.push_back(_nf);
             ts2poseindex[ts] = nf_win.size() - 1;
+
+            // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
+            
         } 
 
     }
@@ -460,6 +466,8 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     if (_id == self_id) {
         //Delete last one that don't need to estimate
         pose_win.erase(pose_win.end() - 1);
+        ROS_INFO("Earse last");
+        count --;
     }
 
     problem.AddResidualBlock(_setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id), nullptr, pose_win);
@@ -472,17 +480,19 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, poses %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
+    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
 
     has_new_keyframe = false;
-
+    std::vector<std::pair<int64_t, int>> param_indexs;
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
-        this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], i==sf_sld_win.size()-1);
+        this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
+    }
+    int verify_count = 0;
+    for (int _id: all_nodes) {
+        this->setup_problem_with_sfherror(est_poses_idts, problem, _id, verify_count);
     }
 
-    for (int _id: all_nodes) {
-        this->setup_problem_with_sfherror(est_poses_idts, problem, _id);
-    }
+    ROS_INFO("Total %ld params blk, verify %d", param_indexs.size(), verify_count);
 
 
     ceres::Solver::Options options;
@@ -579,12 +589,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     // exit(-1);
     ros::Time t3 = ros::Time::now();
 
-    Problem::EvaluateOptions evaluate_options_;
-    evaluate_options_.num_threads = options.num_threads;
-    evaluate_options_.apply_loss_function = true;
-
-    CRSMatrix jacobian;
-    problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
+    this->compute_covariance(problem, param_indexs);    
 
     //Use this jacobian to give a covariance function for each state. than add marginalization
     ros::Time t4 = ros::Time::now();
@@ -595,17 +600,22 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         (t4-t3).toSec()*1000,
         (ros::Time::now() - t1).toSec()*1000
     );
+
     return equv_cost;
 }
 
-void SwarmLocalizationSolver::compute_covariance(Problem & problem) {
+Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
+
+void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray param_indexs) {
+    ros::Time t0 = ros::Time::now();
+
     ceres::Covariance::Options cov_options;
-    cov_options.algorithm_type = DENSE_SVD;
-    cov_options.null_space_rank = 1;
+    // cov_options.algorithm_type = DENSE_SVD;
+    // cov_options.null_space_rank = 1;
     Covariance covariance(cov_options);
     std::vector<std::pair<const double*, const double*> > covariance_blocks;
 
-    auto sf = sf_sld_win.back();
+    auto sf = sf_sld_win.front();
     for (auto it : est_poses_tsid[sf.ts]) {
         if (it.first != self_id) {
             covariance_blocks.push_back(std::make_pair(it.second, it.second));
@@ -613,29 +623,71 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem) {
     }
 
     ROS_INFO("Solving... covariance");
-
     covariance.Compute(covariance_blocks, &problem);
     ros::Time t4 = ros::Time::now();
+
+    ROS_INFO("Ceres compute covariance %4.3fms", (t4-t0).toSec()*1000);
+    
+    Problem::EvaluateOptions evaluate_options_;
+    evaluate_options_.num_threads = 1;
+    evaluate_options_.apply_loss_function = true;
+    CRSMatrix jacobian;
+    problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
+    auto jacb = CRSMatrixToEigenMatrix(jacobian);
+
+    ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
+    auto cov = (jacb.transpose()*jacb).inverse();
+    ros::Time t5 = ros::Time::now();
+
+    int64_t ts = 0;
+    for (int j=0; j < cov.cols() / 4; j ++ ) {
+        if (param_indexs[j].first > ts) {
+            printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
+        }
+        printf("ID %d %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, cov(4*j,4*j), cov(4*j+1,4*j+1), cov(4*j+2,4*j+2), cov(4*j+3,4*j+3));
+    }
+    printf("\n");
+
+    ROS_INFO("Eigen compute covariance %4.3fms\n TS: %d", (t5-t4).toSec()*1000, (sf.ts/1000000)%1000000);
+
 
     for (auto it : est_poses_tsid[sf.ts]) {
         if (it.first != self_id) {        
             double covariance_xx[4 * 4];
             covariance.GetCovarianceBlock(it.second, it.second, covariance_xx);
-            ROS_INFO("ID:%d cov :",
+            printf("ID:%d cov :",
                 it.first
             );
-
+            for (int j = 0; j<4; j ++) {
+                    printf("%5.4f ", covariance_xx[4*j+j]);
+            }
+            /*
             for (int i=0;i<4;i++) {
                 for (int j = 0; j<4; j ++) {
                     printf("%5.4f ", covariance_xx[4*i+j]);
                 }
                 printf("\n");
-            }
+            }*/
         }
 
         printf("\n");
     }
-    
 
+}
 
+Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix) {
+    Eigen::MatrixXd eigen_matrix;
+    eigen_matrix.resize(crs_matrix.num_rows, crs_matrix.num_cols);
+    eigen_matrix.setZero();
+    for (int row = 0; row < crs_matrix.num_rows; ++row) {
+        int start = crs_matrix.rows[row];
+        int end = crs_matrix.rows[row + 1] - 1;
+        
+        for (int i = start; i <= end; i++) {
+            int col = crs_matrix.cols[i];
+            double value = crs_matrix.values[i];
+            (eigen_matrix)(row, col) = value;
+        }
+    }
+    return eigen_matrix;
 }
