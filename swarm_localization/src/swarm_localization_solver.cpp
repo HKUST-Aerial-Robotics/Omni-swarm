@@ -22,7 +22,7 @@
 #include <set>
 
 // #define DEBUG_OUTPUT_POSES
-
+// #define COMPUTE_COV
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -468,6 +468,7 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
 
+    ros::Time t1 = ros::Time::now();
     Problem problem;
 
 //        if (solve_count % 10 == 0)
@@ -494,7 +495,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     options.num_threads = thread_num;
     Solver::Summary summary;
 
-     options.trust_region_strategy_type = ceres::DOGLEG;
+    options.trust_region_strategy_type = ceres::DOGLEG;
+    
+    ros::Time t2 = ros::Time::now();
 
     ceres::Solve(options, &problem, &summary);
 
@@ -574,6 +577,65 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
     // exit(-1);
+    ros::Time t3 = ros::Time::now();
 
+    Problem::EvaluateOptions evaluate_options_;
+    evaluate_options_.num_threads = options.num_threads;
+    evaluate_options_.apply_loss_function = true;
+
+    CRSMatrix jacobian;
+    problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
+
+    //Use this jacobian to give a covariance function for each state. than add marginalization
+    ros::Time t4 = ros::Time::now();
+
+    ROS_INFO("Dt1 %3.2f ms DT2 %3.2f DT3 %3.2f TOTAL %3.2f",
+        (t2-t1).toSec()*1000,
+        (t3-t2).toSec()*1000,
+        (t4-t3).toSec()*1000,
+        (ros::Time::now() - t1).toSec()*1000
+    );
     return equv_cost;
+}
+
+void SwarmLocalizationSolver::compute_covariance(Problem & problem) {
+    ceres::Covariance::Options cov_options;
+    cov_options.algorithm_type = DENSE_SVD;
+    cov_options.null_space_rank = 1;
+    Covariance covariance(cov_options);
+    std::vector<std::pair<const double*, const double*> > covariance_blocks;
+
+    auto sf = sf_sld_win.back();
+    for (auto it : est_poses_tsid[sf.ts]) {
+        if (it.first != self_id) {
+            covariance_blocks.push_back(std::make_pair(it.second, it.second));
+        }
+    }
+
+    ROS_INFO("Solving... covariance");
+
+    covariance.Compute(covariance_blocks, &problem);
+    ros::Time t4 = ros::Time::now();
+
+    for (auto it : est_poses_tsid[sf.ts]) {
+        if (it.first != self_id) {        
+            double covariance_xx[4 * 4];
+            covariance.GetCovarianceBlock(it.second, it.second, covariance_xx);
+            ROS_INFO("ID:%d cov :",
+                it.first
+            );
+
+            for (int i=0;i<4;i++) {
+                for (int j = 0; j<4; j ++) {
+                    printf("%5.4f ", covariance_xx[4*i+j]);
+                }
+                printf("\n");
+            }
+        }
+
+        printf("\n");
+    }
+    
+
+
 }
