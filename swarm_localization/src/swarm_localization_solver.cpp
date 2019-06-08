@@ -391,6 +391,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
 
 void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
+    //TODO: Deal with static object in this function!!!
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
     int64_t ts = sf.ts;
@@ -607,6 +608,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
 
 void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray param_indexs) {
+
+    //This function still has bug when static
     ros::Time t0 = ros::Time::now();
 
     ceres::Covariance::Options cov_options;
