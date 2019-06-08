@@ -59,8 +59,9 @@ class SimulateDronesEnv(object):
             ("log_2019-10-15-2-17-circle.csv", 102), #0
             ("2019-3-6-sweep-hover-y.csv", 48), #1
             ("realsense_2019_5_15_loop.csv", 20), #2
-            ("circle-3s-no-gc-fix.csv", 18), #3
-            (None, None),#4
+            ("log_2019-10-15-2-17-circle.csv", 102), #3
+            ("circle-3s-no-gc-fix.csv", 18), #4
+            (None, None),#5
             
             ("2019-3-6-sweep-hover-y.csv", 38),#5
             ("realsense_2019_5_15_loop.csv", 15), #6

@@ -27,7 +27,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_DRIFT_METER 0.001
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.1
-#define ERROR_NORMLIZED 0.1
+#define ERROR_NORMLIZED 0.01
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
