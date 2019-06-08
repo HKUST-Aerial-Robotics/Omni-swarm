@@ -39,8 +39,8 @@ nodes:
     has_uwb: true
     has_armarkers: true
     has_camera: true
-    has_vo: false
-    is_static: true
+    has_vo: true
+    is_static: false
     has_global_pose: false
     anntena_pos: [0, -0.083, 0.078]
   5:
