@@ -91,10 +91,17 @@ struct SwarmFrameError {
     std::vector<NodeFrame> nfs;
     std::vector<int> ids;
     int64_t ts;
-    int pose_num = 0;
+    int nf_num = 0;
     std::vector<Eigen::Vector3d> ann_poss;
+    std::vector<std::vector<int>> id_detected_indexs;
+    std::vector<std::vector<Eigen::Vector3d>> id_detected_poscov;
+    std::vector<std::vector<Eigen::Vector3d>> id_detected_angcov;
+    std::vector<std::vector<int>> id_distance_indexs;
+    std::vector<std::vector<double>> id_dis;
 
-
+    inline int safe_index(int index) const {
+        return (index + nf_num) % nf_num;
+    }
     template<typename T>
     inline void get_pose_by_id(int _id, T const *const *_poses, T * t_pose) const {
 //        printf("%d", _id);
@@ -144,8 +151,8 @@ struct SwarmFrameError {
         T p_anna[3], p_annb[3];
         
 
-        EigenVec2T( ann_poss[(indexi + nfs.size())% nfs.size()], p_anna);
-        EigenVec2T( ann_poss[(indexj + nfs.size())% nfs.size()], p_annb);
+        EigenVec2T( ann_poss[safe_index(indexi)], p_anna);
+        EigenVec2T( ann_poss[safe_index(indexj)], p_annb);
         PoseTransformPoint(posea, p_anna, pa);
         PoseTransformPoint(poseb, p_annb, pb);
 
@@ -156,12 +163,10 @@ struct SwarmFrameError {
 
 
     template<typename T>
-    inline int nodeframe_distance_res(int index, T const *const *_poses, T *_residual, int res_count) const {
-        const NodeFrame & _nf = nfs[(index + nfs.size())% nfs.size()];
-        for (auto it : _nf.dis_map) {
-            int _idj = it.first;
-            int _indexj = id2poseindex.at(_idj);
-            T _dis = T(it.second);
+    int nodeframe_distance_res(int index, T const *const *_poses, T *_residual, int res_count) const {
+        for (int i = 0; i < id_distance_indexs[safe_index(index)].size(); i ++) {
+            int _indexj = id_distance_indexs[safe_index(index)][i];
+            T _dis = T(id_dis[safe_index(index)][i]);
             //Less accuracy on distance
             _residual[res_count] = (node_distance(index, _indexj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
             res_count++;
@@ -171,7 +176,7 @@ struct SwarmFrameError {
 
     template<typename T>
     inline int nodeframe_relpose_res(int index, T const *const *_poses, T *_residual, int res_count) const {
-        const NodeFrame & _nf = nfs[(index + nfs.size())% nfs.size()];
+        const NodeFrame & _nf = nfs[safe_index(index)];
         for (auto it: _nf.detected_nodes) {
             //Detected pose error
             int _idj = it.first;
@@ -253,27 +258,37 @@ struct SwarmFrameError {
             id2poseindex(_id2poseindex),
             is_lastest_frame(_is_lastest_frame) {
                 //Must ensure id2poseindex not contain self id in last pos
+        nf_num = sf.id2nodeframe.size();
+
         self_id = _sf.self_id;
         self_pose = sf.id2nodeframe.at(self_id).pose();
-        nfs = std::vector<NodeFrame>(_id2poseindex.size());
-        ids = std::vector<int>(_id2poseindex.size());
-        pose_num = _id2poseindex.size();
-        ann_poss = std::vector<Eigen::Vector3d>(_id2poseindex.size());       
+
+        nfs = std::vector<NodeFrame>(nf_num);
+        ids = std::vector<int>(nf_num);
+        ann_poss = std::vector<Eigen::Vector3d>(nf_num);       
+        id_distance_indexs = std::vector<std::vector<int>>(nf_num);
+        id_dis = std::vector<std::vector<double>>(nf_num);
         for (auto it : sf.id2nodeframe) {
             int _id = it.first;
             NodeFrame &_nf = it.second;
             if (_id == self_id && is_lastest_frame) {
-                nfs.push_back(_nf);
-                ids.push_back(_id);
-                ann_poss.push_back(_nf.get_anntena_pos());
+                nfs[nf_num - 1] = _nf;
+                ids[nf_num - 1] = _id;
+                ann_poss[nf_num - 1] = _nf.get_anntena_pos();
                 id2poseindex[_id] = -1;
+
             } else {
                 int _index = id2poseindex[_id];
                 nfs[_index] = _nf;
-                ids[_index] = _id;
+                ids[_index] = _id; 
                 ann_poss[_index] = _nf.get_anntena_pos();
             }
 
+            int _index = id2poseindex[_id];
+            for (auto it_dismap : _nf.dis_map) {
+                id_distance_indexs[safe_index(_index)].push_back(id2poseindex[it_dismap.first]);
+                id_dis[safe_index(_index)].push_back(it_dismap.second);
+            }
         }
         ts = sf.ts;
 
