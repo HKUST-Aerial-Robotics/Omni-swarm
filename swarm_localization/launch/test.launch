@@ -1,5 +1,5 @@
 <launch>
-    <arg name="rand" default="1.0" />
+    <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
     <arg name="detection" default="true" />
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">

@@ -515,7 +515,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     double equv_cost = summary.final_cost / sliding_window_size();
 
     equv_cost = equv_cost / (double) (drone_num * (drone_num - 1) / 2);
-    equv_cost = sqrt(equv_cost);
+    equv_cost = sqrt(equv_cost)/ERROR_NORMLIZED;
     if (!report) {
         return equv_cost;
     }
