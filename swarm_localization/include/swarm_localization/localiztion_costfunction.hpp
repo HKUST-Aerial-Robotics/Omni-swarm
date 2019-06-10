@@ -144,8 +144,8 @@ struct SwarmFrameError {
         T p_anna[3], p_annb[3];
         
 
-        EigenVec2T((indexi + nfs.size())% nfs.size(), p_anna);
-        EigenVec2T((indexj + nfs.size())% nfs.size(), p_annb);
+        EigenVec2T( ann_poss[(indexi + nfs.size())% nfs.size()], p_anna);
+        EigenVec2T( ann_poss[(indexj + nfs.size())% nfs.size()], p_annb);
         PoseTransformPoint(posea, p_anna, pa);
         PoseTransformPoint(poseb, p_annb, pb);
 
@@ -288,13 +288,14 @@ struct SwarmHorizonError {
     int64_t last_ts = -1;
 
     std::vector<Pose> delta_poses;
+    Pose _last_pose;
 
     bool is_self_node = false;
     SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
             is_self_node(_is_self_node){
-
+        //Must ensure poses is sort by ts
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
 //            std::cout << i << ":" << _nf_win[i-1].pose().position << std::endl;
@@ -305,17 +306,15 @@ struct SwarmHorizonError {
 //            printf("\n");
         }
         last_ts = nf_windows.back().ts;
+        _last_pose = nf_windows.back().pose();
     }
 
     template<typename T>
-    inline void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
-
-        if (is_self_node && ts == last_ts) {
-            Pose _pose = nf_windows.back().pose();
-            _pose.to_vector_xyzyaw(t_pose);
+    inline void get_pose(int index, T const *const *_poses, T * t_pose) const {
+        if (is_self_node && index == nf_windows.size() - 1) {
+            _last_pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
-            int index = ts2poseindex.at(ts);
             t_pose[0] =  _poses[index][0];
             t_pose[1] =  _poses[index][1];
             t_pose[2] =  _poses[index][2];
@@ -342,8 +341,8 @@ struct SwarmHorizonError {
             int64_t tsb = nf_windows[i+1].ts;
 
             //
-            get_pose(tsa, _poses, est_posea);
-            get_pose(tsb, _poses, est_poseb);
+            get_pose(i, _poses, est_posea);
+            get_pose(i + 1, _poses, est_poseb);
 
 
            Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;
