@@ -599,9 +599,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
     // exit(-1);
     ros::Time t3 = ros::Time::now();
-
+#ifdef COMPUTE_COV
     this->compute_covariance(problem, param_indexs);    
-
+#endif
     //Use this jacobian to give a covariance function for each state. than add marginalization
     ros::Time t4 = ros::Time::now();
 
@@ -637,7 +637,6 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
 
     // ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
     auto cov = (jacb.transpose()*jacb).inverse()*ERROR_NORMLIZED*ERROR_NORMLIZED;
-    ros::Time t5 = ros::Time::now();
 
     int64_t ts = sf_sld_win.back().ts;
     for (int j = 0; j < cov.cols() / 4; j ++ ) {
@@ -650,6 +649,7 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
         }
     }
     printf("\n");
+    ros::Time t5 = ros::Time::now();
 
     ROS_INFO("Eigen compute covariance %4.3fms\n", (t5-t0).toSec()*1000);
 

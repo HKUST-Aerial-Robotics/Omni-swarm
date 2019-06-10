@@ -5,7 +5,7 @@
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
         <rosparam>
             force_freq: 1
-            max_accept_cost: 2.0
+            max_accept_cost: 1.0
             max_keyframe_num: 10
             min_keyframe_num: 8
             thread_num: 4
