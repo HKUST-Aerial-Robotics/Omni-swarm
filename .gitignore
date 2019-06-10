@@ -7,3 +7,4 @@ cmake-build-debug
 *.zip
 *.pyc
 swarm_localization/.vscode/
+swarm_detection/.vscode/

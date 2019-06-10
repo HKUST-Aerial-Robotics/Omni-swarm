@@ -51,7 +51,6 @@ std::vector<int> SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &s
         return _ids;
     }
 
-
     for (auto _id : _ids) {
         if (sf_sld_win.back().HasID(_id)) {
             Eigen::Vector3d _diff = sf.position(_id) - sf_sld_win.back().position(_id);
@@ -85,13 +84,15 @@ bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) const {
 void SwarmLocalizationSolver::process_frame_clear() {
     unsigned int i = 0;
     //Delete non keyframe first
+
+    /*
     while (i < sf_sld_win.size() && sf_sld_win.size() > max_frame_number) {
         if (!is_frame_useful(i)) {
             delete_frame_i(i);
         } else {
             i++;
         }
-    }
+    } */
 
     while (sf_sld_win.size() > max_frame_number) {
         delete_frame_i(0);
@@ -184,7 +185,6 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
 void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-
 
     for (auto it : sf.id2nodeframe) {
         if (it.second.is_static) {
@@ -520,8 +520,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         return equv_cost;
     }
 
-
-
     // if (solve_count % 10 == 0)
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
@@ -630,8 +628,8 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     ros::Time t5 = ros::Time::now();
 
     int64_t ts = sf_sld_win.back().ts;
-    for (int j=0; j < cov.cols() / 4; j ++ ) {
-        int j = 0;
+    for (int j = 0; j < cov.cols() / 4; j ++ ) {
+        // int j = 0;
         if (param_indexs[j].first == ts ) {
             printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
             printf("ID %d SD %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, sqrt(cov(4*j,4*j)), 
