@@ -95,9 +95,10 @@ class SimulateDronesEnv(object):
 
         self.drone_pos = self.base_coor.copy()
 
-        # self.base_yaw = np.zeros(drone_num)
         self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
         self.base_yaw[self.self_id] = 0
+        self.base_yaw = np.zeros(drone_num)
+
         self.est_err_norm = []
 
         # print("Initial pos", self.drone_pos)
@@ -131,6 +132,8 @@ class SimulateDronesEnv(object):
 
         self.sf_sld_win = []
 
+    def global_yaw(self, i):
+        return self.data[i]["rpy"][self.tick][2] + self.base_yaw[i]
 
     def load_datas(self):
         self.data = []
@@ -162,8 +165,8 @@ class SimulateDronesEnv(object):
         pos_source = self.drone_pos[source]
 
         dp = pos_target - pos_source
-        ayaw = self.data[source]["rpy"][tick][2] + self.base_yaw[source] 
-        dyaw = self.data[target]["rpy"][tick][2] - self.data[source]["rpy"][tick][2] + self.base_yaw[target] - self.base_yaw[source] 
+        ayaw = self.global_yaw(source)
+        dyaw = self.global_yaw(target) - self.global_yaw(source)
         px = math.cos(-ayaw) * dp[0] - math.sin(-ayaw) * dp[1]
         py = math.sin(-ayaw) * dp[0] + math.cos(-ayaw) * dp[1]
         pz = dp[2]
@@ -224,7 +227,7 @@ class SimulateDronesEnv(object):
         _nf.id = i
 
 
-        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw + self.base_yaw[i])
+        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, self.global_yaw(i))
 
         posew = Pose()
         posew.orientation.w = qw
@@ -276,8 +279,10 @@ class SimulateDronesEnv(object):
         return _nf
 
     def anntena_pos(self, i):
+        # ann = [-0.083, 0, 0.078]
         ann = [-0.083, 0, 0.078]
-        yaw = self.data[i]["rpy"][self.tick][2] + self.base_yaw[i]
+
+        yaw = self.global_yaw(i)
         x = self.drone_pos[i][0] + math.cos(yaw) * ann[0] - math.sin(yaw) * ann[1]
         y = self.drone_pos[i][1] + math.sin(yaw) * ann[0] + math.cos(yaw) * ann[1]
         z = self.drone_pos[i][2] + ann[2]

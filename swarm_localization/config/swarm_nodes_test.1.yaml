@@ -1,0 +1,85 @@
+%YAML:1.0
+---
+
+nodes:
+  #Is VICON Node
+  0:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  1:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  2:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  3:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  4:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  5:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  6:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [0, 0, 0]
+  7:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [-0.083, 0, 0.078]
+  8:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [-0.083, 0, 0.078]
+  9:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [-0.083, 0, 0.078]

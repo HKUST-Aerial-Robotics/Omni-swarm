@@ -6,8 +6,8 @@
         <rosparam>
             force_freq: 1
             max_accept_cost: 10
-            max_keyframe_num: 20
-            min_keyframe_num: 10
+            max_keyframe_num: 10
+            min_keyframe_num: 5
             thread_num: 4
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes_test.yaml" type="string" />
