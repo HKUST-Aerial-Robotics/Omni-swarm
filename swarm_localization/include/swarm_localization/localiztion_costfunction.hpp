@@ -107,7 +107,7 @@ struct SwarmFrameError {
 
     template<typename T>
     inline void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
-        T posea[7] , poseb[7];
+        T posea[4] , poseb[4];
         get_pose(ida, _poses, posea);
         get_pose(idb, _poses, poseb);
         DeltaPose(posea, poseb, relpose);
@@ -117,7 +117,7 @@ struct SwarmFrameError {
     template<typename T>
     inline T node_distance(int idi, int idj, T const *const *_poses) const {
         //If consider bias here?
-        T posea[7] , poseb[7];
+        T posea[4] , poseb[4];
         get_pose(idi, _poses, posea);
         get_pose(idj, _poses, poseb);
 
