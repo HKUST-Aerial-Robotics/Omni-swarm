@@ -18,7 +18,7 @@ nodes:
     has_vo: true
     is_static: false
     has_global_pose: false
-    anntena_pos: [0, -0.083, 0.078]
+    anntena_pos: [-0.083, 0, 0.078]
 
   6:
     has_uwb: true
@@ -27,7 +27,7 @@ nodes:
     has_vo: true
     has_global_pose: false
     is_static: false
-    anntena_pos: [0, -0.083, 0.078]
+    anntena_pos: [-0.083, 0, 0.078]
 
   #For PC Command line
   7:

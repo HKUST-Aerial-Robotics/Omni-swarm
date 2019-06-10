@@ -47,25 +47,6 @@ class SwarmLocalizationNode {
         return remote_ids_set.find(_id) != remote_ids_set.end();
     }
 
-
-    corner_array CA_from_msg(const std::vector<swarm_msgs::armarker_detected> &cam0_markers) const {
-        corner_array ca;
-        for (const swarm_msgs::armarker_detected &ad : cam0_markers) {
-            for (const swarm_msgs::armarker_corner &_ac : ad.corner_detected) {
-                MarkerCornerObservsed mco;
-
-                mco.corner_no = _ac.corner_id;
-
-                mco.observed_point.x() = _ac.x;
-                mco.observed_point.y() = _ac.y;
-                mco.marker = all_ar_markers.at(_ac.marker_id);
-
-                ca.push_back(mco);
-            }
-        }
-        return ca;
-    }
-
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) const {
 
         //TODO: Deal with global pose
@@ -86,9 +67,6 @@ class SwarmLocalizationNode {
         for (unsigned int i = 0; i < _nf.dismap_ids.size(); i++) {
             nf.dis_map[_nf.dismap_ids[i]] = _nf.dismap_dists[i];
         }
-
-        nf.corner_by_cams.push_back(CA_from_msg(_nf.cam0_markers));
-        nf.corner_by_cams.push_back(CA_from_msg(_nf.cam1_markers));
 
         if (nf.vo_available) {
             nf.self_pose = Pose(_nf.odometry.pose.pose);
@@ -243,13 +221,18 @@ private:
                     ROS_INFO("Parsing node %d", node_id);
                     Node *new_node = new Node(node_id, _node_config);
                     all_node_defs[node_id] = new_node;
-                    ROS_INFO("NODE %d static:%d vo %d uwb %d armarker %d",
+                    auto ann_pos = new_node->get_anntena_pos();
+                    ROS_INFO("NODE %d static:%d vo %d uwb %d armarker %d ann %5.4f %5.4f %5.4f",
                              new_node->id,
                              new_node->IsStatic(),
                              new_node->HasVO(),
                              new_node->HasUWB(),
-                             new_node->HasArmarker()
+                             new_node->HasArmarker(),
+                             ann_pos.x(),
+                             ann_pos.y(),
+                             ann_pos.z()
                     );
+                    
                 }
 
         } catch (std::exception & e) {

@@ -277,6 +277,14 @@ class SimulateDronesEnv(object):
                 _nf.detected = sd
         return _nf
 
+    def anntena_pos(self, i):
+        ann = [-0.083, 0, 0.078]
+        yaw = self.data[i]["rpy"][self.tick][2]
+        x = self.drone_pos[i][0] + math.cos(yaw) * ann[0] - math.sin(yaw) * ann[1]
+        y = self.drone_pos[i][1] + math.sin(yaw) * ann[0] + math.cos(yaw) * ann[1]
+        z = self.drone_pos[i][2] + ann[2]
+        return x, y, z
+
     def update(self, e, show=False):
         if e.last_real is not None:
             self.tick = int((rospy.get_rostime() - self.tstart).to_sec()*50)
@@ -289,13 +297,13 @@ class SimulateDronesEnv(object):
 
             for j in range(self.drone_num):
                 if  i!=j:
-                    dx = self.drone_pos[i][0] - self.drone_pos[j][0]
-                    dy = self.drone_pos[i][1] - self.drone_pos[j][1]
-                    dz = self.drone_pos[i][2] - self.drone_pos[j][2]
-                    # self.drone_dis[i][j] = self.drone_dis[j][i] = np.clip(math.sqrt(dx*dx + dy*dy + dz*dz),0,None)
+                    xi, yi, zi = self.anntena_pos(i)
+                    xj, yj, zj = self.anntena_pos(j)
+                    dx, dy, dz = xi - xj, yi - yj, zi - zj
                     self.drone_dis[i][j] = self.drone_dis[j][i] = np.clip(math.sqrt(dx*dx + dy*dy + dz*dz) + np.random.randn()*self.distance_noise, 0, None)
                 else:
                    self.drone_dis[i][j] = self.drone_dis[j][i] = 0
+
         if show and self.count % 10 == 0:
             # ax.set_title(f"Time: {self.count*dt:4.2f}")
             ax = plt.subplot(111)

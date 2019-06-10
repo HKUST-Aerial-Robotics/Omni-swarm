@@ -48,7 +48,7 @@ public:
         return Pose();
     }
 
-    void to_vector(double ret[]) {
+    void to_vector(double ret[]) const {
         ret[3] = attitude.w();
         ret[4] = attitude.x();
         ret[5] = attitude.y();
@@ -60,7 +60,7 @@ public:
     }
 
     template<typename T>
-    void to_vector(T ret[]) {
+    void to_vector(T ret[]) const {
         ret[3] = T(attitude.w());
         ret[4] = T(attitude.x());
         ret[5] = T(attitude.y());
@@ -72,7 +72,7 @@ public:
     }
 
     template<typename T>
-    void to_vector_xyzyaw(T ret[]) {
+    void to_vector_xyzyaw(T ret[]) const {
         ret[0] = T(position.x());
         ret[1] = T(position.y());
         ret[2] = T(position.z());

@@ -53,6 +53,14 @@ inline void YawRotatePoint(T yaw, const T * vec, T * ret) {
     ret[2] = vec[2];
 }
 
+template<typename T>
+inline void PoseTransformPoint(const T * pose, const T * point, T * ret) {
+    YawRotatePoint(pose[3], point, ret);
+    ret[0] = ret[0] + pose[0];
+    ret[1] = ret[1] + pose[1];
+    ret[2] = ret[2] + pose[2];
+}
+
 
 //dpose = a^-1.b
 template<typename T>
@@ -67,20 +75,25 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
     YawRotatePoint(-posea[3], tmp, dpose);
 }
 
+template<typename T>
+inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
+    p[0] = T(_p.x());
+    p[1] = T(_p.y());
+    p[2] = T(_p.z());
+}
+
 struct SwarmFrameError {
     SwarmFrame sf;
     std::map<int, int> id2poseindex;
     int self_id = -1;
     bool is_lastest_frame = false;
+    Pose self_pose;
 
     template<typename T>
     inline void get_pose(int _id, T const *const *_poses, T * t_pose) const {
 //        printf("%d", _id);
         if (_id == self_id && is_lastest_frame) {
-
-            //May have risk of returning this t_pose
-            Pose _pose =  sf.id2nodeframe.at(_id).pose();
-            _pose.to_vector_xyzyaw(t_pose);
+            self_pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
             int index = id2poseindex.at(_id);
@@ -107,9 +120,17 @@ struct SwarmFrameError {
         T posea[7] , poseb[7];
         get_pose(idi, _poses, posea);
         get_pose(idj, _poses, poseb);
-        return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
-                    + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
-                    + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
+
+        T pa[3], pb[3];
+        T p_anna[3], p_annb[3];
+        EigenVec2T(sf.id2nodeframe.at(idi).get_anntena_pos(), p_anna);
+        EigenVec2T(sf.id2nodeframe.at(idj).get_anntena_pos(), p_annb);
+        PoseTransformPoint(posea, p_anna, pa);
+        PoseTransformPoint(poseb, p_annb, pb);
+
+        return sqrt((pb[0] - pa[0]) * (pb[0] - pa[0])
+                    + (pb[1] - pa[1]) * (pb[1] - pa[1])
+                    + (pb[2] - pa[2]) * (pb[2] - pa[2]));
     }
 
 
@@ -200,15 +221,13 @@ struct SwarmFrameError {
 
     }
 
-
     SwarmFrameError(const SwarmFrame &_sf, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame) :
             sf(std::move(_sf)),
             id2poseindex(std::move(_id2poseindex)),
             is_lastest_frame(_is_lastest_frame) {
             self_id = _sf.self_id;
+            self_pose = sf.id2nodeframe.at(self_id).pose();
     }
-
-
 };
 
 

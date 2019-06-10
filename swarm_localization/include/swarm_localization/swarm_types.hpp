@@ -179,6 +179,10 @@ class NodeFrame {
 
         }
 
+        Eigen::Vector3d get_anntena_pos() const {
+            return node->get_anntena_pos();
+        }
+
         Eigen::Vector3d velocity() const {
             assert(!(node->HasVO() && !vo_available) && "Try get velocity on VO failed node");
             if (vo_available) {
