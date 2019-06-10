@@ -100,6 +100,18 @@ void SwarmLocalizationSolver::process_frame_clear() {
     }
 }
 
+void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts) {
+    for (auto it : swarm_est_poses) {
+        for (auto it2 : it.second) {
+            double * p = it2.second;
+            p[0] = rand_FloatRange(-10, 10);
+            p[1] = rand_FloatRange(-10, 10);
+            p[2] = rand_FloatRange(-10, 10);
+            p[3] = rand_FloatRange(-M_PI, M_PI);
+        }
+    }
+}
+
 void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
     int _id = _nf.id;
     EstimatePoses & est_poses = est_poses_tsid;
@@ -312,7 +324,7 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int 
 double SwarmLocalizationSolver::solve() {
     if (self_id < 0
         || node_kf_count.find(self_id) == node_kf_count.end()
-        || node_kf_count[self_id] < min_frame_number)
+        || sf_sld_win.size() < min_frame_number)
         return -1;
 
     if (!has_new_keyframe)
