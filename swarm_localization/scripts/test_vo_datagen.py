@@ -59,11 +59,9 @@ class SimulateDronesEnv(object):
             ("log_2019-10-15-2-17-circle.csv", 102), #0
             ("2019-3-6-sweep-hover-y.csv", 48), #1
             ("realsense_2019_5_15_loop.csv", 20), #2
-            ("log_2019-10-15-2-17-circle.csv", 102), #3
             ("circle-3s-no-gc-fix.csv", 18), #4
-            (None, None),#5
-            
             ("2019-3-6-sweep-hover-y.csv", 38),#5
+            (None, None),#5            
             ("realsense_2019_5_15_loop.csv", 15), #6
             ("circle-3s-no-gc-fix.csv", 18),# 7
 
@@ -164,8 +162,8 @@ class SimulateDronesEnv(object):
         pos_source = self.drone_pos[source]
 
         dp = pos_target - pos_source
-        ayaw = self.data[source]["rpy"][tick][2]
-        dyaw = self.data[target]["rpy"][tick][2] - self.data[source]["rpy"][tick][2]
+        ayaw = self.data[source]["rpy"][tick][2] + self.base_yaw[source] 
+        dyaw = self.data[target]["rpy"][tick][2] - self.data[source]["rpy"][tick][2] + self.base_yaw[target] - self.base_yaw[source] 
         px = math.cos(-ayaw) * dp[0] - math.sin(-ayaw) * dp[1]
         py = math.sin(-ayaw) * dp[0] + math.cos(-ayaw) * dp[1]
         pz = dp[2]
@@ -194,7 +192,7 @@ class SimulateDronesEnv(object):
         roll = self.data[i]["rpy"][tick][0]
         pitch = self.data[i]["rpy"][tick][1]
         yaw = self.data[i]["rpy"][tick][2]
-        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw - self.base_yaw[i])
+        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw)
         pose.orientation.w = qw
         pose.orientation.x = qx
         pose.orientation.y = qy
@@ -226,7 +224,7 @@ class SimulateDronesEnv(object):
         _nf.id = i
 
 
-        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw)
+        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw + self.base_yaw[i])
 
         posew = Pose()
         posew.orientation.w = qw
@@ -279,7 +277,7 @@ class SimulateDronesEnv(object):
 
     def anntena_pos(self, i):
         ann = [-0.083, 0, 0.078]
-        yaw = self.data[i]["rpy"][self.tick][2]
+        yaw = self.data[i]["rpy"][self.tick][2] + self.base_yaw[i]
         x = self.drone_pos[i][0] + math.cos(yaw) * ann[0] - math.sin(yaw) * ann[1]
         y = self.drone_pos[i][1] + math.sin(yaw) * ann[0] + math.cos(yaw) * ann[1]
         z = self.drone_pos[i][2] + ann[2]

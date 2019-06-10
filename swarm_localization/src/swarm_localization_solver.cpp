@@ -467,7 +467,7 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     if (_id == self_id) {
         //Delete last one that don't need to estimate
         pose_win.erase(pose_win.end() - 1);
-        ROS_INFO("Earse last");
+        // ROS_INFO("Earse last");
         count --;
     }
 
