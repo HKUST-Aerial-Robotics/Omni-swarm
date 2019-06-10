@@ -97,14 +97,14 @@ class SimulateDronesEnv(object):
 
         self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
         self.base_yaw[self.self_id] = 0
-        self.base_yaw = np.zeros(drone_num)
+        # self.base_yaw = np.zeros(drone_num)
 
         self.est_err_norm = []
 
         # print("Initial pos", self.drone_pos)
         print("Base_coor", self.base_coor)
 
-        self.distance_noise = 0.1
+        self.distance_noise = 0.05
         self.static = []
 
 
