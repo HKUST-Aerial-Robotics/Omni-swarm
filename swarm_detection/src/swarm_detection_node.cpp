@@ -93,8 +93,9 @@ public:
     }
 
     Pose ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
-        DroneMarker marker0(0, 0, 0.1);
-        marker0.pose.set_pos(Eigen::Vector3d(0.1, 0, 0));
+        DroneMarker marker0(_id, _id, 0.1);
+        marker0.pose.set_pos(Eigen::Vector3d(-0.175, 0, 0));
+        // marker0.pose
         corner_array CorALeft;
         corner_array CorARight;
 
@@ -258,7 +259,7 @@ public:
         pcs.header.stamp = stamp;
 
         //Todo, should be self frame
-        pcs.header.frame_id = "world";
+        pcs.header.frame_id = "odometry";
         pcs.pose.pose.position.x = pose.pos().x();
         pcs.pose.pose.position.y = pose.pos().y();
         pcs.pose.pose.position.z = pose.pos().z();
@@ -325,7 +326,7 @@ public:
             sd.header.stamp = stamp;
 
             for (int i = 0; i < marker_left.size(); i++) {
-                if ( 50 > ids_left[i] && ids_left[i]>=0) {
+                if ( 10 > ids_left[i] && ids_left[i]>=0) {
                     ROS_INFO("Prcess marker id %d", ids_left[i]);
                     Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
 

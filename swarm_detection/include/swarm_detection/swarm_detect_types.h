@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <aruco/aruco.h>
 #include <camodocal/camera_models/CataCamera.h>
+#include <camodocal/camera_models/PinholeCamera.h>
+
 #include <geometry_msgs/Pose.h>
 
 using namespace Eigen;
@@ -292,7 +294,7 @@ worldToCameraTransform(const T* const q_cam_odo, const T* const t_cam_odo,
 struct Camera {
     int size_w;
     int size_h;
-    camodocal::CataCamera * camera_model;
+    camodocal::PinholeCamera * camera_model;
     std::vector<double> m_intrinsic_params;
 
     Eigen::Vector2d undist_point(Eigen::Vector2d p) {
@@ -364,8 +366,8 @@ struct Camera {
     Camera(const std::string& filename, Pose _pose):
         pose(_pose)
     {
-        camera_model = new camodocal::CataCamera;
-        camodocal::CataCamera::Parameters params = camera_model->getParameters();
+        camera_model = new camodocal::PinholeCamera;
+        auto params = camera_model->getParameters();
         
         params.readFromYamlFile(filename);
         camera_model->setParameters(params);
@@ -400,16 +402,16 @@ struct DroneMarker {
     Eigen::Vector3d rel_corner_pos(int corner_no) const {
     switch (corner_no) {
         case 0:
-            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, size/2));
-            break;
-        case 1:
             return pose.apply_pose_to(Eigen::Vector3d(0, size/2, size/2));
             break;
+        case 1:
+            return pose.apply_pose_to(Eigen::Vector3d(0, -size/2, size/2));
+            break;
         case 2:
-            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, -size/2));
+            return pose.apply_pose_to(Eigen::Vector3d(0, -size/2, -size/2));
             break;
         case 3:
-            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, -size/2));
+            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, -size/2));
             break;
     }
     return Eigen::Vector3d(0, 0, 0);
