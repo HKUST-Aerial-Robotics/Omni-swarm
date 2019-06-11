@@ -60,6 +60,7 @@ class StereoDronePoseEstimator {
     Camera *cam_right;
     bool is_show = true;
     bool use_stereo = true;
+    bool undist_camera = false;
 public:
     std::function<void(ros::Time stamp,int,Pose)> callback;
     StereoDronePoseEstimator(
@@ -67,8 +68,10 @@ public:
             const std::string &_right_cam_def,
             const std::string &_vo_config,
             std::function<void(ros::Time stamp, int,Pose)> _callback,
-            bool _is_show=true,
-            bool _use_stereo = false) : callback(_callback) {
+            bool _is_show=true, 
+            bool _use_stereo = false,
+            bool _undist_camera=false
+            ) : callback(_callback) {
 
         std::cout << "Read config from " << _left_cam_def << "\n" << _right_cam_def << "\n" << _vo_config << std::endl;
 
@@ -78,11 +81,12 @@ public:
         fs_yaml["body_T_cam0"] >> left_cam_pose;
         fs_yaml["body_T_cam1"] >> right_cam_pose;
         use_stereo = _use_stereo;
-
+        undist_camera = _undist_camera;
         is_show = _is_show;
 
         cam_left = new Camera(_left_cam_def, from_cv_matrix(left_cam_pose));
-        cam_right = new Camera(_right_cam_def, from_cv_matrix(right_cam_pose));
+        if (use_stereo)
+            cam_right = new Camera(_right_cam_def, from_cv_matrix(right_cam_pose));
     }
 
     void ProcessMarkers(marker_array ma_left, marker_array ma_right) {
@@ -98,10 +102,15 @@ public:
             auto m = marker_left;
             for (int i = 0; i < 4; i++) {
                 MarkerCornerObservsed mco(i, &marker0);
-                mco.observed_point.x() = (double)(marker_left[i].x) / 2.0;// /2 because the downsample of our camera model
-                mco.observed_point.y() = (double)(marker_left[i].y) / 2.0;
-                mco.p_undist = cam_left->undist_point(mco.observed_point);
-                std::cout << mco.observed_point << std::endl;
+                mco.observed_point.x() = (double)(marker_left[i].x);
+                mco.observed_point.y() = (double)(marker_left[i].y);
+                if (undist_camera) {
+                    mco.p_undist = mco.observed_point;
+                } else {
+                    mco.p_undist = cam_left->undist_point(mco.observed_point);
+                }
+                // std::cout << "OB: " << mco.observed_point << std::endl;
+                // std::cout << "UN:" << mco.p_undist << std::endl;
                 CorALeft.push_back(mco);
             }
 
@@ -111,10 +120,13 @@ public:
             if (!marker_right.empty()) {
                 for (int i = 0; i < 4; i++) {
                     MarkerCornerObservsed mco(i, &marker0);
-                    mco.observed_point.x() = (marker_right[i].x) / 2.0;// /2 because the downsample of our camera model
-                    mco.observed_point.y() = (marker_right[i].y) / 2.0;
-                    mco.p_undist = cam_right->undist_point(mco.observed_point);
-
+                    mco.observed_point.x() = (marker_right[i].x);
+                    mco.observed_point.y() = (marker_right[i].y);
+                    if (undist_camera) {
+                        mco.p_undist = mco.observed_point;
+                    } else {
+                        mco.p_undist = cam_left->undist_point(mco.observed_point);
+                    }
                     CorARight.push_back(mco);
                 }
             }
@@ -169,7 +181,7 @@ class ARMarkerDetectorNode {
     ros::Time last_lcam_ts;
     ros::Time last_rcam_ts;
 
-    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_1000);
 
     cv::Mat last_left;
     cv::Mat last_right;
@@ -184,15 +196,19 @@ public:
         std::string left_cam_def;
         std::string right_cam_def;
         std::string vo_def;
+        bool undist_camera = false;
 
         nh.param("is_show", is_show, false);
         nh.param("use_stereo", use_stereo, false);
+        nh.param("undist_camera", undist_camera, false);
         
         if (use_stereo) {
             ROS_INFO("Will use stereo");
         } else {
             ROS_INFO("Use single camera only");            
-        }
+        };
+
+
 
         nh.param<std::string>("left_cam_def", left_cam_def,
                               "/home/xuhao/mf2_home/SwarmConfig/mini_mynteye_stereo/left.yaml");
@@ -213,7 +229,8 @@ public:
                     this->on_node_detected(stamp, _id, pose);
                 },
                 is_show,
-                use_stereo);
+                use_stereo,
+                undist_camera);
 
         armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 100);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
@@ -308,16 +325,21 @@ public:
             sd.header.stamp = stamp;
 
             for (int i = 0; i < marker_left.size(); i++) {
-                Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
+                if ( 50 > ids_left[i] && ids_left[i]>=0) {
+                    ROS_INFO("Prcess marker id %d", ids_left[i]);
+                    Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
 
-                node_detected nd;
-                nd.header.stamp = stamp;
-                nd.relpose.pose = posei.to_ros_pose();
-//                nd.relpose.covariance =
-                sd.detected_nodes.push_back(nd);
+                    node_detected nd;
+                    nd.header.stamp = stamp;
+                    nd.relpose.pose = posei.to_ros_pose();
+                    sd.detected_nodes.push_back(nd);
+                }
             }
 
-            swarm_detected_pub.publish(sd);
+            if (sd.detected_nodes.size() > 0) {
+                swarm_detected_pub.publish(sd);
+            }
+
         }
 
         double total_compute_time = (ros::Time::now() - start).toSec();
