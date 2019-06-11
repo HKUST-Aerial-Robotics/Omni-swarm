@@ -106,7 +106,9 @@ public:
                 mco.observed_point.x() = (double)(marker_left[i].x);
                 mco.observed_point.y() = (double)(marker_left[i].y);
                 if (undist_camera) {
-                    mco.p_undist = mco.observed_point;
+                    ROS_ERROR("Not imply yet");
+                    exit(-1);
+                    // mco.p_undist = mco.observed_point - cam_left.;
                 } else {
                     mco.p_undist = cam_left->undist_point(mco.observed_point);
                 }
@@ -124,7 +126,9 @@ public:
                     mco.observed_point.x() = (marker_right[i].x);
                     mco.observed_point.y() = (marker_right[i].y);
                     if (undist_camera) {
-                        mco.p_undist = mco.observed_point;
+                        ROS_ERROR("Not imply yet");
+                        exit(-1);
+                        // mco.p_undist = mco.observed_point;
                     } else {
                         mco.p_undist = cam_left->undist_point(mco.observed_point);
                     }
