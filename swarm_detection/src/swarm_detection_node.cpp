@@ -93,8 +93,8 @@ public:
     }
 
     Pose ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
-        DroneMarker marker0(_id, _id, 0.1);
-        marker0.pose.set_pos(Eigen::Vector3d(-0.175, 0, 0));
+        DroneMarker marker0(_id, _id, 0.086);
+        marker0.pose.set_pos(Eigen::Vector3d(-0.185, 0, 0));
         // marker0.pose
         corner_array CorALeft;
         corner_array CorARight;
