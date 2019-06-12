@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <swarm_msgs/swarm_detected.h>
 
+
+
 using namespace swarm_msgs;
 namespace enc = sensor_msgs::image_encodings;
 
@@ -150,6 +152,7 @@ public:
         }
 
         SwarmDroneDefs _sdef;
+        _sdef.id = _id;
         DronePoseEstimator estimator(_sdef, ca);
         estimator.use_ba = use_stereo;
         if (is_show) {
@@ -272,6 +275,14 @@ public:
         pcs.pose.pose.orientation.x = pose.att().x();
         pcs.pose.pose.orientation.y = pose.att().y();
         pcs.pose.pose.orientation.z = pose.att().z();
+
+        pcs.pose.covariance[0] = 0.02;
+        pcs.pose.covariance[6+1] = 0.01;
+        pcs.pose.covariance[2*6+2] = 0.01;
+
+        pcs.pose.covariance[3*6+3] = 5/57.3;
+        pcs.pose.covariance[4*6+4] = 5/57.3;
+        pcs.pose.covariance[5*6+5] = 10/57.3;
 
         _pub.publish(pcs);
 
