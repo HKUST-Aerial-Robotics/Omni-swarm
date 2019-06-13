@@ -5,6 +5,7 @@
 
 MAVPACKED(
 typedef struct __mavlink_drone_odom_gt_t {
+ int32_t lps_time; /*< [ms] LPS_TIME*/
  int16_t x; /*< [m] X Position*1000*/
  int16_t y; /*< [m] Y Position*1000*/
  int16_t z; /*< [m] Z Position*1000*/
@@ -18,13 +19,13 @@ typedef struct __mavlink_drone_odom_gt_t {
  int8_t source_id; /*<  Source ID of drone*/
 }) mavlink_drone_odom_gt_t;
 
-#define MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN 21
-#define MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN 21
-#define MAVLINK_MSG_ID_405_LEN 21
-#define MAVLINK_MSG_ID_405_MIN_LEN 21
+#define MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN 25
+#define MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN 25
+#define MAVLINK_MSG_ID_405_LEN 25
+#define MAVLINK_MSG_ID_405_MIN_LEN 25
 
-#define MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC 28
-#define MAVLINK_MSG_ID_405_CRC 28
+#define MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC 225
+#define MAVLINK_MSG_ID_405_CRC 225
 
 
 
@@ -32,35 +33,37 @@ typedef struct __mavlink_drone_odom_gt_t {
 #define MAVLINK_MESSAGE_INFO_DRONE_ODOM_GT { \
     405, \
     "DRONE_ODOM_GT", \
-    11, \
-    {  { "source_id", NULL, MAVLINK_TYPE_INT8_T, 0, 20, offsetof(mavlink_drone_odom_gt_t, source_id) }, \
-         { "x", NULL, MAVLINK_TYPE_INT16_T, 0, 0, offsetof(mavlink_drone_odom_gt_t, x) }, \
-         { "y", NULL, MAVLINK_TYPE_INT16_T, 0, 2, offsetof(mavlink_drone_odom_gt_t, y) }, \
-         { "z", NULL, MAVLINK_TYPE_INT16_T, 0, 4, offsetof(mavlink_drone_odom_gt_t, z) }, \
-         { "q0", NULL, MAVLINK_TYPE_INT16_T, 0, 6, offsetof(mavlink_drone_odom_gt_t, q0) }, \
-         { "q1", NULL, MAVLINK_TYPE_INT16_T, 0, 8, offsetof(mavlink_drone_odom_gt_t, q1) }, \
-         { "q2", NULL, MAVLINK_TYPE_INT16_T, 0, 10, offsetof(mavlink_drone_odom_gt_t, q2) }, \
-         { "q3", NULL, MAVLINK_TYPE_INT16_T, 0, 12, offsetof(mavlink_drone_odom_gt_t, q3) }, \
-         { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 14, offsetof(mavlink_drone_odom_gt_t, vx) }, \
-         { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_drone_odom_gt_t, vy) }, \
-         { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_drone_odom_gt_t, vz) }, \
+    12, \
+    {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_odom_gt_t, lps_time) }, \
+         { "source_id", NULL, MAVLINK_TYPE_INT8_T, 0, 24, offsetof(mavlink_drone_odom_gt_t, source_id) }, \
+         { "x", NULL, MAVLINK_TYPE_INT16_T, 0, 4, offsetof(mavlink_drone_odom_gt_t, x) }, \
+         { "y", NULL, MAVLINK_TYPE_INT16_T, 0, 6, offsetof(mavlink_drone_odom_gt_t, y) }, \
+         { "z", NULL, MAVLINK_TYPE_INT16_T, 0, 8, offsetof(mavlink_drone_odom_gt_t, z) }, \
+         { "q0", NULL, MAVLINK_TYPE_INT16_T, 0, 10, offsetof(mavlink_drone_odom_gt_t, q0) }, \
+         { "q1", NULL, MAVLINK_TYPE_INT16_T, 0, 12, offsetof(mavlink_drone_odom_gt_t, q1) }, \
+         { "q2", NULL, MAVLINK_TYPE_INT16_T, 0, 14, offsetof(mavlink_drone_odom_gt_t, q2) }, \
+         { "q3", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_drone_odom_gt_t, q3) }, \
+         { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_drone_odom_gt_t, vx) }, \
+         { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 20, offsetof(mavlink_drone_odom_gt_t, vy) }, \
+         { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_drone_odom_gt_t, vz) }, \
          } \
 }
 #else
 #define MAVLINK_MESSAGE_INFO_DRONE_ODOM_GT { \
     "DRONE_ODOM_GT", \
-    11, \
-    {  { "source_id", NULL, MAVLINK_TYPE_INT8_T, 0, 20, offsetof(mavlink_drone_odom_gt_t, source_id) }, \
-         { "x", NULL, MAVLINK_TYPE_INT16_T, 0, 0, offsetof(mavlink_drone_odom_gt_t, x) }, \
-         { "y", NULL, MAVLINK_TYPE_INT16_T, 0, 2, offsetof(mavlink_drone_odom_gt_t, y) }, \
-         { "z", NULL, MAVLINK_TYPE_INT16_T, 0, 4, offsetof(mavlink_drone_odom_gt_t, z) }, \
-         { "q0", NULL, MAVLINK_TYPE_INT16_T, 0, 6, offsetof(mavlink_drone_odom_gt_t, q0) }, \
-         { "q1", NULL, MAVLINK_TYPE_INT16_T, 0, 8, offsetof(mavlink_drone_odom_gt_t, q1) }, \
-         { "q2", NULL, MAVLINK_TYPE_INT16_T, 0, 10, offsetof(mavlink_drone_odom_gt_t, q2) }, \
-         { "q3", NULL, MAVLINK_TYPE_INT16_T, 0, 12, offsetof(mavlink_drone_odom_gt_t, q3) }, \
-         { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 14, offsetof(mavlink_drone_odom_gt_t, vx) }, \
-         { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_drone_odom_gt_t, vy) }, \
-         { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_drone_odom_gt_t, vz) }, \
+    12, \
+    {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_odom_gt_t, lps_time) }, \
+         { "source_id", NULL, MAVLINK_TYPE_INT8_T, 0, 24, offsetof(mavlink_drone_odom_gt_t, source_id) }, \
+         { "x", NULL, MAVLINK_TYPE_INT16_T, 0, 4, offsetof(mavlink_drone_odom_gt_t, x) }, \
+         { "y", NULL, MAVLINK_TYPE_INT16_T, 0, 6, offsetof(mavlink_drone_odom_gt_t, y) }, \
+         { "z", NULL, MAVLINK_TYPE_INT16_T, 0, 8, offsetof(mavlink_drone_odom_gt_t, z) }, \
+         { "q0", NULL, MAVLINK_TYPE_INT16_T, 0, 10, offsetof(mavlink_drone_odom_gt_t, q0) }, \
+         { "q1", NULL, MAVLINK_TYPE_INT16_T, 0, 12, offsetof(mavlink_drone_odom_gt_t, q1) }, \
+         { "q2", NULL, MAVLINK_TYPE_INT16_T, 0, 14, offsetof(mavlink_drone_odom_gt_t, q2) }, \
+         { "q3", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_drone_odom_gt_t, q3) }, \
+         { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_drone_odom_gt_t, vx) }, \
+         { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 20, offsetof(mavlink_drone_odom_gt_t, vy) }, \
+         { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_drone_odom_gt_t, vz) }, \
          } \
 }
 #endif
@@ -71,6 +74,7 @@ typedef struct __mavlink_drone_odom_gt_t {
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param msg The MAVLink message to compress the data into
  *
+ * @param lps_time [ms] LPS_TIME
  * @param source_id  Source ID of drone
  * @param x [m] X Position*1000
  * @param y [m] Y Position*1000
@@ -85,25 +89,27 @@ typedef struct __mavlink_drone_odom_gt_t {
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_drone_odom_gt_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-                               int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
+                               int32_t lps_time, int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN];
-    _mav_put_int16_t(buf, 0, x);
-    _mav_put_int16_t(buf, 2, y);
-    _mav_put_int16_t(buf, 4, z);
-    _mav_put_int16_t(buf, 6, q0);
-    _mav_put_int16_t(buf, 8, q1);
-    _mav_put_int16_t(buf, 10, q2);
-    _mav_put_int16_t(buf, 12, q3);
-    _mav_put_int16_t(buf, 14, vx);
-    _mav_put_int16_t(buf, 16, vy);
-    _mav_put_int16_t(buf, 18, vz);
-    _mav_put_int8_t(buf, 20, source_id);
+    _mav_put_int32_t(buf, 0, lps_time);
+    _mav_put_int16_t(buf, 4, x);
+    _mav_put_int16_t(buf, 6, y);
+    _mav_put_int16_t(buf, 8, z);
+    _mav_put_int16_t(buf, 10, q0);
+    _mav_put_int16_t(buf, 12, q1);
+    _mav_put_int16_t(buf, 14, q2);
+    _mav_put_int16_t(buf, 16, q3);
+    _mav_put_int16_t(buf, 18, vx);
+    _mav_put_int16_t(buf, 20, vy);
+    _mav_put_int16_t(buf, 22, vz);
+    _mav_put_int8_t(buf, 24, source_id);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN);
 #else
     mavlink_drone_odom_gt_t packet;
+    packet.lps_time = lps_time;
     packet.x = x;
     packet.y = y;
     packet.z = z;
@@ -129,6 +135,7 @@ static inline uint16_t mavlink_msg_drone_odom_gt_pack(uint8_t system_id, uint8_t
  * @param component_id ID of this component (e.g. 200 for IMU)
  * @param chan The MAVLink channel this message will be sent over
  * @param msg The MAVLink message to compress the data into
+ * @param lps_time [ms] LPS_TIME
  * @param source_id  Source ID of drone
  * @param x [m] X Position*1000
  * @param y [m] Y Position*1000
@@ -144,25 +151,27 @@ static inline uint16_t mavlink_msg_drone_odom_gt_pack(uint8_t system_id, uint8_t
  */
 static inline uint16_t mavlink_msg_drone_odom_gt_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
                                mavlink_message_t* msg,
-                                   int8_t source_id,int16_t x,int16_t y,int16_t z,int16_t q0,int16_t q1,int16_t q2,int16_t q3,int16_t vx,int16_t vy,int16_t vz)
+                                   int32_t lps_time,int8_t source_id,int16_t x,int16_t y,int16_t z,int16_t q0,int16_t q1,int16_t q2,int16_t q3,int16_t vx,int16_t vy,int16_t vz)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN];
-    _mav_put_int16_t(buf, 0, x);
-    _mav_put_int16_t(buf, 2, y);
-    _mav_put_int16_t(buf, 4, z);
-    _mav_put_int16_t(buf, 6, q0);
-    _mav_put_int16_t(buf, 8, q1);
-    _mav_put_int16_t(buf, 10, q2);
-    _mav_put_int16_t(buf, 12, q3);
-    _mav_put_int16_t(buf, 14, vx);
-    _mav_put_int16_t(buf, 16, vy);
-    _mav_put_int16_t(buf, 18, vz);
-    _mav_put_int8_t(buf, 20, source_id);
+    _mav_put_int32_t(buf, 0, lps_time);
+    _mav_put_int16_t(buf, 4, x);
+    _mav_put_int16_t(buf, 6, y);
+    _mav_put_int16_t(buf, 8, z);
+    _mav_put_int16_t(buf, 10, q0);
+    _mav_put_int16_t(buf, 12, q1);
+    _mav_put_int16_t(buf, 14, q2);
+    _mav_put_int16_t(buf, 16, q3);
+    _mav_put_int16_t(buf, 18, vx);
+    _mav_put_int16_t(buf, 20, vy);
+    _mav_put_int16_t(buf, 22, vz);
+    _mav_put_int8_t(buf, 24, source_id);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN);
 #else
     mavlink_drone_odom_gt_t packet;
+    packet.lps_time = lps_time;
     packet.x = x;
     packet.y = y;
     packet.z = z;
@@ -192,7 +201,7 @@ static inline uint16_t mavlink_msg_drone_odom_gt_pack_chan(uint8_t system_id, ui
  */
 static inline uint16_t mavlink_msg_drone_odom_gt_encode(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, const mavlink_drone_odom_gt_t* drone_odom_gt)
 {
-    return mavlink_msg_drone_odom_gt_pack(system_id, component_id, msg, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
+    return mavlink_msg_drone_odom_gt_pack(system_id, component_id, msg, drone_odom_gt->lps_time, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
 }
 
 /**
@@ -206,13 +215,14 @@ static inline uint16_t mavlink_msg_drone_odom_gt_encode(uint8_t system_id, uint8
  */
 static inline uint16_t mavlink_msg_drone_odom_gt_encode_chan(uint8_t system_id, uint8_t component_id, uint8_t chan, mavlink_message_t* msg, const mavlink_drone_odom_gt_t* drone_odom_gt)
 {
-    return mavlink_msg_drone_odom_gt_pack_chan(system_id, component_id, chan, msg, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
+    return mavlink_msg_drone_odom_gt_pack_chan(system_id, component_id, chan, msg, drone_odom_gt->lps_time, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
 }
 
 /**
  * @brief Send a drone_odom_gt message
  * @param chan MAVLink channel to send the message
  *
+ * @param lps_time [ms] LPS_TIME
  * @param source_id  Source ID of drone
  * @param x [m] X Position*1000
  * @param y [m] Y Position*1000
@@ -227,25 +237,27 @@ static inline uint16_t mavlink_msg_drone_odom_gt_encode_chan(uint8_t system_id, 
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_drone_odom_gt_send(mavlink_channel_t chan, int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
+static inline void mavlink_msg_drone_odom_gt_send(mavlink_channel_t chan, int32_t lps_time, int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN];
-    _mav_put_int16_t(buf, 0, x);
-    _mav_put_int16_t(buf, 2, y);
-    _mav_put_int16_t(buf, 4, z);
-    _mav_put_int16_t(buf, 6, q0);
-    _mav_put_int16_t(buf, 8, q1);
-    _mav_put_int16_t(buf, 10, q2);
-    _mav_put_int16_t(buf, 12, q3);
-    _mav_put_int16_t(buf, 14, vx);
-    _mav_put_int16_t(buf, 16, vy);
-    _mav_put_int16_t(buf, 18, vz);
-    _mav_put_int8_t(buf, 20, source_id);
+    _mav_put_int32_t(buf, 0, lps_time);
+    _mav_put_int16_t(buf, 4, x);
+    _mav_put_int16_t(buf, 6, y);
+    _mav_put_int16_t(buf, 8, z);
+    _mav_put_int16_t(buf, 10, q0);
+    _mav_put_int16_t(buf, 12, q1);
+    _mav_put_int16_t(buf, 14, q2);
+    _mav_put_int16_t(buf, 16, q3);
+    _mav_put_int16_t(buf, 18, vx);
+    _mav_put_int16_t(buf, 20, vy);
+    _mav_put_int16_t(buf, 22, vz);
+    _mav_put_int8_t(buf, 24, source_id);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_ODOM_GT, buf, MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC);
 #else
     mavlink_drone_odom_gt_t packet;
+    packet.lps_time = lps_time;
     packet.x = x;
     packet.y = y;
     packet.z = z;
@@ -270,7 +282,7 @@ static inline void mavlink_msg_drone_odom_gt_send(mavlink_channel_t chan, int8_t
 static inline void mavlink_msg_drone_odom_gt_send_struct(mavlink_channel_t chan, const mavlink_drone_odom_gt_t* drone_odom_gt)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
-    mavlink_msg_drone_odom_gt_send(chan, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
+    mavlink_msg_drone_odom_gt_send(chan, drone_odom_gt->lps_time, drone_odom_gt->source_id, drone_odom_gt->x, drone_odom_gt->y, drone_odom_gt->z, drone_odom_gt->q0, drone_odom_gt->q1, drone_odom_gt->q2, drone_odom_gt->q3, drone_odom_gt->vx, drone_odom_gt->vy, drone_odom_gt->vz);
 #else
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_ODOM_GT, (const char *)drone_odom_gt, MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC);
 #endif
@@ -284,25 +296,27 @@ static inline void mavlink_msg_drone_odom_gt_send_struct(mavlink_channel_t chan,
   is usually the receive buffer for the channel, and allows a reply to an
   incoming message with minimum stack space usage.
  */
-static inline void mavlink_msg_drone_odom_gt_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
+static inline void mavlink_msg_drone_odom_gt_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int32_t lps_time, int8_t source_id, int16_t x, int16_t y, int16_t z, int16_t q0, int16_t q1, int16_t q2, int16_t q3, int16_t vx, int16_t vy, int16_t vz)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char *buf = (char *)msgbuf;
-    _mav_put_int16_t(buf, 0, x);
-    _mav_put_int16_t(buf, 2, y);
-    _mav_put_int16_t(buf, 4, z);
-    _mav_put_int16_t(buf, 6, q0);
-    _mav_put_int16_t(buf, 8, q1);
-    _mav_put_int16_t(buf, 10, q2);
-    _mav_put_int16_t(buf, 12, q3);
-    _mav_put_int16_t(buf, 14, vx);
-    _mav_put_int16_t(buf, 16, vy);
-    _mav_put_int16_t(buf, 18, vz);
-    _mav_put_int8_t(buf, 20, source_id);
+    _mav_put_int32_t(buf, 0, lps_time);
+    _mav_put_int16_t(buf, 4, x);
+    _mav_put_int16_t(buf, 6, y);
+    _mav_put_int16_t(buf, 8, z);
+    _mav_put_int16_t(buf, 10, q0);
+    _mav_put_int16_t(buf, 12, q1);
+    _mav_put_int16_t(buf, 14, q2);
+    _mav_put_int16_t(buf, 16, q3);
+    _mav_put_int16_t(buf, 18, vx);
+    _mav_put_int16_t(buf, 20, vy);
+    _mav_put_int16_t(buf, 22, vz);
+    _mav_put_int8_t(buf, 24, source_id);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_ODOM_GT, buf, MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN, MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC);
 #else
     mavlink_drone_odom_gt_t *packet = (mavlink_drone_odom_gt_t *)msgbuf;
+    packet->lps_time = lps_time;
     packet->x = x;
     packet->y = y;
     packet->z = z;
@@ -326,13 +340,23 @@ static inline void mavlink_msg_drone_odom_gt_send_buf(mavlink_message_t *msgbuf,
 
 
 /**
+ * @brief Get field lps_time from drone_odom_gt message
+ *
+ * @return [ms] LPS_TIME
+ */
+static inline int32_t mavlink_msg_drone_odom_gt_get_lps_time(const mavlink_message_t* msg)
+{
+    return _MAV_RETURN_int32_t(msg,  0);
+}
+
+/**
  * @brief Get field source_id from drone_odom_gt message
  *
  * @return  Source ID of drone
  */
 static inline int8_t mavlink_msg_drone_odom_gt_get_source_id(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int8_t(msg,  20);
+    return _MAV_RETURN_int8_t(msg,  24);
 }
 
 /**
@@ -342,7 +366,7 @@ static inline int8_t mavlink_msg_drone_odom_gt_get_source_id(const mavlink_messa
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_x(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  0);
+    return _MAV_RETURN_int16_t(msg,  4);
 }
 
 /**
@@ -352,7 +376,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_x(const mavlink_message_t* m
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_y(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  2);
+    return _MAV_RETURN_int16_t(msg,  6);
 }
 
 /**
@@ -362,7 +386,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_y(const mavlink_message_t* m
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_z(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  4);
+    return _MAV_RETURN_int16_t(msg,  8);
 }
 
 /**
@@ -372,7 +396,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_z(const mavlink_message_t* m
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_q0(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  6);
+    return _MAV_RETURN_int16_t(msg,  10);
 }
 
 /**
@@ -382,7 +406,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_q0(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_q1(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  8);
+    return _MAV_RETURN_int16_t(msg,  12);
 }
 
 /**
@@ -392,7 +416,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_q1(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_q2(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  10);
+    return _MAV_RETURN_int16_t(msg,  14);
 }
 
 /**
@@ -402,7 +426,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_q2(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_q3(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  12);
+    return _MAV_RETURN_int16_t(msg,  16);
 }
 
 /**
@@ -412,7 +436,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_q3(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_vx(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  14);
+    return _MAV_RETURN_int16_t(msg,  18);
 }
 
 /**
@@ -422,7 +446,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_vx(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_vy(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  16);
+    return _MAV_RETURN_int16_t(msg,  20);
 }
 
 /**
@@ -432,7 +456,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_vy(const mavlink_message_t* 
  */
 static inline int16_t mavlink_msg_drone_odom_gt_get_vz(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  18);
+    return _MAV_RETURN_int16_t(msg,  22);
 }
 
 /**
@@ -444,6 +468,7 @@ static inline int16_t mavlink_msg_drone_odom_gt_get_vz(const mavlink_message_t* 
 static inline void mavlink_msg_drone_odom_gt_decode(const mavlink_message_t* msg, mavlink_drone_odom_gt_t* drone_odom_gt)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
+    drone_odom_gt->lps_time = mavlink_msg_drone_odom_gt_get_lps_time(msg);
     drone_odom_gt->x = mavlink_msg_drone_odom_gt_get_x(msg);
     drone_odom_gt->y = mavlink_msg_drone_odom_gt_get_y(msg);
     drone_odom_gt->z = mavlink_msg_drone_odom_gt_get_z(msg);
