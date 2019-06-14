@@ -235,6 +235,7 @@ class LocalProxy {
             if (nd.self_drone_id < 0) {
                 nd.self_drone_id = self_id;
             } 
+            send_node_detected(nd);
         }
 
         for (int j = 0; j < _sf.node_frames.size(); j++) {
