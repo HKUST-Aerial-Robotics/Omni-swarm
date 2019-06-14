@@ -339,6 +339,8 @@ public:
 
             swarm_detected sd;
             sd.header.stamp = stamp;
+            //-1 means this drone
+            sd.self_drone_id = -1;
 
             for (int i = 0; i < marker_left.size(); i++) {
                 if ( 10 > ids_left[i] && ids_left[i]>=0) {
@@ -348,6 +350,9 @@ public:
                     node_detected nd;
                     nd.header.stamp = stamp;
                     nd.relpose.pose = posei.to_ros_pose();
+                    nd.self_drone_id = -1;
+                    nd.remote_drone_id = ids_left[i];
+
                     sd.detected_nodes.push_back(nd);
                 }
             }

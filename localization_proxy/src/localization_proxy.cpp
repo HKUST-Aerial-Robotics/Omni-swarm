@@ -117,7 +117,7 @@ class LocalProxy {
         }
 
         if (best >=0) {
-            // ROS_INFO("Find sf correspond to sd, dt %3.2fms", min_time);
+            ROS_INFO("Find sf correspond to sd, dt %3.2fms", min_time);
             return best;
         }
         return -1;
@@ -196,13 +196,23 @@ class LocalProxy {
 
 
 
-    void on_swarm_detected(const swarm_msgs::swarm_detected &sd) {
+    void on_swarm_detected(swarm_msgs::swarm_detected sd) {
         int i = find_sf_swarm_detected(sd.header.stamp);
-        int _detecter_node = sd.self_drone_id;
+        
+        if (sd.self_drone_id < 0) {
+            sd.self_drone_id = self_id;
+        }
+
+        for (node_detected & nd : sd.detected_nodes) {
+            if (nd.self_drone_id < 0) {
+                nd.self_drone_id = self_id;
+            } 
+        }
+
         if (i > 0) {
             swarm_frame &_sf = sf_queue[i];
             for (int j = 0; j < _sf.node_frames.size(); j++) {
-                if (_sf.node_frames[j].id == _detecter_node) {
+                if (_sf.node_frames[j].id == sd.self_drone_id) {
                     _sf.node_frames[j].detected = sd;
                     return;
                 }
