@@ -117,7 +117,7 @@ class LocalProxy {
         }
 
         if (best >=0) {
-            ROS_INFO("Find sf correspond to sd, dt %3.2fms", min_time);
+            // ROS_INFO("Find sf correspond to sd, dt %3.2fms", min_time*1000);
             return best;
         }
         return -1;
@@ -198,6 +198,11 @@ class LocalProxy {
 
     void on_swarm_detected(swarm_msgs::swarm_detected sd) {
         int i = find_sf_swarm_detected(sd.header.stamp);
+        if (i < 0) {
+            ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
+            return;
+        }
+        swarm_frame &_sf = sf_queue[i];
         
         if (sd.self_drone_id < 0) {
             sd.self_drone_id = self_id;
@@ -209,16 +214,39 @@ class LocalProxy {
             } 
         }
 
-        if (i > 0) {
-            swarm_frame &_sf = sf_queue[i];
+        for (int j = 0; j < _sf.node_frames.size(); j++) {
+            if (_sf.node_frames[j].id == sd.self_drone_id) {
+                _sf.node_frames[j].detected = sd;
+                break;
+            }
+        }
+        
+        std::vector<node_frame> new_nodes;
+
+        for (node_detected & nd : sd.detected_nodes) {
+            bool sf_has_id = false;
             for (int j = 0; j < _sf.node_frames.size(); j++) {
-                if (_sf.node_frames[j].id == sd.self_drone_id) {
-                    _sf.node_frames[j].detected = sd;
-                    return;
+                if (_sf.node_frames[j].id == nd.remote_drone_id) {
+                    //Works for less than 5 drone, more should use set here
+                    sf_has_id = true;
+                    break;
                 }
             }
-            ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
+
+            if (!sf_has_id) {
+                node_frame nf;
+                nf.header.stamp = _sf.header.stamp;
+                nf.vo_available = false;
+                nf.id = nd.remote_drone_id;
+                new_nodes.push_back(nf);
+            }
+            
         }
+
+        for (const node_frame & nf: new_nodes) {
+            _sf.node_frames.push_back(nf);
+        }
+
     }
 
     void add_odom_dis_to_sf(swarm_frame & sf, int _id, Point pos, double yaw, std::map<int, float> & _dis) {
@@ -232,10 +260,12 @@ class LocalProxy {
             drone_odom_pubs[_id].publish(odom);
         } */
         for (node_frame & nf : sf.node_frames) {
-            if (nf.id == _id) {
+            if (nf.id == _id && !nf.vo_available) {
+                //Easy to deal with this, add only first time
                 nf.position = pos;
                 nf.yaw = yaw;
                 nf.vo_available = true;
+                
                 for (auto it : _dis) {
                     nf.dismap_ids.push_back(it.first);
                     nf.dismap_dists.push_back(it.second);
