@@ -70,7 +70,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 //                std::cout << "r" << rvec << std::endl;
                 cv::Rodrigues(rvec, r);
 
-               std::cout << "r "<< r <<" t "<<t << std::endl;
+            //    std::cout << "r "<< r <<" t "<<t << std::endl;
 
                 cv::cv2eigen(r, R_pnp);
                 cv::cv2eigen(t, T_pnp);
