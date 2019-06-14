@@ -210,6 +210,7 @@ class LocalProxy {
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
+        // ROS_INFO("ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
         mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
             (int)(nd.relpose.pose.position.x*1000),
             (int)(nd.relpose.pose.position.y*1000),
@@ -220,6 +221,8 @@ class LocalProxy {
 
 
     void on_swarm_detected(swarm_msgs::swarm_detected sd) {
+        static int count = 0;
+        count ++;
         int i = find_sf_swarm_detected(sd.header.stamp);
         if (i < 0) {
             ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
@@ -234,8 +237,13 @@ class LocalProxy {
         for (node_detected & nd : sd.detected_nodes) {
             if (nd.self_drone_id < 0) {
                 nd.self_drone_id = self_id;
-            } 
-            send_node_detected(nd);
+            }
+    
+            if (count % 2 == 0) {
+                //Here to constrain the send rate of nd
+                send_node_detected(nd);
+            }
+
         }
 
         for (int j = 0; j < _sf.node_frames.size(); j++) {
@@ -486,7 +494,7 @@ class LocalProxy {
     }
 
     void on_remote_nodes_data_recv(const remote_uwb_info &info) {
-        ROS_INFO_THROTTLE(1.0, "Send swarm with system time %d LPS now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+        ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
         //Using last distances, assume cost 0.02 time offset
@@ -570,7 +578,7 @@ public:
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_without_detection", 10);
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
 
-        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
+        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
 
         uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
 
