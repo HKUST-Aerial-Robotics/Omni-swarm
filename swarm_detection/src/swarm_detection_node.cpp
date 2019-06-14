@@ -319,32 +319,21 @@ public:
             cv::aruco::detectMarkers(rimg, dictionary, mar, ids_right);
         }
 
-        CVMarkerCorners marker_left;
         CVMarkerCorners marker_right;
-
-        if (!mal.empty()) {
-            marker_left = mal[0];
-        }
-
-
-        if (use_stereo) {
-            //Deal with stereo
-            marker_right = mar[0];
-        }
-
 
         if (use_stereo) {
             //Not implement yet
-        } else if (!marker_left.empty()) {
-
+        } else {
+            ROS_INFO("New detected!");
             swarm_detected sd;
             sd.header.stamp = stamp;
             //-1 means this drone
             sd.self_drone_id = -1;
 
-            for (int i = 0; i < marker_left.size(); i++) {
+            for (int i = 0; i < ids_left.size(); i++) {
                 if ( 10 > ids_left[i] && ids_left[i]>=0) {
                     ROS_INFO("Prcess marker id %d", ids_left[i]);
+                    auto marker_left = mal[i];
                     Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
 
                     node_detected nd;
