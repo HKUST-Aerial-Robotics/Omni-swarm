@@ -189,7 +189,7 @@ class ARMarkerDetectorNode {
     ros::Time last_lcam_ts;
     ros::Time last_rcam_ts;
 
-    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_1000);
+    cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
 
     cv::Mat last_left;
     cv::Mat last_right;
@@ -276,13 +276,13 @@ public:
         pcs.pose.pose.orientation.y = pose.att().y();
         pcs.pose.pose.orientation.z = pose.att().z();
 
-        pcs.pose.covariance[0] = 0.02;
-        pcs.pose.covariance[6+1] = 0.01;
-        pcs.pose.covariance[2*6+2] = 0.01;
+        pcs.pose.covariance[0] = 0.02*0.02;
+        pcs.pose.covariance[6+1] = 0.01*0.01;
+        pcs.pose.covariance[2*6+2] = 0.01*0.01;
 
-        pcs.pose.covariance[3*6+3] = 5/57.3;
-        pcs.pose.covariance[4*6+4] = 5/57.3;
-        pcs.pose.covariance[5*6+5] = 10/57.3;
+        pcs.pose.covariance[3*6+3] = 5/57.3 * 5/57.3;
+        pcs.pose.covariance[4*6+4] = 5/57.3 * 5/57.3;
+        pcs.pose.covariance[5*6+5] = 10/57.3 * 10/57.3;
 
         _pub.publish(pcs);
 
