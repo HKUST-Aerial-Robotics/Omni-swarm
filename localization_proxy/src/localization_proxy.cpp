@@ -153,8 +153,14 @@ class LocalProxy {
         mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
 
         ts = LPS2ROSTIME(node_realtime_info.lps_time);
-        // ROS_INFO_THROTTLE(1.0, "LPS T %ld %.1fms", node_realtime_info.lps_time, (ts - tsstart).toSec()*1000);
         //This odom is quat only and don't have yaw
+        int32_t tn = ROSTIME2LPS(ros::Time::now());
+        int32_t dt = tn - node_realtime_info.lps_time;
+        if (dt < 100) {
+            ROS_INFO_THROTTLE(1.0, "NR RECV %d now %d DT %d", node_realtime_info.lps_time, tn, dt);
+        } else {
+            ROS_WARN_THROTTLE(0.1, "NodeRealtime RECV %d now %d DT %d", node_realtime_info.lps_time, tn, dt);
+        }
 
         if (!node_realtime_info.odom_vaild) {
             ROS_WARN_THROTTLE(0.1, "odom not vaild %d", _id);
@@ -184,6 +190,14 @@ class LocalProxy {
         node_detected nd;
         mavlink_msg_node_detected_decode(&msg, &mdetected);
         nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
+        int32_t tn = ROSTIME2LPS(ros::Time::now());
+        int32_t dt = tn - mdetected.lps_time;
+        if (dt < 100) {
+            ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+        } else {
+            ROS_WARN_THROTTLE(0.1, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+        }
+
         nd.self_drone_id = _id;
         nd.remote_drone_id = mdetected.target_id;
         nd.relpose.pose.orientation = Yaw2ROSQuat(mdetected.yaw / 1000.0);
@@ -320,7 +334,8 @@ class LocalProxy {
         mavlink_status_t status;
 
         for (uint8_t c : buf) {
-            if (mavlink_parse_char(0, c, &msg, &status)) {
+            //Use different to prevent invaild parse
+            if (mavlink_parse_char(_id, c, &msg, &status)) {
                 switch (msg.msgid) {
                     case MAVLINK_MSG_ID_NODE_REALTIME_INFO: {
                         Odometry odom;
@@ -331,9 +346,8 @@ class LocalProxy {
                         bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, yaw, _dis);
                         if (ret) {
                             int s_index = find_sf_swarm_detected(ts);
-
                             if (s_index >= 0) {
-                                ROS_INFO_THROTTLE(1.0, "Appending TS %f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
+                                ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, _dis);
                             }
                         }
@@ -344,6 +358,11 @@ class LocalProxy {
                         auto nd = on_node_detected_msg(_id, msg);
                         ros::Time ts = nd.header.stamp;
                         int s_index = find_sf_swarm_detected(ts);
+                        ROS_INFO_THROTTLE(1.0, "Appending node detected TS %5.1f(%5.1f) sf to frame %d/%ld", 
+                            (ts - this->tsstart).toSec()*1000, 
+                            (ros::Time::now() - this->tsstart).toSec()*1000, 
+                            s_index, sf_queue.size());
+
                         if (s_index >= 0) {
                             add_node_detected_to_sf(sf_queue[s_index], nd);
                         }
