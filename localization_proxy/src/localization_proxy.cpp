@@ -601,7 +601,7 @@ public:
 
         uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
 
-        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 1, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
+        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 10, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
     }
 };
 
