@@ -152,7 +152,7 @@ public:
         }
 
         SwarmDroneDefs _sdef;
-        _sdef.id = _id;
+        _sdef.drone_id = _id;
         DronePoseEstimator estimator(_sdef, ca);
         estimator.use_ba = use_stereo;
         if (is_show) {
