@@ -37,7 +37,7 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_node_realtime_info_t packet_in = {
-        963497464,45.0,73.0,101.0,18067,{ 18171, 18172, 18173, 18174, 18175, 18176, 18177, 18178, 18179, 18180 },247
+        963497464,45.0,73.0,101.0,18067,{ 18171, 18172, 18173, 18174, 18175 },89
     };
     mavlink_node_realtime_info_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
@@ -48,7 +48,7 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         packet1.yaw = packet_in.yaw;
         packet1.odom_vaild = packet_in.odom_vaild;
         
-        mav_array_memcpy(packet1.remote_distance, packet_in.remote_distance, sizeof(int16_t)*10);
+        mav_array_memcpy(packet1.remote_distance, packet_in.remote_distance, sizeof(int16_t)*5);
         
 #ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
         if (status->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) {
