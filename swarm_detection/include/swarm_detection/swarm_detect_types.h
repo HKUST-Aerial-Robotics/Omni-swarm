@@ -102,6 +102,16 @@ public:
         return a;
     }
 
+    Pose(geometry_msgs::Point pos, double yaw) {
+        this->attitude = AngleAxisd(yaw, Vector3d::UnitZ());
+        position.x() = pos.x;
+        position.y() = pos.y;
+        position.z() = pos.z;
+        attitude.normalize();
+
+        update_yaw();
+    }
+
     Pose(geometry_msgs::Pose p) {
         attitude.w() = p.orientation.w;
         attitude.x() = p.orientation.x;

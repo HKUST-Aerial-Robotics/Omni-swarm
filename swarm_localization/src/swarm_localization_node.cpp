@@ -69,11 +69,8 @@ class SwarmLocalizationNode {
         }
 
         if (nf.vo_available) {
-            nf.self_pose = Pose(_nf.odometry.pose.pose);
+            nf.self_pose = Pose(_nf.position, _nf.yaw);
 
-            nf.self_vel.x() = _nf.odometry.twist.twist.linear.x;
-            nf.self_vel.y() = _nf.odometry.twist.twist.linear.y;
-            nf.self_vel.z() = _nf.odometry.twist.twist.linear.z;
         } else {
             if (nf.node->HasVO()) {
                 ROS_WARN("Node %d invalid: No vo now", _nf.id);

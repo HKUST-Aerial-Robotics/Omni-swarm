@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>swarm_drone_proxy</name>
+  <name>localization_proxy</name>
   <version>0.0.0</version>
   <description>The swarm_drone_proxy package</description>
 
