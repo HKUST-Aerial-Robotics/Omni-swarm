@@ -296,15 +296,6 @@ class LocalProxy {
     }
 
     void add_odom_dis_to_sf(swarm_frame & sf, int _id, Point pos, double yaw, std::map<int, float> & _dis) {
-        /*
-        if (publish_remote_odom) {
-            if (drone_odom_pubs.find(_id) == drone_odom_pubs.end()) {
-                char name[20] = {0};
-                sprintf(name, "/swarm_drone/pose_%d", _id);
-                drone_odom_pubs[_id] = nh.advertise<Pose>(name, 1);
-            }
-            drone_odom_pubs[_id].publish(odom);
-        } */
         for (node_frame & nf : sf.node_frames) {
             if (nf.id == _id && !nf.vo_available) {
                 //Easy to deal with this, add only first time
