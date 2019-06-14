@@ -22,6 +22,8 @@ using namespace nav_msgs;
 using namespace geometry_msgs;
 using namespace inf_uwb_ros;
 
+#define MAX_DRONE_SIZE 5
+
 #define TEST_WITHOUT_VO
 
 inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
@@ -159,13 +161,13 @@ class LocalProxy {
             return false;
         }
 
-        pos.x = node_realtime_info.x;
-        pos.y = node_realtime_info.y;
-        pos.z = node_realtime_info.z;
+        pos.x = node_realtime_info.x/1000.0;
+        pos.y = node_realtime_info.y/1000.0;
+        pos.z = node_realtime_info.z/1000.0;
 
         yaw = node_realtime_info.yaw / 1000;
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < MAX_DRONE_SIZE; i++) {
             if (node_realtime_info.remote_distance[i] > 0) {
                 //When >0, we have it distance for this id
                 _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
@@ -306,13 +308,13 @@ class LocalProxy {
         auto vel = self_odom.twist.twist.linear;
         auto quat = self_odom.pose.pose.orientation;
         int16_t dis_int[10] = {0};
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < MAX_DRONE_SIZE; i++) {
             dis_int[i] = (int)(dis[i] * 1000);
         }
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
 
-        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, eulers.z(), dis_int);
+        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, int(pos.x/1000.0), int(pos.y/1000.0), int(pos.z/1000.0), eulers.z(), dis_int);
 
         send_mavlink_message(msg);
     }
