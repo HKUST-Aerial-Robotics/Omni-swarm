@@ -339,6 +339,15 @@ public:
                     node_detected nd;
                     nd.header.stamp = stamp;
                     nd.relpose.pose = posei.to_ros_pose();
+
+                    nd.relpose.covariance[0] = 0.02*0.02;
+                    nd.relpose.covariance[6+1] = 0.01*0.01;   
+                    nd.relpose.covariance[2*6+2] = 0.01*0.01;
+
+                    nd.relpose.covariance[3*6+3] = 5/57.3 * 5/57.3;
+                    nd.relpose.covariance[4*6+4] = 5/57.3 * 5/57.3;
+                    nd.relpose.covariance[5*6+5] = 10/57.3 * 10/57.3;
+                    
                     nd.self_drone_id = -1;
                     nd.remote_drone_id = ids_left[i];
 
