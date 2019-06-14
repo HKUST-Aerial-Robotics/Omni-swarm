@@ -149,8 +149,9 @@ class LocalProxy {
     bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, ros::Time & ts, Point & pos, double &yaw, std::map<int, float> &_dis) {
         mavlink_node_realtime_info_t node_realtime_info;
         mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
-        ts = LPS2ROSTIME(node_realtime_info.lps_time);
 
+        ts = LPS2ROSTIME(node_realtime_info.lps_time);
+        ROS_INFO("LPS T %ld %.1fms", node_realtime_info.lps_time, (ts - tsstart).toSec());
         //This odom is quat only and don't have yaw
 
         if (!node_realtime_info.odom_vaild) {
@@ -308,7 +309,7 @@ class LocalProxy {
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
 
-        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, odometry_available, ts, pos.x, pos.y, pos.z, eulers.z(), dis_int);
+        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, eulers.z(), dis_int);
 
         send_mavlink_message(msg);
     }
@@ -366,7 +367,7 @@ class LocalProxy {
 
         //Because all information we use is from 0.02s ago
         sf.header.stamp = LPS2ROSTIME(info.sys_time);
-        ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
+        // ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
         //        sf.header.stamp = info.header.stamp;
 
         //Switch this to real odom from 0.02 ago
@@ -429,6 +430,7 @@ class LocalProxy {
             self_dis[i] = -1;
         }
 
+        ROS_INFO("Send swarm with system time %ld", info.sys_time);
         send_swarm_mavlink(info.sys_time, self_dis);
 
         if (odometry_available && odometry_updated) {
