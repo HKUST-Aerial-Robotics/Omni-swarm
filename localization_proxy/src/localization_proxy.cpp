@@ -105,7 +105,7 @@ class LocalProxy {
     
 
     int find_sf_swarm_detected(ros::Time ts) {
-        double min_time = 0.15;
+        double min_time = 0.015;
         int best = -1;
         for (int i = sf_queue.size() - 1; i >= 0; i--) {
             if (fabs((sf_queue[i].header.stamp - ts).toSec()) < min_time) {
@@ -243,6 +243,10 @@ class LocalProxy {
 
     void parse_mavlink_data(incoming_broadcast_data income_data) {
         int _id = income_data.remote_id;
+        if (_id == self_id) {
+            ROS_WARN("Receive self message; Return");
+            return;
+        }
         std::vector<uint8_t> buf = income_data.data;
         mavlink_message_t msg;
         mavlink_status_t status;
@@ -259,6 +263,8 @@ class LocalProxy {
                         bool ret = on_node_realtime_info_mavlink_msg_recv(msg, ts, pos, yaw, _dis);
                         if (ret) {
                             int s_index = find_sf_swarm_detected(ts);
+                            ROS_INFO("Appending TS %f sf to frame %d", (ts - this->tsstart).toSec()*1000, s_index);
+
                             if (s_index >= 0) {
                                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, _dis);
                             }
@@ -323,6 +329,7 @@ class LocalProxy {
             uint8_t _id = fused.ids[i];
             if (_id != self_id) {
                 printf("Send %d to %d rel\n", self_id, _id);
+
                 mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
                                                      (int)(fused.relative_drone_position[i].x * 1000),
                                                      (int)(fused.relative_drone_position[i].y * 1000),
@@ -359,6 +366,7 @@ class LocalProxy {
 
         //Because all information we use is from 0.02s ago
         sf.header.stamp = LPS2ROSTIME(info.sys_time);
+        ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
         //        sf.header.stamp = info.header.stamp;
 
         //Switch this to real odom from 0.02 ago
@@ -368,21 +376,28 @@ class LocalProxy {
         self_nf.header.stamp = self_odom.header.stamp;
         self_nf.vo_available = odometry_available;
 
-        for (int i = 0; i < available_id.size(); i++) {
-            self_nf.dismap_ids.push_back(info.node_ids[i]);
-            self_nf.dismap_dists.push_back(info.node_dis[i]);
+        for (int i = 0; i < info.node_ids.size(); i++) {
+            int _idx = info.node_ids[i];
+            if (info.active[i] && _idx!=self_id) {
+                self_nf.dismap_ids.push_back(_idx);
+                self_nf.dismap_dists.push_back(info.node_dis[i]);
+            }
         }
 
         sf.node_frames.push_back(self_nf);
 
-        for (int _idx : available_id) {
-            node_frame nf;
-            nf.id = _idx;
-            nf.header.stamp = sf.header.stamp;
-            nf.vo_available = false;
-            nf.detected.header.stamp = sf.header.stamp;
-            nf.detected.self_drone_id = _idx;
-            sf.node_frames.push_back(nf);
+        for (int i = 0; i< info.node_ids.size(); i++) {
+            int _idx = info.node_ids[i];
+            if (info.active[i] && _idx!=self_id) {
+                node_frame nf;
+                nf.id = _idx;
+                nf.header.stamp = sf.header.stamp;
+                nf.vo_available = false;
+                nf.detected.header.stamp = sf.header.stamp;
+                nf.detected.self_drone_id = _idx;
+                sf.node_frames.push_back(nf);
+            }
+
         }
 
 
@@ -433,7 +448,7 @@ class LocalProxy {
 
     sensor_msgs::TimeReference uwb_time_ref;
     void on_uwb_timeref(const sensor_msgs::TimeReference &ref) {
-        uwb_time_ref;
+        uwb_time_ref = ref;
     }
 
     ros::Time LPS2ROSTIME(const int32_t &lps_time) {
@@ -445,7 +460,7 @@ class LocalProxy {
         double lps_t_s = (ros_time - uwb_time_ref.header.stamp).toSec() + uwb_time_ref.time_ref.toSec();
         return (int32_t)(lps_t_s * 1000);
     }
-
+    ros::Time tsstart = ros::Time::now();
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
         ROS_INFO("Start SWARM Drone Proxy");
