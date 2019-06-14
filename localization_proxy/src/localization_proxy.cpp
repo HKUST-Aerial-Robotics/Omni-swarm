@@ -248,12 +248,22 @@ class LocalProxy {
             sd.self_drone_id = self_id;
         }
 
+        //Issue will happen if self id marker seen by self
+        unsigned int c = 0;
+        while( c < sd.detected_nodes.size() ) {
+            if (sd.detected_nodes[c].remote_drone_id == self_id) {
+                sd.detected_nodes.erase(sd.detected_nodes.begin() + c);
+            } else {
+                c++;
+            }
+        }
+
         for (node_detected & nd : sd.detected_nodes) {
             if (nd.self_drone_id < 0) {
                 nd.self_drone_id = self_id;
             }
-    
-            if (count % 2 == 0) {
+
+            if (nd.remote_drone_id != self_id && count % 2 == 0) {
                 //Here to constrain the send rate of nd
                 send_node_detected(nd);
             }
@@ -354,10 +364,12 @@ class LocalProxy {
                     }
 
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
-                        auto nd = on_node_detected_msg(_id, msg);
+                        node_detected nd = on_node_detected_msg(_id, msg);
                         ros::Time ts = nd.header.stamp;
                         int s_index = find_sf_swarm_detected(ts);
-                        ROS_INFO_THROTTLE(1.0, "Appending node detected TS %5.1f(%5.1f) sf to frame %d/%ld", 
+                        ROS_INFO_THROTTLE(1.0, "Appending ND %dby%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
+                            nd.remote_drone_id,
+                            nd.self_drone_id,
                             (ts - this->tsstart).toSec()*1000, 
                             (ros::Time::now() - this->tsstart).toSec()*1000, 
                             s_index, sf_queue.size());
