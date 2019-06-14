@@ -151,7 +151,7 @@ class LocalProxy {
         mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
 
         ts = LPS2ROSTIME(node_realtime_info.lps_time);
-        ROS_INFO("LPS T %ld %.1fms", node_realtime_info.lps_time, (ts - tsstart).toSec());
+        ROS_INFO("LPS T %ld %.1fms", node_realtime_info.lps_time, (ts - tsstart).toSec()*1000);
         //This odom is quat only and don't have yaw
 
         if (!node_realtime_info.odom_vaild) {
@@ -243,6 +243,7 @@ class LocalProxy {
     }
 
     void parse_mavlink_data(incoming_broadcast_data income_data) {
+        ROS_INFO("incoming data ts %d", income_data.lps_time);
         int _id = income_data.remote_id;
         if (_id == self_id) {
             ROS_WARN("Receive self message; Return");
@@ -290,6 +291,8 @@ class LocalProxy {
     void send_mavlink_message(mavlink_message_t &msg) {
         int len = mavlink_msg_to_send_buffer(buf, &msg);
         data_buffer buffer;
+        ROS_INFO("Msg size %d", len);
+
         buffer.data = std::vector<uint8_t>(buf, buf + len);
         uwb_senddata_pub.publish(buffer);
     }
@@ -430,7 +433,8 @@ class LocalProxy {
             self_dis[i] = -1;
         }
 
-        ROS_INFO("Send swarm with system time %ld", info.sys_time);
+        ROS_INFO("Send swarm with system time %d LPS now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+        static int c = 0;
         send_swarm_mavlink(info.sys_time, self_dis);
 
         if (odometry_available && odometry_updated) {
@@ -487,9 +491,9 @@ public:
 
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
 
-        uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this);
+        uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
 
-        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 1, &LocalProxy::parse_mavlink_data, this);
+        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 1, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
     }
 };
 
@@ -497,8 +501,9 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "localization_proxy");
     ros::NodeHandle nh("localization_proxy");
     new LocalProxy(nh);
-    // ros::AsyncSpinner spinner(4);
-    // spinner.start();
+    // ros::MultiThreadedSpinner spinner(4);
+    // spinner.spin();
+    
     ros::spin();
     ros::waitForShutdown();
 }
