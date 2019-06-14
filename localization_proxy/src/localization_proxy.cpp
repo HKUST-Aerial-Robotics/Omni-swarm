@@ -267,9 +267,9 @@ class LocalProxy {
                         bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, yaw, _dis);
                         if (ret) {
                             int s_index = find_sf_swarm_detected(ts);
-                            ROS_INFO_THROTTLE(1.0, "Appending TS %f sf to frame %d/%d", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
 
                             if (s_index >= 0) {
+                                ROS_INFO_THROTTLE(1.0, "Appending TS %f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, _dis);
                             }
                         }
@@ -310,6 +310,7 @@ class LocalProxy {
         int16_t dis_int[MAX_DRONE_SIZE] = {0};
         for (int i = 0; i < MAX_DRONE_SIZE; i++) {
             dis_int[i] = (int)(dis[i] * 1000);
+            // ROS_INFO("dis i %d: %d", i, dis_int[i]);
         }
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
@@ -421,7 +422,7 @@ class LocalProxy {
     }
 
     void on_remote_nodes_data_recv(const remote_uwb_info &info) {
-
+        ROS_INFO_THROTTLE(1.0, "Send swarm with system time %d LPS now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
         //Using last distances, assume cost 0.02 time offset
@@ -439,19 +440,22 @@ class LocalProxy {
 
         for (int i = 0; i < info.node_ids.size(); i++) {
             int _id = info.node_ids[i];
-            self_dis[_id] = info.node_dis[i];
+            if (_id < MAX_DRONE_SIZE) {
+                self_dis[_id] = info.node_dis[i];
+            } else {
+                ROS_WARN_THROTTLE(1.0, "Node %d:%f is out of max drone size, not sending", _id, info.node_dis[i]);
+            }
         }
 
 
-        ROS_INFO_THROTTLE(1.0, "Send swarm with system time %d LPS now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
         static int c = 0;
         send_swarm_mavlink(info.sys_time, self_dis);
 
         if (odometry_available && odometry_updated) {
             odometry_updated = false;
-            if (sf_queue.size() > 2) {
+            if (sf_queue.size() > no_detection_wait) {
                 //Pub two frame before
-                swarm_frame_nosd_pub.publish(sf_queue[sf_queue.size() - 2]);
+                swarm_frame_nosd_pub.publish(sf_queue[sf_queue.size() - no_detection_wait - 1]);
             }
             process_swarm_frame_queue();
         }
@@ -461,6 +465,7 @@ class LocalProxy {
     double forward_predict_time = 0.08;
     bool publish_remote_odom = false;
     int sf_queue_max_size = 10;
+    int no_detection_wait = 4;
 
     sensor_msgs::TimeReference uwb_time_ref;
     void on_uwb_timeref(const sensor_msgs::TimeReference &ref) {
@@ -477,10 +482,12 @@ class LocalProxy {
         return (int32_t)(lps_t_s * 1000);
     }
     ros::Time tsstart = ros::Time::now();
+
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
         ROS_INFO("Start SWARM Drone Proxy");
-
+        // bigger than 3 is ok
+        nh.param<int>("no_detection_wait", no_detection_wait, 4);
         nh.param<int>("sf_queue_size", sf_queue_max_size, 10);
         nh.param<bool>("publish_remote_odom", publish_remote_odom, false);
         nh.param<double>("forward_predict_time", forward_predict_time, 0.02);
