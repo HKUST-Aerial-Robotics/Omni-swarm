@@ -191,9 +191,32 @@ class LocalProxy {
         nd.relpose.pose.position.y = mdetected.y / 1000.0;
         nd.relpose.pose.position.z = mdetected.z / 1000.0;
 
+        //Update with swarm detection should be same
+        nd.relpose.covariance[0] = 0.02*0.02;
+        nd.relpose.covariance[6+1] = 0.01*0.01;   
+        nd.relpose.covariance[2*6+2] = 0.01*0.01;
+
+        nd.relpose.covariance[3*6+3] = 5/57.3 * 5/57.3;
+        nd.relpose.covariance[4*6+4] = 5/57.3 * 5/57.3;
+        nd.relpose.covariance[5*6+5] = 10/57.3 * 10/57.3;
+                    
         return nd;
     }
 
+
+    void send_node_detected(swarm_msgs::node_detected nd) {
+        mavlink_message_t msg;
+        auto quat = nd.relpose.pose.orientation;
+        Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
+        Eigen::Vector3d eulers = quat2eulers(_q);
+        int32_t ts = ROSTIME2LPS(nd.header.stamp);
+        mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
+            (int)(nd.relpose.pose.position.x*1000),
+            (int)(nd.relpose.pose.position.y*1000),
+            (int)(nd.relpose.pose.position.z*1000),
+            (int)(eulers.z()*1000));
+        send_mavlink_message(msg);
+    }
 
 
     void on_swarm_detected(swarm_msgs::swarm_detected sd) {
