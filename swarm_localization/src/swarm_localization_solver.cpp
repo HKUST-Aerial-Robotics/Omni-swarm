@@ -82,7 +82,6 @@ bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) const {
 }
 
 void SwarmLocalizationSolver::process_frame_clear() {
-    unsigned int i = 0;
     //Delete non keyframe first
 
     /*

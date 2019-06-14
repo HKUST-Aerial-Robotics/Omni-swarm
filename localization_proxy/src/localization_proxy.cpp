@@ -5,22 +5,24 @@
 #include <mavlink/swarm/mavlink.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/TimeReference.h>
-#include <swarm_msgs/data_buffer.h>
-#include <swarm_msgs/remote_uwb_info.h>
-#include <swarm_msgs/swarm_detected.h>
 #include <swarm_msgs/swarm_frame.h>
 #include <swarm_msgs/swarm_fused.h>
 #include <swarm_msgs/swarm_fused_relative.h>
 #include <swarm_msgs/swarm_remote_command.h>
-#include <swarm_msgs/incoming_broadcast_data.h>
+#include <swarm_msgs/swarm_detected.h>
+
+#include <inf_uwb_ros/incoming_broadcast_data.h>
+#include <inf_uwb_ros/data_buffer.h>
+#include <inf_uwb_ros/remote_uwb_info.h>
+#include <geometry_msgs/Point.h>
 
 
 using namespace swarm_msgs;
 using namespace nav_msgs;
 using namespace geometry_msgs;
+using namespace inf_uwb_ros;
 
 #define TEST_WITHOUT_VO
-#define TRANSPORT_LATENCY 0.02f
 
 inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
     Eigen::Vector3d rpy;
@@ -83,6 +85,7 @@ class LocalProxy {
     ros::Publisher swarm_frame_pub, swarm_frame_nosd_pub;
     ros::Publisher uwb_senddata_pub;
     ros::Subscriber uwb_timeref_sub;
+    ros::Subscriber uwb_incoming_sub;
 
     uint8_t buf[10000] = {0};
 
@@ -143,10 +146,10 @@ class LocalProxy {
         odometry_updated = true;
     }
 
-    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, nav_msgs::Odometry &odom, std::map<int, float> &_dis) {
+    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, ros::Time & ts, Point & pos, double &yaw, std::map<int, float> &_dis) {
         mavlink_node_realtime_info_t node_realtime_info;
         mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
-        ros::Time ts = LPS2ROSTIME(node_realtime_info.lps_time);
+        ts = LPS2ROSTIME(node_realtime_info.lps_time);
 
         //This odom is quat only and don't have yaw
 
@@ -155,18 +158,11 @@ class LocalProxy {
             return false;
         }
 
-        odom.pose.pose.position.x = node_realtime_info.x;
-        odom.pose.pose.position.y = node_realtime_info.y;
-        odom.pose.pose.position.z = node_realtime_info.z;
+        pos.x = node_realtime_info.x;
+        pos.y = node_realtime_info.y;
+        pos.z = node_realtime_info.z;
 
-        // odom.twist.twist.linear.x = node_realtime_info.vx / 1000.0;
-        // odom.twist.twist.linear.y = node_realtime_info.vy / 1000.0;
-        // odom.twist.twist.linear.z = node_realtime_info.vz / 1000.0;
-        double yaw = node_realtime_info.yaw / 1000;
-        odom.pose.pose.orientation = Yaw2ROSQuat(yaw);
-
-        odom.header.stamp = ts;
-        odom.header.frame_id = "world";
+        yaw = node_realtime_info.yaw / 1000;
 
         for (int i = 0; i < 10; i++) {
             if (node_realtime_info.remote_distance[i] > 0) {
@@ -174,6 +170,8 @@ class LocalProxy {
                 _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
             }
         }
+
+        return true;
     }
 
     node_detected on_node_detected_msg(int _id, mavlink_message_t &msg) {
@@ -210,18 +208,20 @@ class LocalProxy {
         }
     }
 
-    void add_odom_dis_to_sf(swarm_frame & sf, int _id, const Odometry & odom, std::map<int, float> & _dis) {
+    void add_odom_dis_to_sf(swarm_frame & sf, int _id, Point pos, double yaw, std::map<int, float> & _dis) {
+        /*
         if (publish_remote_odom) {
             if (drone_odom_pubs.find(_id) == drone_odom_pubs.end()) {
                 char name[20] = {0};
-                sprintf(name, "/swarm_drone/odom_%d", _id);
-                drone_odom_pubs[_id] = nh.advertise<Odometry>(name, 1);
+                sprintf(name, "/swarm_drone/pose_%d", _id);
+                drone_odom_pubs[_id] = nh.advertise<Pose>(name, 1);
             }
             drone_odom_pubs[_id].publish(odom);
-        }
+        } */
         for (node_frame & nf : sf.node_frames) {
             if (nf.id == _id) {
-                nf.odometry = odom;
+                nf.position = pos;
+                nf.yaw = yaw;
                 nf.vo_available = true;
                 for (auto it : _dis) {
                     nf.dismap_ids.push_back(it.first);
@@ -241,12 +241,11 @@ class LocalProxy {
         }
     }
 
-    bool parse_mavlink_data(incoming_broadcast_data income_data) {
+    void parse_mavlink_data(incoming_broadcast_data income_data) {
         int _id = income_data.remote_id;
-        std::string buf = income_data.data;
+        std::vector<uint8_t> buf = income_data.data;
         mavlink_message_t msg;
         mavlink_status_t status;
-        bool ret = false;
 
         for (uint8_t c : buf) {
             if (mavlink_parse_char(0, c, &msg, &status)) {
@@ -254,13 +253,14 @@ class LocalProxy {
                     case MAVLINK_MSG_ID_NODE_REALTIME_INFO: {
                         Odometry odom;
                         std::map<int, float> _dis;
-
-                        ret = on_node_realtime_info_mavlink_msg_recv(msg, odom, _dis);
+                        ros::Time ts;
+                        Point pos;
+                        double yaw;
+                        bool ret = on_node_realtime_info_mavlink_msg_recv(msg, ts, pos, yaw, _dis);
                         if (ret) {
-                            ros::Time ts = odom.header.stamp;
                             int s_index = find_sf_swarm_detected(ts);
                             if (s_index >= 0) {
-                                add_odom_dis_to_sf(sf_queue[s_index], _id, odom, _dis);
+                                add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, _dis);
                             }
                         }
                         break;
@@ -278,7 +278,6 @@ class LocalProxy {
                 }
             }
         }
-        return ret;
     }
 
     void send_mavlink_message(mavlink_message_t &msg) {
@@ -339,31 +338,21 @@ class LocalProxy {
         while (sf_queue.size() > sf_queue_size) {
             auto sf0 = sf_queue[0];
             swarm_frame_pub.publish(sf0);
-            ROS_INFO("Queue is len that 5, send to fuse");
+//            ROS_INFO("Queue is len that 5, send to fuse");
             sf_queue.erase(sf_queue.begin());
         }
     }
 
-    bool ParseSwarmInfo(const remote_uwb_info &info, swarm_frame &sf) {
+    void ParseSwarmInfo(const remote_uwb_info &info, swarm_frame &sf) {
         int drone_num = info.node_ids.size() + 1;
         const std::vector<unsigned int> &ids = info.node_ids;
 
-        std::vector<std::map<int, float>> id_n_distance;
         std::map<int, Odometry> id_odoms;
         std::map<int, bool> vo_available;
 
-        std::vector<unsigned int> available_id;
+        std::vector<unsigned int> available_id = info.node_ids;
 
-        available_id.push_back(info.self_id);
         self_id = info.self_id;
-
-        id_n_distance[self_id] = std::map<int, float>();
-
-        for (int i = 0; i < info.node_ids.size(); i++) {
-            int _id = info.node_ids[i];
-
-            id_n_distance[self_id][_id] = info.node_dis[i];
-        }
 
         //sswarm_frame sf;
         sf.self_id = self_id;
@@ -373,6 +362,18 @@ class LocalProxy {
         //        sf.header.stamp = info.header.stamp;
 
         //Switch this to real odom from 0.02 ago
+
+        node_frame self_nf;
+        self_nf.id = self_id;
+        self_nf.header.stamp = self_odom.header.stamp;
+        self_nf.vo_available = odometry_available;
+
+        for (int i = 0; i < available_id.size(); i++) {
+            self_nf.dismap_ids.push_back(info.node_ids[i]);
+            self_nf.dismap_dists.push_back(info.node_dis[i]);
+        }
+
+        sf.node_frames.push_back(self_nf);
 
         for (int _idx : available_id) {
             node_frame nf;
@@ -384,7 +385,8 @@ class LocalProxy {
             sf.node_frames.push_back(nf);
         }
 
-        return true;
+
+
     }
 
     void on_remote_nodes_data_recv(const remote_uwb_info &info) {
@@ -394,11 +396,9 @@ class LocalProxy {
         //Using last distances, assume cost 0.02 time offset
         swarm_frame sf;
 
-        bool swarm_frame_valid = ParseSwarmInfo(info, sf);
-
-        if (swarm_frame_valid) {
-            sf_queue.push_back(sf);
-        }
+        ParseSwarmInfo(info, sf);
+//        ROS_INFO("push sf %d", info.sys_time);
+        sf_queue.push_back(sf);
 
         float self_dis[100] = {0};
         std::map<int, float> self_dis_vec;
@@ -471,6 +471,8 @@ public:
         uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 10);
 
         uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this);
+
+        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 1, &LocalProxy::parse_mavlink_data, this);
     }
 };
 
