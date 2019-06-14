@@ -12,15 +12,30 @@
 #include <swarm_msgs/swarm_fused.h>
 #include <swarm_msgs/swarm_fused_relative.h>
 #include <swarm_msgs/swarm_remote_command.h>
+#include <swarm_msgs/incoming_broadcast_data.h>
 
-#define TRANSPORT_LATENCY 0.02f
 
 using namespace swarm_msgs;
 using namespace nav_msgs;
 using namespace geometry_msgs;
 
-Quaternion Yaw2ROSQuat(double yaw) {
-    Quaternion _q;
+#define TEST_WITHOUT_VO
+#define TRANSPORT_LATENCY 0.02f
+
+inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
+    Eigen::Vector3d rpy;
+    rpy.x() = atan2(2 * (quat.w() * quat.x() + quat.y() * quat.z()),
+                    1 - 2 * (quat.x() * quat.x() + quat.y() * quat.y()));
+    rpy.y() = asin(2 * (quat.w() * quat.y() - quat.z() * quat.x()));
+    rpy.z() = atan2(2 * (quat.w() * quat.z() + quat.x() * quat.y()),
+                    1 - 2 * (quat.y() * quat.y() + quat.z() * quat.z()));
+    return rpy;
+}
+
+
+
+geometry_msgs::Quaternion Yaw2ROSQuat(double yaw) {
+    geometry_msgs::Quaternion _q;
     Eigen::Quaterniond quat = (Eigen::Quaterniond) (Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()));
     _q.w = quat.w();
     _q.x = quat.x();
@@ -84,20 +99,7 @@ class LocalProxy {
 
     std::vector<swarm_frame> sf_queue;
 
-    void on_swarm_detected(const swarm_msgs::swarm_detected &sd) {
-        int i = find_sf_swarm_detected(sd.header.stamp);
-        int _detecter_node = sd.self_drone_id;
-        if (i > 0) {
-            swarm_frame &_sf = sf_queue[i];
-            for (int j = 0; j < _sf.node_frames.size(); j++) {
-                if (_sf.node_frames[j].id == _detecter_node) {
-                    _sf.node_frames[j].detected = sd;
-                    return;
-                }
-            }
-            ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
-        }
-    }
+    
 
     int find_sf_swarm_detected(ros::Time ts) {
         double min_time = 0.15;
@@ -191,12 +193,57 @@ class LocalProxy {
         return nd;
     }
 
-    void add_odom_dis_to_sf(swarm_frame & _sf, int _id, const Odometry & odom, std::map<int, float> & _dis) {
 
+
+    void on_swarm_detected(const swarm_msgs::swarm_detected &sd) {
+        int i = find_sf_swarm_detected(sd.header.stamp);
+        int _detecter_node = sd.self_drone_id;
+        if (i > 0) {
+            swarm_frame &_sf = sf_queue[i];
+            for (int j = 0; j < _sf.node_frames.size(); j++) {
+                if (_sf.node_frames[j].id == _detecter_node) {
+                    _sf.node_frames[j].detected = sd;
+                    return;
+                }
+            }
+            ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
+        }
     }
 
-    bool parse_mavlink_data(int _id, std::vector<uint8_t> buf) {
-        // mavlink_msg_swa
+    void add_odom_dis_to_sf(swarm_frame & sf, int _id, const Odometry & odom, std::map<int, float> & _dis) {
+        if (publish_remote_odom) {
+            if (drone_odom_pubs.find(_id) == drone_odom_pubs.end()) {
+                char name[20] = {0};
+                sprintf(name, "/swarm_drone/odom_%d", _id);
+                drone_odom_pubs[_id] = nh.advertise<Odometry>(name, 1);
+            }
+            drone_odom_pubs[_id].publish(odom);
+        }
+        for (node_frame & nf : sf.node_frames) {
+            if (nf.id == _id) {
+                nf.odometry = odom;
+                nf.vo_available = true;
+                for (auto it : _dis) {
+                    nf.dismap_ids.push_back(it.first);
+                    nf.dismap_ids.push_back(it.second);
+                }
+                return;
+            }
+        }
+    }
+
+    void add_node_detected_to_sf(swarm_frame & sf, const node_detected & nd) {
+        for (node_frame & nf : sf.node_frames) {
+            if (nf.id == nd.self_drone_id) {
+                nf.detected.detected_nodes.push_back(nd);
+                return;
+            }
+        }
+    }
+
+    bool parse_mavlink_data(incoming_broadcast_data income_data) {
+        int _id = income_data.remote_id;
+        std::string buf = income_data.data;
         mavlink_message_t msg;
         mavlink_status_t status;
         bool ret = false;
@@ -216,13 +263,16 @@ class LocalProxy {
                                 add_odom_dis_to_sf(sf_queue[s_index], _id, odom, _dis);
                             }
                         }
-
                         break;
                     }
+
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
-                        
-                        sd.detected_nodes.push_back(on_node_detected_msg(_id, msg));
-                        sd.header.stamp = sd.detected_nodes.back().header.stamp;
+                        auto nd = on_node_detected_msg(_id, msg);
+                        ros::Time ts = nd.header.stamp;
+                        int s_index = find_sf_swarm_detected(ts);
+                        if (s_index >= 0) {
+                            add_node_detected_to_sf(sf_queue[s_index], nd);
+                        }
                         break;
                     }
                 }
@@ -238,10 +288,9 @@ class LocalProxy {
         uwb_senddata_pub.publish(buffer);
     }
 
-    void send_swarm_mavlink(const float *dis) {
+    void send_swarm_mavlink(int32_t ts, const float *dis) {
 
         mavlink_message_t msg;
-        double now = ros::Time::now().toSec();
 
         // auto odom = naive_predict(self_odom, now, false);
         auto pos = self_odom.pose.pose.position;
@@ -251,9 +300,10 @@ class LocalProxy {
         for (int i = 0; i < 10; i++) {
             dis_int[i] = (int)(dis[i] * 1000);
         }
-        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, odometry_available, pos.x, pos.y, pos.z,
-                                            (int)(quat.w * 10000), (int)(quat.x * 10000), (int)(quat.y * 10000), (int)(quat.z * 10000),
-                                            (int)(vel.x * 1000), (int)(vel.y * 1000), (int)(vel.z * 1000), dis_int);
+        Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
+        Eigen::Vector3d eulers = quat2eulers(_q);
+
+        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, odometry_available, ts, pos.x, pos.y, pos.z, eulers.z(), dis_int);
 
         send_mavlink_message(msg);
     }
@@ -294,46 +344,6 @@ class LocalProxy {
         }
     }
 
-    void ParseDataBuffer(int _id, data_buffer data) {
-        nav_msgs::Odometry odom;
-
-        std::map<int, float> _dis;
-        swarm_detected sd;
-        bool ret = parse_mavlink_data(_id, data.data, odom, _dis, sd);
-
-        if (!ret) {
-            return;
-        }
-
-        //Send detected swarm to queue
-        if (sd.detected_nodes.size() > 0) {
-            on_swarm_detected(sd);
-        }
-
-
-
-        available_id.push_back(_id);
-
-        if (ret) {
-            odom = naive_predict_dt(odom, forward_predict_time);
-            vo_available[_id] = true;
-            id_n_distance[_id] = _dis;
-            id_odoms[_id] = odom;
-
-            if (publish_remote_odom) {
-                if (drone_odom_pubs.find(_id) == drone_odom_pubs.end()) {
-                    char name[20] = {0};
-                    sprintf(name, "/swarm_drone/odom_%d", _id);
-
-                    drone_odom_pubs[_id] = nh.advertise<Odometry>(name, 1);
-                }
-                drone_odom_pubs[_id].publish(odom);
-            }
-        } else {
-            vo_available[_id] = false;
-        }
-    }
-
     bool ParseSwarmInfo(const remote_uwb_info &info, swarm_frame &sf) {
         int drone_num = info.node_ids.size() + 1;
         const std::vector<unsigned int> &ids = info.node_ids;
@@ -369,6 +379,8 @@ class LocalProxy {
             nf.id = _idx;
             nf.header.stamp = sf.header.stamp;
             nf.vo_available = false;
+            nf.detected.header.stamp = sf.header.stamp;
+            nf.detected.self_drone_id = _idx;
             sf.node_frames.push_back(nf);
         }
 
@@ -402,11 +414,14 @@ class LocalProxy {
             self_dis[i] = -1;
         }
 
-        send_swarm_mavlink(self_dis);
+        send_swarm_mavlink(info.sys_time, self_dis);
 
         if (odometry_available && odometry_updated) {
             odometry_updated = false;
-            swarm_frame_nosd_pub.publish(sf);
+            if (sf_queue.size() > 2) {
+                //Pub two frame before
+                swarm_frame_nosd_pub.publish(sf_queue[sf_queue.size() - 2]);
+            }
             process_swarm_frame_queue();
         }
     }
@@ -435,7 +450,7 @@ public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
         ROS_INFO("Start SWARM Drone Proxy");
 
-        nh.param<int>("sf_queue_size", sf_queue_size, 5);
+        nh.param<int>("sf_queue_size", sf_queue_size, 10);
         nh.param<bool>("publish_remote_odom", publish_remote_odom, false);
         nh.param<double>("forward_predict_time", forward_predict_time, 0.02);
         // read /vins_estimator/odometry and send to uwb by mavlink
