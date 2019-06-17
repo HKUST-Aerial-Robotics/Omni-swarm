@@ -22,7 +22,8 @@ using namespace nav_msgs;
 using namespace geometry_msgs;
 using namespace inf_uwb_ros;
 
-#define MAX_DRONE_SIZE 5
+#define MAX_DRONE_SIZE 10
+#define INVAILD_DISTANCE 65535
 
 #define TEST_WITHOUT_VO
 
@@ -167,16 +168,23 @@ class LocalProxy {
             return false;
         }
         // ROS_INFO("x %d y %d z %d")
-        pos.x = node_realtime_info.x/1000.0;
-        pos.y = node_realtime_info.y/1000.0;
-        pos.z = node_realtime_info.z/1000.0;
+        // pos.x = node_realtime_info.x/1000.0;
+        // pos.y = node_realtime_info.y/1000.0;
+        // pos.z = node_realtime_info.z/1000.0;
+        pos.x = node_realtime_info.x;
+        pos.y = node_realtime_info.y;
+        pos.z = node_realtime_info.z;
 
         yaw = node_realtime_info.yaw / 1000;
 
         for (int i = 0; i < MAX_DRONE_SIZE; i++) {
             if (node_realtime_info.remote_distance[i] > 0) {
                 //When >0, we have it distance for this id
-                _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
+                if (node_realtime_info.remote_distance[i] == INVAILD_DISTANCE) {
+                    // _dis[i] = -1;
+                } else {
+                    _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
+                }
             }
         }
 
@@ -193,7 +201,8 @@ class LocalProxy {
         int32_t tn = ROSTIME2LPS(ros::Time::now());
         int32_t dt = tn - mdetected.lps_time;
         if (dt < 100) {
-            ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+            // ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+            ROS_INFO("ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         } else {
             ROS_WARN_THROTTLE(0.1, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         }
@@ -344,9 +353,11 @@ class LocalProxy {
 
         for (uint8_t c : buf) {
             //Use different to prevent invaild parse
-            if (mavlink_parse_char(_id, c, &msg, &status)) {
+            int ret = mavlink_parse_char(_id, c, &msg, &status);
+            if (ret) {
                 switch (msg.msgid) {
                     case MAVLINK_MSG_ID_NODE_REALTIME_INFO: {
+                        // ROS_INFO("rt info");
                         Odometry odom;
                         std::map<int, float> _dis;
                         ros::Time ts;
@@ -380,6 +391,10 @@ class LocalProxy {
                         break;
                     }
                 }
+            } else {
+                if (ret == MAVLINK_FRAMING_BAD_CRC) {
+                    ROS_WARN("Mavlink parse error");   
+                }
             }
         }
     }
@@ -401,15 +416,19 @@ class LocalProxy {
         auto pos = self_odom.pose.pose.position;
         auto vel = self_odom.twist.twist.linear;
         auto quat = self_odom.pose.pose.orientation;
-        int16_t dis_int[MAX_DRONE_SIZE] = {0};
+        uint16_t dis_int[MAX_DRONE_SIZE] = {0};
         for (int i = 0; i < MAX_DRONE_SIZE; i++) {
-            dis_int[i] = (int)(dis[i] * 1000);
+            if (dis[i] < 0) {
+                dis_int[i] = INVAILD_DISTANCE;
+            } else {
+                dis_int[i] = (int)(dis[i] * 1000);
+            }
             // ROS_INFO("dis i %d: %d", i, dis_int[i]);
         }
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
 
-        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, int(pos.x*1000.0), int(pos.y*1000.0), int(pos.z*1000.0), eulers.z(), dis_int);
+        mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, int(eulers.z()*1000), dis_int);
 
         send_mavlink_message(msg);
     }
