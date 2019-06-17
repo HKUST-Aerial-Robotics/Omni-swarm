@@ -54,6 +54,8 @@ std::vector<int> SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &s
     for (auto _id : _ids) {
         if (sf_sld_win.back().HasID(_id)) {
             Eigen::Vector3d _diff = sf.position(_id) - sf_sld_win.back().position(_id);
+
+            //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
             if (_diff.norm() > min_accept_keyframe_movement || (sf.HasDetect(_id) && _id==self_id)) {
                 ret.push_back(_id);
                 node_kf_count[_id] += 1;
