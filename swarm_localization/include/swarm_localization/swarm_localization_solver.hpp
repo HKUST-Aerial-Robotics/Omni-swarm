@@ -91,7 +91,7 @@ class SwarmLocalizationSolver {
 
     double solve_once(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts, bool report = false);
     
-    std::vector<int> judge_is_key_frame(const SwarmFrame &sf);
+    int judge_is_key_frame(const SwarmFrame &sf);
 
     void add_as_keyframe(const SwarmFrame &sf);
     
