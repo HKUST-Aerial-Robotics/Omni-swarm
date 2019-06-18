@@ -32,12 +32,12 @@ bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     return false;
 }
 
-std::vector<int> SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
+int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
 
-    const std::vector<int>& _ids = sf.node_id_list;
+    auto _ids = sf.node_id_list;
     std::vector<int> ret(0);
     if (_ids.size() < 2)
-        return ret;
+        return 0;
 
 //        //Temp code
 //        if (_ids.size() < drone_num) {
@@ -48,26 +48,25 @@ std::vector<int> SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &s
         for (auto _id : _ids) {
             node_kf_count[_id] = 1;
         }
-        return _ids;
+        return true;
     }
 
-    for (auto _id : _ids) {
-        if (sf_sld_win.back().HasID(_id)) {
-            Eigen::Vector3d _diff = sf.position(_id) - sf_sld_win.back().position(_id);
+    if (sf_sld_win.back().HasID(self_id)) {
+        Eigen::Vector3d _diff = sf.position(self_id) - sf_sld_win.back().position(self_id);
 
-            //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-            if (_diff.norm() > min_accept_keyframe_movement || (sf.HasDetect(_id) && _id==self_id)) {
-                ret.push_back(_id);
-                node_kf_count[_id] += 1;
-//                    ROS_INFO("SF %ld is kf of %d: DIFF %3.2f HAS %d", sf.ts, _id, _diff.norm(), sf.HasDetect(_id));
-            }
-        } else {
-            ret.push_back(_id);
-            node_kf_count[_id] += 1;
-            ROS_INFO("Last frame no id %d; Adding", _id);
+        //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
+        if (_diff.norm() > min_accept_keyframe_movement) { //(sf.HasDetect(_id) && _id==self_id))
+            ret.push_back(self_id);
+            node_kf_count[self_id] += 1;
+            ROS_INFO("SF %ld is kf of %d: DIFF %3.2f HAS %d", 
+                sf.ts, self_id, _diff.norm(), sf.HasDetect(self_id));
+
+
+            return 1;
         }
     }
-    return ret;
+
+    return 0;
 }
 
 void SwarmLocalizationSolver::delete_frame_i(int i) {
@@ -224,8 +223,9 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     for (int _id : _ids) {
         all_nodes.insert(_id);
     }
-    std::vector<int> is_kf_list = judge_is_key_frame(sf);
-    if (!is_kf_list.empty()) {
+
+    int is_kf = judge_is_key_frame(sf);
+    if (is_kf == 1) {
         has_new_keyframe = true;
         add_as_keyframe(sf);
         ROS_INFO("New kf found, sld win size %ld", sf_sld_win.size());
