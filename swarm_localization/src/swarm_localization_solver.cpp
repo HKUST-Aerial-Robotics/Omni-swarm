@@ -305,7 +305,7 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int 
     double cost = acpt_cost;
     bool cost_updated = false;
 
-    // ROS_INFO("Try to use multiple init to solve expect cost %f", cost);
+    ROS_WARN("Try to use multiple init to solve expect cost %f", cost);
 
     EstimatePoses & _est_poses = est_poses_tsid;
     EstimatePosesIDTS & _est_poses_idts = est_poses_idts;
