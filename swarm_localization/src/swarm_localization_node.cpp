@@ -70,10 +70,12 @@ class SwarmLocalizationNode {
 
         if (nf.vo_available) {
             nf.self_pose = Pose(_nf.position, _nf.yaw);
+            // ROS_WARN("Node %d vo valid", _nf.id);
 
         } else {
             if (nf.node->HasVO()) {
                 ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
+                // ROS_WARN("Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
         }
@@ -100,8 +102,12 @@ class SwarmLocalizationNode {
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
             NodeFrame nf = node_frame_from_msg(_nf);
+            //Set nf ts to sf ts here; Trick for early version
+            nf.ts = sf.ts;
+
             if (nf.is_static || (!nf.is_static && nf.vo_available)) { //If not static then must has vo
                 sf.id2nodeframe[_nf.id] = nf;
+                sf.node_id_list.insert(_nf.id);
                 sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
             }
         }

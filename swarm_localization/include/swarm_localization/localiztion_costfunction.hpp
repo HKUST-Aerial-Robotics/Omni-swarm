@@ -9,6 +9,7 @@
 #include <thread>  
 #include <unistd.h>
 #include "swarm_types.hpp"
+#include <ros/ros.h>
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -96,11 +97,19 @@ struct SwarmFrameError {
             self_pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
-            int index = id2poseindex.at(_id);
-            t_pose[0] =  _poses[index][0];
-            t_pose[1] =  _poses[index][1];
-            t_pose[2] =  _poses[index][2];
-            t_pose[3] =  _poses[index][3];
+            if (id2poseindex.find(_id) != id2poseindex.end()) {
+                int index = id2poseindex.at(_id);
+                t_pose[0] =  _poses[index][0];
+                t_pose[1] =  _poses[index][1];
+                t_pose[2] =  _poses[index][2];
+                t_pose[3] =  _poses[index][3];
+            } else {
+                ROS_ERROR("No pose of ID %d in SF %d error;exit; SF Has only %ld id ", _id, TSShort(sf.ts), sf.id2nodeframe.size());
+                for (auto it : id2poseindex) {
+                    ROS_ERROR("id %d", it.first);
+                }
+                exit(-1);
+            }
         }
 
     }
@@ -133,15 +142,20 @@ struct SwarmFrameError {
                     + (pb[2] - pa[2]) * (pb[2] - pa[2]));
     }
 
+    inline bool has_id(const int _id) const {
+        return sf.node_id_list.find(_id) != sf.node_id_list.end();
+    }
 
     template<typename T>
     inline int nodeframe_distance_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (auto it : _nf.dis_map) {
             int _idj = it.first;
-            T _dis = T(it.second);
-            //Less accuracy on distance
-            _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
-            res_count++;
+            if (has_id(_idj)) {
+                T _dis = T(it.second);
+                //Less accuracy on distance
+                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
+                res_count++;
+            }
         }
         return res_count;
     }
@@ -151,18 +165,20 @@ struct SwarmFrameError {
         for (auto it: _nf.detected_nodes) {
 //            Detected pose error
             int _id = it.first;
-            Pose _rel_pose = it.second;
-            T rel_pose[4];
-            _rel_pose.to_vector_xyzyaw(rel_pose);
+            if (has_id(_id)) {
+                Pose _rel_pose = it.second;
+                T rel_pose[4];
+                _rel_pose.to_vector_xyzyaw(rel_pose);
 
-            T relpose_est[4];
-            estimate_relpose(_nf.id, _id, _poses, relpose_est);
+                T relpose_est[4];
+                estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-            Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id];
-            Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id];
+                Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id];
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id];
 
-            pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
-            res_count = res_count + 4;
+                pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
+                res_count = res_count + 4;
+            }
         }
         // ROS_INFO("Work with detected node");
         return res_count;
@@ -179,13 +195,15 @@ struct SwarmFrameError {
 
                 if (_nf.dists_available) {
                     for (auto it : _nf.dis_map) {
-                        res_count++;
+                        if (has_id(it.first))
+                            res_count++;
                     }
                 }
 
                 if (_nf.has_detect_relpose) {
                     for (auto it: _nf.detected_nodes) {
-                        res_count = res_count + 4;
+                        if (has_id(it.first))
+                            res_count = res_count + 4;
                     }
                 }
 
@@ -238,7 +256,7 @@ struct SwarmHorizonError {
     int64_t last_ts = -1;
 
     std::vector<Pose> delta_poses;
-
+    int _id = -1;
     bool is_self_node = false;
     SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node) :
             nf_windows(_nf_win),
@@ -255,6 +273,7 @@ struct SwarmHorizonError {
 //            printf("\n");
         }
         last_ts = nf_windows.back().ts;
+        _id = nf_windows.back().id;
     }
 
     template<typename T>
@@ -265,11 +284,18 @@ struct SwarmHorizonError {
             _pose.to_vector_xyzyaw(t_pose);
             return;
         } else {
-            int index = ts2poseindex.at(ts);
-            t_pose[0] =  _poses[index][0];
-            t_pose[1] =  _poses[index][1];
-            t_pose[2] =  _poses[index][2];
-            t_pose[3] =  _poses[index][3];
+            if (ts2poseindex.find(ts) != ts2poseindex.end()) {
+                int index = ts2poseindex.at(ts);
+                t_pose[0] =  _poses[index][0];
+                t_pose[1] =  _poses[index][1];
+                t_pose[2] =  _poses[index][2];
+                t_pose[3] =  _poses[index][3];
+            } else {
+                ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
+                exit(-1);
+            }
+
+
         }
     }
 

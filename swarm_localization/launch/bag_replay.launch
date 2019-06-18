@@ -1,13 +1,21 @@
 <launch>
+    <arg name="rand" default="10.0" />
+    <arg name="num" default="5" />
+    <arg name="detection" default="true" />
+   <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
+        <rosparam>
+            force_freq: 100
+            max_accept_cost: 2.0
+            max_keyframe_num: 10
+            min_keyframe_num: 8
+            thread_num: 4
+        </rosparam>
+        <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
+        <param name="initial_random_noise" value="$(arg rand)" type="double" />
+        <remap from="/swarm_drones/swarm_frame_predict" to="/swarm_drones/swarm_frame_without_detection" />
+    </node>
     <param name="use_sim_time" value="true" type="bool" />
     <!-- <node pkg="swarm_localization" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen">
-    </node> -->\
-    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/xuhao/swarm_offline_tune_2018-10-30-05-18-52.bag"/>
-    <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen">
-       <param name="force_freq" value="5" type="double" />
-       <param name="max_accept_cost" value="0.1" type="double" />
-       <param name="max_keyframe_num" value="100" type="int" />
-       <param name="min_keyframe_num" value="10" type="int" />
-       <param name="thread_num" value="8" type="int" />
-    </node>
+    </node> -->
+    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/xuhao/bags/sf_001_2019-06-18-10-10-35.bag"/>
 </launch>
