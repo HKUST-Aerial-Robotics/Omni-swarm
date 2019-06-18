@@ -73,7 +73,7 @@ class SwarmLocalizationNode {
 
         } else {
             if (nf.node->HasVO()) {
-                ROS_WARN("Node %d invalid: No vo now", _nf.id);
+                ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
         }
@@ -99,20 +99,25 @@ class SwarmLocalizationNode {
         sf.self_id = _sf.self_id;
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
-            sf.node_id_list.push_back(_nf.id);
-        }
-
-        for (auto it : sf.id2nodeframe) {
-            for (auto it_d :it.second.detected_nodes) {
-                sf.id2nodeframe[it_d.first].has_detect_relpose = true;
-                sf.id2nodeframe[it.first].has_detect_relpose = true;
+            NodeFrame nf = node_frame_from_msg(_nf);
+            if (nf.is_static || (!nf.is_static && nf.vo_available)) { //If not static then must has vo
+                sf.id2nodeframe[_nf.id] = nf;
+                sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
             }
         }
 
-        for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
-            sf.id2nodeframe[_nf.id] = node_frame_from_msg(_nf);
-            sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
+
+        for (auto it : sf.id2nodeframe) {
+            for (auto it_d :it.second.detected_nodes) {
+                //Add only in node id list
+                if ( sf.id2nodeframe.find(it_d.first) != sf.id2nodeframe.end() && 
+                    sf.id2nodeframe.find(it_d.first) != sf.id2nodeframe.end() ) {
+                    sf.id2nodeframe[it_d.first].has_detect_relpose = true;
+                    sf.id2nodeframe[it.first].has_detect_relpose = true;
+                }
+            }
         }
+
         return sf;
     }
 
