@@ -159,9 +159,9 @@ protected:
         double t_now = _sf.header.stamp.toSec();
 
         // printf("Tnow %f\n", t_now);
+        swarm_localization_solver->add_new_swarm_frame(sf);
         
         if (t_now - t_last > 1 / force_freq) {
-            swarm_localization_solver->add_new_swarm_frame(sf);
             std_msgs::Float32 cost;
             cost.data = this->swarm_localization_solver->solve();
             t_last = t_now;

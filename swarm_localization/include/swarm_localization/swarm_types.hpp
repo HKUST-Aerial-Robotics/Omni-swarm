@@ -216,7 +216,7 @@ class SwarmFrame {
         ros::Time stamp;
         int64_t ts;
 
-        int swarm_size() {
+        int swarm_size() const {
             return id2nodeframe.size();
         }
 

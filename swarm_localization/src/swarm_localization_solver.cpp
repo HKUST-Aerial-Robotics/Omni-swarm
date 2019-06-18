@@ -23,6 +23,8 @@
 
 // #define DEBUG_OUTPUT_POSES
 // #define COMPUTE_COV
+#define SMALL_MOVEMENT_SPD 0.1
+#define REPLACE_MIN_DURATION 0.1
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -38,11 +40,6 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     if (_ids.size() < 2)
         return 0;
 
-//        //Temp code
-//        if (_ids.size() < drone_num) {
-//            return ret;
-//        }
-
     if (sf_sld_win.empty()) {
         for (auto _id : _ids) {
             node_kf_count[_id] = 1;
@@ -52,8 +49,13 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         return 1;
     }
 
-    if (sf_sld_win.back().HasID(self_id)) {
-        Eigen::Vector3d _diff = sf.position(self_id) - sf_sld_win.back().position(self_id);
+    const SwarmFrame & last_sf = sf_sld_win.back();
+    double dt = (sf.stamp - last_sf.stamp).toSec();
+
+
+    if (last_sf.HasID(self_id)) {
+
+        Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
 
         //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
         if (_diff.norm() > min_accept_keyframe_movement) { //(sf.HasDetect(_id) && _id==self_id))
@@ -64,7 +66,14 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
 
             return 1;
         }
+
+        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && dt > REPLACE_MIN_DURATION) {
+            //Make sure is fixed
+            return 2;
+        }
+
     }
+
 
 
     return 0;
@@ -207,9 +216,26 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
             this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
         }
     }
-
-
     last_kf_ts = sf.ts;
+    has_new_keyframe = true;
+
+}
+
+void SwarmLocalizationSolver::replace_last_kf(const SwarmFrame &sf) {
+    delete_frame_i(sf_sld_win.size()-1);
+    sf_sld_win.push_back(sf);
+    all_sf[sf.ts] = sf;
+
+    for (auto it : sf.id2nodeframe) {
+        if (it.second.is_static) {
+            ROS_INFO("Is static");
+            this->init_static_nf_in_keyframe(sf.ts, it.second);
+        } else {
+            this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
+        }
+    }
+    last_kf_ts = sf.ts;
+    has_new_keyframe = true;
 }
 
 
@@ -227,12 +253,16 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 
     int is_kf = judge_is_key_frame(sf);
     if (is_kf == 1) {
-        has_new_keyframe = true;
         add_as_keyframe(sf);
         ROS_INFO("New kf found, sld win size %ld TS %d NFTS %d", sf_sld_win.size(),
             TSShort(sf_sld_win.back().ts),
             TSShort(sf_sld_win.back().id2nodeframe[self_id].ts)
         );
+    }
+
+    if (is_kf == 2) {
+        add_as_keyframe(sf);
+        ROS_INFO("Replace last kf with TS %d",  TSShort(sf_sld_win.back().ts));
     }
 
     if (_ids.size() > drone_num) {
@@ -292,7 +322,8 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
             //Give node velocity predict here
             sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
         } else {
-            ROS_WARN("No id %d found in last kf", nf.id);
+            // Maybe use previous results
+            // ROS_WARN("No id %d found in last kf", nf.id);
         }
     }
 
