@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include "yaml-cpp/yaml.h"
 #include <exception>
+#include <set>
 
 
 
@@ -208,7 +209,7 @@ class SwarmFrame {
     public:
         std::map<int, NodeFrame> id2nodeframe;
         std::map<int, DisMap> dis_mat;
-        std::vector<int> node_id_list;
+        std::set<int> node_id_list;
 
         int self_id = -1;
 
