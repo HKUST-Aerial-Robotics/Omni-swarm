@@ -94,6 +94,7 @@ class SwarmLocalizationSolver {
     int judge_is_key_frame(const SwarmFrame &sf);
 
     void add_as_keyframe(const SwarmFrame &sf);
+    void replace_last_kf(const SwarmFrame & sf);
     
     bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10);
     
@@ -132,6 +133,7 @@ public:
 
    
     void add_new_swarm_frame(const SwarmFrame &sf);
+
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
