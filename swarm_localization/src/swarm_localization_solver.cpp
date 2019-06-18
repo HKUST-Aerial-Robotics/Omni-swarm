@@ -33,7 +33,6 @@ bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
 }
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
-
     auto _ids = sf.node_id_list;
     std::vector<int> ret(0);
     if (_ids.size() < 2)
@@ -48,7 +47,9 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         for (auto _id : _ids) {
             node_kf_count[_id] = 1;
         }
-        return true;
+
+
+        return 1;
     }
 
     if (sf_sld_win.back().HasID(self_id)) {
@@ -58,13 +59,13 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         if (_diff.norm() > min_accept_keyframe_movement) { //(sf.HasDetect(_id) && _id==self_id))
             ret.push_back(self_id);
             node_kf_count[self_id] += 1;
-            ROS_INFO("SF %ld is kf of %d: DIFF %3.2f HAS %d", 
-                sf.ts, self_id, _diff.norm(), sf.HasDetect(self_id));
-
+            ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
+                TSShort(sf.ts), self_id, _diff.norm(), sf.HasDetect(self_id));
 
             return 1;
         }
     }
+
 
     return 0;
 }
@@ -228,7 +229,10 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     if (is_kf == 1) {
         has_new_keyframe = true;
         add_as_keyframe(sf);
-        ROS_INFO("New kf found, sld win size %ld", sf_sld_win.size());
+        ROS_INFO("New kf found, sld win size %ld TS %d NFTS %d", sf_sld_win.size(),
+            TSShort(sf_sld_win.back().ts),
+            TSShort(sf_sld_win.back().id2nodeframe[self_id].ts)
+        );
     }
 
     if (_ids.size() > drone_num) {
