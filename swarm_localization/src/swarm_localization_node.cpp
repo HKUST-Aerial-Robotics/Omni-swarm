@@ -73,7 +73,7 @@ class SwarmLocalizationNode {
 
         } else {
             if (nf.node->HasVO()) {
-                ROS_WARN("Node %d invalid: No vo now", _nf.id);
+                ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
         }
