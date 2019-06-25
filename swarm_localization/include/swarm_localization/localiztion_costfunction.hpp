@@ -24,6 +24,8 @@ using namespace Eigen;
 typedef std::vector<Vector3d> vec_array;
 typedef std::vector<Quaterniond> quat_array;
 
+#define NO_ANNETAPOS
+
 
 #define VO_DRIFT_METER 0.001
 #define VO_ERROR_ANGLE 0.001
@@ -130,16 +132,24 @@ struct SwarmFrameError {
         get_pose(idi, _poses, posea);
         get_pose(idj, _poses, poseb);
 
+
+
+#ifdef NO_ANNETAPOS
+        return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
+                    + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
+                    + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
+#else
         T pa[3], pb[3];
         T p_anna[3], p_annb[3];
         EigenVec2T(sf.id2nodeframe.at(idi).get_anntena_pos(), p_anna);
         EigenVec2T(sf.id2nodeframe.at(idj).get_anntena_pos(), p_annb);
         PoseTransformPoint(posea, p_anna, pa);
         PoseTransformPoint(poseb, p_annb, pb);
-
         return sqrt((pb[0] - pa[0]) * (pb[0] - pa[0])
                     + (pb[1] - pa[1]) * (pb[1] - pa[1])
                     + (pb[2] - pa[2]) * (pb[2] - pa[2]));
+#endif
+
     }
 
     inline bool has_id(const int _id) const {

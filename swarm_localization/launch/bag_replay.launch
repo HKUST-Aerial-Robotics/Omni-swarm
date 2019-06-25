@@ -4,10 +4,10 @@
     <arg name="detection" default="true" />
    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
         <rosparam>
-            force_freq: 5
-            max_accept_cost: 3.0
-            max_keyframe_num: 10
-            min_keyframe_num: 8
+            force_freq: 1
+            max_accept_cost: 10
+            max_keyframe_num: 50
+            min_keyframe_num: 10
             thread_num: 4
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
@@ -17,5 +17,5 @@
     <param name="use_sim_time" value="true" type="bool" />
     <!-- <node pkg="swarm_localization" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen">
     </node> -->
-    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock /home/xuhao/bags/sf_001_2019-06-18-10-10-35.bag"/>
+    <!-- <node pkg="rosbag" type="play" name="player" output="screen" args="/home/xuhao/bags/sf_2019-06-25-08-33-16.bag"/> -->
 </launch>
