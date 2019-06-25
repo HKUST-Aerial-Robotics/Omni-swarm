@@ -43,19 +43,3 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
-  8:
-    has_uwb: true
-    has_armarkers: true
-    has_camera: true
-    has_vo: false
-    is_static: true
-    has_global_pose: false
-    anntena_pos: [-0.083, 0, 0.078]
-  9:
-    has_uwb: true
-    has_armarkers: true
-    has_camera: true
-    has_vo: false
-    is_static: true
-    has_global_pose: false
-    anntena_pos: [-0.083, 0, 0.078]

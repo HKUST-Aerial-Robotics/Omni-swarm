@@ -47,10 +47,15 @@ class SwarmLocalizationNode {
         return remote_ids_set.find(_id) != remote_ids_set.end();
     }
 
+
+    bool nodedef_has_id(int _id) const {
+        return all_node_defs.find(_id) != all_node_defs.end();
+    }
+
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) const {
 
         //TODO: Deal with global pose
-        if (all_node_defs.find(_nf.id) == all_node_defs.end()) {
+        if (!nodedef_has_id(_nf.id)) {
             ROS_ERROR("No such node %d", _nf.id);
             exit(-1);
         }
@@ -65,7 +70,10 @@ class SwarmLocalizationNode {
         assert(_nf.dismap_ids.size() == _nf.dismap_dists.size() && "Dismap ids and distance must equal size");
 
         for (unsigned int i = 0; i < _nf.dismap_ids.size(); i++) {
-            nf.dis_map[_nf.dismap_ids[i]] = _nf.dismap_dists[i];
+            if (nodedef_has_id(_nf.dismap_ids[i])) {
+                nf.dis_map[_nf.dismap_ids[i]] = _nf.dismap_dists[i];
+            }
+
         }
 
         if (nf.vo_available) {
@@ -81,14 +89,16 @@ class SwarmLocalizationNode {
         }
 
         for (auto nd: _nf.detected.detected_nodes) {
-            nf.detected_nodes[nd.remote_drone_id] = Pose(nd.relpose.pose);
-            auto cov = nd.relpose.covariance;
-            nf.detected_nodes_poscov[nd.remote_drone_id] = 
-                Eigen::Vector3d(sqrt(cov[0]), sqrt(cov[6+1]), sqrt(cov[2*6+2]));
+            if (nodedef_has_id(nd.remote_drone_id)) {
+                nf.detected_nodes[nd.remote_drone_id] = Pose(nd.relpose.pose);
+                auto cov = nd.relpose.covariance;
+                nf.detected_nodes_poscov[nd.remote_drone_id] = 
+                    Eigen::Vector3d(sqrt(cov[0]), sqrt(cov[6+1]), sqrt(cov[2*6+2]));
 
-            nf.detected_nodes_angcov[nd.remote_drone_id] = 
-                Eigen::Vector3d(sqrt(cov[3*6+3]), sqrt(cov[4*6+4]), sqrt(cov[5*6+5]));
-            nf.has_detect_relpose = true;
+                nf.detected_nodes_angcov[nd.remote_drone_id] = 
+                    Eigen::Vector3d(sqrt(cov[3*6+3]), sqrt(cov[4*6+4]), sqrt(cov[5*6+5]));
+                nf.has_detect_relpose = true;
+            }
         }
         return nf;
     }
@@ -101,15 +111,18 @@ class SwarmLocalizationNode {
         sf.self_id = _sf.self_id;
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
-            NodeFrame nf = node_frame_from_msg(_nf);
-            //Set nf ts to sf ts here; Trick for early version
-            nf.ts = sf.ts;
+            if (nodedef_has_id(_nf.id)) {
+                NodeFrame nf = node_frame_from_msg(_nf);
+                //Set nf ts to sf ts here; Trick for early version
+                nf.ts = sf.ts;
 
-            if (nf.is_static || (!nf.is_static && nf.vo_available)) { //If not static then must has vo
-                sf.id2nodeframe[_nf.id] = nf;
-                sf.node_id_list.insert(_nf.id);
-                sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
+                if (nf.is_static || (!nf.is_static && nf.vo_available)) { //If not static then must has vo
+                    sf.id2nodeframe[_nf.id] = nf;
+                    sf.node_id_list.insert(_nf.id);
+                    sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
+                }
             }
+
         }
 
 

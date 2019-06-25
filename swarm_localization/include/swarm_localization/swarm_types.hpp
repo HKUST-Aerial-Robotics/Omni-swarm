@@ -241,6 +241,11 @@ class SwarmFrame {
             }
             return false;
         }
+
+        int detected_num(const int _id) const {
+            return id2nodeframe.at(_id).detected_nodes.size();
+        }
+
         double distance(const int idj, const int idi) const {
             assert(HasDis(idj, idi) && "Require distance not have");
 

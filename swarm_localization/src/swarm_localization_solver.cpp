@@ -25,6 +25,7 @@
 // #define COMPUTE_COV
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
+#define ENABLE_REPLACE
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -67,7 +68,9 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
             return 1;
         }
 
-        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && dt > REPLACE_MIN_DURATION) {
+        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && dt > REPLACE_MIN_DURATION 
+        && sf.detected_num(self_id) >= last_sf.detected_num(self_id)
+        ) {
             //Make sure is fixed
             return 2;
         }
@@ -260,10 +263,12 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
         );
     }
 
+#ifdef ENABLE_REPLACE
     if (is_kf == 2) {
-        add_as_keyframe(sf);
+        replace_last_kf(sf);
         ROS_INFO("Replace last kf with TS %d",  TSShort(sf_sld_win.back().ts));
     }
+#endif
 
     if (_ids.size() > drone_num) {
         //For here the drone num increase
