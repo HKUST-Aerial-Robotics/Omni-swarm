@@ -263,16 +263,49 @@ private:
 
     }
 
-    void predict_swarm(const swarm_frame &_sf) {
-        if (swarm_localization_solver->CanPredictSwarm()) {
-            SwarmFrame sf = swarm_frame_from_msg(_sf);
-            SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
-            for (auto it: _sfs.node_poses) {
-                this->pub_posevel_id(it.first, it.second, _sfs.node_vels[it.first], sf.stamp);
+    void pub_fused_relative(const SwarmFrameState & _sfs, ros::Time stamp) {
+        if (_sfs.node_poses.size() <= 1) {
+            return;
+        } 
+        swarm_fused_relative sfr;
+        sfr.header.stamp = stamp;
+        Pose self_pose = _sfs.node_poses.at(self_id);
+        for (auto it : _sfs.node_poses) {
+            if (it.first != self_id) {
+                int id = it.first;
+                Pose _pose = it.second;
+                Pose DPose = Pose::DeltaPose(self_pose, _pose, true);
+                double dyaw = DPose.yaw();
+                sfr.ids.push_back(id);
+                sfr.relative_drone_position.push_back(DPose.to_ros_pose().position);
+                sfr.relative_drone_yaw.push_back(dyaw);
+
+                geometry_msgs::Vector3 spd;
+                spd.x = 0;
+                spd.y = 0;
+                spd.z = 0;
+                sfr.relative_drone_velocity.push_back(spd);
             }
-        } else {
-            ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
         }
+
+        fused_drone_rel_data_pub.publish(sfr);
+    }
+
+    void predict_swarm(const swarm_frame &_sf) {
+        if (_sf.node_frames.size() > 1) {
+            if (swarm_localization_solver->CanPredictSwarm()) {
+                SwarmFrame sf = swarm_frame_from_msg(_sf);
+                SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
+                for (auto it: _sfs.node_poses) {
+                    this->pub_posevel_id(it.first, it.second, _sfs.node_vels[it.first], sf.stamp);
+                }
+
+                pub_fused_relative(_sfs, sf.stamp);
+            } else {
+                ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
+            }
+        }
+
     }
 
 public:
