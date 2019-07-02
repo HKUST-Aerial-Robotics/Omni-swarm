@@ -59,7 +59,8 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
 
         //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-        if (_diff.norm() > min_accept_keyframe_movement) { //(sf.HasDetect(_id) && _id==self_id))
+        if (_diff.norm() > min_accept_keyframe_movement || 
+            (_diff.norm() > min_accept_keyframe_movement*0.5 && sf.detected_num(self_id) > 0)){ //(sf.HasDetect(_id) && _id==self_id))
             ret.push_back(self_id);
             node_kf_count[self_id] += 1;
             ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
@@ -68,8 +69,8 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
             return 1;
         }
 
-        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && dt > REPLACE_MIN_DURATION 
-        && sf.detected_num(self_id) >= last_sf.detected_num(self_id)
+        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && sf.swarm_size() > last_sf.swarm_size() &&
+        ( (dt > REPLACE_MIN_DURATION && sf.detected_num(self_id) == last_sf.detected_num(self_id)) || sf.detected_num(self_id) > last_sf.detected_num(self_id))
         ) {
             //Make sure is fixed
             return 2;
@@ -134,7 +135,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
         double noise = this->initial_random_noise;
 
         Pose _last;
-        if (last_kf_ts > 0) {
+        if (last_kf_ts > 0 && est_poses_idts.find(_id) != est_poses_idts.end()) {
             //Use last solve relative res, e.g init with last
 
             int64_t last_ts_4node = est_poses_idts[_id].rbegin()->first;
@@ -257,10 +258,14 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     int is_kf = judge_is_key_frame(sf);
     if (is_kf == 1) {
         add_as_keyframe(sf);
-        ROS_INFO("New kf found, sld win size %ld TS %d NFTS %d", sf_sld_win.size(),
+        ROS_INFO("New kf found, sld win size %ld TS %d NFTS %d ID: [", sf_sld_win.size(),
             TSShort(sf_sld_win.back().ts),
             TSShort(sf_sld_win.back().id2nodeframe[self_id].ts)
         );
+        for (int _id : _ids) {
+            printf(" %d", _id);
+        }
+        printf("]\n");
     }
 
 #ifdef ENABLE_REPLACE
@@ -363,9 +368,7 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int 
 }
 
 double SwarmLocalizationSolver::solve() {
-    if (self_id < 0
-        || node_kf_count.find(self_id) == node_kf_count.end()
-        || sf_sld_win.size() < min_frame_number)
+    if (self_id < 0 || sf_sld_win.size() < min_frame_number)
         return -1;
 
     if (!has_new_keyframe)
@@ -437,6 +440,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     for (int i =0;i < poses_num; i ++){
         cost_function->AddParameterBlock(4);
     }
+    assert(res_num > 0 &&"Set cost function with SF has 0 res num");
     cost_function->SetNumResiduals(res_num);
     return cost_function;
 }
@@ -482,6 +486,12 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(const std::vector<NodeFr
         cost_function->AddParameterBlock(4);
     }
 //        ROS_INFO("SFHorizon res %d", res_num);
+    if (res_num == 0) {
+        ROS_WARN("Set cost function with NF has 0 res num; NF id %d WIN %ld", nf_win[0].id, nf_win.size());
+        // exit(-1);
+        return nullptr;
+    }
+
     cost_function->SetNumResiduals(res_num);
     return cost_function;
 }
@@ -524,7 +534,10 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         count --;
     }
 
-    problem.AddResidualBlock(_setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id), nullptr, pose_win);
+    CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
+    if (cf != nullptr) {
+        problem.AddResidualBlock(cf , nullptr, pose_win);
+    }
 
 }
 

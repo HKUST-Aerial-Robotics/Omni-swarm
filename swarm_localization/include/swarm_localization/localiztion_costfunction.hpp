@@ -29,8 +29,10 @@ typedef std::vector<Quaterniond> quat_array;
 
 #define VO_DRIFT_METER 0.001
 #define VO_ERROR_ANGLE 0.001
-#define DISTANCE_MEASURE_ERROR 0.1
+#define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
+#define DETECTION_CO 1.0
+#define ENABLE_DETECTION
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -183,8 +185,8 @@ struct SwarmFrameError {
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-                Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id];
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id];
+                Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id] / DETECTION_CO;
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id] / DETECTION_CO;
 
                 pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
                 res_count = res_count + 4;
@@ -209,13 +211,14 @@ struct SwarmFrameError {
                             res_count++;
                     }
                 }
-
+#ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     for (auto it: _nf.detected_nodes) {
                         if (has_id(it.first))
                             res_count = res_count + 4;
                     }
                 }
+#endif
 
             }
         }
@@ -236,11 +239,11 @@ struct SwarmFrameError {
                 if (_nf.dists_available) {
                     res_count = nodeframe_distance_res(_nf, _poses, _residual, res_count);
                 }
-
+#ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     res_count = nodeframe_relpose_res(_nf, _poses, _residual, res_count);
                 }
-
+#endif
             }
 
         }

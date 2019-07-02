@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE NODE_REALTIME_INFO PACKING
 
-#define MAVLINK_MSG_ID_NODE_REALTIME_INFO 400
+#define MAVLINK_MSG_ID_NODE_REALTIME_INFO 200
 
 MAVPACKED(
 typedef struct __mavlink_node_realtime_info_t {
@@ -16,17 +16,17 @@ typedef struct __mavlink_node_realtime_info_t {
 
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN 39
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN 39
-#define MAVLINK_MSG_ID_400_LEN 39
-#define MAVLINK_MSG_ID_400_MIN_LEN 39
+#define MAVLINK_MSG_ID_200_LEN 39
+#define MAVLINK_MSG_ID_200_MIN_LEN 39
 
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC 163
-#define MAVLINK_MSG_ID_400_CRC 163
+#define MAVLINK_MSG_ID_200_CRC 163
 
 #define MAVLINK_MSG_NODE_REALTIME_INFO_FIELD_REMOTE_DISTANCE_LEN 10
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_NODE_REALTIME_INFO { \
-    400, \
+    200, \
     "NODE_REALTIME_INFO", \
     7, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_node_realtime_info_t, lps_time) }, \

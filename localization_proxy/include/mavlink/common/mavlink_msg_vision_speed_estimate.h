@@ -9,40 +9,37 @@ typedef struct __mavlink_vision_speed_estimate_t {
  float x; /*< [m/s] Global X speed*/
  float y; /*< [m/s] Global Y speed*/
  float z; /*< [m/s] Global Z speed*/
- float covariance[9]; /*<  Linear velocity covariance matrix (1st three entries - 1st row, etc.)*/
 }) mavlink_vision_speed_estimate_t;
 
-#define MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN 56
+#define MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN 20
 #define MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN 20
-#define MAVLINK_MSG_ID_103_LEN 56
+#define MAVLINK_MSG_ID_103_LEN 20
 #define MAVLINK_MSG_ID_103_MIN_LEN 20
 
 #define MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC 208
 #define MAVLINK_MSG_ID_103_CRC 208
 
-#define MAVLINK_MSG_VISION_SPEED_ESTIMATE_FIELD_COVARIANCE_LEN 9
+
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_VISION_SPEED_ESTIMATE { \
     103, \
     "VISION_SPEED_ESTIMATE", \
-    5, \
+    4, \
     {  { "usec", NULL, MAVLINK_TYPE_UINT64_T, 0, 0, offsetof(mavlink_vision_speed_estimate_t, usec) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_vision_speed_estimate_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_vision_speed_estimate_t, y) }, \
          { "z", NULL, MAVLINK_TYPE_FLOAT, 0, 16, offsetof(mavlink_vision_speed_estimate_t, z) }, \
-         { "covariance", NULL, MAVLINK_TYPE_FLOAT, 9, 20, offsetof(mavlink_vision_speed_estimate_t, covariance) }, \
          } \
 }
 #else
 #define MAVLINK_MESSAGE_INFO_VISION_SPEED_ESTIMATE { \
     "VISION_SPEED_ESTIMATE", \
-    5, \
+    4, \
     {  { "usec", NULL, MAVLINK_TYPE_UINT64_T, 0, 0, offsetof(mavlink_vision_speed_estimate_t, usec) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_vision_speed_estimate_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_vision_speed_estimate_t, y) }, \
          { "z", NULL, MAVLINK_TYPE_FLOAT, 0, 16, offsetof(mavlink_vision_speed_estimate_t, z) }, \
-         { "covariance", NULL, MAVLINK_TYPE_FLOAT, 9, 20, offsetof(mavlink_vision_speed_estimate_t, covariance) }, \
          } \
 }
 #endif
@@ -57,11 +54,10 @@ typedef struct __mavlink_vision_speed_estimate_t {
  * @param x [m/s] Global X speed
  * @param y [m/s] Global Y speed
  * @param z [m/s] Global Z speed
- * @param covariance  Linear velocity covariance matrix (1st three entries - 1st row, etc.)
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_vision_speed_estimate_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-                               uint64_t usec, float x, float y, float z, const float *covariance)
+                               uint64_t usec, float x, float y, float z)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN];
@@ -69,7 +65,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack(uint8_t system_id,
     _mav_put_float(buf, 8, x);
     _mav_put_float(buf, 12, y);
     _mav_put_float(buf, 16, z);
-    _mav_put_float_array(buf, 20, covariance, 9);
+
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN);
 #else
     mavlink_vision_speed_estimate_t packet;
@@ -77,7 +73,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack(uint8_t system_id,
     packet.x = x;
     packet.y = y;
     packet.z = z;
-    mav_array_memcpy(packet.covariance, covariance, sizeof(float)*9);
+
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), &packet, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN);
 #endif
 
@@ -95,12 +91,11 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack(uint8_t system_id,
  * @param x [m/s] Global X speed
  * @param y [m/s] Global Y speed
  * @param z [m/s] Global Z speed
- * @param covariance  Linear velocity covariance matrix (1st three entries - 1st row, etc.)
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_vision_speed_estimate_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
                                mavlink_message_t* msg,
-                                   uint64_t usec,float x,float y,float z,const float *covariance)
+                                   uint64_t usec,float x,float y,float z)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN];
@@ -108,7 +103,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack_chan(uint8_t syste
     _mav_put_float(buf, 8, x);
     _mav_put_float(buf, 12, y);
     _mav_put_float(buf, 16, z);
-    _mav_put_float_array(buf, 20, covariance, 9);
+
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN);
 #else
     mavlink_vision_speed_estimate_t packet;
@@ -116,7 +111,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack_chan(uint8_t syste
     packet.x = x;
     packet.y = y;
     packet.z = z;
-    mav_array_memcpy(packet.covariance, covariance, sizeof(float)*9);
+
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), &packet, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN);
 #endif
 
@@ -134,7 +129,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_pack_chan(uint8_t syste
  */
 static inline uint16_t mavlink_msg_vision_speed_estimate_encode(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, const mavlink_vision_speed_estimate_t* vision_speed_estimate)
 {
-    return mavlink_msg_vision_speed_estimate_pack(system_id, component_id, msg, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z, vision_speed_estimate->covariance);
+    return mavlink_msg_vision_speed_estimate_pack(system_id, component_id, msg, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z);
 }
 
 /**
@@ -148,7 +143,7 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_encode(uint8_t system_i
  */
 static inline uint16_t mavlink_msg_vision_speed_estimate_encode_chan(uint8_t system_id, uint8_t component_id, uint8_t chan, mavlink_message_t* msg, const mavlink_vision_speed_estimate_t* vision_speed_estimate)
 {
-    return mavlink_msg_vision_speed_estimate_pack_chan(system_id, component_id, chan, msg, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z, vision_speed_estimate->covariance);
+    return mavlink_msg_vision_speed_estimate_pack_chan(system_id, component_id, chan, msg, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z);
 }
 
 /**
@@ -159,11 +154,10 @@ static inline uint16_t mavlink_msg_vision_speed_estimate_encode_chan(uint8_t sys
  * @param x [m/s] Global X speed
  * @param y [m/s] Global Y speed
  * @param z [m/s] Global Z speed
- * @param covariance  Linear velocity covariance matrix (1st three entries - 1st row, etc.)
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_vision_speed_estimate_send(mavlink_channel_t chan, uint64_t usec, float x, float y, float z, const float *covariance)
+static inline void mavlink_msg_vision_speed_estimate_send(mavlink_channel_t chan, uint64_t usec, float x, float y, float z)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN];
@@ -171,7 +165,7 @@ static inline void mavlink_msg_vision_speed_estimate_send(mavlink_channel_t chan
     _mav_put_float(buf, 8, x);
     _mav_put_float(buf, 12, y);
     _mav_put_float(buf, 16, z);
-    _mav_put_float_array(buf, 20, covariance, 9);
+
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE, buf, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC);
 #else
     mavlink_vision_speed_estimate_t packet;
@@ -179,7 +173,7 @@ static inline void mavlink_msg_vision_speed_estimate_send(mavlink_channel_t chan
     packet.x = x;
     packet.y = y;
     packet.z = z;
-    mav_array_memcpy(packet.covariance, covariance, sizeof(float)*9);
+
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE, (const char *)&packet, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC);
 #endif
 }
@@ -192,7 +186,7 @@ static inline void mavlink_msg_vision_speed_estimate_send(mavlink_channel_t chan
 static inline void mavlink_msg_vision_speed_estimate_send_struct(mavlink_channel_t chan, const mavlink_vision_speed_estimate_t* vision_speed_estimate)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
-    mavlink_msg_vision_speed_estimate_send(chan, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z, vision_speed_estimate->covariance);
+    mavlink_msg_vision_speed_estimate_send(chan, vision_speed_estimate->usec, vision_speed_estimate->x, vision_speed_estimate->y, vision_speed_estimate->z);
 #else
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE, (const char *)vision_speed_estimate, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC);
 #endif
@@ -206,7 +200,7 @@ static inline void mavlink_msg_vision_speed_estimate_send_struct(mavlink_channel
   is usually the receive buffer for the channel, and allows a reply to an
   incoming message with minimum stack space usage.
  */
-static inline void mavlink_msg_vision_speed_estimate_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  uint64_t usec, float x, float y, float z, const float *covariance)
+static inline void mavlink_msg_vision_speed_estimate_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  uint64_t usec, float x, float y, float z)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char *buf = (char *)msgbuf;
@@ -214,7 +208,7 @@ static inline void mavlink_msg_vision_speed_estimate_send_buf(mavlink_message_t 
     _mav_put_float(buf, 8, x);
     _mav_put_float(buf, 12, y);
     _mav_put_float(buf, 16, z);
-    _mav_put_float_array(buf, 20, covariance, 9);
+
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE, buf, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC);
 #else
     mavlink_vision_speed_estimate_t *packet = (mavlink_vision_speed_estimate_t *)msgbuf;
@@ -222,7 +216,7 @@ static inline void mavlink_msg_vision_speed_estimate_send_buf(mavlink_message_t 
     packet->x = x;
     packet->y = y;
     packet->z = z;
-    mav_array_memcpy(packet->covariance, covariance, sizeof(float)*9);
+
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE, (const char *)packet, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_MIN_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_CRC);
 #endif
 }
@@ -274,16 +268,6 @@ static inline float mavlink_msg_vision_speed_estimate_get_z(const mavlink_messag
 }
 
 /**
- * @brief Get field covariance from vision_speed_estimate message
- *
- * @return  Linear velocity covariance matrix (1st three entries - 1st row, etc.)
- */
-static inline uint16_t mavlink_msg_vision_speed_estimate_get_covariance(const mavlink_message_t* msg, float *covariance)
-{
-    return _MAV_RETURN_float_array(msg, covariance, 9,  20);
-}
-
-/**
  * @brief Decode a vision_speed_estimate message into a struct
  *
  * @param msg The message to decode
@@ -296,7 +280,6 @@ static inline void mavlink_msg_vision_speed_estimate_decode(const mavlink_messag
     vision_speed_estimate->x = mavlink_msg_vision_speed_estimate_get_x(msg);
     vision_speed_estimate->y = mavlink_msg_vision_speed_estimate_get_y(msg);
     vision_speed_estimate->z = mavlink_msg_vision_speed_estimate_get_z(msg);
-    mavlink_msg_vision_speed_estimate_get_covariance(msg, vision_speed_estimate->covariance);
 #else
         uint8_t len = msg->len < MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN? msg->len : MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN;
         memset(vision_speed_estimate, 0, MAVLINK_MSG_ID_VISION_SPEED_ESTIMATE_LEN);

@@ -158,9 +158,9 @@ class LocalProxy {
         int32_t tn = ROSTIME2LPS(ros::Time::now());
         int32_t dt = tn - node_realtime_info.lps_time;
         if (dt < 100) {
-            ROS_INFO_THROTTLE(1.0, "NR RECV %d now %d DT %d", node_realtime_info.lps_time, tn, dt);
+            ROS_INFO_THROTTLE(0.1, "ID %d NR RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
         } else {
-            ROS_WARN_THROTTLE(0.1, "NodeRealtime RECV %d now %d DT %d", node_realtime_info.lps_time, tn, dt);
+            ROS_WARN_THROTTLE(0.1, "ID %d NodeRealtime RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
         }
 
         if (!node_realtime_info.odom_vaild) {
@@ -272,7 +272,7 @@ class LocalProxy {
                 nd.self_drone_id = self_id;
             }
 
-            if (nd.remote_drone_id != self_id && count % 2 == 0) {
+            if (nd.remote_drone_id != self_id) {
                 //Here to constrain the send rate of nd
                 send_node_detected(nd);
             }

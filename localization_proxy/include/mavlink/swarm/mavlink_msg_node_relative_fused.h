@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE NODE_RELATIVE_FUSED PACKING
 
-#define MAVLINK_MSG_ID_NODE_RELATIVE_FUSED 401
+#define MAVLINK_MSG_ID_NODE_RELATIVE_FUSED 201
 
 MAVPACKED(
 typedef struct __mavlink_node_relative_fused_t {
@@ -15,17 +15,17 @@ typedef struct __mavlink_node_relative_fused_t {
 
 #define MAVLINK_MSG_ID_NODE_RELATIVE_FUSED_LEN 13
 #define MAVLINK_MSG_ID_NODE_RELATIVE_FUSED_MIN_LEN 13
-#define MAVLINK_MSG_ID_401_LEN 13
-#define MAVLINK_MSG_ID_401_MIN_LEN 13
+#define MAVLINK_MSG_ID_201_LEN 13
+#define MAVLINK_MSG_ID_201_MIN_LEN 13
 
 #define MAVLINK_MSG_ID_NODE_RELATIVE_FUSED_CRC 164
-#define MAVLINK_MSG_ID_401_CRC 164
+#define MAVLINK_MSG_ID_201_CRC 164
 
 
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_NODE_RELATIVE_FUSED { \
-    401, \
+    201, \
     "NODE_RELATIVE_FUSED", \
     6, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_node_relative_fused_t, lps_time) }, \

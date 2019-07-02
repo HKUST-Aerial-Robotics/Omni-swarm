@@ -10,30 +10,57 @@ import tf
 
 class Converter:
     def __init__(self):
+        
+        self_odom_topic = "/vins_estimator/imu_propagate"
         self.vicon_odom = None
 
-        self.vicon_sub = rospy.Subscriber("/swarm_mocap/SwarmNodeOdom0", Odometry, self.self_vicon_cb, queue_size=1)
+        self.vicon_sub = rospy.Subscriber(self_odom_topic, Odometry, self.self_vicon_cb, queue_size=1)
 
         self.relative_fused_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused_relative", swarm_fused_relative, self.relative_fused_cb, queue_size=1)
 
         self.publisher = {
-            2:rospy.Publisher("/swarm_drones/est_odom_vicon_2", Odometry, queue_size=1)
+            0:rospy.Publisher("/swarm_drones/est_odom_vicon_0", Odometry, queue_size=1),
+            1:rospy.Publisher("/swarm_drones/est_odom_vicon_1", Odometry, queue_size=1),
+            2:rospy.Publisher("/swarm_drones/est_odom_vicon_2", Odometry, queue_size=1),
+            3:rospy.Publisher("/swarm_drones/est_odom_vicon_3", Odometry, queue_size=1),
+            4:rospy.Publisher("/swarm_drones/est_odom_vicon_4", Odometry, queue_size=1),
+            5:rospy.Publisher("/swarm_drones/est_odom_vicon_5", Odometry, queue_size=1)
         }
 
         self.trajpublisher = {
-            2:rospy.Publisher("/swarm_drones/path_est_vicon_2", Path, queue_size=1)
+            0:rospy.Publisher("/swarm_drones/path_est_vicon_0", Path, queue_size=1),
+            1:rospy.Publisher("/swarm_drones/path_est_vicon_1", Path, queue_size=1),
+            2:rospy.Publisher("/swarm_drones/path_est_vicon_2", Path, queue_size=1),
+            3:rospy.Publisher("/swarm_drones/path_est_vicon_3", Path, queue_size=1),
+            4:rospy.Publisher("/swarm_drones/path_est_vicon_4", Path, queue_size=1),
+            5:rospy.Publisher("/swarm_drones/path_est_vicon_5", Path, queue_size=1)
         }
 
         self.trajpublisher_vicon = {
-            2:rospy.Publisher("/swarm_drones/path_vicon_2", Path, queue_size=1)
+            0:rospy.Publisher("/swarm_drones/path_vicon_0", Path, queue_size=1),
+            1:rospy.Publisher("/swarm_drones/path_vicon_1", Path, queue_size=1),
+            2:rospy.Publisher("/swarm_drones/path_vicon_2", Path, queue_size=1),
+            3:rospy.Publisher("/swarm_drones/path_vicon_3", Path, queue_size=1),
+            4:rospy.Publisher("/swarm_drones/path_vicon_4", Path, queue_size=1),
+            5:rospy.Publisher("/swarm_drones/path_vicon_5", Path, queue_size=1)
         }
 
         self.vicon_path = {
-            2:Path()
+            0:Path(),
+            1:Path(),
+            2:Path(),
+            3:Path(),
+            4:Path(),
+            5:Path()
         }
 
         self.est_path = {
-            2:Path()
+            0:Path(),
+            1:Path(),
+            2:Path(),
+            3:Path(),
+            4:Path(),
+            5:Path()
         }
         
     def relative_fused_cb(self, sfr):
@@ -55,7 +82,7 @@ class Converter:
             qx, qy, qz, qw = tf.transformations.quaternion_from_euler(0, 0, dyaw)
             odomnew = Odometry()
             odomnew.header.stamp = sfr.header.stamp
-            odomnew.header.frame_id = "vicon0_drone"
+            odomnew.header.frame_id = "odometry"
             odomnew.pose.pose.position.x = pos.x
             odomnew.pose.pose.position.y = pos.y
             odomnew.pose.pose.position.z = pos.z
@@ -84,7 +111,7 @@ class Converter:
         br.sendTransform((vicon_odom.pose.pose.position.x, vicon_odom.pose.pose.position.y, vicon_odom.pose.pose.position.z),
                      (vicon_odom.pose.pose.orientation.x, vicon_odom.pose.pose.orientation.y, vicon_odom.pose.pose.orientation.z, vicon_odom.pose.pose.orientation.w ),
                      vicon_odom.header.stamp,
-                     "vicon0_drone",
+                     "odometry",
                      "world")
 
 if __name__ == "__main__":

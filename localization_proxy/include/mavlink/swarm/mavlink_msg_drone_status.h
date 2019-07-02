@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE DRONE_STATUS PACKING
 
-#define MAVLINK_MSG_ID_DRONE_STATUS 404
+#define MAVLINK_MSG_ID_DRONE_STATUS 204
 
 MAVPACKED(
 typedef struct __mavlink_drone_status_t {
@@ -21,17 +21,17 @@ typedef struct __mavlink_drone_status_t {
 
 #define MAVLINK_MSG_ID_DRONE_STATUS_LEN 27
 #define MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN 27
-#define MAVLINK_MSG_ID_404_LEN 27
-#define MAVLINK_MSG_ID_404_MIN_LEN 27
+#define MAVLINK_MSG_ID_204_LEN 27
+#define MAVLINK_MSG_ID_204_MIN_LEN 27
 
 #define MAVLINK_MSG_ID_DRONE_STATUS_CRC 58
-#define MAVLINK_MSG_ID_404_CRC 58
+#define MAVLINK_MSG_ID_204_CRC 58
 
 
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_DRONE_STATUS { \
-    404, \
+    204, \
     "DRONE_STATUS", \
     12, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_status_t, lps_time) }, \

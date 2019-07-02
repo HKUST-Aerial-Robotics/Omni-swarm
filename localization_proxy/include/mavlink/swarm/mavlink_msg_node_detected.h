@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE NODE_DETECTED PACKING
 
-#define MAVLINK_MSG_ID_NODE_DETECTED 403
+#define MAVLINK_MSG_ID_NODE_DETECTED 203
 
 MAVPACKED(
 typedef struct __mavlink_node_detected_t {
@@ -15,17 +15,17 @@ typedef struct __mavlink_node_detected_t {
 
 #define MAVLINK_MSG_ID_NODE_DETECTED_LEN 13
 #define MAVLINK_MSG_ID_NODE_DETECTED_MIN_LEN 13
-#define MAVLINK_MSG_ID_403_LEN 13
-#define MAVLINK_MSG_ID_403_MIN_LEN 13
+#define MAVLINK_MSG_ID_203_LEN 13
+#define MAVLINK_MSG_ID_203_MIN_LEN 13
 
 #define MAVLINK_MSG_ID_NODE_DETECTED_CRC 94
-#define MAVLINK_MSG_ID_403_CRC 94
+#define MAVLINK_MSG_ID_203_CRC 94
 
 
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_NODE_DETECTED { \
-    403, \
+    203, \
     "NODE_DETECTED", \
     6, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_node_detected_t, lps_time) }, \
