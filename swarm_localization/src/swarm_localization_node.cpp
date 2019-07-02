@@ -133,6 +133,7 @@ class SwarmLocalizationNode {
                     sf.id2nodeframe.find(it_d.first) != sf.id2nodeframe.end() ) {
                     sf.id2nodeframe[it_d.first].has_detect_relpose = true;
                     sf.id2nodeframe[it.first].has_detect_relpose = true;
+                    // ROS_INFO("Has detection %d by %d", it_d.first, it.first);
                 }
             }
         }
@@ -171,11 +172,12 @@ protected:
 
         double t_now = _sf.header.stamp.toSec();
 
-        // printf("Tnow %f\n", t_now);
         swarm_localization_solver->add_new_swarm_frame(sf);
-        
-        if (t_now - t_last > 1 / force_freq) {
+        // printf("Tnow %f DT %f\n", t_now, t_now - t_last);
+        // For some bags if (t_now - t_last > 1 / force_freq && (t_now - t_last < 10 || t_last <1e-4)) {
+        if (t_now - t_last > 1 / force_freq) {// && (t_now - t_last < 10 || t_last <1e-4)) {
             std_msgs::Float32 cost;
+            // ROS_INFO("Try to solve");
             cost.data = this->swarm_localization_solver->solve();
             t_last = t_now;
             if (cost.data > 0)
@@ -331,7 +333,7 @@ public:
         nh.param<float>("max_accept_cost", acpt_cost, 0.4f);
         nh.param<int>("thread_num", thread_num, 1);
 
-        nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes_test.yaml");
+        nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
         load_nodes_from_file(swarm_node_config);
 

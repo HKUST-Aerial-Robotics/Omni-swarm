@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE DRONE_ODOM_GT PACKING
 
-#define MAVLINK_MSG_ID_DRONE_ODOM_GT 405
+#define MAVLINK_MSG_ID_DRONE_ODOM_GT 205
 
 MAVPACKED(
 typedef struct __mavlink_drone_odom_gt_t {
@@ -21,17 +21,17 @@ typedef struct __mavlink_drone_odom_gt_t {
 
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN 25
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN 25
-#define MAVLINK_MSG_ID_405_LEN 25
-#define MAVLINK_MSG_ID_405_MIN_LEN 25
+#define MAVLINK_MSG_ID_205_LEN 25
+#define MAVLINK_MSG_ID_205_MIN_LEN 25
 
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT_CRC 225
-#define MAVLINK_MSG_ID_405_CRC 225
+#define MAVLINK_MSG_ID_205_CRC 225
 
 
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_DRONE_ODOM_GT { \
-    405, \
+    205, \
     "DRONE_ODOM_GT", \
     12, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_odom_gt_t, lps_time) }, \

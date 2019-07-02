@@ -1,7 +1,7 @@
 #pragma once
 // MESSAGE SWARM_REMOTE_COMMAND PACKING
 
-#define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND 402
+#define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND 202
 
 MAVPACKED(
 typedef struct __mavlink_swarm_remote_command_t {
@@ -22,17 +22,17 @@ typedef struct __mavlink_swarm_remote_command_t {
 
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN 46
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_MIN_LEN 46
-#define MAVLINK_MSG_ID_402_LEN 46
-#define MAVLINK_MSG_ID_402_MIN_LEN 46
+#define MAVLINK_MSG_ID_202_LEN 46
+#define MAVLINK_MSG_ID_202_MIN_LEN 46
 
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_CRC 125
-#define MAVLINK_MSG_ID_402_CRC 125
+#define MAVLINK_MSG_ID_202_CRC 125
 
 
 
 #if MAVLINK_COMMAND_24BIT
 #define MAVLINK_MESSAGE_INFO_SWARM_REMOTE_COMMAND { \
-    402, \
+    202, \
     "SWARM_REMOTE_COMMAND", \
     13, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_swarm_remote_command_t, lps_time) }, \
