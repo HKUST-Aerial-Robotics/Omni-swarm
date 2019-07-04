@@ -27,7 +27,8 @@ typedef std::vector<Quaterniond> quat_array;
 #define NO_ANNETAPOS
 
 
-#define VO_DRIFT_METER 0.001
+#define VO_DRIFT_METER 0.0001
+#define VO_DRIFT_METER_Z 0.0005
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
@@ -335,7 +336,7 @@ struct SwarmHorizonError {
             get_pose(tsb, _poses, est_poseb);
 
 
-           Eigen::Vector3d pos_cov = Eigen::Vector3d(1, 1, 1) * VO_DRIFT_METER;
+           Eigen::Vector3d pos_cov = Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z);
            Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
 
            T est_dpose[4];
