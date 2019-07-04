@@ -6,7 +6,7 @@
         <rosparam>
             force_freq: 1
             max_accept_cost: 10
-            max_keyframe_num: 100
+            max_keyframe_num: 20
             min_keyframe_num: 10
             thread_num: 4
         </rosparam>

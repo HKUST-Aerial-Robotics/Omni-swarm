@@ -10,6 +10,7 @@ Panels:
         - /Est41/Shape1
         - /Odometry1/Shape1
         - /PoseWithCovariance1
+        - /PoseWithCovariance1/Status1
         - /Axes1
       Splitter Ratio: 0.5
     Tree Height: 679
@@ -422,5 +423,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1658
-  X: 2238
-  Y: 319
+  X: 1957
+  Y: 316

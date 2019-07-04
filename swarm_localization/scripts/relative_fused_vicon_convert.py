@@ -9,10 +9,13 @@ from swarm_msgs.msg import swarm_fused_relative
 import tf
 
 class Converter:
-    def __init__(self):
-        
-        self_odom_topic = "/vins_estimator/imu_propagate"
+    def __init__(self):        
+        # self_odom_topic = "/vins_estimator/imu_propagate"
+        self_odom_topic = "/swarm_mocap/SwarmNodeOdom0"
         self.vicon_odom = None
+
+        self.vicon_sub = rospy.Subscriber(self_odom_topic, Odometry, self.self_vicon_cb, queue_size=1)
+
 
         self.vicon_sub = rospy.Subscriber(self_odom_topic, Odometry, self.self_vicon_cb, queue_size=1)
 

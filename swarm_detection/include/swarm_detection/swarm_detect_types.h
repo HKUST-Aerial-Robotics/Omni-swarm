@@ -155,7 +155,8 @@ public:
 
     friend Pose operator*(Pose a, Pose b) {
         Pose p;
-        p.position = a.attitude*(b.position + a.position);
+        // p.position = a.attitude*(b.position+ a.position);
+        p.position = a.attitude*b.position + a.position;
         p.attitude = a.attitude*b.attitude;
         p.update_yaw();
 
