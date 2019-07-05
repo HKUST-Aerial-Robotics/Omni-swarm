@@ -96,8 +96,8 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 //                std::cout << "TPNP " << T_pnp << std::endl;
 
 //                std::cout <<"Res !R\n" << R << "\nT\n" << P << std::endl <<"Pse::";
-                ROS_INFO("PNP Pose %3.2fms:  Pose is", dt * 1000);
-                pose.print();
+                // ROS_INFO("PNP Pose %3.2fms:  Pose is", dt * 1000);
+                // pose.print();
 
                 break;
             }
@@ -118,7 +118,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
             pose.to_vector(x);
             draw(x, point_by_cam);
         }
-        ROS_INFO("Not use ba or drone Seen by single camera, no need for BA");
+        // ROS_INFO("Not use ba or drone Seen by single camera, no need for BA");
     }
     return pose;
 }
