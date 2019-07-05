@@ -8,10 +8,18 @@
         <param name="is_show" type="bool" value="$(arg is_show)" /> 
         <param name="undist_camera" type="bool" value="false" />       
         <param name="duration" type="double" value="0.001" />
-        <param name="left_cam_def" type="string" value="/home/dji/SwarmConfig/realsense/left.yaml" />
-        <param name="right_cam_def" type="string" value="" />
-        <param name="vo_def" type="string" value="/home/dji/SwarmConfig/realsense/realsense_n3_unsync.yaml" />
-        <param name="use_stereo" type="bool" value="$(arg use_stereo)"/>
+        <rosparam>
+            undist_camera: false
+            duration: 0.001
+            left_cam_def: "/home/dji/SwarmConfig/realsense/left.yaml"
+            right_cam_def: "/home/dji/SwarmConfig/realsense/right.yaml"
+            vo_def: "/home/dji/SwarmConfig/realsense/realsense_n3_unsync.yaml"
+            armarker:
+                x: -0.185
+                y: 0
+                z: 0
+                size: 0.0922
+        </rosparam>
     </node>
     <node pkg="message_to_tf" name="message_to_tf" type="message_to_tf" output="screen" 
      args="/vins_estimator/odometry">

@@ -63,6 +63,8 @@ class StereoDronePoseEstimator {
     bool is_show = true;
     bool use_stereo = true;
     bool undist_camera = false;
+    Eigen::Vector3d ArmarkerPos = Eigen::Vector3d(-0.185, 0, 0);
+    double Armarkersize = 0.92;
 public:
     std::function<void(ros::Time stamp,int,Pose)> callback;
     StereoDronePoseEstimator(
@@ -70,6 +72,8 @@ public:
             const std::string &_right_cam_def,
             const std::string &_vo_config,
             std::function<void(ros::Time stamp, int,Pose)> _callback,
+            Eigen::Vector3d armarker_pos,
+            double armarkersize,
             bool _is_show=true, 
             bool _use_stereo = false,
             bool _undist_camera=false
@@ -85,18 +89,22 @@ public:
         use_stereo = _use_stereo;
         undist_camera = _undist_camera;
         is_show = _is_show;
+        this->ArmarkerPos = armarker_pos;
+        this->Armarkersize = armarkersize;
 
         cam_left = new Camera(_left_cam_def, from_cv_matrix(left_cam_pose));
         if (use_stereo)
             cam_right = new Camera(_right_cam_def, from_cv_matrix(right_cam_pose));
+
+
     }
 
     void ProcessMarkers(marker_array ma_left, marker_array ma_right) {
     }
 
     Pose ProcessMarkerOfNode(ros::Time stamp, int _id, CVMarkerCorners marker_left, CVMarkerCorners marker_right, cv::Mat & limg, cv::Mat & rimg) {
-        DroneMarker marker0(_id, _id, 0.0922);
-        marker0.pose.set_pos(Eigen::Vector3d(-0.185, 0, 0));
+        DroneMarker marker0(_id, _id, Armarkersize);
+        marker0.pose.set_pos(ArmarkerPos);
         // marker0.pose
         corner_array CorALeft;
         corner_array CorARight;
@@ -194,6 +202,10 @@ class ARMarkerDetectorNode {
     cv::Mat last_left;
     cv::Mat last_right;
     bool use_stereo = false;
+    double armarker_x = 0;
+    double armarker_y = 0;
+    double armarker_z = 0;
+    double armarker_size = 0.1;
 
     StereoDronePoseEstimator *stereodronepos_est = nullptr;
 public:
@@ -206,9 +218,16 @@ public:
         std::string vo_def;
         bool undist_camera = false;
 
+
+
         nh.param("is_show", is_show, false);
         nh.param("use_stereo", use_stereo, false);
         nh.param("undist_camera", undist_camera, false);
+
+        nh.param("armarker/x", armarker_x, -0.185);
+        nh.param("armarker/y", armarker_y, 0.0);
+        nh.param("armarker/z", armarker_z, 0.0);
+        nh.param("armarker/size", armarker_size, 0.0922);
         
         if (use_stereo) {
             ROS_INFO("Will use stereo");
@@ -236,6 +255,8 @@ public:
                 [&](ros::Time stamp, int _id, Pose pose){
                     this->on_node_detected(stamp, _id, pose);
                 },
+                Eigen::Vector3d(armarker_x, armarker_y, armarker_z),
+                armarker_size,
                 is_show,
                 use_stereo,
                 undist_camera);
@@ -320,19 +341,20 @@ public:
         }
 
         CVMarkerCorners marker_right;
+        
+        swarm_detected sd;
 
         if (use_stereo) {
             //Not implement yet
         } else {
-            ROS_INFO("New detected!");
-            swarm_detected sd;
+            // ROS_INFO("New detected!");
             sd.header.stamp = stamp;
             //-1 means this drone
             sd.self_drone_id = -1;
 
             for (int i = 0; i < ids_left.size(); i++) {
                 if ( 10 > ids_left[i] && ids_left[i]>=0) {
-                    ROS_INFO("Prcess marker id %d", ids_left[i]);
+                    // ROS_INFO("Prcess marker id %d", ids_left[i]);
                     auto marker_left = mal[i];
                     Pose posei = stereodronepos_est->ProcessMarkerOfNode(stamp, ids_left[i], marker_left, marker_right, limg, rimg);
 
@@ -362,7 +384,7 @@ public:
         }
 
         double total_compute_time = (ros::Time::now() - start).toSec();
-        ROS_INFO("Total Compute Time %3.2fms", total_compute_time*1000);
+        ROS_INFO_THROTTLE(1.0, "Total Compute Time %3.2fms detected node %ld", total_compute_time*1000, sd.detected_nodes.size());
     }
 
     void image_cb_left(const sensor_msgs::ImageConstPtr& msg) {
