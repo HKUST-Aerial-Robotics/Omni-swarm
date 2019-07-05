@@ -15,7 +15,7 @@
             right_cam_def: "/home/dji/SwarmConfig/realsense/right.yaml"
             vo_def: "/home/dji/SwarmConfig/realsense/realsense_n3_unsync.yaml"
             armarker:
-                x: -0.185
+                x: -0.165
                 y: 0
                 z: 0
                 size: 0.0922
