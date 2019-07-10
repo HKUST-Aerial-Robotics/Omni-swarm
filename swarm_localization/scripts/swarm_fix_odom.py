@@ -30,8 +30,9 @@ odom.twist.twist.linear.z = 0
 
 if __name__ == "__main__":
     rospy.init_node("swarm_fix_odom")
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(400)
     print("Starting vo data generation")
     while not rospy.is_shutdown():
+        odom.header.stamp = rospy.get_rostime()
         self_odom_pub.publish(odom) 
         rate.sleep()
