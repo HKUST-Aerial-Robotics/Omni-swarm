@@ -253,14 +253,17 @@ class SwarmFrame {
         }
 
         Vector3d position(const int id) const {
+            assert(id2nodeframe.find(id) != id2nodeframe.end() && "Can't find position id in frame");
             return id2nodeframe.at(id).position();
         }
 
         Vector3d velocity(const int id) const {
+            assert(id2nodeframe.find(id) != id2nodeframe.end() && "Can't find velocity id in frame");
             return id2nodeframe.at(id).velocity();
         }
 
         Quaterniond attitude(const int id) const {
+            assert(id2nodeframe.find(id) != id2nodeframe.end() && "Can't find attitude id in frame");
             return id2nodeframe.at(id).attitude();
         }
 

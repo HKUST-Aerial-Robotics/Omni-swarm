@@ -21,6 +21,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
 #include <swarm_detection/swarm_detect_types.h>
+#include <chrono>
 
 
 using ceres::CostFunction;
@@ -33,7 +34,7 @@ using ceres::Covariance;
 using namespace Eigen;
 using namespace nav_msgs;
 using namespace swarm_msgs;
-
+using namespace std::chrono;
 
 class SwarmLocalizationNode {
 
@@ -294,6 +295,8 @@ private:
     }
 
     void predict_swarm(const swarm_frame &_sf) {
+        // ros::Time ts = ros::Time::now();
+        high_resolution_clock::time_point t1 = high_resolution_clock::now();
         if (_sf.node_frames.size() > 1) {
             if (swarm_localization_solver->CanPredictSwarm()) {
                 SwarmFrame sf = swarm_frame_from_msg(_sf);
@@ -307,7 +310,10 @@ private:
                 ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
             }
         }
-
+        high_resolution_clock::time_point t2 = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+        // double dts = (ros::Time::now() - ts).toSec();
+        ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
     }
 
 public:
