@@ -12,14 +12,13 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <remap from="/swarm_drones/swarm_frame_predict" to="/swarm_drones/swarm_frame" />
+        <!-- <remap from="/swarm_drones/swarm_frame_predict" to="/swarm_drones/swarm_frame" /> -->
     </node>
-   <node pkg="swarm_localization" name="relative_fused_vicon_convert" type="relative_fused_vicon_convert.py" output="screen" />
+   <!-- <node pkg="swarm_localization" name="relative_fused_vicon_convert" type="relative_fused_vicon_convert.py" output="screen" /> -->
 
     <param name="use_sim_time" value="true" type="bool" />
-    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone-vicon.rviz" />
+    <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" /> -->
+    <node name="message_to_tf" pkg="message_to_tf" type="message_to_tf" output="log" args="/vins_estimator/imu_propagate" />
 
-    <!-- <node pkg="swarm_localization" name="swarm_vo_visualize" type="swarm_vo_visualize.py" output="screen">
-    </node> -->
     <!-- <node pkg="rosbag" type="play" name="player" output="screen" args="/home/xuhao/bags/sf_manualfly_2drone_vicon.bag"/> -->
 </launch>

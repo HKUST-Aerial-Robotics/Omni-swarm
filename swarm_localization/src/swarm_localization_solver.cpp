@@ -26,6 +26,7 @@
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
+#define MAX_SOLVER_TIME 0.1
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -54,7 +55,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     double dt = (sf.stamp - last_sf.stamp).toSec();
 
 
-    if (last_sf.HasID(self_id)) {
+    if (sf.HasID(self_id) && last_sf.HasID(self_id)) {
 
         Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
 
@@ -76,6 +77,8 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
             return 2;
         }
 
+    } else {
+        ROS_ERROR("No self id last %d this %d", sf.HasID(self_id), last_sf.HasID(self_id));
     }
 
 
@@ -546,6 +549,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     ros::Time t1 = ros::Time::now();
     Problem problem;
 
+
 //        if (solve_count % 10 == 0)
     printf("SOLVE COUNT %d Trying to solve size %d, TS %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
 
@@ -568,7 +572,11 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //SPARSE NORMAL 21
     //DENSE NORM DOGLEG 49.31ms
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    options.max_num_iterations = 200;
+    if (finish_init) {
+        options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
+    }else {
+       options.max_num_iterations = 200;
+    }
     options.num_threads = thread_num;
     Solver::Summary summary;
 
