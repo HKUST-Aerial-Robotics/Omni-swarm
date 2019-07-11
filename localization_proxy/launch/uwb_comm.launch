@@ -1,5 +1,4 @@
 <launch>
-    <arg name="bag_path" default="/home/dji/swarm_log_lastest" />
     <include file="$(find inf_uwb_ros)/launch/uwb_node.launch">
     </include>
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">

@@ -140,6 +140,8 @@ class LocalProxy {
 
         odometry_available = true;
         odometry_updated = true;
+
+        // ROS_INFO("ODOM OK");
     }
 
     bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, int _id, ros::Time & ts, Point & pos, double &yaw, Point & vel, std::map<int, float> &_dis) {
@@ -270,6 +272,7 @@ class LocalProxy {
         std::vector<node_detected_xyzyaw> ret;
         if (!odometry_available) {
             ROS_WARN("Odometry unavailable, can't compute node detected xyzyaw");
+            return ret;
         }
 
         for (const node_detected & _nd: sd.detected_nodes) {
@@ -286,7 +289,7 @@ class LocalProxy {
         count ++;
         int i = find_sf_swarm_detected(sd.header.stamp);
         if (i < 0) {
-            ROS_WARN("Not find id %d in swarmframe", sd.self_drone_id);
+            ROS_WARN("Can't find id %d in swarmframe", sd.self_drone_id);
             return;
         }
 
@@ -543,9 +546,9 @@ class LocalProxy {
             if (_nf != nullptr) {
                 node_frame nf = predict_nf(*_nf, tnow);
                 sf.node_frames.push_back(nf);
-                // ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms", _id, (tnow - _nf->header.stamp).toSec()*1000 );
+                ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms", _id, (tnow - _nf->header.stamp).toSec()*1000 );
             } else {
-                ROS_WARN_THROTTLE_NAMED(1.0,"PROXY_FOR_PREIDCT", "Node %d can't find in queue %ld", _id, sf_queue.size());
+                ROS_WARN_THROTTLE(1.0, "Node %d can't find in queue %ld", _id, sf_queue.size());
             }
 
         }
@@ -655,7 +658,7 @@ class LocalProxy {
 
         if (!odometry_updated) {
             //No new vo for 2 frame
-            odometry_available = false;
+            // odometry_available = false;
         }
         odometry_updated = false;
 
