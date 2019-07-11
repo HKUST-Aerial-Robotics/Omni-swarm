@@ -252,7 +252,7 @@ class LocalProxy {
         Swarm::Pose relpose(_nd.relpose.pose);
         Swarm::Pose selfpose(self_odom.pose.pose);
 
-        Swarm::Pose remotepose = selfpose*relpose;
+        Swarm::Pose remotepose = selfpose.to_isometry() *relpose.to_isometry();
         Eigen::Vector3d dpos = remotepose.pos() - selfpose.pos();
         dpos = Eigen::AngleAxisd(- selfpose.yaw(), Vector3d::UnitZ()) * dpos;
         _nd_xyzyaw.dpos.x = dpos.x();
@@ -285,13 +285,19 @@ class LocalProxy {
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
+        // ROS_INFO("SD");
         static int count = 0;
         count ++;
         int i = find_sf_swarm_detected(sd.header.stamp);
+        int sd_self_id = sd.self_drone_id;
+        if (sd_self_id < 0) {
+            sd_self_id = self_id;
+        }
         if (i < 0) {
-            ROS_WARN("Can't find id %d in swarmframe", sd.self_drone_id);
+            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
             return;
         }
+
 
         std::vector<node_detected_xyzyaw> node_xyzyaws = convert_sd_to_nd_xyzyaw(sd);
         swarm_frame &_sf = sf_queue[i];
@@ -299,10 +305,12 @@ class LocalProxy {
         for (node_detected_xyzyaw nd : node_xyzyaws) {
             send_node_detected(nd);
         }
-
+        // ROS_INFO("SF node size %ld", _sf.node_frames.size());
         for (int j = 0; j < _sf.node_frames.size(); j++) {
-            if (_sf.node_frames[j].id == sd.self_drone_id) {
+            // ROS_INFO("NF id %d", _sf.node_frames[j].id);
+            if (_sf.node_frames[j].id == sd_self_id) {
                 _sf.node_frames[j].detected = node_xyzyaws;
+                // ROS_INFO("SF got detection");
                 break;
             }
         }
@@ -465,7 +473,7 @@ class LocalProxy {
         uint8_t buf[1000] = {0};
 
         mavlink_message_t msg;
-        printf("Fused data recv\n");
+        // printf("Fused data recv\n");
         if (self_id < 0)
             return;
 
@@ -473,7 +481,7 @@ class LocalProxy {
         for (int i = 0; i < fused.ids.size(); i++) {
             uint8_t _id = fused.ids[i];
             if (_id != self_id) {
-                printf("Send %d to %d rel\n", self_id, _id);
+                // printf("Send %d to %d rel\n", self_id, _id);
 
                 mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
                                                      (int)(fused.relative_drone_position[i].x * 1000),

@@ -19,7 +19,7 @@
     <param name="use_sim_time" value="true" type="bool" />
     <!-- <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" /> -->
     <node name="message_to_tf" pkg="message_to_tf" type="message_to_tf" output="log" args="/vins_estimator/imu_propagate" />
-    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
+    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
     </node>
     <!-- <node pkg="rosbag" type="play" name="player" output="screen" args="/home/xuhao/bags/sf_manualfly_2drone_vicon.bag"/> -->
