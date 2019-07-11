@@ -715,7 +715,6 @@ public:
 
         swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected, this,
                                         ros::TransportHints().tcpNoDelay());
-        swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
 
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 1);
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
