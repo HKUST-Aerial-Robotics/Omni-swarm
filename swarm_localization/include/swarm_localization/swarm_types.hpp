@@ -4,24 +4,19 @@
 #include <eigen3/Eigen/Dense>
 #include <map>
 #include <vector>
-#include <swarm_detection/swarm_detect_types.h>
+#include <swarm_msgs/Pose.h>
 #include <ros/ros.h>
 #include "yaml-cpp/yaml.h"
 #include <exception>
 #include <set>
-
-
+using namespace Swarm;
 
 typedef std::map<int, double> DisMap;
 
 using namespace Eigen;
-namespace swarm {
-
+namespace Swarm {
     class Node {
     protected:
-        std::vector<Camera *> camera;
-        std::map<int, DroneMarker> markers;
-
         bool has_vo = false;
         bool has_uwb = false;
         bool has_global_pose = false;
@@ -36,21 +31,11 @@ namespace swarm {
 
 
 
-        void load_cameras(const std::string &path) {
-            //TODO:
-            //Load camera from path
-        }
-
-        void load_markers(const std::string &path) {
-            //TODO:
-            //Load markers from file path
-        }
-
     public:
         int id = -1;
 
         bool HasCamera() const {
-            return !camera.empty();
+            return has_camera;
         }
 
         bool HasVO() const {
@@ -128,10 +113,9 @@ class NodeFrame {
         Pose self_pose;
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
-        std::vector<corner_array> corner_by_cams;
         std::map<int, Pose> detected_nodes;
-        std::map<int, Eigen::Vector3d> detected_nodes_poscov;
-        std::map<int, Eigen::Vector3d> detected_nodes_angcov;
+        std::map<int, Eigen::Vector3d> detected_nodes_posvar;
+        std::map<int, Eigen::Vector3d> detected_nodes_angvar;
 
         ros::Time stamp;
         int64_t ts;

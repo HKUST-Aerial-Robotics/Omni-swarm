@@ -9,4 +9,4 @@ bool vo_available
 int32[] dismap_ids
 float64[] dismap_dists
 
-swarm_detected detected
+node_detected_xyzyaw[] detected

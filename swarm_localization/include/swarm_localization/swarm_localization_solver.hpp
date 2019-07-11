@@ -13,8 +13,9 @@
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
 
-using namespace swarm;
+using namespace Swarm;
 using namespace Eigen;
+using namespace ceres;
 
 struct SwarmFrameError;
 struct SwarmHorizonError;

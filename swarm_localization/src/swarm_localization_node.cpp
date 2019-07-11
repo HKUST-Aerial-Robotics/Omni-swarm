@@ -20,7 +20,6 @@
 #include "yaml-cpp/yaml.h"
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
-#include <swarm_detection/swarm_detect_types.h>
 #include <chrono>
 
 
@@ -89,15 +88,14 @@ class SwarmLocalizationNode {
             nf.is_valid = false;
         }
 
-        for (auto nd: _nf.detected.detected_nodes) {
+        for (auto nd: _nf.detected) {
             if (nodedef_has_id(nd.remote_drone_id)) {
-                nf.detected_nodes[nd.remote_drone_id] = Pose(nd.relpose.pose);
-                auto cov = nd.relpose.covariance;
-                nf.detected_nodes_poscov[nd.remote_drone_id] = 
-                    Eigen::Vector3d(sqrt(cov[0]), sqrt(cov[6+1]), sqrt(cov[2*6+2]));
+                nf.detected_nodes[nd.remote_drone_id] = Pose(nd.dpos, nd.dyaw);
+                nf.detected_nodes_posvar[nd.remote_drone_id] = 
+                    Eigen::Vector3d(sqrt(nd.dpos_cov.x), sqrt(nd.dpos_cov.y), sqrt(nd.dpos_cov.z));
 
-                nf.detected_nodes_angcov[nd.remote_drone_id] = 
-                    Eigen::Vector3d(sqrt(cov[3*6+3]), sqrt(cov[4*6+4]), sqrt(cov[5*6+5]));
+                nf.detected_nodes_angvar[nd.remote_drone_id] = 
+                    Eigen::Vector3d(sqrt(nd.dyaw_cov), sqrt(nd.dyaw_cov), sqrt(nd.dyaw_cov));
                 nf.has_detect_relpose = true;
             }
         }
@@ -227,7 +225,6 @@ private:
     std::set<int> remote_ids_set;
     std::map<int, int> ids_index_in_arr;
     std::map<int, Node *> all_node_defs;
-    std::map<int, DroneMarker *> all_ar_markers;
 
 
     ros::Timer timer;
