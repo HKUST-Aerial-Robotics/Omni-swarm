@@ -27,8 +27,8 @@ typedef std::vector<Quaterniond> quat_array;
 #define NO_ANNETAPOS
 
 
-#define VO_DRIFT_METER 0.001
-#define VO_DRIFT_METER_Z 0.005
+#define VO_DRIFT_METER 0.0001
+#define VO_DRIFT_METER_Z 0.0005
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
