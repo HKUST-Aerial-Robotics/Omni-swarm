@@ -47,15 +47,18 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
             node_kf_count[_id] = 1;
         }
 
-
-        return 1;
+        if (sf.HasID(self_id) && sf.has_odometry(self_id)) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
 
     const SwarmFrame & last_sf = sf_sld_win.back();
     double dt = (sf.stamp - last_sf.stamp).toSec();
 
 
-    if (sf.HasID(self_id) && last_sf.HasID(self_id)) {
+    if (sf.HasID(self_id) && last_sf.HasID(self_id) && sf.has_odometry(self_id) && last_sf.has_odometry(self_id)) {
 
         Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
 
@@ -78,7 +81,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         }
 
     } else {
-        ROS_ERROR("No self id last %d this %d", sf.HasID(self_id), last_sf.HasID(self_id));
+        ROS_ERROR("No self id :%d last %d this %d ODOM %d %d", self_id, sf.HasID(self_id), last_sf.HasID(self_id), sf.has_odometry(self_id), last_sf.has_odometry(self_id));
     }
 
 

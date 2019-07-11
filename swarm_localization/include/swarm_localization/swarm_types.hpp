@@ -236,6 +236,13 @@ class SwarmFrame {
             return dis_mat.at(idj).at(idi);
         }
 
+        bool has_odometry(const int id) const {
+            if (this->HasID(id)) {
+                return (id2nodeframe.at(id).vo_available);
+            }
+            return false;
+        }
+
         Vector3d position(const int id) const {
             assert(id2nodeframe.find(id) != id2nodeframe.end() && "Can't find position id in frame");
             return id2nodeframe.at(id).position();
