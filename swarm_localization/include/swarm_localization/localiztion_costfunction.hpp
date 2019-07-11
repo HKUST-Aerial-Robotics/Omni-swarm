@@ -18,7 +18,7 @@ using ceres::Solve;
 using ceres::SizedCostFunction;
 using ceres::Covariance;
 
-using namespace swarm;
+using namespace Swarm;
 using namespace Eigen;
 
 typedef std::vector<Vector3d> vec_array;
@@ -186,8 +186,8 @@ struct SwarmFrameError {
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-                Eigen::Vector3d pos_cov = _nf.detected_nodes_poscov[_id] / DETECTION_CO;
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angcov[_id] / DETECTION_CO;
+                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] / DETECTION_CO;
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] / DETECTION_CO;
 
                 pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
                 res_count = res_count + 4;
@@ -317,6 +317,9 @@ struct SwarmHorizonError {
         return (nf_windows.size()-1)*4;
     }
 
+    Eigen::Vector3d pos_cov = Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z);
+    Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
+
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
 
@@ -336,8 +339,6 @@ struct SwarmHorizonError {
             get_pose(tsb, _poses, est_poseb);
 
 
-           Eigen::Vector3d pos_cov = Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z);
-           Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
 
            T est_dpose[4];
            DeltaPose(est_posea, est_poseb, est_dpose);

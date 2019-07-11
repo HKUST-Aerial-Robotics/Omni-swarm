@@ -423,7 +423,7 @@ public:
                     this->detect_cv_image(last_lcam_ts, last_left, last_right);
                 }
             } else if (camera_id == 0) {
-                this->detect_cv_image(last_lcam_ts, last_left, last_right);
+                this->detect_cv_image(msg->header.stamp, last_left, last_right);
             }
         }
         catch (cv_bridge::Exception& e)

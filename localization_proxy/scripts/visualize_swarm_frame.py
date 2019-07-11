@@ -3,6 +3,7 @@
 import rospy
 from swarm_msgs.msg import swarm_frame
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped, Pose
 
 class visuallizer:
     def __init__(self):
@@ -10,8 +11,16 @@ class visuallizer:
         self.node_vo_predict_pub = {
             0: rospy.Publisher("/vo0", Odometry,queue_size=1),
             2: rospy.Publisher("/vo2", Odometry,queue_size=1),
-            4: rospy.Publisher("/vo4", Odometry,queue_size=1),
-            3: rospy.Publisher("/vo3", Odometry,queue_size=1)}
+            3: rospy.Publisher("/vo3", Odometry,queue_size=1),
+            4: rospy.Publisher("/vo4", Odometry,queue_size=1)
+        }
+
+        self.node_detect_predict_pub = {
+            2: rospy.Publisher("/pose2", PoseStamped, queue_size=1),
+            3: rospy.Publisher("/pose3", PoseStamped, queue_size=1),
+            4: rospy.Publisher("/pose4", PoseStamped, queue_size=1),
+        }
+
 
     
     def predict_frame_callback(self, sf):
@@ -26,6 +35,17 @@ class visuallizer:
                 self.node_vo_predict_pub[_nf.id].publish(odom)
                 for d in _nf.detected.detected_nodes:
                     detected.append("CAM {} MAR {}".format(d.self_drone_id, d.remote_drone_id))
+                    if _nf.id ==0 :
+                        p = Pose()
+                        p.position.x = odom.pose.pose.position.x + d.relpose.pose.position.x
+                        p.position.y = odom.pose.pose.position.y + d.relpose.pose.position.y
+                        p.position.z = odom.pose.pose.position.z + d.relpose.pose.position.z
+                        ps = PoseStamped()
+                        ps.pose = p
+                        ps.header.stamp = odom.header.stamp
+                        ps.header.frame_id = "world"
+                        self.node_detect_predict_pub[d.remote_drone_id].publish(ps)
+
         if len(detected) > 0:
             print(detected)
 
