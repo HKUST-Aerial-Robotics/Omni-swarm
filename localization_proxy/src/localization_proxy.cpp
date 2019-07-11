@@ -251,9 +251,11 @@ class LocalProxy {
         Swarm::Pose selfpose(self_odom.pose.pose);
 
         Swarm::Pose remotepose = selfpose*relpose;
-        _nd_xyzyaw.dpos.x = remotepose.pos().x() - selfpose.pos().x();
-        _nd_xyzyaw.dpos.y = remotepose.pos().y() - selfpose.pos().y();
-        _nd_xyzyaw.dpos.z = remotepose.pos().z() - selfpose.pos().z();
+        Eigen::Vector3d dpos = remotepose.pos() - selfpose.pos();
+        dpos = Eigen::AngleAxisd(- selfpose.yaw(), Vector3d::UnitZ()) * dpos;
+        _nd_xyzyaw.dpos.x = dpos.x();
+        _nd_xyzyaw.dpos.y = dpos.y();
+        _nd_xyzyaw.dpos.z = dpos.z();
         _nd_xyzyaw.dyaw = remotepose.yaw() - selfpose.yaw();
 
         _nd_xyzyaw.dpos_cov.x = _nd.relpose.covariance[0];
