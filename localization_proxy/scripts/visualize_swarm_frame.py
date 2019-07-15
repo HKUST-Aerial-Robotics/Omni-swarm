@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped, Pose
 
 class visuallizer:
     def __init__(self):
-        self.predict_sub = rospy.Subscriber("/swarm_drones/swarm_frame", swarm_frame, self.predict_frame_callback, tcp_nodelay=True, queue_size=1)
+        self.predict_sub = rospy.Subscriber("/swarm_drones/swarm_frame", swarm_frame, self.predict_frame_callback, tcp_nodelay=True, queue_size=100)
         self.node_vo_predict_pub = {
             0: rospy.Publisher("/vo0", Odometry,queue_size=1),
             2: rospy.Publisher("/vo2", Odometry,queue_size=1),
@@ -33,18 +33,22 @@ class visuallizer:
                 odom.twist.twist.linear = _nf.velocity
                 odom.header.frame_id = "world"
                 self.node_vo_predict_pub[_nf.id].publish(odom)
-                for d in _nf.detected.detected_nodes:
-                    detected.append("CAM {} MAR {}".format(d.self_drone_id, d.remote_drone_id))
-                    if _nf.id ==0 :
-                        p = Pose()
-                        p.position.x = odom.pose.pose.position.x + d.relpose.pose.position.x
-                        p.position.y = odom.pose.pose.position.y + d.relpose.pose.position.y
-                        p.position.z = odom.pose.pose.position.z + d.relpose.pose.position.z
-                        ps = PoseStamped()
-                        ps.pose = p
-                        ps.header.stamp = odom.header.stamp
-                        ps.header.frame_id = "world"
-                        self.node_detect_predict_pub[d.remote_drone_id].publish(ps)
+                # if _nf.id == 3:
+                    # print(_nf.position.z)
+                for d in _nf.detected:
+                    if d.self_drone_id == 3 or d.remote_drone_id == 3:
+                        # detected.append("Z {} CAM {} MAR {} DZ {}".format(_nf.position.z, d.self_drone_id, d.remote_drone_id, d.dpos.z))
+                        detected.append(sf)
+                        if _nf.id ==0 :
+                            p = Pose()
+                            p.position.x = odom.pose.pose.position.x + d.dpos.x
+                            p.position.y = odom.pose.pose.position.y + d.dpos.y
+                            p.position.z = odom.pose.pose.position.z + d.dpos.z
+                            ps = PoseStamped()
+                            ps.pose = p
+                            ps.header.stamp = odom.header.stamp
+                            ps.header.frame_id = "world"
+                            self.node_detect_predict_pub[d.remote_drone_id].publish(ps)
 
         if len(detected) > 0:
             print(detected)

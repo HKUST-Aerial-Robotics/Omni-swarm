@@ -184,7 +184,7 @@ protected:
         }
     }
 
-    void pub_posevel_id(unsigned int id, const Pose & pose, const Eigen::Vector3d vel, ros::Time stamp) {
+    void pub_posevel_id(unsigned int id, const Pose & pose, const Eigen::Matrix4d cov, const Eigen::Vector3d vel, ros::Time stamp) {
         Odometry odom;
         odom.header.stamp = stamp;
         odom.header.frame_id = "world";
@@ -192,6 +192,19 @@ protected:
         odom.twist.twist.linear.x = vel.x();
         odom.twist.twist.linear.y = vel.y();
         odom.twist.twist.linear.z = vel.z();
+        for (int i = 0; i < 4; i++) {
+            for (int j =0; j < 4; j++) {
+                int _i = i;
+                int _j = j;
+                if (_i == 3) {
+                    _i = 5;
+                }
+                if (_j == 3) {
+                    _j = 5;
+                }
+                odom.pose.covariance[_i*6+_j] = cov(i, j);
+            }
+        }
         pub_odom_id(id, odom);
     }
 
@@ -299,7 +312,7 @@ private:
                 SwarmFrame sf = swarm_frame_from_msg(_sf);
                 SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
                 for (auto it: _sfs.node_poses) {
-                    this->pub_posevel_id(it.first, it.second, _sfs.node_vels[it.first], sf.stamp);
+                    this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
                 }
 
                 pub_fused_relative(_sfs, sf.stamp);

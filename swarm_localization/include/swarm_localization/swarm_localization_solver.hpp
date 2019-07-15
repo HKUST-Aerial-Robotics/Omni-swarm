@@ -42,6 +42,7 @@ typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 //Poses is dict of timestamp and then id;
 //state<ts,id>
 typedef std::map<int64_t, std::map<int,double*>> EstimatePoses;
+typedef std::map<int64_t, std::map<int, Eigen::Matrix4d>> EstimateCOV;
 typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
 typedef std::vector<std::pair<int64_t, int>> TSIDArray;
 class SwarmLocalizationSolver {
@@ -61,7 +62,7 @@ class SwarmLocalizationSolver {
 
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
-
+    EstimateCOV est_cov_tsid;
     bool detect_outlier(const SwarmFrame &sf) const;
     void delete_frame_i(int i);
 
@@ -138,7 +139,7 @@ public:
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
-    Pose PredictNode(const NodeFrame & nf, bool attitude_yaw_only=false) const;
+    std::pair<Pose, Eigen::Matrix4d> PredictNode(const NodeFrame & nf, bool attitude_yaw_only=false) const;
 
     bool CanPredictSwarm() {
         return finish_init;

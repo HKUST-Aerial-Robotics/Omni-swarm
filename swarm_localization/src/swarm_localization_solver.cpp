@@ -20,6 +20,9 @@
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
 #include <set>
+#include <chrono>
+
+using namespace std::chrono;
 
 // #define DEBUG_OUTPUT_POSES
 // #define COMPUTE_COV
@@ -64,7 +67,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
 
         //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
         if (_diff.norm() > min_accept_keyframe_movement || 
-            (_diff.norm() > min_accept_keyframe_movement*0.5 && sf.detected_num(self_id) > 0)){ //(sf.HasDetect(_id) && _id==self_id))
+            (_diff.norm() > min_accept_keyframe_movement*0.5 && sf.has_detect() > 0)   ){ //(sf.HasDetect(_id) && _id==self_id))
             ret.push_back(self_id);
             node_kf_count[self_id] += 1;
             ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
@@ -74,7 +77,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         }
 
         if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && sf.swarm_size() > last_sf.swarm_size() &&
-        ( (dt > REPLACE_MIN_DURATION && sf.detected_num(self_id) == last_sf.detected_num(self_id)) || sf.detected_num(self_id) > last_sf.detected_num(self_id))
+        ( (dt > REPLACE_MIN_DURATION && sf.has_detect() == last_sf.has_detect()) || sf.has_detect() > last_sf.has_detect())
         ) {
             //Make sure is fixed
             return 2;
@@ -126,7 +129,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
             double * p = it2.second;
             p[0] = rand_FloatRange(-10, 10);
             p[1] = rand_FloatRange(-10, 10);
-            p[2] = rand_FloatRange(-10, 10);
+            p[2] = rand_FloatRange(0, 0);
             p[3] = rand_FloatRange(-M_PI, M_PI);
         }
     }
@@ -288,9 +291,8 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 }
 
 
-// Eigen::Vector3d predict_pos(Eigen::Vector3d pos, Eigen::e)
-
-Pose SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_yaw_only) const {
+std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_yaw_only) const {
+    std::pair<Pose, Eigen::Matrix4d> ret; 
     if (last_saved_est_kf_ts > 0 && finish_init &&
         est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
 
@@ -313,12 +315,22 @@ Pose SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_ya
 
         Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
 
-        return transfered_now;
+        ret.first = transfered_now;
+        // ROS_INFO("Request cov %ld %d", last_saved_est_kf_ts, nf.id);
+#ifdef COMPUTE_COV
+        if (nf.id != self_id){
+            ret.second = est_cov_tsid.at(last_saved_est_kf_ts).at(nf.id);
+        } else {
+            ret.second = Eigen::Matrix4d::Zero();
+        }
+#else
+    ret.second = Eigen::Matrix4d::Zero();
+#endif
 
     } else {
         ROS_ERROR("Can't Predict Node Pose: Not inited");
         exit(-1);
-        return Pose();
+        return ret;
     }
 }
 
@@ -334,7 +346,9 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
 
         NodeFrame & nf = it.second;
         if(est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end()) {
-            sfs.node_poses[_id] = this->PredictNode(nf);
+            auto ret = this->PredictNode(nf);
+            sfs.node_poses[_id] = ret.first;
+            sfs.node_covs[_id] = ret.second;
             //Give node velocity predict here
             sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
         } else {
@@ -559,6 +573,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
+        // ROS_INFO()
         this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
     }
     int verify_count = 0;
@@ -685,7 +700,6 @@ Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
 void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray param_indexs) {
 
     //This function still has bug when static
-    ros::Time t0 = ros::Time::now();
 
     ceres::Covariance::Options cov_options;
     // cov_options.algorithm_type = DENSE_SVD;
@@ -699,12 +713,29 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     CRSMatrix jacobian;
     problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
     auto jacb = CRSMatrixToEigenMatrix(jacobian);
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
     // ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
-    auto cov = (jacb.transpose()*jacb).inverse()*ERROR_NORMLIZED*ERROR_NORMLIZED;
+    auto JtJ = (jacb.transpose()*jacb).sparseView();
+    Eigen::SimplicialLLT <Eigen::SparseMatrix<double>> solver;
+    
+    solver.compute(JtJ);
+    Eigen::SparseMatrix<double> I(JtJ.rows(), JtJ.rows());
+    I.setIdentity();
+    auto cov = Eigen::MatrixXd(solver.solve(I))*ERROR_NORMLIZED*ERROR_NORMLIZED;
+
+    // auto cov = (jacb.transpose()*jacb).inverse()*ERROR_NORMLIZED*ERROR_NORMLIZED;
 
     int64_t ts = sf_sld_win.back().ts;
     for (int j = 0; j < cov.cols() / 4; j ++ ) {
+        int64_t _ts = param_indexs[j].first;
+        int _id = param_indexs[j].second;
+        if (est_cov_tsid.find(_ts) == est_cov_tsid.end()) {
+            est_cov_tsid[_ts] = std::map<int,Eigen::Matrix4d>();
+        }
+        // ROS_INFO("set cov %ld %d", _ts, _id);
+
+        est_cov_tsid[_ts][_id] = cov.block<4, 4>(4*j,4*j);
         // int j = 0;
         if (param_indexs[j].first == ts ) {
             printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
@@ -714,9 +745,9 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
         }
     }
     printf("\n");
-    ros::Time t5 = ros::Time::now();
-
-    ROS_INFO("Eigen compute covariance %4.3fms\n", (t5-t0).toSec()*1000);
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+    ROS_INFO("Eigen compute covariance %4.3fms\n", duration/1000.0);
 
 }
 
