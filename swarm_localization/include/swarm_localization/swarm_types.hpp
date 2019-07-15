@@ -186,6 +186,7 @@ class NodeFrame {
 
 struct SwarmFrameState {
     std::map<int, Pose> node_poses;
+    std::map<int, Eigen::Matrix4d> node_covs;
     std::map<int, Vector3d> node_vels;
 };
 
@@ -205,6 +206,9 @@ class SwarmFrame {
         }
 
         bool HasUWB(const int id) const {
+            if (id2nodeframe.find(id) == id2nodeframe.end()) {
+                return 0;
+            }
             return id2nodeframe.at(id).node->HasUWB();
         }
 
@@ -220,13 +224,28 @@ class SwarmFrame {
         }
 
         bool HasDetect(const int _id) const {
+            if (id2nodeframe.find(_id) == id2nodeframe.end()) {
+                return false;
+            }
             if (id2nodeframe.at(_id).has_detect_relpose) {
                 return true;
             }
             return false;
         }
 
+        int has_detect() const {
+            int total_detect = 0;
+            for (auto it : id2nodeframe) {
+                total_detect += it.second.detected_nodes.size();
+            }
+
+            return total_detect;
+        }
+
         int detected_num(const int _id) const {
+            if (id2nodeframe.find(_id) == id2nodeframe.end()) {
+                return 0;
+            }
             return id2nodeframe.at(_id).detected_nodes.size();
         }
 
