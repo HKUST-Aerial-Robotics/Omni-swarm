@@ -227,7 +227,7 @@ public:
         nh.param("armarker/x", armarker_x, -0.185);
         nh.param("armarker/y", armarker_y, 0.0);
         nh.param("armarker/z", armarker_z, 0.0);
-        nh.param("armarker/size", armarker_size, 0.0922);
+        nh.param("armarker/size", armarker_size, 0.0925);
         
         if (use_stereo) {
             ROS_INFO("Will use stereo");

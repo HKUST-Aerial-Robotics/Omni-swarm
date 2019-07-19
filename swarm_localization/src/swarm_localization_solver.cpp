@@ -332,6 +332,7 @@ std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const Node
         exit(-1);
         return ret;
     }
+    return ret;
 }
 
 SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) const {

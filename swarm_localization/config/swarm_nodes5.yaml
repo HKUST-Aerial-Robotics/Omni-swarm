@@ -11,6 +11,7 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
+    armarker_size : 0.0925
   1:
     has_uwb: true
     has_armarkers: true
