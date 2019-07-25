@@ -35,7 +35,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 
     for (int i = 0; i < point_by_cam.size(); i++) {
         if (point_by_cam[i].size() > 0) {
-            ROS_INFO("Using camera %d pnp as init\n", i);
+            // ROS_INFO("Using camera %d pnp as init\n", i);
             std::vector<cv::Point2f> pts2d;
             std::vector<cv::Point3f> pts3d;
 
@@ -70,7 +70,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 //                std::cout << "r" << rvec << std::endl;
                 cv::Rodrigues(rvec, r);
 
-//                std::cout << "r "<< r <<" t "<<t << std::endl;
+            //    std::cout << "r "<< r <<" t "<<t << std::endl;
 
                 cv::cv2eigen(r, R_pnp);
                 cv::cv2eigen(t, T_pnp);
@@ -85,8 +85,8 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
                 P = T_pnp;
 
 
-                pose.position = P;
-                pose.attitude = R;
+                pose.set_pos(P);
+                pose.set_att(Eigen::Quaterniond(R));
 
                 Eigen::Isometry3d drone_trans = pose.to_isometry();
 
@@ -96,8 +96,8 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
 //                std::cout << "TPNP " << T_pnp << std::endl;
 
 //                std::cout <<"Res !R\n" << R << "\nT\n" << P << std::endl <<"Pse::";
-                ROS_INFO("PNP Pose %3.2fms:  ", dt * 1000);
-                pose.print();
+                // ROS_INFO("PNP Pose %3.2fms:  Pose is", dt * 1000);
+                // pose.print();
 
                 break;
             }
@@ -118,7 +118,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
             pose.to_vector(x);
             draw(x, point_by_cam);
         }
-        ROS_INFO("Not use ba or drone Seen by single camera, no need for BA");
+        // ROS_INFO("Not use ba or drone Seen by single camera, no need for BA");
     }
     return pose;
 }
@@ -136,8 +136,8 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
         auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
         auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
         cv::Point p;
-        p.x = predict_point(0)*2;
-        p.y = predict_point(1)*2;
+        p.x = predict_point(0);
+        p.y = predict_point(1);
 //        printf("p3d %f %f %f ,pp %d %d\n", point3d(0), point3d(1), point3d(2), p.x, p.y);
         if (name == "BA") {
             cv::circle(new_to_draw1, p, 3, cv::Scalar(0, 0, 255), -1);
@@ -147,8 +147,8 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
 
 //        printf("Predict op %3.1f %3.1f obser %3.1f %3.1f\n", predict_point(0)*2, predict_point(1)*2, mco.observed_point.x()*2, mco.observed_point.y()*2);
 
-        p.x = mco.observed_point.x()*2;
-        p.y = mco.observed_point.y()*2;
+        p.x = mco.observed_point.x();
+        p.y = mco.observed_point.y();
 
         cv::circle(new_to_draw1, p, 15, cv::Scalar(255,0,0), 2);
     }
@@ -162,8 +162,8 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
             auto point3d = err->Point3dtoProj<double>(cam_def, mco, x);
             auto predict_point = err->PredictPoint<double>(cam_def, mco, x);
             cv::Point p;
-            p.x = predict_point(0) * 2;
-            p.y = predict_point(1) * 2;
+            p.x = predict_point(0);
+            p.y = predict_point(1);
 
             if (name == "BA") {
                 cv::circle(new_to_draw2, p, 3, cv::Scalar(0, 0, 255), -1);
@@ -171,8 +171,8 @@ void DronePoseEstimator::draw(double x[], std::vector<corner_array> &point_by_ca
                 cv::circle(new_to_draw2, p, 10, cv::Scalar(0, 255, 255), 2);
             }
 
-            p.x = mco.observed_point.x() * 2;
-            p.y = mco.observed_point.y() * 2;
+            p.x = mco.observed_point.x();
+            p.y = mco.observed_point.y();
             //        printf("op %d %d\n", p.x, p.y);
 
             cv::circle(new_to_draw2, p, 15, cv::Scalar(255, 0, 0), 2);
@@ -219,17 +219,7 @@ Pose DronePoseEstimator::estimate_drone_pose(std::vector<corner_array> &point_by
     ceres::Solve(options, &ba_problem, &summary);
     std::cout << summary.BriefReport() << "  " << summary.total_time_in_seconds * 1000 << "ms\n";
 
-
-    pose.position.x() = x[0];
-    pose.position.y() = x[1];
-    pose.position.z() = x[2];
-
-    pose.attitude.x() = x[4];
-    pose.attitude.y() = x[5];
-    pose.attitude.z() = x[6];
-    pose.attitude.w() = x[3];
-
-    pose.attitude.normalize();
+    pose = Pose(x);
     printf("Final pose");
     pose.print();
     if (enable_drawing) {

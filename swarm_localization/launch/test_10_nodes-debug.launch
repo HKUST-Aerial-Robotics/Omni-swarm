@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="swarm_vo_fuse" name="test_datagen" type="test_vo_datagen.py" output="screen"> 
+    </node>
+    <node pkg="swarm_vo_fuse" name="swarm_vo_fuse" type="swarm_vo_fuse_node" output="screen"  launch-prefix="gdb -ex run --args ">
+        <param name="max_keyframe_num" value="20" type="int" />
+    </node>
+</launch>
