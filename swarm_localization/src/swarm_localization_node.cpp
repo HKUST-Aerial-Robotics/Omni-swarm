@@ -298,6 +298,12 @@ private:
                 sf.ids.push_back(id);
                 sf.local_drone_position.push_back(_pose.to_ros_pose().position);
                 sf.local_drone_yaw.push_back(_pose.yaw());
+                geometry_msgs::Vector3 pcov;
+                pcov.x = _sfs.node_covs.at(id)(0, 0);
+                pcov.y = _sfs.node_covs.at(id)(1, 1);
+                pcov.z = _sfs.node_covs.at(id)(2, 2);
+                sf.position_cov.push_back(pcov);
+                sf.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
 
                 //Temp disable veloctiy
                 geometry_msgs::Vector3 spd;
