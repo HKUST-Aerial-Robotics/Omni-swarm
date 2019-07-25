@@ -25,11 +25,12 @@
 using namespace std::chrono;
 
 // #define DEBUG_OUTPUT_POSES
-// #define COMPUTE_COV
+#define COMPUTE_COV
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
 #define MAX_SOLVER_TIME 0.1
+#define ENABLE_HISTORY_COV
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -118,6 +119,14 @@ void SwarmLocalizationSolver::process_frame_clear() {
     } */
 
     while (sf_sld_win.size() > max_frame_number) {
+        ROS_INFO("Start clear frames");
+        SwarmFrame & sf = sf_sld_win[0];
+        for (auto it : sf.id2nodeframe) {
+            if (est_cov_tsid.find(sf.ts) != est_cov_tsid.end() && sf.has_odometry(it.first)) {
+                last_lost_ts_of_node[it.first] = sf.ts;
+            }
+        }
+
         delete_frame_i(0);
         ROS_INFO("Clear first frame from sld win, now size %ld", sf_sld_win.size());
     }
@@ -494,8 +503,46 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
 }
 
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_nf_win(const std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
+SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
+
+#ifdef ENABLE_HISTORY_COV
+    int _id = nf_win.front().id;
+    bool use_last_lost_cov = false;
+    SwarmHorizonError * she = nullptr;
+    if (finish_init && last_lost_ts_of_node.find(_id) != last_lost_ts_of_node.end()) {
+        // ROS_INFO("LINE 509 : id%d %d", _id, last_lost_ts_of_node.find(_id) != last_lost_ts_of_node.end());
+        use_last_lost_cov = true;
+        int64_t last_lost_ts = last_lost_ts_of_node.at(_id);
+        const SwarmFrame & _sf = all_sf.at(last_lost_ts);
+        if (_sf.id2nodeframe.find(_id) == _sf.id2nodeframe.end()) {
+            ROS_ERROR("can find id in sf; exit");
+            exit(-1);
+        }
+        const NodeFrame & last_lost = _sf.id2nodeframe.at(_id);
+        nf_win.insert(nf_win.begin(), last_lost);
+        SolvedPosewithCov pcov;
+
+        assert(est_poses_tsid.find(last_lost_ts) != est_poses_tsid.end() && "L523");
+        memcpy(pcov.pose, est_poses_tsid.at(last_lost_ts).at(_id), 4*sizeof(double));
+        // assert( && "L528");
+        if (est_cov_tsid.at(last_lost_ts).find(_id) == est_cov_tsid.at(last_lost_ts).end()) {
+            ROS_ERROR("Can't find TS %d ID %d", TSShort(last_lost_ts), _id);
+            exit(-1);
+        }
+
+        auto cov = est_cov_tsid.at(last_lost_ts).at(_id);
+        pcov.pos_cov.x() = sqrt(cov(0, 0));
+        pcov.pos_cov.y() = sqrt(cov(1, 1));
+        pcov.pos_cov.z() = sqrt(cov(2, 2));
+
+        she = new SwarmHorizonError(nf_win, ts2poseindex, is_self, true, pcov);
+    
+    } else {
+        she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
+    }
+#else
     auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
+#endif 
 
     auto cost_function = new HorizonCost(she);
     int res_num = she->residual_count();
@@ -504,6 +551,11 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(const std::vector<NodeFr
     if (is_self) {
         poses_num = nf_win.size() - 1;
     }
+#ifdef ENABLE_HISTORY_COV
+    if (use_last_lost_cov) {
+        poses_num = poses_num - 1;
+    }
+#endif
     for (int i =0;i < poses_num; i ++){
         cost_function->AddParameterBlock(4);
     }
@@ -724,11 +776,27 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     solver.compute(JtJ);
     Eigen::SparseMatrix<double> I(JtJ.rows(), JtJ.rows());
     I.setIdentity();
-    auto cov = Eigen::MatrixXd(solver.solve(I))*ERROR_NORMLIZED*ERROR_NORMLIZED;
+    Eigen::MatrixXd cov = Eigen::MatrixXd(solver.solve(I))*ERROR_NORMLIZED*ERROR_NORMLIZED;
+    ROS_INFO("COV size %d %d", cov.cols(), cov.rows());
+    // std::cout << cov << std::endl;
+    for (int i = 0; i < 4; i++) {
+        for (int j =0; j < 4; j++) {
+            if (cov(i,j) > 10000) {
+                cov(i, j) = 10000;
+            }
+            if (cov(i,j) < 0) {
+                cov(i,j) = 0;
+            }
+        }
+    }
+    
+    //Init self this last with 0
+    if (est_cov_tsid.find(sf_sld_win.back().ts) == est_cov_tsid.end()) {
+        est_cov_tsid[sf_sld_win.back().ts] = std::map<int,Eigen::Matrix4d>();
+    }
 
-    // auto cov = (jacb.transpose()*jacb).inverse()*ERROR_NORMLIZED*ERROR_NORMLIZED;
+    est_cov_tsid[sf_sld_win.back().ts][self_id] = Eigen::Matrix4d::Zero();
 
-    int64_t ts = sf_sld_win.back().ts;
     for (int j = 0; j < cov.cols() / 4; j ++ ) {
         int64_t _ts = param_indexs[j].first;
         int _id = param_indexs[j].second;
@@ -739,13 +807,16 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
 
         est_cov_tsid[_ts][_id] = cov.block<4, 4>(4*j,4*j);
         // int j = 0;
-        if (param_indexs[j].first == ts ) {
-            printf("\nTS %ld ", (param_indexs[j].first/1000000)%100000);
-            printf("ID %d SD %4.3f %4.3f %4.3f %4.3f ", param_indexs[j].second, sqrt(cov(4*j,4*j)), 
-                sqrt(cov(4*j+1,4*j+1)), sqrt(cov(4*j+2,4*j+2)), sqrt(cov(4*j+3,4*j+3)));
+        // if (param_indexs[j].first == ts ) {
+        printf("\nTS %d ", TSShort(_ts));
+        printf("ID %d SD %4.3f %4.3f %4.3f %4.3f %4.3f", _id, sqrt(cov(4*j,4*j)), 
+                sqrt(cov(4*j+1,4*j+1)), 
+                sqrt(cov(4*j+2,4*j+2)), 
+                sqrt(cov(4*j+3,4*j+3)));
             // fflush(stdout);
-        }
+        // }
     }
+
     printf("\n");
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     auto duration = duration_cast<microseconds>( t2 - t1 ).count();

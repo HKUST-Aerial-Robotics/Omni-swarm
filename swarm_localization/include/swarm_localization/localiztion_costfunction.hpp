@@ -32,8 +32,12 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
-#define DETECTION_CO 1.0
+#define DETECTION_CO 10
 #define ENABLE_DETECTION
+
+// #define ENABLE_HISTORY_COV
+
+
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -186,8 +190,8 @@ struct SwarmFrameError {
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] / DETECTION_CO;
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] / DETECTION_CO;
+                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_CO;
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_CO;
 
                 pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
                 res_count = res_count + 4;
@@ -262,32 +266,43 @@ struct SwarmFrameError {
     }
 };
 
+struct SolvedPosewithCov{
+    double pose[4]  = {0}; //xyzyaw
+    Eigen::Vector3d pos_cov = Eigen::Vector3d(0, 0, 0);
+    double yaw_cov = 0;
+    SolvedPosewithCov () {
+
+    }
+};
 
 //Error for correlation vo drift
 struct SwarmHorizonError {
     const std::vector<NodeFrame> nf_windows;
     std::map<int64_t, int> ts2poseindex;
     int64_t last_ts = -1;
+    int64_t first_ts = -1;
 
     std::vector<Pose> delta_poses;
     int _id = -1;
     bool is_self_node = false;
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node) :
+    bool first_has_solved = false;
+    SolvedPosewithCov spcov;
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node,
+        bool _first_has_solved=false, SolvedPosewithCov spcov = SolvedPosewithCov()) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
             is_self_node(_is_self_node){
 
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
-//            std::cout << i << ":" << _nf_win[i-1].pose().position << std::endl;
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
-//            delta_poses.push_back(Pose());
-//            printf("ID %d TS %ld DPOSE ", _nf.id, (_nf.ts/1000000)%1000000);
-//            delta_poses.back().print();
-//            printf("\n");
         }
         last_ts = nf_windows.back().ts;
+        first_ts = nf_windows.front().ts;
         _id = nf_windows.back().id;
+        first_has_solved = _first_has_solved;
+
+        this->spcov = spcov;
     }
 
     template<typename T>
@@ -297,20 +312,29 @@ struct SwarmHorizonError {
             Pose _pose = nf_windows.back().pose();
             _pose.to_vector_xyzyaw(t_pose);
             return;
-        } else {
-            if (ts2poseindex.find(ts) != ts2poseindex.end()) {
-                int index = ts2poseindex.at(ts);
-                t_pose[0] =  _poses[index][0];
-                t_pose[1] =  _poses[index][1];
-                t_pose[2] =  _poses[index][2];
-                t_pose[3] =  _poses[index][3];
-            } else {
-                ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
-                exit(-1);
-            }
-
-
         }
+
+        if (ts == first_ts && first_has_solved) {
+            t_pose[0] = T(spcov.pose[0]);
+            t_pose[1] = T(spcov.pose[1]);
+            t_pose[2] = T(spcov.pose[2]);
+            t_pose[3] = T(spcov.pose[3]);
+            return;
+        }
+
+        if (ts2poseindex.find(ts) != ts2poseindex.end()) {
+            int index = ts2poseindex.at(ts);
+            t_pose[0] =  _poses[index][0];
+            t_pose[1] =  _poses[index][1];
+            t_pose[2] =  _poses[index][2];
+            t_pose[3] =  _poses[index][3];
+        } else {
+            ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
+            exit(-1);
+        }
+
+
+        
     }
 
     int residual_count() {
@@ -334,16 +358,21 @@ struct SwarmHorizonError {
             int64_t tsa = nf_windows[i].ts;
             int64_t tsb = nf_windows[i+1].ts;
 
-            //
             get_pose(tsa, _poses, est_posea);
             get_pose(tsb, _poses, est_poseb);
 
+            T est_dpose[4];
+            DeltaPose(est_posea, est_poseb, est_dpose);
 
 
-           T est_dpose[4];
-           DeltaPose(est_posea, est_poseb, est_dpose);
-           pose_error(est_dpose, mea_dpose, _residual + res_count,
-                      pos_cov, ang_cov.z());
+            if (tsa == first_ts && first_has_solved) {
+                pose_error(est_dpose, mea_dpose, _residual + res_count,
+                        pos_cov + spcov.pos_cov, ang_cov.z() + spcov.yaw_cov);
+            } else {
+                pose_error(est_dpose, mea_dpose, _residual + res_count,
+                        pos_cov, ang_cov.z());
+            }
+
 
             /*
             if (nf_windows[0].id == 0 && i==0 ) {

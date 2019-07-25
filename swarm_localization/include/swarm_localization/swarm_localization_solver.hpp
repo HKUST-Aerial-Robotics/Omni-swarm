@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
+#include <mutex>
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
@@ -47,11 +48,12 @@ typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
 typedef std::vector<std::pair<int64_t, int>> TSIDArray;
 class SwarmLocalizationSolver {
 
-
+    std::mutex solve_lock;
     std::vector<SwarmFrame> sf_sld_win;
     std::map<int64_t, SwarmFrame> all_sf;
     int64_t last_kf_ts = 0;
     int64_t last_saved_est_kf_ts = 0;
+    std::map<int, int64_t> last_lost_ts_of_node;
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
@@ -87,7 +89,7 @@ class SwarmLocalizationSolver {
     setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
     CostFunction *
-    _setup_cost_function_by_nf_win(const std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const;
+    _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const;
 
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id, int & count) const;
 
