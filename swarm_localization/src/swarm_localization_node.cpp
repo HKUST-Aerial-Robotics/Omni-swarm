@@ -353,11 +353,11 @@ public:
         std::string swarm_node_config;
 
 
-        nh.param<int>("max_keyframe_num", frame_num, 100);
-        nh.param<int>("min_keyframe_num", min_frame_num, 20);
-        nh.param<float>("force_freq", force_freq, 10.0f);
-        nh.param<float>("max_accept_cost", acpt_cost, 0.4f);
-        nh.param<int>("thread_num", thread_num, 1);
+        nh.param<int>("max_keyframe_num", frame_num, 20);
+        nh.param<int>("min_keyframe_num", min_frame_num, 3);
+        nh.param<float>("force_freq", force_freq, 1.0f);
+        nh.param<float>("max_accept_cost", acpt_cost, 10.0f);
+        nh.param<int>("thread_num", thread_num, 4);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
@@ -391,8 +391,9 @@ int main(int argc, char **argv) {
 
     SwarmLocalizationNode uwbfusernode(nh);
 
-    ros::MultiThreadedSpinner spinner(4); // Use 4 threads
-    spinner.spin();
+    // ros::MultiThreadedSpinner spinner(4); // Use 4 threads
+    // spinner.spin();
+    ros::spin();
 
     return 0;
 }
