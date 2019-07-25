@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   swarm_msgs
   cv_bridge
-        camera_models
+  camera_models
 )
 find_package(OpenCV 3 REQUIRED)
 find_package(Ceres REQUIRED)

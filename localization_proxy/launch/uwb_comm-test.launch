@@ -1,0 +1,11 @@
+<launch>
+    <include file="$(find inf_uwb_ros)/launch/uwb_node.launch">
+        <arg name="output" default="log" />
+    </include>
+    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
+       <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
+       <param name="no_detection_wait" value="4" type="int" />
+    </node>
+    <node pkg="swarm_localization" name="swarm_fix_odom" type="swarm_fix_odom.py" output="screen">
+    </node>
+</launch>

@@ -5,64 +5,13 @@
 #include <assert.h>
 #include <aruco/aruco.h>
 #include <camodocal/camera_models/CataCamera.h>
+#include <camodocal/camera_models/PinholeCamera.h>
+#include <swarm_msgs/Pose.h>
+#include <geometry_msgs/Pose.h>
 
 using namespace Eigen;
 using namespace ceres;
-
-inline Eigen::Vector3d quat2eulers(const Eigen::Quaterniond &quat) {
-    Eigen::Vector3d rpy;
-    rpy.x() = atan2(2 * (quat.w() * quat.x() + quat.y() * quat.z()),
-                    1 - 2 * (quat.x() * quat.x() + quat.y() * quat.y()));
-    rpy.y() = asin(2 * (quat.w() * quat.y() - quat.z() * quat.x()));
-    rpy.z() = atan2(2 * (quat.w() * quat.z() + quat.x() * quat.y()),
-                    1 - 2 * (quat.y() * quat.y() + quat.z() * quat.z()));
-    return rpy;
-}
-
-// namespace SwarmDetection {}
-struct Pose {
-    Eigen::Vector3d position = Eigen::Vector3d(0, 0, 0);
-    Eigen::Quaterniond attitude = Eigen::Quaterniond(1, 0, 0, 0);
-
-    void to_vector(double ret[]) {
-        ret[3] = attitude.w();
-        ret[4] = attitude.x();
-        ret[5] = attitude.y();
-        ret[6] = attitude.z();
-
-        ret[0] = position.x();
-        ret[1] = position.y();
-        ret[2] = position.z();
-    }
-    Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
-        return attitude * point + position;
-    }
-
-    Eigen::Vector3d rpy() {
-        return quat2eulers(attitude);
-    }
-
-    Pose(Eigen::Isometry3d trans) {
-        position = trans.translation();
-        attitude = trans.rotation();
-    }
-
-    Eigen::Isometry3d to_isometry() {
-        Eigen::Isometry3d a = Eigen::Translation3d(position) * attitude;
-        return a;
-    }
-
-    void print() {
-        auto _rpy = rpy();
-        printf("T %3.3f %3.3f %3.3f RPY %3.1f %3.1f %3.1f\n",
-               position.x(), position.y(), position.z(),
-               _rpy.x() * 57.3,
-               _rpy.y() * 57.3,
-               _rpy.z() * 57.3
-        );
-    }
-    Pose() {}
-};
+using namespace Swarm;
 
 
 
@@ -119,7 +68,7 @@ worldToCameraTransform(const T* const q_cam_odo, const T* const t_cam_odo,
 struct Camera {
     int size_w;
     int size_h;
-    camodocal::CataCamera * camera_model;
+    camodocal::PinholeCamera * camera_model;
     std::vector<double> m_intrinsic_params;
 
     Eigen::Vector2d undist_point(Eigen::Vector2d p) {
@@ -191,8 +140,8 @@ struct Camera {
     Camera(const std::string& filename, Pose _pose):
         pose(_pose)
     {
-        camera_model = new camodocal::CataCamera;
-        camodocal::CataCamera::Parameters params = camera_model->getParameters();
+        camera_model = new camodocal::PinholeCamera;
+        auto params = camera_model->getParameters();
         
         params.readFromYamlFile(filename);
         camera_model->setParameters(params);
@@ -207,11 +156,11 @@ struct Camera {
     Pose pose;
 
     Quaterniond att() const {
-        return pose.attitude;
+        return pose.att();
     }
 
     Vector3d pos() const {
-        return pose.position;
+        return pose.pos();
     }
 };
 
@@ -227,16 +176,16 @@ struct DroneMarker {
     Eigen::Vector3d rel_corner_pos(int corner_no) const {
     switch (corner_no) {
         case 0:
-            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, size/2));
-            break;
-        case 1:
             return pose.apply_pose_to(Eigen::Vector3d(0, size/2, size/2));
             break;
+        case 1:
+            return pose.apply_pose_to(Eigen::Vector3d(0, -size/2, size/2));
+            break;
         case 2:
-            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, -size/2));
+            return pose.apply_pose_to(Eigen::Vector3d(0, -size/2, -size/2));
             break;
         case 3:
-            return pose.apply_pose_to(Eigen::Vector3d(0, - size/2, -size/2));
+            return pose.apply_pose_to(Eigen::Vector3d(0, size/2, -size/2));
             break;
     }
     return Eigen::Vector3d(0, 0, 0);
