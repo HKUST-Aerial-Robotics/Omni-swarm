@@ -7,12 +7,11 @@
             force_freq: 1
             max_accept_cost: 10
             max_keyframe_num: 20
-            min_keyframe_num: 10
+            min_keyframe_num: 3
             thread_num: 4
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <!-- <remap from="/swarm_drones/swarm_frame_predict" to="/swarm_drones/swarm_frame" /> -->
     </node>
    <!-- <node pkg="swarm_localization" name="relative_fused_vicon_convert" type="relative_fused_vicon_convert.py" output="screen" /> -->
 
