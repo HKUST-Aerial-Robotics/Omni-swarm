@@ -29,7 +29,16 @@ using namespace inf_uwb_ros;
 #define MAX_DRONE_SIZE 10
 #define INVAILD_DISTANCE 65535
 
-#define TEST_WITHOUT_VO
+inline double float_constrain(double v, double min, double max)
+{
+    if (v < min) {
+        return min;
+    }
+    if (v > max) {
+        return max;
+    }
+    return v;
+}
 
 
 geometry_msgs::Quaternion Yaw2ROSQuat(double yaw) {
@@ -522,7 +531,11 @@ class LocalProxy {
                                                             (int)(fused.local_drone_position[i].x * 1000),
                                                             (int)(fused.local_drone_position[i].y * 1000),
                                                             (int)(fused.local_drone_position[i].z * 1000),
-                                                            (int)(fused.local_drone_yaw[i]) * 1000);
+                                                            (int)(fused.local_drone_yaw[i] * 1000),
+                                                            (int)(fused.position_cov[i].x * 1000),
+                                                            (int)(fused.position_cov[i].y * 1000),
+                                                            (int)(fused.position_cov[i].z * 1000),
+                                                            (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
                         send_mavlink_message(msg);
                     }
                 }

@@ -534,7 +534,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
         pcov.pos_cov.x() = sqrt(cov(0, 0));
         pcov.pos_cov.y() = sqrt(cov(1, 1));
         pcov.pos_cov.z() = sqrt(cov(2, 2));
-
+        pcov.yaw_cov = sqrt(cov(3, 3)); 
         she = new SwarmHorizonError(nf_win, ts2poseindex, is_self, true, pcov);
     
     } else {
@@ -781,8 +781,8 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     // std::cout << cov << std::endl;
     for (int i = 0; i < 4; i++) {
         for (int j =0; j < 4; j++) {
-            if (cov(i,j) > 10000) {
-                cov(i, j) = 10000;
+            if (cov(i,j) > 10) {
+                cov(i, j) = 10;
             }
             if (cov(i,j) < 0) {
                 cov(i,j) = 0;
@@ -809,7 +809,7 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
         // int j = 0;
         // if (param_indexs[j].first == ts ) {
         printf("\nTS %d ", TSShort(_ts));
-        printf("ID %d SD %4.3f %4.3f %4.3f %4.3f %4.3f", _id, sqrt(cov(4*j,4*j)), 
+        printf("ID %d SD %4.3lf %4.3lf %4.3lf %4.3lf", _id, sqrt(cov(4*j,4*j)), 
                 sqrt(cov(4*j+1,4*j+1)), 
                 sqrt(cov(4*j+2,4*j+2)), 
                 sqrt(cov(4*j+3,4*j+3)));

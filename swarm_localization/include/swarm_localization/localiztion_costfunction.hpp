@@ -32,7 +32,8 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
-#define DETECTION_CO 10
+#define DETECTION_COV_POS 10
+#define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
 
 // #define ENABLE_HISTORY_COV
@@ -190,8 +191,8 @@ struct SwarmFrameError {
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_CO;
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_CO;
+                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_COV_ANG;
 
                 pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
                 res_count = res_count + 4;
