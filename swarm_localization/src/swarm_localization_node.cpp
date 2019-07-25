@@ -121,9 +121,7 @@ class SwarmLocalizationNode {
                     sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
                 }
             }
-
         }
-
 
         for (auto it : sf.id2nodeframe) {
             for (auto it_d :it.second.detected_nodes) {
@@ -281,6 +279,8 @@ private:
             return;
         } 
         swarm_fused_relative sfr;
+        swarm_fused sf;
+        sf.header.stamp = stamp;
         sfr.header.stamp = stamp;
         Pose self_pose = _sfs.node_poses.at(self_id);
         for (auto it : _sfs.node_poses) {
@@ -288,20 +288,30 @@ private:
                 int id = it.first;
                 Pose _pose = it.second;
                 Pose DPose = Pose::DeltaPose(self_pose, _pose, true);
+
+
                 double dyaw = DPose.yaw();
                 sfr.ids.push_back(id);
                 sfr.relative_drone_position.push_back(DPose.to_ros_pose().position);
                 sfr.relative_drone_yaw.push_back(dyaw);
 
+                sf.ids.push_back(id);
+                sf.local_drone_position.push_back(_pose.to_ros_pose().position);
+                sf.local_drone_yaw.push_back(_pose.yaw());
+
+                //Temp disable veloctiy
                 geometry_msgs::Vector3 spd;
                 spd.x = 0;
                 spd.y = 0;
                 spd.z = 0;
                 sfr.relative_drone_velocity.push_back(spd);
+                sf.local_drone_velocity.push_back(spd);
+
             }
         }
 
         fused_drone_rel_data_pub.publish(sfr);
+        fused_drone_data_pub.publish(sf);
     }
 
     void predict_swarm(const swarm_frame &_sf) {

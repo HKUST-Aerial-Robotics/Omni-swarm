@@ -407,8 +407,9 @@ double SwarmLocalizationSolver::solve() {
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
-    if (cost_now > acpt_cost)
+    if (cost_now > acpt_cost) {
         finish_init = false;
+    }
 
     if (finish_init) {
         sync_est_poses(this->est_poses_tsid);
