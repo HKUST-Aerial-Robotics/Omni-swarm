@@ -130,6 +130,10 @@ class NodeFrame {
 
         }
 
+        bool has_detected_node(int _id) const {
+            return detected_nodes.find(_id) != detected_nodes.end();
+        }
+
         Pose pose() const {
             //If has vo, return vo position
             if (!is_static) {

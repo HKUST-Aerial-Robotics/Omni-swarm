@@ -61,34 +61,47 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     const SwarmFrame & last_sf = sf_sld_win.back();
     double dt = (sf.stamp - last_sf.stamp).toSec();
 
-
-    if (sf.HasID(self_id) && last_sf.HasID(self_id) && sf.has_odometry(self_id) && last_sf.has_odometry(self_id)) {
-
-        Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
-
-        //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-        if (_diff.norm() > min_accept_keyframe_movement || 
-            (_diff.norm() > min_accept_keyframe_movement*0.5 && sf.has_detect() > 0)   ){ //(sf.HasDetect(_id) && _id==self_id))
-            ret.push_back(self_id);
-            node_kf_count[self_id] += 1;
-            ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
-                TSShort(sf.ts), self_id, _diff.norm(), sf.HasDetect(self_id));
-
-            return 1;
-        }
-
-        if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && sf.swarm_size() > last_sf.swarm_size() &&
-        ( (dt > REPLACE_MIN_DURATION && sf.has_detect() == last_sf.has_detect()) || sf.has_detect() > last_sf.has_detect())
-        ) {
-            //Make sure is fixed
-            return 2;
-        }
-
-    } else {
-        ROS_ERROR("No self id :%d last %d this %d ODOM %d %d", self_id, sf.HasID(self_id), last_sf.HasID(self_id), sf.has_odometry(self_id), last_sf.has_odometry(self_id));
+    if (!sf.HasID(self_id) || !sf.has_odometry(self_id)) {
+        return 0;
     }
 
+    const NodeFrame & self_nf = sf.id2nodeframe.at(self_id);
+    Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
 
+    //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
+    if (_diff.norm() > min_accept_keyframe_movement || 
+        (_diff.norm() > min_accept_keyframe_movement*0.5 && sf.has_detect() > 0)   ){ //here shall be some one see him or he see someone
+        ret.push_back(self_id);
+        node_kf_count[self_id] += 1;
+        ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
+            TSShort(sf.ts), self_id, _diff.norm(), sf.HasDetect(self_id));
+
+        return 1;
+    }
+
+    for (auto it : sf.id2nodeframe) {
+        //For other nodes
+        int _id = it.first;
+        const NodeFrame & _nf = it.second;
+        if (_nf.is_valid && _nf.vo_available && last_sf.HasID(_id) && last_sf.has_odometry(_id)) {
+            Eigen::Vector3d _diff = sf.position(_id) - last_sf.position(_id);
+            if (_diff.norm() > min_accept_keyframe_movement*0.5 &&
+            (_nf.has_detected_node(self_id)||self_nf.has_detected_node(_id) ) ){
+                ret.push_back(self_id);
+                node_kf_count[self_id] += 1;
+                ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
+                    TSShort(sf.ts), self_id, _diff.norm(), sf.HasDetect(self_id));
+                return 1;
+            }
+        }
+    }
+
+    if (sf.swarm_size() >= last_sf.swarm_size() && _diff.norm() < SMALL_MOVEMENT_SPD * dt && sf.swarm_size() > last_sf.swarm_size() &&
+    ( (dt > REPLACE_MIN_DURATION && sf.has_detect() == last_sf.has_detect()) || sf.has_detect() > last_sf.has_detect())
+    ) {
+        //Make sure is fixed
+        return 2;
+    }
 
     return 0;
 }
@@ -777,7 +790,7 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
     Eigen::SparseMatrix<double> I(JtJ.rows(), JtJ.rows());
     I.setIdentity();
     Eigen::MatrixXd cov = Eigen::MatrixXd(solver.solve(I))*ERROR_NORMLIZED*ERROR_NORMLIZED;
-    ROS_INFO("COV size %d %d", cov.cols(), cov.rows());
+    // ROS_INFO("COV size %d %d", cov.cols(), cov.rows());
     // std::cout << cov << std::endl;
     for (int i = 0; i < 4; i++) {
         for (int j =0; j < 4; j++) {
