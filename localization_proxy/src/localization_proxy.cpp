@@ -486,6 +486,11 @@ class LocalProxy {
     double send_rel_fused_freq = 1.0;
 
     void on_swarm_fused_relative_recv(const swarm_fused_relative fused) {
+
+        if (send_rel_fused_freq < 0.1) {
+            return;
+        }
+        
         if ((ros::Time::now() - last_send_rel_fused).toSec() > 1.0/send_rel_fused_freq) {
             uint8_t buf[1000] = {0};
 
@@ -514,31 +519,50 @@ class LocalProxy {
 
     }
 
+    int send_fused_count = 0;
+
     void on_swarm_fused_recv(const swarm_fused fused) {
+
+        if (send_fused_freq < 0.1) {
+            return;
+        }
+
         if ((ros::Time::now() - last_send_fused).toSec() > 1.0/send_fused_freq) {
                 uint8_t buf[1000] = {0};
+                send_fused_count ++;
+                int _index = send_fused_count % fused.ids.size();
+                if (fused.ids[_index] == self_id) {
+                    if (fused.ids.size() == 1) {
+                        return;
+                    } else {
+                        send_fused_count ++;
+                        _index = send_fused_count % fused.ids.size();
+                    }
+                }
 
                 mavlink_message_t msg;
                 // printf("Fused data recv\n");
                 if (self_id < 0)
                     return;
 
+               
+                uint8_t _id = fused.ids[_index];
+
                 int32_t ts = ROSTIME2LPS(fused.header.stamp);
-                for (int i = 0; i < fused.ids.size(); i++) {
-                    uint8_t _id = fused.ids[i];
-                    if (_id != self_id) {
-                        mavlink_msg_node_local_fused_pack(self_id, 0, &msg, ts, _id,
-                                                            (int)(fused.local_drone_position[i].x * 1000),
-                                                            (int)(fused.local_drone_position[i].y * 1000),
-                                                            (int)(fused.local_drone_position[i].z * 1000),
-                                                            (int)(fused.local_drone_yaw[i] * 1000),
-                                                            (int)(fused.position_cov[i].x * 1000),
-                                                            (int)(fused.position_cov[i].y * 1000),
-                                                            (int)(fused.position_cov[i].z * 1000),
-                                                            (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
-                        send_mavlink_message(msg);
-                    }
+
+                if (_id != self_id) {
+                    mavlink_msg_node_local_fused_pack(self_id, 0, &msg, ts, _id,
+                                                        (int)(fused.local_drone_position[_index].x * 1000),
+                                                        (int)(fused.local_drone_position[_index].y * 1000),
+                                                        (int)(fused.local_drone_position[_index].z * 1000),
+                                                        (int)(fused.local_drone_yaw[_index] * 1000),
+                                                        (int)(fused.position_cov[_index].x * 1000),
+                                                        (int)(fused.position_cov[_index].y * 1000),
+                                                        (int)(fused.position_cov[_index].z * 1000),
+                                                        (int)(float_constrain(fused.yaw_cov[_index], 0, M_PI*M_PI) * 1000));
+                    send_mavlink_message(msg);
                 }
+                
                 last_send_fused = ros::Time::now();
         }
     }
@@ -766,8 +790,8 @@ public:
         nh.param<int>("force_id", _force_id, -1); //Use a force id to publish the swarm frame messages, which means you can direct use gcs to compute same thing
         nh.param<bool>("publish_remote_odom", publish_remote_odom, false);
         nh.param<bool>("node_predict_nodelay", _node_predict_nodelay, true);
-        nh.param<double>("send_fused_freq", send_fused_freq, 10.0);
-        nh.param<double>("send_rel_fused_freq", send_rel_fused_freq, 1.0);
+        nh.param<double>("send_fused_freq", send_fused_freq, 30.0);
+        nh.param<double>("send_rel_fused_freq", send_rel_fused_freq, 0.0);
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &LocalProxy::on_local_odometry_recv, this,
                                           ros::TransportHints().tcpNoDelay());

@@ -79,6 +79,7 @@ class SwarmLocalizationNode {
         if (nf.vo_available) {
             nf.self_pose = Pose(_nf.position, _nf.yaw);
             // ROS_WARN("Node %d vo valid", _nf.id);
+            nf.is_valid = true;
 
         } else {
             if (nf.node->HasVO()) {

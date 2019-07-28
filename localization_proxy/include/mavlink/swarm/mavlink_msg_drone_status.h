@@ -14,19 +14,20 @@ typedef struct __mavlink_drone_status_t {
  uint8_t flight_status; /*<  Flight status of drone*/
  uint8_t control_auth; /*<  Control AUTH of drone*/
  uint8_t commander_mode; /*<  COMMANDER MODE*/
+ uint8_t input_mode; /*<  CTRL INPUT MODE*/
  uint8_t rc_valid; /*<  RC VAILD*/
  uint8_t onboard_cmd_valid; /*<  ONBOARD CMD VALID*/
  uint8_t sdk_valid; /*<  SDK VALID*/
  uint8_t vo_valid; /*<   VOO VALID*/
 }) mavlink_drone_status_t;
 
-#define MAVLINK_MSG_ID_DRONE_STATUS_LEN 31
-#define MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN 31
-#define MAVLINK_MSG_ID_204_LEN 31
-#define MAVLINK_MSG_ID_204_MIN_LEN 31
+#define MAVLINK_MSG_ID_DRONE_STATUS_LEN 32
+#define MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN 32
+#define MAVLINK_MSG_ID_204_LEN 32
+#define MAVLINK_MSG_ID_204_MIN_LEN 32
 
-#define MAVLINK_MSG_ID_DRONE_STATUS_CRC 254
-#define MAVLINK_MSG_ID_204_CRC 254
+#define MAVLINK_MSG_ID_DRONE_STATUS_CRC 124
+#define MAVLINK_MSG_ID_204_CRC 124
 
 
 
@@ -34,15 +35,16 @@ typedef struct __mavlink_drone_status_t {
 #define MAVLINK_MESSAGE_INFO_DRONE_STATUS { \
     204, \
     "DRONE_STATUS", \
-    13, \
+    14, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_status_t, lps_time) }, \
          { "flight_status", NULL, MAVLINK_TYPE_UINT8_T, 0, 24, offsetof(mavlink_drone_status_t, flight_status) }, \
          { "control_auth", NULL, MAVLINK_TYPE_UINT8_T, 0, 25, offsetof(mavlink_drone_status_t, control_auth) }, \
          { "commander_mode", NULL, MAVLINK_TYPE_UINT8_T, 0, 26, offsetof(mavlink_drone_status_t, commander_mode) }, \
-         { "rc_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 27, offsetof(mavlink_drone_status_t, rc_valid) }, \
-         { "onboard_cmd_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 28, offsetof(mavlink_drone_status_t, onboard_cmd_valid) }, \
-         { "sdk_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 29, offsetof(mavlink_drone_status_t, sdk_valid) }, \
-         { "vo_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 30, offsetof(mavlink_drone_status_t, vo_valid) }, \
+         { "input_mode", NULL, MAVLINK_TYPE_UINT8_T, 0, 27, offsetof(mavlink_drone_status_t, input_mode) }, \
+         { "rc_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 28, offsetof(mavlink_drone_status_t, rc_valid) }, \
+         { "onboard_cmd_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 29, offsetof(mavlink_drone_status_t, onboard_cmd_valid) }, \
+         { "sdk_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 30, offsetof(mavlink_drone_status_t, sdk_valid) }, \
+         { "vo_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 31, offsetof(mavlink_drone_status_t, vo_valid) }, \
          { "bat_vol", NULL, MAVLINK_TYPE_FLOAT, 0, 4, offsetof(mavlink_drone_status_t, bat_vol) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_drone_status_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_drone_status_t, y) }, \
@@ -53,15 +55,16 @@ typedef struct __mavlink_drone_status_t {
 #else
 #define MAVLINK_MESSAGE_INFO_DRONE_STATUS { \
     "DRONE_STATUS", \
-    13, \
+    14, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_drone_status_t, lps_time) }, \
          { "flight_status", NULL, MAVLINK_TYPE_UINT8_T, 0, 24, offsetof(mavlink_drone_status_t, flight_status) }, \
          { "control_auth", NULL, MAVLINK_TYPE_UINT8_T, 0, 25, offsetof(mavlink_drone_status_t, control_auth) }, \
          { "commander_mode", NULL, MAVLINK_TYPE_UINT8_T, 0, 26, offsetof(mavlink_drone_status_t, commander_mode) }, \
-         { "rc_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 27, offsetof(mavlink_drone_status_t, rc_valid) }, \
-         { "onboard_cmd_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 28, offsetof(mavlink_drone_status_t, onboard_cmd_valid) }, \
-         { "sdk_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 29, offsetof(mavlink_drone_status_t, sdk_valid) }, \
-         { "vo_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 30, offsetof(mavlink_drone_status_t, vo_valid) }, \
+         { "input_mode", NULL, MAVLINK_TYPE_UINT8_T, 0, 27, offsetof(mavlink_drone_status_t, input_mode) }, \
+         { "rc_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 28, offsetof(mavlink_drone_status_t, rc_valid) }, \
+         { "onboard_cmd_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 29, offsetof(mavlink_drone_status_t, onboard_cmd_valid) }, \
+         { "sdk_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 30, offsetof(mavlink_drone_status_t, sdk_valid) }, \
+         { "vo_valid", NULL, MAVLINK_TYPE_UINT8_T, 0, 31, offsetof(mavlink_drone_status_t, vo_valid) }, \
          { "bat_vol", NULL, MAVLINK_TYPE_FLOAT, 0, 4, offsetof(mavlink_drone_status_t, bat_vol) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_drone_status_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_drone_status_t, y) }, \
@@ -81,6 +84,7 @@ typedef struct __mavlink_drone_status_t {
  * @param flight_status  Flight status of drone
  * @param control_auth  Control AUTH of drone
  * @param commander_mode  COMMANDER MODE
+ * @param input_mode  CTRL INPUT MODE
  * @param rc_valid  RC VAILD
  * @param onboard_cmd_valid  ONBOARD CMD VALID
  * @param sdk_valid  SDK VALID
@@ -93,7 +97,7 @@ typedef struct __mavlink_drone_status_t {
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_drone_status_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-                               int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
+                               int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t input_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_STATUS_LEN];
@@ -106,10 +110,11 @@ static inline uint16_t mavlink_msg_drone_status_pack(uint8_t system_id, uint8_t 
     _mav_put_uint8_t(buf, 24, flight_status);
     _mav_put_uint8_t(buf, 25, control_auth);
     _mav_put_uint8_t(buf, 26, commander_mode);
-    _mav_put_uint8_t(buf, 27, rc_valid);
-    _mav_put_uint8_t(buf, 28, onboard_cmd_valid);
-    _mav_put_uint8_t(buf, 29, sdk_valid);
-    _mav_put_uint8_t(buf, 30, vo_valid);
+    _mav_put_uint8_t(buf, 27, input_mode);
+    _mav_put_uint8_t(buf, 28, rc_valid);
+    _mav_put_uint8_t(buf, 29, onboard_cmd_valid);
+    _mav_put_uint8_t(buf, 30, sdk_valid);
+    _mav_put_uint8_t(buf, 31, vo_valid);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_DRONE_STATUS_LEN);
 #else
@@ -123,6 +128,7 @@ static inline uint16_t mavlink_msg_drone_status_pack(uint8_t system_id, uint8_t 
     packet.flight_status = flight_status;
     packet.control_auth = control_auth;
     packet.commander_mode = commander_mode;
+    packet.input_mode = input_mode;
     packet.rc_valid = rc_valid;
     packet.onboard_cmd_valid = onboard_cmd_valid;
     packet.sdk_valid = sdk_valid;
@@ -145,6 +151,7 @@ static inline uint16_t mavlink_msg_drone_status_pack(uint8_t system_id, uint8_t 
  * @param flight_status  Flight status of drone
  * @param control_auth  Control AUTH of drone
  * @param commander_mode  COMMANDER MODE
+ * @param input_mode  CTRL INPUT MODE
  * @param rc_valid  RC VAILD
  * @param onboard_cmd_valid  ONBOARD CMD VALID
  * @param sdk_valid  SDK VALID
@@ -158,7 +165,7 @@ static inline uint16_t mavlink_msg_drone_status_pack(uint8_t system_id, uint8_t 
  */
 static inline uint16_t mavlink_msg_drone_status_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
                                mavlink_message_t* msg,
-                                   int32_t lps_time,uint8_t flight_status,uint8_t control_auth,uint8_t commander_mode,uint8_t rc_valid,uint8_t onboard_cmd_valid,uint8_t sdk_valid,uint8_t vo_valid,float bat_vol,float x,float y,float z,float yaw)
+                                   int32_t lps_time,uint8_t flight_status,uint8_t control_auth,uint8_t commander_mode,uint8_t input_mode,uint8_t rc_valid,uint8_t onboard_cmd_valid,uint8_t sdk_valid,uint8_t vo_valid,float bat_vol,float x,float y,float z,float yaw)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_STATUS_LEN];
@@ -171,10 +178,11 @@ static inline uint16_t mavlink_msg_drone_status_pack_chan(uint8_t system_id, uin
     _mav_put_uint8_t(buf, 24, flight_status);
     _mav_put_uint8_t(buf, 25, control_auth);
     _mav_put_uint8_t(buf, 26, commander_mode);
-    _mav_put_uint8_t(buf, 27, rc_valid);
-    _mav_put_uint8_t(buf, 28, onboard_cmd_valid);
-    _mav_put_uint8_t(buf, 29, sdk_valid);
-    _mav_put_uint8_t(buf, 30, vo_valid);
+    _mav_put_uint8_t(buf, 27, input_mode);
+    _mav_put_uint8_t(buf, 28, rc_valid);
+    _mav_put_uint8_t(buf, 29, onboard_cmd_valid);
+    _mav_put_uint8_t(buf, 30, sdk_valid);
+    _mav_put_uint8_t(buf, 31, vo_valid);
 
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_DRONE_STATUS_LEN);
 #else
@@ -188,6 +196,7 @@ static inline uint16_t mavlink_msg_drone_status_pack_chan(uint8_t system_id, uin
     packet.flight_status = flight_status;
     packet.control_auth = control_auth;
     packet.commander_mode = commander_mode;
+    packet.input_mode = input_mode;
     packet.rc_valid = rc_valid;
     packet.onboard_cmd_valid = onboard_cmd_valid;
     packet.sdk_valid = sdk_valid;
@@ -210,7 +219,7 @@ static inline uint16_t mavlink_msg_drone_status_pack_chan(uint8_t system_id, uin
  */
 static inline uint16_t mavlink_msg_drone_status_encode(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, const mavlink_drone_status_t* drone_status)
 {
-    return mavlink_msg_drone_status_pack(system_id, component_id, msg, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
+    return mavlink_msg_drone_status_pack(system_id, component_id, msg, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->input_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
 }
 
 /**
@@ -224,7 +233,7 @@ static inline uint16_t mavlink_msg_drone_status_encode(uint8_t system_id, uint8_
  */
 static inline uint16_t mavlink_msg_drone_status_encode_chan(uint8_t system_id, uint8_t component_id, uint8_t chan, mavlink_message_t* msg, const mavlink_drone_status_t* drone_status)
 {
-    return mavlink_msg_drone_status_pack_chan(system_id, component_id, chan, msg, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
+    return mavlink_msg_drone_status_pack_chan(system_id, component_id, chan, msg, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->input_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
 }
 
 /**
@@ -235,6 +244,7 @@ static inline uint16_t mavlink_msg_drone_status_encode_chan(uint8_t system_id, u
  * @param flight_status  Flight status of drone
  * @param control_auth  Control AUTH of drone
  * @param commander_mode  COMMANDER MODE
+ * @param input_mode  CTRL INPUT MODE
  * @param rc_valid  RC VAILD
  * @param onboard_cmd_valid  ONBOARD CMD VALID
  * @param sdk_valid  SDK VALID
@@ -247,7 +257,7 @@ static inline uint16_t mavlink_msg_drone_status_encode_chan(uint8_t system_id, u
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_drone_status_send(mavlink_channel_t chan, int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
+static inline void mavlink_msg_drone_status_send(mavlink_channel_t chan, int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t input_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_DRONE_STATUS_LEN];
@@ -260,10 +270,11 @@ static inline void mavlink_msg_drone_status_send(mavlink_channel_t chan, int32_t
     _mav_put_uint8_t(buf, 24, flight_status);
     _mav_put_uint8_t(buf, 25, control_auth);
     _mav_put_uint8_t(buf, 26, commander_mode);
-    _mav_put_uint8_t(buf, 27, rc_valid);
-    _mav_put_uint8_t(buf, 28, onboard_cmd_valid);
-    _mav_put_uint8_t(buf, 29, sdk_valid);
-    _mav_put_uint8_t(buf, 30, vo_valid);
+    _mav_put_uint8_t(buf, 27, input_mode);
+    _mav_put_uint8_t(buf, 28, rc_valid);
+    _mav_put_uint8_t(buf, 29, onboard_cmd_valid);
+    _mav_put_uint8_t(buf, 30, sdk_valid);
+    _mav_put_uint8_t(buf, 31, vo_valid);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_STATUS, buf, MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN, MAVLINK_MSG_ID_DRONE_STATUS_LEN, MAVLINK_MSG_ID_DRONE_STATUS_CRC);
 #else
@@ -277,6 +288,7 @@ static inline void mavlink_msg_drone_status_send(mavlink_channel_t chan, int32_t
     packet.flight_status = flight_status;
     packet.control_auth = control_auth;
     packet.commander_mode = commander_mode;
+    packet.input_mode = input_mode;
     packet.rc_valid = rc_valid;
     packet.onboard_cmd_valid = onboard_cmd_valid;
     packet.sdk_valid = sdk_valid;
@@ -294,7 +306,7 @@ static inline void mavlink_msg_drone_status_send(mavlink_channel_t chan, int32_t
 static inline void mavlink_msg_drone_status_send_struct(mavlink_channel_t chan, const mavlink_drone_status_t* drone_status)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
-    mavlink_msg_drone_status_send(chan, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
+    mavlink_msg_drone_status_send(chan, drone_status->lps_time, drone_status->flight_status, drone_status->control_auth, drone_status->commander_mode, drone_status->input_mode, drone_status->rc_valid, drone_status->onboard_cmd_valid, drone_status->sdk_valid, drone_status->vo_valid, drone_status->bat_vol, drone_status->x, drone_status->y, drone_status->z, drone_status->yaw);
 #else
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_STATUS, (const char *)drone_status, MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN, MAVLINK_MSG_ID_DRONE_STATUS_LEN, MAVLINK_MSG_ID_DRONE_STATUS_CRC);
 #endif
@@ -308,7 +320,7 @@ static inline void mavlink_msg_drone_status_send_struct(mavlink_channel_t chan, 
   is usually the receive buffer for the channel, and allows a reply to an
   incoming message with minimum stack space usage.
  */
-static inline void mavlink_msg_drone_status_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
+static inline void mavlink_msg_drone_status_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int32_t lps_time, uint8_t flight_status, uint8_t control_auth, uint8_t commander_mode, uint8_t input_mode, uint8_t rc_valid, uint8_t onboard_cmd_valid, uint8_t sdk_valid, uint8_t vo_valid, float bat_vol, float x, float y, float z, float yaw)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char *buf = (char *)msgbuf;
@@ -321,10 +333,11 @@ static inline void mavlink_msg_drone_status_send_buf(mavlink_message_t *msgbuf, 
     _mav_put_uint8_t(buf, 24, flight_status);
     _mav_put_uint8_t(buf, 25, control_auth);
     _mav_put_uint8_t(buf, 26, commander_mode);
-    _mav_put_uint8_t(buf, 27, rc_valid);
-    _mav_put_uint8_t(buf, 28, onboard_cmd_valid);
-    _mav_put_uint8_t(buf, 29, sdk_valid);
-    _mav_put_uint8_t(buf, 30, vo_valid);
+    _mav_put_uint8_t(buf, 27, input_mode);
+    _mav_put_uint8_t(buf, 28, rc_valid);
+    _mav_put_uint8_t(buf, 29, onboard_cmd_valid);
+    _mav_put_uint8_t(buf, 30, sdk_valid);
+    _mav_put_uint8_t(buf, 31, vo_valid);
 
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_DRONE_STATUS, buf, MAVLINK_MSG_ID_DRONE_STATUS_MIN_LEN, MAVLINK_MSG_ID_DRONE_STATUS_LEN, MAVLINK_MSG_ID_DRONE_STATUS_CRC);
 #else
@@ -338,6 +351,7 @@ static inline void mavlink_msg_drone_status_send_buf(mavlink_message_t *msgbuf, 
     packet->flight_status = flight_status;
     packet->control_auth = control_auth;
     packet->commander_mode = commander_mode;
+    packet->input_mode = input_mode;
     packet->rc_valid = rc_valid;
     packet->onboard_cmd_valid = onboard_cmd_valid;
     packet->sdk_valid = sdk_valid;
@@ -394,13 +408,23 @@ static inline uint8_t mavlink_msg_drone_status_get_commander_mode(const mavlink_
 }
 
 /**
+ * @brief Get field input_mode from drone_status message
+ *
+ * @return  CTRL INPUT MODE
+ */
+static inline uint8_t mavlink_msg_drone_status_get_input_mode(const mavlink_message_t* msg)
+{
+    return _MAV_RETURN_uint8_t(msg,  27);
+}
+
+/**
  * @brief Get field rc_valid from drone_status message
  *
  * @return  RC VAILD
  */
 static inline uint8_t mavlink_msg_drone_status_get_rc_valid(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  27);
+    return _MAV_RETURN_uint8_t(msg,  28);
 }
 
 /**
@@ -410,7 +434,7 @@ static inline uint8_t mavlink_msg_drone_status_get_rc_valid(const mavlink_messag
  */
 static inline uint8_t mavlink_msg_drone_status_get_onboard_cmd_valid(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  28);
+    return _MAV_RETURN_uint8_t(msg,  29);
 }
 
 /**
@@ -420,7 +444,7 @@ static inline uint8_t mavlink_msg_drone_status_get_onboard_cmd_valid(const mavli
  */
 static inline uint8_t mavlink_msg_drone_status_get_sdk_valid(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  29);
+    return _MAV_RETURN_uint8_t(msg,  30);
 }
 
 /**
@@ -430,7 +454,7 @@ static inline uint8_t mavlink_msg_drone_status_get_sdk_valid(const mavlink_messa
  */
 static inline uint8_t mavlink_msg_drone_status_get_vo_valid(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  30);
+    return _MAV_RETURN_uint8_t(msg,  31);
 }
 
 /**
@@ -501,6 +525,7 @@ static inline void mavlink_msg_drone_status_decode(const mavlink_message_t* msg,
     drone_status->flight_status = mavlink_msg_drone_status_get_flight_status(msg);
     drone_status->control_auth = mavlink_msg_drone_status_get_control_auth(msg);
     drone_status->commander_mode = mavlink_msg_drone_status_get_commander_mode(msg);
+    drone_status->input_mode = mavlink_msg_drone_status_get_input_mode(msg);
     drone_status->rc_valid = mavlink_msg_drone_status_get_rc_valid(msg);
     drone_status->onboard_cmd_valid = mavlink_msg_drone_status_get_onboard_cmd_valid(msg);
     drone_status->sdk_valid = mavlink_msg_drone_status_get_sdk_valid(msg);
