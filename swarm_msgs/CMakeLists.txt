@@ -29,6 +29,7 @@ add_message_files(
         swarm_frame.msg
         node_detected.msg
         swarm_detected.msg
+        swarm_drone_basecoor.msg
 )
 
 

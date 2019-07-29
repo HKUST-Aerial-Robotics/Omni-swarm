@@ -8,6 +8,7 @@
 #include <swarm_msgs/swarm_frame.h>
 #include <swarm_msgs/swarm_fused.h>
 #include <swarm_msgs/swarm_fused_relative.h>
+#include <swarm_msgs/swarm_drone_basecoor.h>
 #include <swarm_msgs/swarm_remote_command.h>
 #include <swarm_msgs/swarm_detected.h>
 #include <swarm_msgs/node_detected_xyzyaw.h>
@@ -479,13 +480,63 @@ class LocalProxy {
     std::map<int, float> past_self_dis;
 
     ros::Time last_send_fused = ros::Time::now();
+    ros::Time last_send_fused_base = ros::Time::now();
     ros::Time last_send_rel_fused = ros::Time::now();
 
 
-    double send_fused_freq = 10.0;
+    double send_fused_freq = 1.0;
     double send_rel_fused_freq = 1.0;
+    double send_fused_basecoor_freq = 40.0;
+    int send_fused_basecoor_count = 0;
 
-    void on_swarm_fused_relative_recv(const swarm_fused_relative fused) {
+
+    void on_swarm_fused_basecoor_recv(const swarm_drone_basecoor & basecoor) {
+        if (send_fused_basecoor_freq < 0.1) {
+            return;
+        }
+
+
+        if ((ros::Time::now() - last_send_fused_base).toSec() > 1.0/send_fused_basecoor_freq) {
+                uint8_t buf[1000] = {0};
+                send_fused_basecoor_count ++;
+                int _index = send_fused_basecoor_count % basecoor.ids.size();
+                if (basecoor.ids[_index] == self_id) {
+                    if (basecoor.ids.size() == 1) {
+                        return;
+                    } else {
+                        send_fused_basecoor_count ++;
+                        _index = send_fused_basecoor_count % basecoor.ids.size();
+                    }
+                }
+
+                mavlink_message_t msg;
+                // printf("Fused data recv\n");
+                if (self_id < 0)
+                    return;
+
+               
+                uint8_t _id = basecoor.ids[_index];
+
+                int32_t ts = ROSTIME2LPS(basecoor.header.stamp);
+
+                if (_id != self_id) {
+                    mavlink_msg_node_based_fused_pack(self_id, 0, &msg, ts, _id,
+                                                        (int)(basecoor.drone_basecoor[_index].x * 1000),
+                                                        (int)(basecoor.drone_basecoor[_index].y * 1000),
+                                                        (int)(basecoor.drone_basecoor[_index].z * 1000),
+                                                        (int)(basecoor.drone_baseyaw[_index] * 1000),
+                                                        (int)(basecoor.position_cov[_index].x * 1000),
+                                                        (int)(basecoor.position_cov[_index].y * 1000),
+                                                        (int)(basecoor.position_cov[_index].z * 1000),
+                                                        (int)(float_constrain(basecoor.yaw_cov[_index], 0, M_PI*M_PI) * 1000));
+                    send_mavlink_message(msg);
+                }
+                
+                last_send_fused_base = ros::Time::now();
+        }
+    }
+
+    void on_swarm_fused_relative_recv(const swarm_fused_relative & fused) {
 
         if (send_rel_fused_freq < 0.1) {
             return;
@@ -508,8 +559,13 @@ class LocalProxy {
                     mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
                                                         (int)(fused.relative_drone_position[i].x * 1000),
                                                         (int)(fused.relative_drone_position[i].y * 1000),
-                                                        (int)(fused.relative_drone_position[i].z * 1000),
-                                                        (int)(fused.relative_drone_yaw[i]) * 1000);
+                                                        (int)(fused.relative_drone_position[i].z * 1000),                                    
+                                                        (int)(fused.relative_drone_yaw[i] * 1000),
+                                                        (int)(fused.position_cov[i].x * 1000),
+                                                        (int)(fused.position_cov[i].y * 1000),
+                                                        (int)(fused.position_cov[i].z * 1000),
+                                                        (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
+                    
                     send_mavlink_message(msg);
                 }
             }
@@ -521,7 +577,7 @@ class LocalProxy {
 
     int send_fused_count = 0;
 
-    void on_swarm_fused_recv(const swarm_fused fused) {
+    void on_swarm_fused_recv(const swarm_fused & fused) {
 
         if (send_fused_freq < 0.1) {
             return;
@@ -780,6 +836,8 @@ class LocalProxy {
         return (int32_t)(lps_t_s * 1000);
     }
     ros::Time tsstart = ros::Time::now();
+
+    ros::Subscriber based_sub;
     
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
@@ -792,6 +850,7 @@ public:
         nh.param<bool>("node_predict_nodelay", _node_predict_nodelay, true);
         nh.param<double>("send_fused_freq", send_fused_freq, 30.0);
         nh.param<double>("send_rel_fused_freq", send_rel_fused_freq, 0.0);
+        nh.param<double>("send_fused_basecoor_freq", send_fused_basecoor_freq, 30.0);
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &LocalProxy::on_local_odometry_recv, this,
                                           ros::TransportHints().tcpNoDelay());
@@ -814,6 +873,8 @@ public:
         uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
 
         uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 10, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
+
+        based_sub = nh.subscribe("/swarm_drones/swarm_drone_basecoor", 1, &LocalProxy::on_swarm_fused_basecoor_recv, this, ros::TransportHints().tcpNoDelay());
     }
 };
 

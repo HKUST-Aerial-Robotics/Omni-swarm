@@ -192,6 +192,10 @@ struct SwarmFrameState {
     std::map<int, Pose> node_poses;
     std::map<int, Eigen::Matrix4d> node_covs;
     std::map<int, Vector3d> node_vels;
+
+    std::map<int, Pose> base_coor_poses;
+    std::map<int, Eigen::Matrix4d> base_coor_covs;
+
 };
 
 class SwarmFrame {

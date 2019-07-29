@@ -142,6 +142,7 @@ public:
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
     std::pair<Pose, Eigen::Matrix4d> PredictNode(const NodeFrame & nf, bool attitude_yaw_only=false) const;
+    std::pair<Pose, Eigen::Matrix4d> NodeCooridnateOffset(int _id, bool attitude_yaw_only=false) const;
 
     bool CanPredictSwarm() {
         return finish_init;

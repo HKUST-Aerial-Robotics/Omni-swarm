@@ -357,6 +357,42 @@ std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const Node
     return ret;
 }
 
+
+std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::NodeCooridnateOffset(int _id, bool attitude_yaw_only) const {
+    std::pair<Pose, Eigen::Matrix4d> ret; 
+    if (last_saved_est_kf_ts > 0 && finish_init &&
+        est_poses_tsid_saved.at(last_saved_est_kf_ts).find(_id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
+
+        Pose PBA = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
+
+        Pose PBB = all_sf.at(last_saved_est_kf_ts).id2nodeframe.at(_id).pose();
+        
+        PBA.set_yaw_only();
+        PBB.set_yaw_only();
+        
+        ret.first = Pose(PBA.to_isometry() * PBB.to_isometry().inverse());
+        // ROS_INFO("Request cov %ld %d", last_saved_est_kf_ts, nf.id);
+#ifdef COMPUTE_COV
+        if (_id != self_id){
+            auto cov = est_cov_tsid.at(last_saved_est_kf_ts).at(_id);
+            cov.block<3,3>(0,0) = PBA.to_isometry().rotation()*cov.block<3,3>(0,0);
+            ret.second = cov;
+        } else {
+            ret.second = Eigen::Matrix4d::Zero();
+        }
+#else
+    ret.second = Eigen::Matrix4d::Zero();
+#endif
+
+    } else {
+        ROS_ERROR("Can't Predict Node Pose: Not inited");
+        exit(-1);
+        return ret;
+    }
+    return ret;
+}
+
+
 SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) const {
     SwarmFrameState sfs;
     if(!finish_init) {
@@ -374,6 +410,9 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
             sfs.node_covs[_id] = ret.second;
             //Give node velocity predict here
             sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
+            auto ret2 = this->NodeCooridnateOffset(nf.id);
+            sfs.base_coor_poses[_id] = ret2.first;
+            sfs.base_coor_covs[_id] = ret2.second;
         } else {
             // Maybe use previous results
             // ROS_WARN("No id %d found in last kf", nf.id);
