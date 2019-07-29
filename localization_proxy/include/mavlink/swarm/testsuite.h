@@ -100,7 +100,7 @@ static void mavlink_test_node_relative_fused(uint8_t system_id, uint8_t componen
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_node_relative_fused_t packet_in = {
-        963497464,17443,17547,17651,17755,41
+        963497464,17443,17547,17651,17755,17859,17963,18067,18171,65
     };
     mavlink_node_relative_fused_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
@@ -109,6 +109,10 @@ static void mavlink_test_node_relative_fused(uint8_t system_id, uint8_t componen
         packet1.rel_y = packet_in.rel_y;
         packet1.rel_z = packet_in.rel_z;
         packet1.rel_yaw_offset = packet_in.rel_yaw_offset;
+        packet1.cov_x = packet_in.cov_x;
+        packet1.cov_y = packet_in.cov_y;
+        packet1.cov_z = packet_in.cov_z;
+        packet1.cov_yaw = packet_in.cov_yaw;
         packet1.target_id = packet_in.target_id;
         
         
@@ -124,12 +128,12 @@ static void mavlink_test_node_relative_fused(uint8_t system_id, uint8_t componen
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_relative_fused_pack(system_id, component_id, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset );
+    mavlink_msg_node_relative_fused_pack(system_id, component_id, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
     mavlink_msg_node_relative_fused_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_relative_fused_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset );
+    mavlink_msg_node_relative_fused_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
     mavlink_msg_node_relative_fused_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
@@ -142,7 +146,7 @@ static void mavlink_test_node_relative_fused(uint8_t system_id, uint8_t componen
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
         
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_relative_fused_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset );
+    mavlink_msg_node_relative_fused_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
     mavlink_msg_node_relative_fused_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
@@ -526,6 +530,69 @@ static void mavlink_test_node_local_fused(uint8_t system_id, uint8_t component_i
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
 
+static void mavlink_test_node_based_fused(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
+{
+#ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
+    mavlink_status_t *status = mavlink_get_channel_status(MAVLINK_COMM_0);
+        if ((status->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) && MAVLINK_MSG_ID_NODE_BASED_FUSED >= 256) {
+            return;
+        }
+#endif
+    mavlink_message_t msg;
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+        uint16_t i;
+    mavlink_node_based_fused_t packet_in = {
+        963497464,17443,17547,17651,17755,17859,17963,18067,18171,65
+    };
+    mavlink_node_based_fused_t packet1, packet2;
+        memset(&packet1, 0, sizeof(packet1));
+        packet1.lps_time = packet_in.lps_time;
+        packet1.rel_x = packet_in.rel_x;
+        packet1.rel_y = packet_in.rel_y;
+        packet1.rel_z = packet_in.rel_z;
+        packet1.rel_yaw_offset = packet_in.rel_yaw_offset;
+        packet1.cov_x = packet_in.cov_x;
+        packet1.cov_y = packet_in.cov_y;
+        packet1.cov_z = packet_in.cov_z;
+        packet1.cov_yaw = packet_in.cov_yaw;
+        packet1.target_id = packet_in.target_id;
+        
+        
+#ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
+        if (status->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) {
+           // cope with extensions
+           memset(MAVLINK_MSG_ID_NODE_BASED_FUSED_MIN_LEN + (char *)&packet1, 0, sizeof(packet1)-MAVLINK_MSG_ID_NODE_BASED_FUSED_MIN_LEN);
+        }
+#endif
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_based_fused_encode(system_id, component_id, &msg, &packet1);
+    mavlink_msg_node_based_fused_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_based_fused_pack(system_id, component_id, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
+    mavlink_msg_node_based_fused_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_based_fused_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
+    mavlink_msg_node_based_fused_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+        mavlink_msg_to_send_buffer(buffer, &msg);
+        for (i=0; i<mavlink_msg_get_send_buffer_length(&msg); i++) {
+            comm_send_ch(MAVLINK_COMM_0, buffer[i]);
+        }
+    mavlink_msg_node_based_fused_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+        
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_based_fused_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.target_id , packet1.rel_x , packet1.rel_y , packet1.rel_z , packet1.rel_yaw_offset , packet1.cov_x , packet1.cov_y , packet1.cov_z , packet1.cov_yaw );
+    mavlink_msg_node_based_fused_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+}
+
 static void mavlink_test_swarm(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
 {
     mavlink_test_node_realtime_info(system_id, component_id, last_msg);
@@ -536,6 +603,7 @@ static void mavlink_test_swarm(uint8_t system_id, uint8_t component_id, mavlink_
     mavlink_test_drone_odom_gt(system_id, component_id, last_msg);
     mavlink_test_drone_pose_gt(system_id, component_id, last_msg);
     mavlink_test_node_local_fused(system_id, component_id, last_msg);
+    mavlink_test_node_based_fused(system_id, component_id, last_msg);
 }
 
 #ifdef __cplusplus

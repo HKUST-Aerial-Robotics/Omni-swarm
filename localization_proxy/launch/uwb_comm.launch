@@ -4,7 +4,8 @@
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <rosparam>
-            send_fused_freq: 30
+            send_fused_freq: 0.0
+            send_fused_basecoor_freq: 30.0
        </rosparam>
     </node>
 </launch>

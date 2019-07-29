@@ -21,6 +21,7 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Float32.h>
 #include <chrono>
+#include <swarm_msgs/swarm_drone_basecoor.h>
 
 
 using ceres::CostFunction;
@@ -226,7 +227,7 @@ private:
 
     ros::Subscriber recv_sf_est, recv_sf_predict;
     ros::Subscriber recv_drone_odom_now;
-    ros::Publisher fused_drone_data_pub, solving_cost_pub, fused_drone_rel_data_pub;
+    ros::Publisher fused_drone_data_pub, fused_drone_basecoor_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
 
@@ -281,8 +282,11 @@ private:
         } 
         swarm_fused_relative sfr;
         swarm_fused sf;
+        swarm_drone_basecoor sdb;
+
         sf.header.stamp = stamp;
         sfr.header.stamp = stamp;
+        sdb.header.stamp = stamp;
         Pose self_pose = _sfs.node_poses.at(self_id);
         for (auto it : _sfs.node_poses) {
             if (it.first != self_id) {
@@ -306,6 +310,9 @@ private:
                 sf.position_cov.push_back(pcov);
                 sf.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
 
+                sfr.position_cov.push_back(pcov);
+                sfr.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
+
                 //Temp disable veloctiy
                 geometry_msgs::Vector3 spd;
                 spd.x = 0;
@@ -314,11 +321,23 @@ private:
                 sfr.relative_drone_velocity.push_back(spd);
                 sf.local_drone_velocity.push_back(spd);
 
+                sdb.ids.push_back(id);
+                Pose _coor = _sfs.base_coor_poses.at(id);
+                sdb.drone_basecoor.push_back(_coor.to_ros_pose().position);
+                sdb.drone_baseyaw.push_back(_coor.yaw());
+                geometry_msgs::Vector3 pcov2;
+                pcov2.x = _sfs.base_coor_covs.at(id)(0, 0);
+                pcov2.y = _sfs.base_coor_covs.at(id)(1, 1);
+                pcov2.z = _sfs.base_coor_covs.at(id)(2, 2);
+                sdb.position_cov.push_back(pcov2);
+                sdb.yaw_cov.push_back(_sfs.base_coor_covs.at(id)(3,3));
+
             }
         }
 
         fused_drone_rel_data_pub.publish(sfr);
         fused_drone_data_pub.publish(sf);
+        fused_drone_basecoor_pub.publish(sdb);
     }
 
     void predict_swarm(const swarm_frame &_sf) {
@@ -328,6 +347,7 @@ private:
             if (swarm_localization_solver->CanPredictSwarm()) {
                 SwarmFrame sf = swarm_frame_from_msg(_sf);
                 SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
+
                 for (auto it: _sfs.node_poses) {
                     this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
                 }
@@ -336,11 +356,16 @@ private:
             } else {
                 ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
             }
+            
+
+            high_resolution_clock::time_point t2 = high_resolution_clock::now();
+            auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+            // double dts = (ros::Time::now() - ts).toSec();
+            ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
+
+
+            
         }
-        high_resolution_clock::time_point t2 = high_resolution_clock::now();
-        auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-        // double dts = (ros::Time::now() - ts).toSec();
-        ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
     }
 
 public:
@@ -375,6 +400,7 @@ public:
         nh.param<double>("initial_random_noise", swarm_localization_solver->initial_random_noise, 1.0);
 
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
+        fused_drone_basecoor_pub = nh.advertise<swarm_msgs::swarm_drone_basecoor>("/swarm_drones/swarm_drone_basecoor", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(
                 "/swarm_drones/swarm_drone_fused_relative", 10);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
