@@ -30,7 +30,8 @@ using namespace std::chrono;
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
 #define MAX_SOLVER_TIME 0.1
-#define ENABLE_HISTORY_COV
+// #define DEBUG_OUTPUT_COV
+// #define ENABLE_HISTORY_COV
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -151,7 +152,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
             double * p = it2.second;
             p[0] = rand_FloatRange(-10, 10);
             p[1] = rand_FloatRange(-10, 10);
-            p[2] = rand_FloatRange(0, 0);
+            p[2] = rand_FloatRange(-1.0, 1.0);
             p[3] = rand_FloatRange(-M_PI, M_PI);
         }
     }
@@ -699,7 +700,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     if (finish_init) {
         options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
     }else {
-       options.max_num_iterations = 200;
+    //    options.max_num_iterations = 200;
     }
     options.num_threads = thread_num;
     Solver::Summary summary;
@@ -860,6 +861,7 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
         est_cov_tsid[_ts][_id] = cov.block<4, 4>(4*j,4*j);
         // int j = 0;
         // if (param_indexs[j].first == ts ) {
+#ifdef DEBUG_OUTPUT_COV
         printf("\nTS %d ", TSShort(_ts));
         printf("ID %d SD %4.3lf %4.3lf %4.3lf %4.3lf", _id, sqrt(cov(4*j,4*j)), 
                 sqrt(cov(4*j+1,4*j+1)), 
@@ -867,6 +869,7 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
                 sqrt(cov(4*j+3,4*j+3)));
             // fflush(stdout);
         // }
+#endif
     }
 
     printf("\n");

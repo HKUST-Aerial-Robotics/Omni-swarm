@@ -6,3 +6,5 @@ geometry_msgs/Point dpos_cov
 
 float64 dyaw
 float64 dyaw_cov
+bool is_2d_detect
+bool is_yaw_valid

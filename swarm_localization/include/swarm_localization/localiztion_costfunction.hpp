@@ -36,7 +36,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
 
-// #define ENABLE_HISTORY_COV
+#define ENABLE_HISTORY_COV
 
 
 // Pose in this file use only x, y, z, yaw

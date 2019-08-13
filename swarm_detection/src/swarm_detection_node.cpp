@@ -5,8 +5,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <swarm_detection/drone_pose_estimator.h>
-#include <swarm_msgs/armarker_detected.h>
-#include <swarm_msgs/armarker_corner.h>
+// #include <swarm_msgs/armarker_detected.h>
+// #include <swarm_msgs/armarker_corner.h>
 #include <opencv2/aruco.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <swarm_msgs/node_detected.h>
@@ -261,7 +261,7 @@ public:
                 use_stereo,
                 undist_camera);
 
-        armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 100);
+        // armarker_pub = nh.advertise<armarker_detected>("armarker_detected", 100);
         left_image_sub = nh.subscribe("left_camera", 10, &ARMarkerDetectorNode::image_cb_left, this,
                                       ros::TransportHints().tcpNoDelay());
 
@@ -320,9 +320,9 @@ public:
         int src_rows = limg.rows;
         int src_cols = limg.cols;
 
-        armarker_detected ad;
-        ad.header.stamp = stamp;
-        ad.self_drone_id = -1;// -1 means this drone
+        // armarker_detected ad;
+        // ad.header.stamp = stamp;
+        // ad.self_drone_id = -1;
         // ad.camera_id = camera_id;
 
         if (use_stereo) {
@@ -372,6 +372,8 @@ public:
                     
                     nd.self_drone_id = -1;
                     nd.remote_drone_id = ids_left[i];
+                    nd.is_yaw_valid = true;
+                    nd.is_2d_detect = false;
 
                     sd.detected_nodes.push_back(nd);
                 }

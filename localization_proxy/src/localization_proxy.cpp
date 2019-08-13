@@ -29,6 +29,8 @@ using namespace inf_uwb_ros;
 
 #define MAX_DRONE_SIZE 10
 #define INVAILD_DISTANCE 65535
+#define DISABLE_DETECTION_6D
+#define YAW_UNAVAIL 32767
 
 inline double float_constrain(double v, double min, double max)
 {
@@ -233,6 +235,47 @@ class LocalProxy {
         nd.dpos_cov.z = 0.01*0.01;
 
         nd.dyaw_cov = 10/57.3 * 10/57.3;
+        nd.is_yaw_valid = true;                    
+        nd.is_2d_detect = false;                    
+        return nd;
+    }
+
+
+
+    node_detected_xyzyaw on_node_detected_2d_msg(int _id, mavlink_message_t &msg) {
+        //process remode node detected
+        //Wait for new inf driver to be used
+        mavlink_node_detected_2d_t mdetected;
+        node_detected_xyzyaw nd;
+        mavlink_msg_node_detected_2d_decode(&msg, &mdetected);
+        nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
+        int32_t tn = ROSTIME2LPS(ros::Time::now());
+        int32_t dt = tn - mdetected.lps_time;
+        if (dt < 100) {
+            ROS_INFO_THROTTLE(1.0, "ND2D RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+            // ROS_INFO("ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+        } else {
+            ROS_WARN_THROTTLE(1.0, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+        }
+
+        nd.self_drone_id = _id;
+        nd.remote_drone_id = mdetected.target_id;
+        nd.dpos.y = mdetected.DY / 1000.0;
+        nd.dpos.z = mdetected.DZ / 1000.0;
+
+        //Update with swarm detection should be same
+        nd.dpos_cov.x = 0.05*0.05;
+        nd.dpos_cov.z = 0.05*0.05;
+
+        nd.is_2d_detect = true;
+        
+        if (mdetected.yaw == YAW_UNAVAIL) {
+            nd.is_yaw_valid = false;                    
+        } else {
+            nd.is_yaw_valid = true;                    
+            nd.dyaw_cov = 10/57.3 * 10/57.3;
+            nd.dyaw = mdetected.yaw / 1000.0;        
+        }
                     
         return nd;
     }
@@ -242,11 +285,19 @@ class LocalProxy {
         mavlink_message_t msg;
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
         // ROS_INFO("ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
-        mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
-            (int)(nd.dpos.x*1000),
-            (int)(nd.dpos.y*1000),
-            (int)(nd.dpos.z*1000),
-            (int)(nd.dyaw*1000));
+        if (!nd.is_2d_detect) {
+            mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
+                (int)(nd.dpos.x*1000),
+                (int)(nd.dpos.y*1000),
+                (int)(nd.dpos.z*1000),
+                (int)(nd.dyaw*1000));
+        } else {
+            mavlink_msg_node_detected_2d_pack(self_id, 0, &msg, ts, nd.remote_drone_id,
+                (int)(nd.dpos.y*1000),
+                (int)(nd.dpos.z*1000),
+                YAW_UNAVAIL);
+        }
+        
         send_mavlink_message(msg);
     }
 
@@ -269,12 +320,16 @@ class LocalProxy {
         _nd_xyzyaw.dpos.x = dpos.x();
         _nd_xyzyaw.dpos.y = dpos.y();
         _nd_xyzyaw.dpos.z = dpos.z();
+
+    
         _nd_xyzyaw.dyaw = remotepose.yaw() - selfpose.yaw();
 
         _nd_xyzyaw.dpos_cov.x = _nd.relpose.covariance[0];
         _nd_xyzyaw.dpos_cov.y = _nd.relpose.covariance[6+1];
         _nd_xyzyaw.dpos_cov.z = _nd.relpose.covariance[2*6+2];
         _nd_xyzyaw.dyaw_cov = _nd.relpose.covariance[5*6+5];
+        _nd_xyzyaw.is_yaw_valid = _nd.is_yaw_valid;  
+        _nd_xyzyaw.is_2d_detect = _nd.is_2d_detect;                  
 
         return _nd_xyzyaw;
     }
@@ -325,33 +380,6 @@ class LocalProxy {
                 break;
             }
         }
-        
-        /* Useless when not lossing packet
-        std::vector<node_frame> new_nodes;
-
-        for (node_detected & nd : sd.detected_nodes) {
-            bool sf_has_id = false;
-            for (int j = 0; j < _sf.node_frames.size(); j++) {
-                if (_sf.node_frames[j].id == nd.remote_drone_id) {
-                    //Works for less than 5 drone, more should use set here
-                    sf_has_id = true;
-                    break;
-                }
-            }
-
-            if (!sf_has_id) {
-                node_frame nf;
-                nf.header.stamp = _sf.header.stamp;
-                nf.vo_available = false;
-                nf.id = nd.remote_drone_id;
-                new_nodes.push_back(nf);
-            }
-            
-        }
-
-        for (const node_frame & nf: new_nodes) {
-            _sf.node_frames.push_back(nf);
-        }*/
 
     }
 
@@ -383,6 +411,56 @@ class LocalProxy {
         }
     }
 
+
+    void parse_node_realtime_info(mavlink_message_t & msg, int _id) {
+        Odometry odom;
+        std::map<int, float> _dis;
+        ros::Time ts;
+        geometry_msgs::Point pos, vel;
+        double yaw;
+        bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, yaw, vel, _dis);
+        if (ret) {
+            int s_index = find_sf_swarm_detected(ts);
+            if (s_index >= 0) {
+                ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
+                add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, vel, ts, _dis);
+            }
+        }
+    }
+
+    void parse_node_detected(mavlink_message_t & msg, int _id) {
+        node_detected_xyzyaw nd = on_node_detected_msg(_id, msg);
+        ros::Time ts = nd.header.stamp;
+        int s_index = find_sf_swarm_detected(ts);
+        ROS_INFO_THROTTLE(1.0, "Appending ND %dby%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
+            nd.remote_drone_id,
+            nd.self_drone_id,
+            (ts - this->tsstart).toSec()*1000, 
+            (ros::Time::now() - this->tsstart).toSec()*1000, 
+            s_index, sf_queue.size());
+
+        if (s_index >= 0) {
+            add_node_detected_to_sf(sf_queue[s_index], nd);
+        }
+    }
+
+
+    void parse_node_detected_2d(mavlink_message_t & msg, int _id) {
+        node_detected_xyzyaw nd = on_node_detected_2d_msg(_id, msg);
+        ros::Time ts = nd.header.stamp;
+        int s_index = find_sf_swarm_detected(ts);
+        ROS_INFO_THROTTLE(1.0, "Appending ND %dby%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
+            nd.remote_drone_id,
+            nd.self_drone_id,
+            (ts - this->tsstart).toSec()*1000, 
+            (ros::Time::now() - this->tsstart).toSec()*1000, 
+            s_index, sf_queue.size());
+
+        if (s_index >= 0) {
+            add_node_detected_to_sf(sf_queue[s_index], nd);
+        }
+    }
+
     void parse_mavlink_data(incoming_broadcast_data income_data) {
         // ROS_INFO("incoming data ts %d", income_data.lps_time);
         int _id = income_data.remote_id;
@@ -400,38 +478,19 @@ class LocalProxy {
             if (ret) {
                 switch (msg.msgid) {
                     case MAVLINK_MSG_ID_NODE_REALTIME_INFO: {
-                        // ROS_INFO("rt info");
-                        Odometry odom;
-                        std::map<int, float> _dis;
-                        ros::Time ts;
-                        geometry_msgs::Point pos, vel;
-                        double yaw;
-                        bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, yaw, vel, _dis);
-                        if (ret) {
-                            int s_index = find_sf_swarm_detected(ts);
-                            if (s_index >= 0) {
-                                ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
-                                add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, vel, ts, _dis);
-                            }
-                        }
+                        parse_node_realtime_info(msg, _id);
                         break;
                     }
 
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
-                        node_detected_xyzyaw nd = on_node_detected_msg(_id, msg);
-                        ros::Time ts = nd.header.stamp;
-                        int s_index = find_sf_swarm_detected(ts);
-                        ROS_INFO_THROTTLE(1.0, "Appending ND %dby%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
-                            nd.remote_drone_id,
-                            nd.self_drone_id,
-                            (ts - this->tsstart).toSec()*1000, 
-                            (ros::Time::now() - this->tsstart).toSec()*1000, 
-                            s_index, sf_queue.size());
-
-                        if (s_index >= 0) {
-                            add_node_detected_to_sf(sf_queue[s_index], nd);
-                        }
+#ifndef DISABLE_DETECTION_6D
+                        parse_node_detected(msg, _id);
+#endif
                         break;
+                    }
+
+                    case MAVLINK_MSG_ID_NODE_DETECTED_2D: {
+                        parse_node_detected_2d(msg, _id);
                     }
                 }
             } else {
@@ -861,10 +920,10 @@ public:
         
         swarm_fused_sub = nh.subscribe("/swarm_drones/swarm_drone_fused", 1,
                                      &LocalProxy::on_swarm_fused_recv, this, ros::TransportHints().tcpNoDelay());
-
+#ifndef DISABLE_DETECTION_6D
         swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected, this,
                                         ros::TransportHints().tcpNoDelay());
-
+#endif
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 1);
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
 
