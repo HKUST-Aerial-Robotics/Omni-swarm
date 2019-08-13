@@ -593,6 +593,64 @@ static void mavlink_test_node_based_fused(uint8_t system_id, uint8_t component_i
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
 
+static void mavlink_test_node_detected_2d(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
+{
+#ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
+    mavlink_status_t *status = mavlink_get_channel_status(MAVLINK_COMM_0);
+        if ((status->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) && MAVLINK_MSG_ID_NODE_DETECTED_2D >= 256) {
+            return;
+        }
+#endif
+    mavlink_message_t msg;
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+        uint16_t i;
+    mavlink_node_detected_2d_t packet_in = {
+        963497464,17443,17547,17651,163
+    };
+    mavlink_node_detected_2d_t packet1, packet2;
+        memset(&packet1, 0, sizeof(packet1));
+        packet1.lps_time = packet_in.lps_time;
+        packet1.DY = packet_in.DY;
+        packet1.DZ = packet_in.DZ;
+        packet1.yaw = packet_in.yaw;
+        packet1.target_id = packet_in.target_id;
+        
+        
+#ifdef MAVLINK_STATUS_FLAG_OUT_MAVLINK1
+        if (status->flags & MAVLINK_STATUS_FLAG_OUT_MAVLINK1) {
+           // cope with extensions
+           memset(MAVLINK_MSG_ID_NODE_DETECTED_2D_MIN_LEN + (char *)&packet1, 0, sizeof(packet1)-MAVLINK_MSG_ID_NODE_DETECTED_2D_MIN_LEN);
+        }
+#endif
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_detected_2d_encode(system_id, component_id, &msg, &packet1);
+    mavlink_msg_node_detected_2d_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_detected_2d_pack(system_id, component_id, &msg , packet1.lps_time , packet1.target_id , packet1.DY , packet1.DZ , packet1.yaw );
+    mavlink_msg_node_detected_2d_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_detected_2d_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.target_id , packet1.DY , packet1.DZ , packet1.yaw );
+    mavlink_msg_node_detected_2d_decode(&msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+
+        memset(&packet2, 0, sizeof(packet2));
+        mavlink_msg_to_send_buffer(buffer, &msg);
+        for (i=0; i<mavlink_msg_get_send_buffer_length(&msg); i++) {
+            comm_send_ch(MAVLINK_COMM_0, buffer[i]);
+        }
+    mavlink_msg_node_detected_2d_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+        
+        memset(&packet2, 0, sizeof(packet2));
+    mavlink_msg_node_detected_2d_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.target_id , packet1.DY , packet1.DZ , packet1.yaw );
+    mavlink_msg_node_detected_2d_decode(last_msg, &packet2);
+        MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
+}
+
 static void mavlink_test_swarm(uint8_t system_id, uint8_t component_id, mavlink_message_t *last_msg)
 {
     mavlink_test_node_realtime_info(system_id, component_id, last_msg);
@@ -604,6 +662,7 @@ static void mavlink_test_swarm(uint8_t system_id, uint8_t component_id, mavlink_
     mavlink_test_drone_pose_gt(system_id, component_id, last_msg);
     mavlink_test_node_local_fused(system_id, component_id, last_msg);
     mavlink_test_node_based_fused(system_id, component_id, last_msg);
+    mavlink_test_node_detected_2d(system_id, component_id, last_msg);
 }
 
 #ifdef __cplusplus
