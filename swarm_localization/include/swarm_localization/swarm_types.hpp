@@ -114,6 +114,7 @@ class NodeFrame {
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         std::map<int, Pose> detected_nodes;
+
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;
         std::map<int, Eigen::Vector3d> detected_nodes_angvar;
 

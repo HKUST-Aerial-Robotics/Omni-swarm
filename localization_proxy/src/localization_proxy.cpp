@@ -29,7 +29,7 @@ using namespace inf_uwb_ros;
 
 #define MAX_DRONE_SIZE 10
 #define INVAILD_DISTANCE 65535
-#define DISABLE_DETECTION_6D
+//#define DISABLE_DETECTION_6D
 #define YAW_UNAVAIL 32767
 
 inline double float_constrain(double v, double min, double max)
