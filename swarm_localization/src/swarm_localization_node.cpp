@@ -98,7 +98,7 @@ class SwarmLocalizationNode {
 
                 if (!nd.is_yaw_valid) {
                     nf.detected_nodes_angvar[nd.remote_drone_id] = 
-                        Eigen::Vector3d(10000, 10000, 10000);
+                        Eigen::Vector3d(1000000, 1000000, 1000000);
 
                 } else {
                     nf.detected_nodes_angvar[nd.remote_drone_id] = 

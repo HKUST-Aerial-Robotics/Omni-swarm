@@ -32,11 +32,13 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_ERROR_ANGLE 0.001
 #define DISTANCE_MEASURE_ERROR 0.3
 #define ERROR_NORMLIZED 0.01
-#define DETECTION_COV_POS 10
+//#define DETECTION_COV_POS 10
+#define DETECTION_COV_POS 1
+
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
 
-#define ENABLE_HISTORY_COV
+//#define ENABLE_HISTORY_COV
 
 
 // Pose in this file use only x, y, z, yaw
