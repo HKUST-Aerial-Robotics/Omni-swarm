@@ -32,6 +32,7 @@ using namespace std::chrono;
 #define MAX_SOLVER_TIME 0.1
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
+#define INIT_FXIED_YAW
 
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -153,7 +154,11 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
             p[0] = rand_FloatRange(-10, 10);
             p[1] = rand_FloatRange(-10, 10);
             p[2] = rand_FloatRange(-1.0, 1.0);
+#ifdef INIT_FXIED_YAW
+            p[3] = 0;
+#elif
             p[3] = rand_FloatRange(-M_PI, M_PI);
+#endif
         }
     }
 }
