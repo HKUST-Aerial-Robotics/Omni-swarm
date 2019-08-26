@@ -30,7 +30,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_DRIFT_METER 0.0001
 #define VO_DRIFT_METER_Z 0.0005
 #define VO_ERROR_ANGLE 0.001
-#define DISTANCE_MEASURE_ERROR 0.3
+#define DISTANCE_MEASURE_ERROR 0.1
 #define ERROR_NORMLIZED 0.01
 //#define DETECTION_COV_POS 10
 #define DETECTION_COV_POS 1
