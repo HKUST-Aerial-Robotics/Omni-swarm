@@ -94,7 +94,7 @@ class SwarmLocalizationNode {
             if (nodedef_has_id(nd.remote_drone_id)) {
                 nf.detected_nodes[nd.remote_drone_id] = Pose(nd.dpos, nd.dyaw);
                 nf.detected_nodes_posvar[nd.remote_drone_id] = 
-                    Eigen::Vector3d(sqrt(nd.dpos_cov.x), sqrt(nd.dpos_cov.y), sqrt(nd.dpos_cov.z));
+                    Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
 
                 if (!nd.is_yaw_valid) {
                     nf.detected_nodes_angvar[nd.remote_drone_id] = 
@@ -102,7 +102,7 @@ class SwarmLocalizationNode {
 
                 } else {
                     nf.detected_nodes_angvar[nd.remote_drone_id] = 
-                        Eigen::Vector3d(sqrt(nd.dyaw_cov), sqrt(nd.dyaw_cov), sqrt(nd.dyaw_cov));
+                        Eigen::Vector3d(nd.dyaw_cov, nd.dyaw_cov, nd.dyaw_cov);
                 }
                 nf.has_detect_relpose = true;
             }

@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Est11
+        - /Est11/Shape1
         - /Est21
         - /Est21/Shape1
         - /Est31
@@ -15,11 +16,11 @@ Panels:
         - /Est41
         - /Est41/Shape1
         - /Odometry1/Shape1
-        - /PoseWithCovariance2
-        - /PoseWithCovariance3
-        - /PoseWithCovariance4
+        - /Odometry2
         - /Odometry2/Shape1
-      Splitter Ratio: 0.5
+        - /Pose1
+        - /Pose2
+      Splitter Ratio: 0.5006552934646606
     Tree Height: 1066
   - Class: rviz/Selection
     Name: Selection
@@ -88,14 +89,14 @@ Visualization Manager:
       Position Tolerance: 0.019999999552965164
       Shape:
         Alpha: 1
-        Axes Length: 1
-        Axes Radius: 0.10000000149011612
+        Axes Length: 0.20000000298023224
+        Axes Radius: 0.05000000074505806
         Color: 255; 25; 0
         Head Length: 0.30000001192092896
         Head Radius: 0.10000000149011612
         Shaft Length: 1
         Shaft Radius: 0.05000000074505806
-        Value: Arrow
+        Value: Axes
       Topic: /swarm_drones/est_drone_1_odom
       Unreliable: false
       Value: true
@@ -442,7 +443,22 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /swarm_detection/detected_pose_4
+      Topic: /swarm_detection/detected_pose_2
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: Pose
+      Shaft Length: 1
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /swarm_detection/detected_pose_1
       Unreliable: false
       Value: true
   Enabled: true
@@ -473,7 +489,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 4.0028252601623535
+      Distance: 4.602638244628906
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -488,10 +504,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.06979764252901077
+      Pitch: 0.4997972249984741
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.1149332523345947
+      Yaw: 3.2699363231658936
     Saved: ~
 Window Geometry:
   Displays:
@@ -510,4 +526,4 @@ Window Geometry:
     collapsed: false
   Width: 2414
   X: 1426
-  Y: 88
+  Y: 55
