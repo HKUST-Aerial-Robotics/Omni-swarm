@@ -35,6 +35,7 @@ using namespace std::chrono;
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
 #define NOT_MOVING_THRES 0.001
+#define NOT_MOVING_YAW 0.0001
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -191,12 +192,17 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
             Eigen::Isometry3d TlastVO = last_vo.to_isometry();
 
             Eigen::Isometry3d Tlast = _last.to_isometry();
+            Eigen::Isometry3d dpose = TlastVO.inverse()*TnowVO;
+            Pose dpose_(dpose);
 
-            Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
-
-
-            transfered_now.to_vector_xyzyaw(_p);
-
+            if ( dpose_.pos().norm() < NOT_MOVING_THRES && fabs(dpose_.yaw()) < NOT_MOVING_YAW ) {
+                //NOT MOVING; Merging pose
+                delete _p;
+                _p = est_poses_tsid[last_ts_4node][_id];
+            } else {
+                Pose transfered_now(Tlast*dpose);
+                transfered_now.to_vector_xyzyaw(_p);
+            }
         } else {
 
             _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
@@ -647,14 +653,17 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     for (const SwarmFrame & sf : sf_sld_win) {
         int64_t ts = sf.ts;
         if (nfs.find(ts) != nfs.end()) {
-            pose_win.push_back(nfs[ts]);
-            count ++;
-            const NodeFrame & _nf = all_sf.at(ts).id2nodeframe.at(_id);
-            if(_nf.is_static) {
-                return;
+            auto _p = nfs[ts];
+            if (pose_win.size() < 1 || pose_win[pose_win.size()-1] != _p) {
+                pose_win.push_back(nfs[ts]);
+                const NodeFrame & _nf = all_sf.at(ts).id2nodeframe.at(_id);
+                if(_nf.is_static) {
+                    return;
+                }
+                count ++;
+                nf_win.push_back(_nf);
+                ts2poseindex[ts] = nf_win.size() - 1;
             }
-            nf_win.push_back(_nf);
-            ts2poseindex[ts] = nf_win.size() - 1;
 
             // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
             
@@ -677,7 +686,6 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     if (cf != nullptr) {
         problem.AddResidualBlock(cf , nullptr, pose_win);
     }
-
 }
 
 bool SwarmLocalizationSolver::NFnotMoving(const NodeFrame & _nf1, const NodeFrame & _nf2) const {
