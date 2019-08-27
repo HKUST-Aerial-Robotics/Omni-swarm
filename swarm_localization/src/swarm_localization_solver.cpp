@@ -34,8 +34,8 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
-#define NOT_MOVING_THRES 0.001
-#define NOT_MOVING_YAW 0.0001
+#define NOT_MOVING_THRES 0.01
+#define NOT_MOVING_YAW 0.01
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -714,11 +714,13 @@ void SwarmLocalizationSolver::cutting_edges() {
         SwarmFrame & sf = sf_sld_win[i];
         SwarmFrame & last_sf = sf_sld_win[i - 1];
         std::set<int> moved_nodes; //Mark the node not moved from last sf
+
         for (auto & it : sf.id2nodeframe) {
             auto _nf = it.second;
             auto _id = it.first;
             if (!last_sf.HasID(_id) || 
-                !NFnotMoving(last_sf.id2nodeframe[_id], _nf)) {
+                !NFnotMoving(last_sf.id2nodeframe[_id], _nf)
+                ) {
                 moved_nodes.insert(_id);
             }
         }
@@ -730,11 +732,26 @@ void SwarmLocalizationSolver::cutting_edges() {
             _nf.enabled_distance.clear();
             for (auto it_dis : _nf.dis_map) {
                 int _id2 = it_dis.first;
-                if (moved_nodes.find(_id) != moved_nodes.end() ||
-                    moved_nodes.find(_id2) != moved_nodes.end()) {
-                    _nf.enabled_distance[_id2] = true;
-                } else {
-                    _nf.enabled_distance[_id2] = false;
+                _nf.enabled_distance[_id2] = false;
+                if ((moved_nodes.find(_id) != moved_nodes.end() ||
+                    moved_nodes.find(_id2) != moved_nodes.end())) {                    
+                    if( sf.HasID(_id2) && 
+                        (sf.id2nodeframe[_id2].enabled_distance.find(_id) == sf.id2nodeframe[_id2].enabled_distance.end() || !sf.id2nodeframe[_id2].enabled_distance[_id])) {
+                        //ROS_INFO("Merging distanc %3.2f and %3.2f to %3.2f", 
+                        //    _nf.dis_map[_id2],
+                        //    sf.id2nodeframe[_id2].dis_map[_id],
+                        //    (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0
+                        //);
+                        _nf.dis_map[_id2] = (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0;
+                        _nf.enabled_distance[_id2] = true;
+                    }
+                }
+            }
+            for (auto it_de : _nf.detected_nodes) {
+                int _id2 = it_de.first;
+                _nf.enabled_detection[_id2] = true;
+                if (last_sf.HasDetect(_id, _id2) && last_sf.id2nodeframe[_id].enabled_detection[_id2]) {
+                    _nf.enabled_detection[_id2] = false;
                 }
             }
         }

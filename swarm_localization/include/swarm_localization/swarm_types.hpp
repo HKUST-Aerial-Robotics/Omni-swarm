@@ -248,6 +248,21 @@ class SwarmFrame {
             return false;
         }
 
+        bool HasDetect(const int _idi, const int _idj) const {
+            if (id2nodeframe.find(_idi) == id2nodeframe.end()) {
+                return false;
+            }
+
+            if (id2nodeframe.find(_idj) == id2nodeframe.end()) {
+                return false;
+            }
+
+            if (id2nodeframe.at(_idi).detected_nodes.find(_idj) != id2nodeframe.at(_idi).detected_nodes.end()) {
+                return true;
+            }
+            return false;
+        }
+
         int has_detect() const {
             int total_detect = 0;
             for (auto it : id2nodeframe) {
