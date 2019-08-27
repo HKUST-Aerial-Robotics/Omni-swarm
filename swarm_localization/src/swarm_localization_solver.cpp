@@ -29,8 +29,8 @@ using namespace std::chrono;
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
-//#define MAX_SOLVER_TIME 0.5
-#define MAX_SOLVER_TIME 1.0
+#define MAX_SOLVER_TIME 0.5
+//#define MAX_SOLVER_TIME 1.0
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
