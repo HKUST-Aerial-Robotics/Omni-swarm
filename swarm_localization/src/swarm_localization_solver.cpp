@@ -91,7 +91,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         if (_nf.is_valid && _nf.vo_available && last_sf.HasID(_id) && last_sf.has_odometry(_id)) {
             Eigen::Vector3d _diff = sf.position(_id) - last_sf.position(_id);
             if (_diff.norm() > min_accept_keyframe_movement*0.5 &&
-            (_nf.has_detected_node(self_id)||self_nf.has_detected_node(_id) ) ){
+            (self_nf.has_detected_node(_id) ) ) { //Because others watch itself don't provide yaw information; but this drone watch other gives yaw information
                 ret.push_back(self_id);
                 node_kf_count[self_id] += 1;
                 ROS_INFO("SF %d is kf of %d: DIFF %3.2f HAS %d", 
@@ -763,6 +763,7 @@ void SwarmLocalizationSolver::cutting_edges() {
                     }
                 }
             }
+
             for (auto it_de : _nf.detected_nodes) {
                 int _id2 = it_de.first;
                 _nf.enabled_detection[_id2] = true;
@@ -770,8 +771,10 @@ void SwarmLocalizationSolver::cutting_edges() {
                 if (last_sf.HasDetect(_id, _id2) && (moved_nodes.find(_id) == moved_nodes.end() && moved_nodes.find(_id2) == moved_nodes.end())
                 ) {
                     _nf.enabled_detection[_id2] = false;
+                    //ROS_INFO("TS %d DET FROM %d TO %d throw", TSShort(sf.ts), _id, _id2);
                 } else {
                     detection_count += 1;
+                    //ROS_INFO("TS %d DET FROM %d TO %d USE", TSShort(sf.ts), _id, _id2);
                 }
             }
         }
