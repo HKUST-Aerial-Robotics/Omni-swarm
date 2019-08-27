@@ -637,7 +637,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     return cost_function;
 }
 
-void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id, int & count) const {
+void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id) const {
     auto nfs = est_poses_idts.at(_id);
 
     if (nfs.size() < 2) {
@@ -660,7 +660,6 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
                 if(_nf.is_static) {
                     return;
                 }
-                count ++;
                 nf_win.push_back(_nf);
                 ts2poseindex[ts] = nf_win.size() - 1;
             }
@@ -769,12 +768,16 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         // ROS_INFO()
         this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
     }
-    int verify_count = 0;
+
+    int num_res_blks_sf = problem.NumResidualBlocks();
+    int num_res_sf = problem.NumResiduals();
+    ROS_INFO("SF residual blocks %d residual nums %d", num_res_blks_sf, num_res_sf);
+
     for (int _id: all_nodes) {
-        this->setup_problem_with_sfherror(est_poses_idts, problem, _id, verify_count);       
+        this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
 
-    ROS_INFO("Total %ld params blk, verify %d", param_indexs.size(), verify_count);
+    ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 
 
     ceres::Solver::Options options;
