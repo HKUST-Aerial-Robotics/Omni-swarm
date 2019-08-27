@@ -89,7 +89,7 @@ class SwarmLocalizationSolver {
 
     void cutting_edges();
 
-    void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id, int & count) const;
+    void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
 
     double solve_once(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts, bool report = false);
     
