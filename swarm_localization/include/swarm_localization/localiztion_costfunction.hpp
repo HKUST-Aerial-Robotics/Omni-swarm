@@ -34,6 +34,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define ERROR_NORMLIZED 0.01
 //#define DETECTION_COV_POS 10
 #define DETECTION_COV_POS 1
+#define DISABLE_DETECTION_YAW
 
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
@@ -57,6 +58,14 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
     error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
     error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_cov;
+}
+
+template<typename T>
+inline void position_error(const T *posea, const T *poseb, T *error,
+                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.01, 0.01, 0.01)) {
+    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_cov.x();
+    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
+    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
 }
 
 template<typename T>
@@ -195,10 +204,15 @@ struct SwarmFrameError {
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
                 Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_COV_ANG;
 
+#ifdef DISABLE_DETECTION_YAW
+                position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
+                res_count = res_count + 3;
+#else
+                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_COV_ANG;
                 pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
                 res_count = res_count + 4;
+#endif
             }
         }
         // ROS_INFO("Work with detected node");
@@ -215,7 +229,7 @@ struct SwarmFrameError {
             if (_nf.frame_available) {
 
                 if (_nf.dists_available) {
-                    //ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+                    // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
                     for (auto it : _nf.dis_map) {
                         if (has_id(it.first) && _nf.enabled_distance.at(it.first))
                             res_count++;
@@ -224,8 +238,13 @@ struct SwarmFrameError {
 #ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     for (const auto & it: _nf.detected_nodes) {
-                        if (has_id(it.first))
+                        if (has_id(it.first)) {
+#ifdef DISABLE_DETECTION_YAW
+                            res_count = res_count + 3;
+#else
                             res_count = res_count + 4;
+#endif
+                        }
                     }
                 }
 #endif
