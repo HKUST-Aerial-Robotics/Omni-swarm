@@ -29,11 +29,12 @@ using namespace std::chrono;
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 0.5
+//#define MAX_SOLVER_TIME 0.5
+#define MAX_SOLVER_TIME 1.0
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
-
+#define NOT_MOVING_THRES 0.001
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -41,6 +42,7 @@ bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     // for (int i = 0; i  < s)
     return false;
 }
+
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -150,15 +152,17 @@ void SwarmLocalizationSolver::process_frame_clear() {
 void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts) {
     for (auto it : swarm_est_poses) {
         for (auto it2 : it.second) {
-            double * p = it2.second;
-            p[0] = rand_FloatRange(-10, 10);
-            p[1] = rand_FloatRange(-10, 10);
-            p[2] = rand_FloatRange(-1.0, 1.0);
-#ifdef INIT_FXIED_YAW
-            p[3] = 0;
-#elif
-            p[3] = rand_FloatRange(-M_PI, M_PI);
-#endif
+            if (it2.first != self_id) {
+                double * p = it2.second;
+                p[0] = rand_FloatRange(-10, 10);
+                p[1] = rand_FloatRange(-10, 10);
+                p[2] = rand_FloatRange(-1.0, 1.0);
+    #ifdef INIT_FXIED_YAW
+                p[3] = 0;
+    #elif
+                p[3] = rand_FloatRange(-M_PI, M_PI);
+    #endif
+            }
         }
     }
 }
@@ -673,6 +677,70 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
 }
 
+bool SwarmLocalizationSolver::NFnotMoving(const NodeFrame & _nf1, const NodeFrame & _nf2) const {
+    Eigen::Vector3d _diff = _nf1.position() - _nf2.position();
+    //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
+    if (_diff.norm() > NOT_MOVING_THRES) {
+        return false;
+    }
+    return true;
+}
+
+void SwarmLocalizationSolver::cutting_edges() {
+    //TODO: deal with fist sf
+    SwarmFrame & sf0 = sf_sld_win[0];
+    for (auto & it : sf0.id2nodeframe) {
+        auto _id = it.first;
+        auto & _nf = it.second;
+        _nf.enabled_distance.clear();
+        for (auto it_dis : _nf.dis_map) {
+            int _id2 = it_dis.first;
+            _nf.enabled_distance[_id2] = true;
+        }
+        //ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+    }
+
+    for (int i = 1; i < sf_sld_win.size(); i++) {
+        SwarmFrame & sf = sf_sld_win[i];
+        SwarmFrame & last_sf = sf_sld_win[i - 1];
+        std::set<int> moved_nodes; //Mark the node not moved from last sf
+        for (auto & it : sf.id2nodeframe) {
+            auto _nf = it.second;
+            auto _id = it.first;
+            if (!last_sf.HasID(_id) || 
+                !NFnotMoving(last_sf.id2nodeframe[_id], _nf)) {
+                moved_nodes.insert(_id);
+            }
+        }
+
+        // Now we have all moved node; Let's begin with edging enabling
+        for (auto & it : sf.id2nodeframe) {
+            NodeFrame & _nf = it.second;
+            auto _id = it.first;
+            _nf.enabled_distance.clear();
+            for (auto it_dis : _nf.dis_map) {
+                int _id2 = it_dis.first;
+                if (moved_nodes.find(_id) != moved_nodes.end() ||
+                    moved_nodes.find(_id2) != moved_nodes.end()) {
+                    _nf.enabled_distance[_id2] = true;
+                } else {
+                    _nf.enabled_distance[_id2] = false;
+                }
+            }
+        }
+    }
+
+    /*
+    for (auto & sf : sf_sld_win) {
+        for (auto & it : sf.id2nodeframe) {
+            auto _nf = it.second;
+            auto _id = it.first;
+            ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+        }
+    }*/
+}
+
+
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
 
     ros::Time t1 = ros::Time::now();
@@ -684,6 +752,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
+
+    cutting_edges();
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
         this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
@@ -701,11 +771,11 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //SPARSE NORMAL DOGLEG 12.5ms
     //SPARSE NORMAL 21
     //DENSE NORM DOGLEG 49.31ms
+    options.max_num_iterations = 1000;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     if (finish_init) {
         options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
     }else {
-    //    options.max_num_iterations = 200;
     }
     options.num_threads = thread_num;
     Solver::Summary summary;
@@ -725,8 +795,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     }
 
     // if (solve_count % 10 == 0)
-    std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
-              << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
+    //std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
+    //          << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
+    std::cout << summary.FullReport() << std::endl;
+
 #ifdef DEBUG_OUTPUT_POSES
 
     for (auto it : est_poses_idts) {

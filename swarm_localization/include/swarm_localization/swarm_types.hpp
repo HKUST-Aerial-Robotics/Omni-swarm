@@ -13,6 +13,10 @@ using namespace Swarm;
 
 typedef std::map<int, double> DisMap;
 
+inline int TSShort(int64_t ts) {
+    return (ts/1000000)%10000000;
+}
+
 using namespace Eigen;
 namespace Swarm {
     class Node {
@@ -114,6 +118,8 @@ class NodeFrame {
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         std::map<int, Pose> detected_nodes;
+        std::map<int, bool> enabled_detection;
+        std::map<int, bool> enabled_distance;
 
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;
         std::map<int, Eigen::Vector3d> detected_nodes_angvar;

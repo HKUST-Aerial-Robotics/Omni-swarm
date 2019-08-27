@@ -95,6 +95,7 @@ inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
     p[2] = T(_p.z());
 }
 
+
 struct SwarmFrameError {
     SwarmFrame sf;
     std::map<int, int> id2poseindex;
@@ -168,9 +169,9 @@ struct SwarmFrameError {
 
     template<typename T>
     inline int nodeframe_distance_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
-        for (auto it : _nf.dis_map) {
+        for (const auto &  it : _nf.dis_map) {
             int _idj = it.first;
-            if (has_id(_idj)) {
+            if (has_id(_idj)  && _nf.enabled_distance.at(_idj)) {
                 T _dis = T(it.second);
                 //Less accuracy on distance
                 _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
@@ -182,7 +183,7 @@ struct SwarmFrameError {
 
     template<typename T>
     inline int nodeframe_relpose_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
-        for (auto it: _nf.detected_nodes) {
+        for (const auto & it: _nf.detected_nodes) {
 //            Detected pose error
             int _id = it.first;
             if (has_id(_id)) {
@@ -206,22 +207,23 @@ struct SwarmFrameError {
 
     int residual_count() {
         int res_count = 0;
-        for (auto it : sf.id2nodeframe) {
+        for (const auto & it : sf.id2nodeframe) {
 //            auto _id = it.first;
-            NodeFrame &_nf = it.second;
+            const NodeFrame &_nf = it.second;
 
             //First we come to distance error
             if (_nf.frame_available) {
 
                 if (_nf.dists_available) {
+                    //ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
                     for (auto it : _nf.dis_map) {
-                        if (has_id(it.first))
+                        if (has_id(it.first) && _nf.enabled_distance.at(it.first))
                             res_count++;
                     }
                 }
 #ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
-                    for (auto it: _nf.detected_nodes) {
+                    for (const auto & it: _nf.detected_nodes) {
                         if (has_id(it.first))
                             res_count = res_count + 4;
                     }

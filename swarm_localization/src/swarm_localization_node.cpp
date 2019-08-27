@@ -430,9 +430,9 @@ int main(int argc, char **argv) {
 
     SwarmLocalizationNode uwbfusernode(nh);
 
-    // ros::MultiThreadedSpinner spinner(4); // Use 4 threads
-    // spinner.spin();
-    ros::spin();
+    ros::MultiThreadedSpinner spinner(4); // Use 4 threads
+    spinner.spin();
+    //ros::spin();
 
     return 0;
 }
