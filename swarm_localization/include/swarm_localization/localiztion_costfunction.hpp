@@ -27,9 +27,9 @@ typedef std::vector<Quaterniond> quat_array;
 #define NO_ANNETAPOS
 
 
-#define VO_DRIFT_METER 0.0001
-#define VO_DRIFT_METER_Z 0.0005
-#define VO_ERROR_ANGLE 0.001
+#define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
+#define VO_DRIFT_METER_Z 0.005
+#define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
 #define DISTANCE_MEASURE_ERROR 0.1
 #define ERROR_NORMLIZED 0.01
 //#define DETECTION_COV_POS 10
