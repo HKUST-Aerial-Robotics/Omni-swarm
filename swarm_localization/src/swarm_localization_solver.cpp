@@ -25,11 +25,11 @@
 using namespace std::chrono;
 
 // #define DEBUG_OUTPUT_POSES
-#define COMPUTE_COV
+//#define COMPUTE_COV
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 0.1
+#define MAX_SOLVER_TIME 0.5
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
@@ -868,10 +868,10 @@ void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray pa
         // if (param_indexs[j].first == ts ) {
 #ifdef DEBUG_OUTPUT_COV
         printf("\nTS %d ", TSShort(_ts));
-        printf("ID %d SD %4.3lf %4.3lf %4.3lf %4.3lf", _id, sqrt(cov(4*j,4*j)), 
-                sqrt(cov(4*j+1,4*j+1)), 
-                sqrt(cov(4*j+2,4*j+2)), 
-                sqrt(cov(4*j+3,4*j+3)));
+        printf("ID %d SD %4.3lf %4.3lf %4.3lf %4.3lf", _id, cov(4*j,4*j), 
+                cov(4*j+1,4*j+1), 
+                cov(4*j+2,4*j+2), 
+                cov(4*j+3,4*j+3));
             // fflush(stdout);
         // }
 #endif

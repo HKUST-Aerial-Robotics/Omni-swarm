@@ -6,8 +6,8 @@
         <rosparam>
             force_freq: 1
             max_accept_cost: 10
-            max_keyframe_num: 20
-            min_keyframe_num: 3
+            max_keyframe_num: 100
+            min_keyframe_num: 5
             thread_num: 4
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
@@ -22,5 +22,7 @@
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
     </node>
-    <!-- <node pkg="rosbag" type="play" name="player" output="screen" args="/home/xuhao/bags/sf_manualfly_2drone_vicon.bag"/> -->
+    <include file="$(find swarm_yolo)/launch/drone_detector.launch">
+    <arg name="debug_show" value="cv" />
+    </include>
 </launch>
