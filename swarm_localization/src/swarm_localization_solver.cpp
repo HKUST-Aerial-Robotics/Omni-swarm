@@ -566,7 +566,6 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
 
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
-
 #ifdef ENABLE_HISTORY_COV
     int _id = nf_win.front().id;
     bool use_last_lost_cov = false;
@@ -666,8 +665,12 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     if (_id == self_id) {
         //Delete last one that don't need to estimate
         pose_win.erase(pose_win.end() - 1);
-        // ROS_INFO("Earse last");
-        count --;
+
+        //Not estimate myself; useless
+        for (double * _p : pose_win) {
+            problem.SetParameterBlockConstant(_p);
+        }
+        return;
     }
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
@@ -760,7 +763,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     }
     int verify_count = 0;
     for (int _id: all_nodes) {
-        this->setup_problem_with_sfherror(est_poses_idts, problem, _id, verify_count);
+        this->setup_problem_with_sfherror(est_poses_idts, problem, _id, verify_count);       
     }
 
     ROS_INFO("Total %ld params blk, verify %d", param_indexs.size(), verify_count);
