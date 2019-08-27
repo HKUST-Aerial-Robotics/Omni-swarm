@@ -195,7 +195,7 @@ struct SwarmFrameError {
         for (const auto & it: _nf.detected_nodes) {
 //            Detected pose error
             int _id = it.first;
-            if (has_id(_id)) {
+            if (has_id(_id) && _nf.enabled_detection.at(it.first)) {
                 Pose _rel_pose = it.second;
                 T rel_pose[4];
                 _rel_pose.to_vector_xyzyaw(rel_pose);
@@ -238,7 +238,7 @@ struct SwarmFrameError {
 #ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     for (const auto & it: _nf.detected_nodes) {
-                        if (has_id(it.first)) {
+                        if (has_id(it.first) && _nf.enabled_detection.at(it.first)) {
 #ifdef DISABLE_DETECTION_YAW
                             res_count = res_count + 3;
 #else

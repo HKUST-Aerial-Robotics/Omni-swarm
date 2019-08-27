@@ -698,6 +698,12 @@ bool SwarmLocalizationSolver::NFnotMoving(const NodeFrame & _nf1, const NodeFram
 
 void SwarmLocalizationSolver::cutting_edges() {
     //TODO: deal with fist sf
+    int detection_count = 0;
+    int total_detection_count = 0;
+
+    int distance_count = 0;
+    int total_distance_count = 0;
+
     SwarmFrame & sf0 = sf_sld_win[0];
     for (auto & it : sf0.id2nodeframe) {
         auto _id = it.first;
@@ -706,7 +712,16 @@ void SwarmLocalizationSolver::cutting_edges() {
         for (auto it_dis : _nf.dis_map) {
             int _id2 = it_dis.first;
             _nf.enabled_distance[_id2] = true;
+            distance_count += 1;
+            total_distance_count += 1;
         }
+
+        for (auto it_de : _nf.detected_nodes) {
+            int _id2 = it_de.first;
+            _nf.enabled_detection[_id2] = true;
+            detection_count += 1;
+            total_detection_count += 1;
+         }
         //ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
     }
 
@@ -724,7 +739,6 @@ void SwarmLocalizationSolver::cutting_edges() {
                 moved_nodes.insert(_id);
             }
         }
-
         // Now we have all moved node; Let's begin with edging enabling
         for (auto & it : sf.id2nodeframe) {
             NodeFrame & _nf = it.second;
@@ -733,6 +747,7 @@ void SwarmLocalizationSolver::cutting_edges() {
             for (auto it_dis : _nf.dis_map) {
                 int _id2 = it_dis.first;
                 _nf.enabled_distance[_id2] = false;
+                total_distance_count += 1;
                 if ((moved_nodes.find(_id) != moved_nodes.end() ||
                     moved_nodes.find(_id2) != moved_nodes.end())) {                    
                     if( sf.HasID(_id2) && 
@@ -744,19 +759,25 @@ void SwarmLocalizationSolver::cutting_edges() {
                         //);
                         _nf.dis_map[_id2] = (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0;
                         _nf.enabled_distance[_id2] = true;
+                        distance_count += 1;
                     }
                 }
             }
             for (auto it_de : _nf.detected_nodes) {
                 int _id2 = it_de.first;
                 _nf.enabled_detection[_id2] = true;
-                if (last_sf.HasDetect(_id, _id2) && last_sf.id2nodeframe[_id].enabled_detection[_id2]) {
+                total_detection_count += 1;
+                if (last_sf.HasDetect(_id, _id2) && (moved_nodes.find(_id) == moved_nodes.end() && moved_nodes.find(_id2) == moved_nodes.end())
+                ) {
                     _nf.enabled_detection[_id2] = false;
+                } else {
+                    detection_count += 1;
                 }
             }
         }
     }
 
+    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d)", distance_count, total_distance_count, detection_count, total_detection_count);
     /*
     for (auto & sf : sf_sld_win) {
         for (auto & it : sf.id2nodeframe) {
