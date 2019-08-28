@@ -1,0 +1,26 @@
+<launch>
+    <arg name="use_stereo" default="false"/>
+    <arg name="is_show" default="false" />
+
+    <node pkg="swarm_detection" name="swarm_detection" type="swarm_detection_node" output="screen" > 
+        <remap from="~left_camera" to="/camera/infra1/image_rect_raw" />
+        <remap from="~left_camera" to="/camera/infra2/image_rect_raw" />
+        <param name="is_show" type="bool" value="$(arg is_show)" /> 
+        <param name="undist_camera" type="bool" value="false" />       
+        <rosparam>
+            undist_camera: false
+            duration: 0.1
+            left_cam_def: "/home/dji/SwarmConfig/realsense/left.yaml"
+            right_cam_def: "/home/dji/SwarmConfig/realsense/right.yaml"
+            vo_def: "/home/dji/SwarmConfig/realsense/realsense_n3_unsync.yaml"
+            armarker:
+                x: -0.165
+                y: 0
+                z: 0
+                size: 0.0922
+        </rosparam>
+    </node>
+    <node pkg="message_to_tf" name="message_to_tf" type="message_to_tf" output="screen" 
+     args="/vins_estimator/odometry">
+    </node>
+</launch>
