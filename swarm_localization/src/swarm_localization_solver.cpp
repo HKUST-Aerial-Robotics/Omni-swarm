@@ -34,6 +34,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
+#define INIT_FXIED_Z
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
 
@@ -157,7 +158,12 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
                 double * p = it2.second;
                 p[0] = rand_FloatRange(-10, 10);
                 p[1] = rand_FloatRange(-10, 10);
-                p[2] = rand_FloatRange(-1.0, 1.0);
+    #ifdef INIT_FIXED_Z
+                p[2] = 0;
+    #else
+                p[2] = rand_FloatRange(-0.1, 0.1);
+    #endif
+
     #ifdef INIT_FXIED_YAW
                 p[3] = 0;
     #elif
@@ -706,7 +712,6 @@ void SwarmLocalizationSolver::cutting_edges() {
 
     SwarmFrame & sf0 = sf_sld_win[0];
     for (auto & it : sf0.id2nodeframe) {
-        auto _id = it.first;
         auto & _nf = it.second;
         _nf.enabled_distance.clear();
         for (auto it_dis : _nf.dis_map) {
@@ -725,7 +730,7 @@ void SwarmLocalizationSolver::cutting_edges() {
         //ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
     }
 
-    for (int i = 1; i < sf_sld_win.size(); i++) {
+    for (unsigned int i = 1; i < sf_sld_win.size(); i++) {
         SwarmFrame & sf = sf_sld_win[i];
         SwarmFrame & last_sf = sf_sld_win[i - 1];
         std::set<int> moved_nodes; //Mark the node not moved from last sf
@@ -849,10 +854,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         return equv_cost;
     }
 
-    // if (solve_count % 10 == 0)
-    //std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
-    //          << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
-    std::cout << summary.FullReport() << std::endl;
+    std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
+              << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
+    //std::cout << summary.FullReport() << std::endl;
 
 #ifdef DEBUG_OUTPUT_POSES
 
