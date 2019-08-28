@@ -33,9 +33,10 @@ namespace Swarm {
         Eigen::Vector3d global_velocity = Vector3d(0, 0, 0);
         Vector3d anntena_pos = Vector3d(0, 0, 0);
 
-
-
     public:
+
+        std::map<int, double> bias;
+
         int id = -1;
 
         bool HasCamera() const {
@@ -82,7 +83,15 @@ namespace Swarm {
                     this->anntena_pos = Vector3d( config["anntena_pos"][0].as<double>(),
                             config["anntena_pos"][1].as<double>(),
                             config["anntena_pos"][2].as<double>());
-                }}
+                }
+
+                const YAML::Node & bias_node = config["bias"];
+                for(auto it=bias_node.begin();it!=bias_node.end();++it) {
+                    int _node_id = it->first.as<int>();
+                    double _bias = it->second.as<double>();
+                    this->bias[_node_id] = _bias;
+                }
+            }
             catch (YAML::ParserException & e){
                 ROS_ERROR("Error while parsing node config %d: %s, exit", _id, e.what());
                 exit(-1);
@@ -131,6 +140,10 @@ class NodeFrame {
         NodeFrame(Node *_node) :
                 node(_node) {
             is_static = _node->IsStatic();
+        }
+
+        double bias(int _id) const {
+            return node->bias.at(_id);
         }
 
         NodeFrame() {

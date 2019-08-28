@@ -12,6 +12,12 @@ nodes:
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
     armarker_size : 0.0925
+    bias:
+      1: 0.21075
+      2: 0.136
+      3: 0.16
+      4: 0.16
+
   1:
     has_uwb: true
     has_armarkers: true
@@ -20,6 +26,12 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
+    bias:
+      0: 0.21075
+      2: 0.1335
+      3: 0.16
+      4: 0.16
+
   2:
     has_uwb: true
     has_armarkers: true
@@ -28,6 +40,11 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
+    bias:
+      0: 0.136
+      1: 0.1335
+      3: 0.16
+      4: 0.16
   3:
     has_uwb: true
     has_armarkers: true
@@ -36,6 +53,11 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
+    bias:
+      0: 0.16
+      1: 0.16
+      2: 0.16
+      4: 0.16
   4:
     has_uwb: true
     has_armarkers: true
@@ -44,3 +66,8 @@ nodes:
     is_static: false
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
+    bias:
+      0: 0.16
+      1: 0.16
+      2: 0.16
+      3: 0.16
