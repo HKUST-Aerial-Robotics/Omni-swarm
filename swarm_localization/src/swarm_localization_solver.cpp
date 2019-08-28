@@ -34,7 +34,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
-#define INIT_FXIED_Z
+#define INIT_Z_ERROR 0.05
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
 
@@ -158,12 +158,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
                 double * p = it2.second;
                 p[0] = rand_FloatRange(-10, 10);
                 p[1] = rand_FloatRange(-10, 10);
-    #ifdef INIT_FIXED_Z
-                p[2] = 0;
-    #else
-                p[2] = rand_FloatRange(-0.1, 0.1);
-    #endif
-
+                p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
     #ifdef INIT_FXIED_YAW
                 p[3] = 0;
     #elif
