@@ -106,6 +106,7 @@ class LocalProxy {
     bool odometry_updated = false;
 
     nav_msgs::Odometry self_odom;
+    std::vector<nav_msgs::Odometry> self_odoms;
 
     int self_id = -1;
 
@@ -150,6 +151,11 @@ class LocalProxy {
         quat.z() = odom.pose.pose.orientation.z;
 
         self_odom = odom;
+        self_odoms.push_back(odom);
+
+        if (self_odoms.size() > 1000) {
+            self_odoms.erase(self_odoms.begin());
+        }
 
         odometry_available = true;
         odometry_updated = true;
@@ -301,7 +307,57 @@ class LocalProxy {
         send_mavlink_message(msg);
     }
 
-    node_detected_xyzyaw ndxyzyaw_from_nd(const node_detected & _nd) {
+
+    nav_msgs::Odometry find_nearest_selfpose(ros::Time stamp) {
+        if (self_odoms.size() == 0) {
+            nav_msgs::Odometry odom;
+            odom.pose.pose.position.x = 0;
+            odom.pose.pose.position.y = 0;
+            odom.pose.pose.position.z = 0;
+
+            odom.pose.pose.orientation.x = 0;
+            odom.pose.pose.orientation.y = 0;
+            odom.pose.pose.orientation.z = 0;
+            odom.pose.pose.orientation.w = 1;
+
+            return odom;
+        }
+        /*
+        ros::Time s_last = self_odoms[self_odoms.size() - 1].header.stamp;
+        double dt = (s_last - stamp).toSec();
+        int c = dt*400;
+        if (self_odoms.size() - c <= 0) {
+            return self_odoms[0];
+        }
+
+        if (c < 0) {
+            return self_odoms[self_odoms.size() - 1];
+        }
+
+        ROS_INFO("DT %fms C %d PTR %ld final dt %fms", dt*1000, c, self_odoms.size() - c, (self_odoms[self_odoms.size() - c - 1].header.stamp - stamp).toSec() * 1000);
+        */
+
+        for (int ptr = self_odoms.size() - 1; ptr >= 1; ptr --) {
+            double dt1 = (self_odoms[ptr].header.stamp - stamp).toSec();
+            double dt2 = (self_odoms[ptr - 1].header.stamp - stamp).toSec();
+            if (dt1 < 0) {
+                return self_odoms[ptr];
+            }
+            if (dt1 > 0 && dt2 <= 0) {
+                if (fabs(dt1) < fabs(dt2)) {
+                    ROS_INFO("final dt %fms", dt1 * 1000);
+                    return self_odoms[ptr];
+                } else {
+                    ROS_INFO("final dt %fms", dt2 * 1000);
+                    return self_odoms[ptr-1];
+                }
+            }
+        }
+
+        return self_odoms[0];
+    }
+
+    node_detected_xyzyaw ndxyzyaw_from_nd(const node_detected & _nd, const nav_msgs::Odometry _self_odom) {
         assert(odometry_available && "Using ndxyz from nd must have vo!");
         node_detected_xyzyaw _nd_xyzyaw;
         _nd_xyzyaw.header.stamp = _nd.header.stamp;
@@ -312,7 +368,9 @@ class LocalProxy {
         }
         //For xyz yaw relpose, we first need compute the pose of target
         Swarm::Pose relpose(_nd.relpose.pose);
-        Swarm::Pose selfpose(self_odom.pose.pose);
+
+        //TODO: Here we will have timestamp align problem... Need to fix that
+        Swarm::Pose selfpose(_self_odom.pose.pose);
 
         Swarm::Pose remotepose = selfpose.to_isometry() *relpose.to_isometry();
         Eigen::Vector3d dpos = remotepose.pos() - selfpose.pos();
@@ -336,6 +394,7 @@ class LocalProxy {
 
     std::vector<node_detected_xyzyaw> convert_sd_to_nd_xyzyaw(const swarm_msgs::swarm_detected & sd) {
         std::vector<node_detected_xyzyaw> ret;
+        nav_msgs::Odometry odom = find_nearest_selfpose(sd.header.stamp);
         if (!odometry_available) {
             ROS_WARN("Odometry unavailable, can't compute node detected xyzyaw");
             return ret;
@@ -343,7 +402,7 @@ class LocalProxy {
 
         for (const node_detected & _nd: sd.detected_nodes) {
             if (_nd.remote_drone_id != self_id) {
-                ret.push_back(ndxyzyaw_from_nd(_nd));
+                ret.push_back(ndxyzyaw_from_nd(_nd, odom));
             }
         }
 
@@ -911,7 +970,7 @@ public:
         nh.param<double>("send_rel_fused_freq", send_rel_fused_freq, 0.0);
         nh.param<double>("send_fused_basecoor_freq", send_fused_basecoor_freq, 30.0);
         // read /vins_estimator/odometry and send to uwb by mavlink
-        local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 1, &LocalProxy::on_local_odometry_recv, this,
+        local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 10, &LocalProxy::on_local_odometry_recv, this,
                                           ros::TransportHints().tcpNoDelay());
         swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &LocalProxy::on_remote_nodes_data_recv, this,
                                       ros::TransportHints().tcpNoDelay());
@@ -941,8 +1000,8 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "localization_proxy");
     ros::NodeHandle nh("localization_proxy");
     new LocalProxy(nh);
-    // ros::MultiThreadedSpinner spinner(4);
-    // spinner.spin();
+    //ros::MultiThreadedSpinner spinner(4);
+    //spinner.spin();
     
     ros::spin();
     ros::waitForShutdown();
