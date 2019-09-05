@@ -158,7 +158,8 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
                 double * p = it2.second;
                 p[0] = rand_FloatRange(-10, 10);
                 p[1] = rand_FloatRange(-10, 10);
-                p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
+                // p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
+                p[2] = all_sf[it.first].id2nodeframe[it2.first].position().z();
     #ifdef INIT_FXIED_YAW
                 p[3] = 0;
     #elif
@@ -533,7 +534,7 @@ unsigned int SwarmLocalizationSolver::sliding_window_size() const {
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) const {
     //Here we will only send
-    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, is_lastest_frame);
+    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, is_lastest_frame, !finish_init);
     int res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     int poses_num = id2poseindex.size();
