@@ -98,7 +98,7 @@ class SwarmLocalizationSolver {
     void add_as_keyframe(const SwarmFrame &sf);
     void replace_last_kf(const SwarmFrame & sf);
     
-    bool solve_with_multiple_init(int start_drone_num, int min_number = 5, int max_number = 10);
+    bool solve_with_multiple_init(int max_number = 10);
     
     unsigned int max_frame_number = 20;
     unsigned int min_frame_number = 10;
@@ -115,6 +115,8 @@ class SwarmLocalizationSolver {
 
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;
+
+    std::pair<Eigen::Vector3d, Eigen::Vector3d> boundingbox_sldwin() const;
 public:
     int self_id = -1;
     unsigned int thread_num;

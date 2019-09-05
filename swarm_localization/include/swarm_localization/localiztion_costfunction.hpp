@@ -123,8 +123,15 @@ struct SwarmFrameError {
                 int index = id2poseindex.at(_id);
                 t_pose[0] =  _poses[index][0];
                 t_pose[1] =  _poses[index][1];
-                t_pose[2] =  _poses[index][2];
-                t_pose[3] =  _poses[index][3];
+
+                if (first_init_mode) {
+                    t_pose[2] = sf.id2nodeframe[_id].position().z();
+                    t_pose[3] = sf.id2nodeframe[_id].yaw();
+                } else {
+                    t_pose[2] =  _poses[index][2];
+                    t_pose[3] =  _poses[index][3];
+                }
+
             } else {
                 ROS_ERROR("No pose of ID %d in SF %d error;exit; SF Has only %ld id ", _id, TSShort(sf.ts), sf.id2nodeframe.size());
                 for (auto it : id2poseindex) {
@@ -221,18 +228,6 @@ struct SwarmFrameError {
 
     template<typename T>
     inline int nodeframe_first_init_align_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
-        T posea[4];
-        get_pose(_nf.id, _poses, posea);
-        /*
-        T poseb[4];
-        get_pose(self_id, _poses, poseb);
-        T z_est = posea[3] - poseb[3];
-        T z_mea = T(_nf.position().z() - self_pose.position.z());
-
-        _residual + res_count = z_est - z_mea*/
-        _residual[res_count] = posea[3] - T(_nf.position().z());
-        res_count = res_count + 1;
-
         return res_count;
     }
 
@@ -265,9 +260,6 @@ struct SwarmFrameError {
                     }
                 }
 #endif
-                if (first_init_mode && _nf.id != self_id) {
-                    res_count = res_count + 1;
-                }
             }
         }
         return res_count;
@@ -293,11 +285,11 @@ struct SwarmFrameError {
                 if (_nf.has_detect_relpose) {
                     res_count = nodeframe_relpose_residual(_nf, _poses, _residual, res_count);
                 }
-#endif
-              if (first_init_mode && _nf.id != self_id) {
-                    //Will align z offset
+#endif          
+                /*
+                if (first_init_mode && _nf.id != self_id) {
                     res_count = nodeframe_first_init_align_residual(_nf, _poses, _residual, res_count);
-                }
+                } */
 
             }
 
@@ -331,6 +323,7 @@ struct SolvedPosewithCov{
 //Error for correlation vo drift
 struct SwarmHorizonError {
     const std::vector<NodeFrame> nf_windows;
+    std::map<int64_t, int> ts2nfindex;
     std::map<int64_t, int> ts2poseindex;
     int64_t last_ts = -1;
     int64_t first_ts = -1;
@@ -338,24 +331,23 @@ struct SwarmHorizonError {
     std::vector<Pose> delta_poses;
     int _id = -1;
     bool is_self_node = false;
-    bool first_has_solved = false;
-    SolvedPosewithCov spcov;
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node,
-        bool _first_has_solved=false, SolvedPosewithCov spcov = SolvedPosewithCov()) :
+    bool first_init_mode;
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node, bool _first_init_mode) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
-            is_self_node(_is_self_node){
+            is_self_node(_is_self_node),
+            first_init_mode(_first_init_mode){
 
+        ts2nfindex[_nf_win[0].ts] = 0;
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
+            ts2nfindex[_nf.ts] = i;
         }
+
         last_ts = nf_windows.back().ts;
         first_ts = nf_windows.front().ts;
         _id = nf_windows.back().id;
-        first_has_solved = _first_has_solved;
-
-        this->spcov = spcov;
     }
 
     template<typename T>
@@ -367,27 +359,22 @@ struct SwarmHorizonError {
             return;
         }
 
-        if (ts == first_ts && first_has_solved) {
-            t_pose[0] = T(spcov.pose[0]);
-            t_pose[1] = T(spcov.pose[1]);
-            t_pose[2] = T(spcov.pose[2]);
-            t_pose[3] = T(spcov.pose[3]);
-            return;
-        }
-
         if (ts2poseindex.find(ts) != ts2poseindex.end()) {
             int index = ts2poseindex.at(ts);
             t_pose[0] =  _poses[index][0];
             t_pose[1] =  _poses[index][1];
-            t_pose[2] =  _poses[index][2];
-            t_pose[3] =  _poses[index][3];
+            if (first_init_mode) {
+                const NodeFrame & _nf = nf_windows[ts2nfindex[ts]];
+                t_pose[2] = _nf.position().z();
+                t_pose[3] = _nf.yaw();
+            } else {
+                t_pose[2] =  _poses[index][2];
+                t_pose[3] =  _poses[index][3];
+            }
         } else {
             ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
             exit(-1);
         }
-
-
-        
     }
 
     int residual_count() {
@@ -418,13 +405,7 @@ struct SwarmHorizonError {
             DeltaPose(est_posea, est_poseb, est_dpose);
 
 
-            if (tsa == first_ts && first_has_solved) {
-                pose_error(est_dpose, mea_dpose, _residual + res_count,
-                        pos_cov + spcov.pos_cov, ang_cov.z() + spcov.yaw_cov);
-            } else {
-                pose_error(est_dpose, mea_dpose, _residual + res_count,
-                        pos_cov, ang_cov.z());
-            }
+            pose_error(est_dpose, mea_dpose, _residual + res_count, pos_cov, ang_cov.z());
 
 
             /*

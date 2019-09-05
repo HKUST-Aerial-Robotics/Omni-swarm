@@ -179,6 +179,10 @@ class NodeFrame {
             return pose().pos();
         }
 
+        double yaw() const {
+            return pose().yaw();
+        }
+
         Eigen::Quaterniond attitude(bool yaw_only = false) const {
             if (yaw_only) {
                 return pose().att_yaw_only();
