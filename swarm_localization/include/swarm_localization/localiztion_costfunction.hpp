@@ -177,7 +177,7 @@ struct SwarmFrameError {
     }
 
     template<typename T>
-    inline int nodeframe_distance_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
+    inline int nodeframe_distance_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (const auto &  it : _nf.dis_map) {
             int _idj = it.first;
             if (has_id(_idj)  && _nf.enabled_distance.at(_idj)) {
@@ -191,7 +191,7 @@ struct SwarmFrameError {
     }
 
     template<typename T>
-    inline int nodeframe_relpose_res(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
+    inline int nodeframe_relpose_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (const auto & it: _nf.detected_nodes) {
 //            Detected pose error
             int _id = it.first;
@@ -216,6 +216,23 @@ struct SwarmFrameError {
             }
         }
         // ROS_INFO("Work with detected node");
+        return res_count;
+    }
+
+    template<typename T>
+    inline int nodeframe_first_init_align_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
+        T posea[4];
+        get_pose(_nf.id, _poses, posea);
+        /*
+        T poseb[4];
+        get_pose(self_id, _poses, poseb);
+        T z_est = posea[3] - poseb[3];
+        T z_mea = T(_nf.position().z() - self_pose.position.z());
+
+        _residual + res_count = z_est - z_mea*/
+        _residual[res_count] = posea[3] - T(_nf.position().z());
+        res_count = res_count + 1;
+
         return res_count;
     }
 
@@ -248,11 +265,15 @@ struct SwarmFrameError {
                     }
                 }
 #endif
-
+                if (first_init_mode && _nf.id != self_id) {
+                    res_count = res_count + 1;
+                }
             }
         }
         return res_count;
     }
+
+
 
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
@@ -266,13 +287,18 @@ struct SwarmFrameError {
             if (_nf.frame_available) {
 
                 if (_nf.dists_available) {
-                    res_count = nodeframe_distance_res(_nf, _poses, _residual, res_count);
+                    res_count = nodeframe_distance_residual(_nf, _poses, _residual, res_count);
                 }
 #ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
-                    res_count = nodeframe_relpose_res(_nf, _poses, _residual, res_count);
+                    res_count = nodeframe_relpose_residual(_nf, _poses, _residual, res_count);
                 }
 #endif
+              if (first_init_mode && _nf.id != self_id) {
+                    //Will align z offset
+                    res_count = nodeframe_first_init_align_residual(_nf, _poses, _residual, res_count);
+                }
+
             }
 
         }
@@ -281,10 +307,13 @@ struct SwarmFrameError {
 
     }
 
-    SwarmFrameError(const SwarmFrame &_sf, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame) :
-            sf(std::move(_sf)),
-            id2poseindex(std::move(_id2poseindex)),
-            is_lastest_frame(_is_lastest_frame) {
+    bool first_init_mode = false;
+
+    SwarmFrameError(const SwarmFrame &_sf, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame, bool _first_init_mode = false) :
+            sf(_sf),
+            id2poseindex(_id2poseindex),
+            is_lastest_frame(_is_lastest_frame),
+            first_init_mode(_first_init_mode) {
             self_id = _sf.self_id;
             self_pose = sf.id2nodeframe.at(self_id).pose();
     }
