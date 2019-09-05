@@ -386,7 +386,7 @@ public:
                                           ros::TransportHints().tcpNoDelay());
         
         int frame_num = 0, thread_num, min_frame_num;
-        float acpt_cost = 0.4;
+        float acpt_cost = 0.4, kf_movement = 0.2;
 
         std::string swarm_node_config;
 
@@ -395,13 +395,14 @@ public:
         nh.param<int>("min_keyframe_num", min_frame_num, 3);
         nh.param<float>("force_freq", force_freq, 1.0f);
         nh.param<float>("max_accept_cost", acpt_cost, 10.0f);
+        nh.param<float>("min_kf_movement", kf_movement, 0.4f);
         nh.param<int>("thread_num", thread_num, 4);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
         load_nodes_from_file(swarm_node_config);
 
-        swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num);
+        swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num, kf_movement);
 
         nh.param<double>("initial_random_noise", swarm_localization_solver->initial_random_noise, 1.0);
 

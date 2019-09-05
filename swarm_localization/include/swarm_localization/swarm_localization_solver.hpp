@@ -53,7 +53,7 @@ class SwarmLocalizationSolver {
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
-    const double min_accept_keyframe_movement = 0.2;
+    double min_accept_keyframe_movement = 0.2;
 
 //    std::vector<double*> _swarm_est_poses;
 //
@@ -128,9 +128,9 @@ public:
     ros::Time last_est_time_tick = ros::Time::now();
 
     SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
-                            int _thread_num = 4) :
+                            int _thread_num = 4, double kf_movement = 0.2) :
             max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
-            thread_num(_thread_num), acpt_cost(_acpt_cost) {
+            thread_num(_thread_num), acpt_cost(_acpt_cost),min_accept_keyframe_movement(kf_movement) {
     }
 
    
