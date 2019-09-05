@@ -78,6 +78,13 @@ public:
         ret[3] = T(yaw());
     }
 
+    template <typename T>
+    void to_vector_xy(T ret[]) const {
+        ret[0] = T(position.x());
+        ret[1] = T(position.y());
+    }
+
+
     Eigen::Vector3d apply_pose_to(Eigen::Vector3d point) const {
         return attitude * point + position;
     }

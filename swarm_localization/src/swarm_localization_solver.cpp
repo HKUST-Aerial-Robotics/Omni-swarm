@@ -37,6 +37,8 @@ using namespace std::chrono;
 #define INIT_Z_ERROR 0.05
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
+#define INIT_BBX_XY 1.5
+#define INIT_BBX_Z 1.0
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -161,7 +163,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
                 // p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
                 p[2] = all_sf[it.first].id2nodeframe[it2.first].position().z();
     #ifdef INIT_FXIED_YAW
-                p[3] = 0;
+                p[3] = all_sf[it.first].id2nodeframe[it2.first].yaw();
     #elif
                 p[3] = rand_FloatRange(-M_PI, M_PI);
     #endif
@@ -441,16 +443,17 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
 }
 
 
-bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int min_number, int max_number) {
+bool SwarmLocalizationSolver::solve_with_multiple_init(int max_number) {
 
     double cost = acpt_cost;
     bool cost_updated = false;
 
-    ROS_WARN("Try to use multiple init to solve expect cost %f", cost);
-
+    ROS_WARN("Try to use %d random init to solve expect cost %f", max_number, cost);
+    //Need to rewrite here to enable multiple trial of input!!!
+    EstimatePoses _est_poses_best;// = est_poses_tsid;
     EstimatePoses & _est_poses = est_poses_tsid;
-    EstimatePosesIDTS & _est_poses_idts = est_poses_idts;
-
+    EstimatePoses & _est_poses_idts = est_poses_idts;
+ 
     for (int i = 0; i < max_number; i++) {
         random_init_pose(_est_poses,  _est_poses_idts);
         double c = solve_once(_est_poses,  _est_poses_idts,  true);
@@ -460,11 +463,65 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int start_drone_num, int 
             ROS_INFO("Got better cost %f", c);
             cost_updated = true;
             cost_now = cost = c;
-            return true;
+            // return true;
+            for (auto it : est_poses_tsid) {
+                auto ts = it.first;
+                if (_est_poses_best.find(ts) != _est_poses_best.end()) {
+                    for (auto it2: _est_poses_best[ts]) {
+                        delete [] (_est_poses_best[ts][it2.first]);
+                    }
+                }
+                _est_poses_best[ts] = std::map<int, double*>();
+                for (auto it2: it.second) {
+                    auto _id = it2.first;
+                    double * _p = new double[4];
+                    _est_poses_best[ts][_id] = _p;
+                    memcpy(_p, _est_poses[ts][_id], 4*sizeof(double));
+                }
+            }
+        }
+    }
+
+    if (cost_updated) {
+        for (auto it2: it.second) {
+            auto _id = it2.first;
+            memcpy(_est_poses[ts][_id], _est_poses_trail[ts][_id], 4*sizeof(double));
+            delete [] (_est_poses_trail[ts][_id]);
         }
     }
 
     return cost_updated;
+}
+
+std::pair<Eigen::Vector3d, Eigen::Vector3d> SwarmLocalizationSolver::boundingbox_sldwin() const {
+    double xmax=-1000, xmin = 1000, ymax = -1000, ymin = 1000, zmax = -1000, zmin = 1000;
+    for (const SwarmFrame & _sf : sf_sld_win ) {
+        if (_sf.HasID(self_id) && _sf.id2nodeframe.at(self_id).vo_available ) {
+            Vector3d pos = _sf.id2nodeframe.at(self_id).position();
+            if (pos.x() > xmax) {
+                xmax = pos.x();
+            }
+            if (pos.y() > ymax) {
+                ymax = pos.y();
+            }
+            if (pos.z() > zmax) {
+                zmax = pos.z();
+            }
+
+            if (pos.x() < xmin) {
+                xmin = pos.x();
+            }
+            if (pos.y() < ymin) {
+                ymin = pos.y();
+            }
+            if (pos.z() < zmin) {
+                zmin = pos.z();
+            }
+        }
+    }
+
+    return std::make_pair(Eigen::Vector3d(xmin, ymin, zmin),
+        Eigen::Vector3d(xmax, ymax, zmax));
 }
 
 double SwarmLocalizationSolver::solve() {
@@ -474,13 +531,28 @@ double SwarmLocalizationSolver::solve() {
     if (!has_new_keyframe)
         return cost_now;
 
-    if (!finish_init || drone_num > last_drone_num) {
-        ROS_INFO("No init before, try to init");
-        finish_init = solve_with_multiple_init(last_drone_num);
-        if (finish_init) {
-            last_drone_num = drone_num;
-            ROS_INFO("Finish init\n");
+    // if (!finish_init || drone_num > last_drone_num) {
+    // Should not reinit when drone_num > last drone num
+    if (!finish_init) {
+        //Init procedure
+        auto bbx = boundingbox_sldwin();
+        auto min = bbx.first;
+        auto max = bbx.second;
+        if (max.x() - min.x() > INIT_BBX_XY &&
+            max.y() - min.y() > INIT_BBX_XY &&
+            max.z() - min.z() > INIT_BBX_Z
+        ) {
+            ROS_INFO("No init before, try to init");
+            finish_init = solve_with_multiple_init(last_drone_num);
+            if (finish_init) {
+                last_drone_num = drone_num;
+                ROS_INFO("Finish init\n");
+            }
+        } else {
+            ROS_WARN("BOUNDING BOX too small; Pending more movement");
+            return;
         }
+       
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
@@ -538,8 +610,14 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     int res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     int poses_num = id2poseindex.size();
-    for (int i =0;i < poses_num; i ++){
-        cost_function->AddParameterBlock(4);
+    
+    for (int i =0;i < poses_num; i ++) {
+        if (!finish_init) {
+            //When not finish init; only estimate XY position
+            cost_function->AddParameterBlock(2);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
     }
     assert(res_num > 0 &&"Set cost function with SF has 0 res num");
     cost_function->SetNumResiduals(res_num);
@@ -574,45 +652,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
 
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
-#ifdef ENABLE_HISTORY_COV
-    int _id = nf_win.front().id;
-    bool use_last_lost_cov = false;
-    SwarmHorizonError * she = nullptr;
-    if (finish_init && last_lost_ts_of_node.find(_id) != last_lost_ts_of_node.end()) {
-        // ROS_INFO("LINE 509 : id%d %d", _id, last_lost_ts_of_node.find(_id) != last_lost_ts_of_node.end());
-        use_last_lost_cov = true;
-        int64_t last_lost_ts = last_lost_ts_of_node.at(_id);
-        const SwarmFrame & _sf = all_sf.at(last_lost_ts);
-        if (_sf.id2nodeframe.find(_id) == _sf.id2nodeframe.end()) {
-            ROS_ERROR("can find id in sf; exit");
-            exit(-1);
-        }
-        const NodeFrame & last_lost = _sf.id2nodeframe.at(_id);
-        nf_win.insert(nf_win.begin(), last_lost);
-        SolvedPosewithCov pcov;
-
-        assert(est_poses_tsid.find(last_lost_ts) != est_poses_tsid.end() && "L523");
-        memcpy(pcov.pose, est_poses_tsid.at(last_lost_ts).at(_id), 4*sizeof(double));
-        // assert( && "L528");
-        if (est_cov_tsid.at(last_lost_ts).find(_id) == est_cov_tsid.at(last_lost_ts).end()) {
-            ROS_ERROR("Can't find TS %d ID %d", TSShort(last_lost_ts), _id);
-            exit(-1);
-        }
-
-        auto cov = est_cov_tsid.at(last_lost_ts).at(_id);
-        pcov.pos_cov.x() = sqrt(cov(0, 0));
-        pcov.pos_cov.y() = sqrt(cov(1, 1));
-        pcov.pos_cov.z() = sqrt(cov(2, 2));
-        pcov.yaw_cov = sqrt(cov(3, 3)); 
-        she = new SwarmHorizonError(nf_win, ts2poseindex, is_self, true, pcov);
-    
-    } else {
-        she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
-    }
-#else
-    auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self);
-#endif 
-
+    auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self, !finish_init);
     auto cost_function = new HorizonCost(she);
     int res_num = she->residual_count();
 
@@ -620,13 +660,12 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     if (is_self) {
         poses_num = nf_win.size() - 1;
     }
-#ifdef ENABLE_HISTORY_COV
-    if (use_last_lost_cov) {
-        poses_num = poses_num - 1;
-    }
-#endif
-    for (int i =0;i < poses_num; i ++){
-        cost_function->AddParameterBlock(4);
+    for (int i =0;i < poses_num; i ++) {
+        if (!finish_init) {
+            cost_function->AddParameterBlock(2);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
     }
 //        ROS_INFO("SFHorizon res %d", res_num);
     if (res_num == 0) {
