@@ -37,10 +37,10 @@ using namespace std::chrono;
 #define INIT_Z_ERROR 0.05
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
-//#define INIT_BBX_XY 1.5
-//#define INIT_BBX_Z 1.0
-#define INIT_BBX_XY 0.5
-#define INIT_BBX_Z 0.2
+#define INIT_BBX_XY 1.5
+#define INIT_BBX_Z 1.0
+//#define INIT_BBX_XY 0.5
+//#define INIT_BBX_Z 0.2
 #define INIT_TRIAL 5
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
