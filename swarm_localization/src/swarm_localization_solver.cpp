@@ -37,8 +37,11 @@ using namespace std::chrono;
 #define INIT_Z_ERROR 0.05
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
-#define INIT_BBX_XY 1.5
-#define INIT_BBX_Z 1.0
+//#define INIT_BBX_XY 1.5
+//#define INIT_BBX_Z 1.0
+#define INIT_BBX_XY 0.5
+#define INIT_BBX_Z 0.2
+#define INIT_TRIAL 5
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -452,12 +455,12 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int max_number) {
     //Need to rewrite here to enable multiple trial of input!!!
     EstimatePoses _est_poses_best;// = est_poses_tsid;
     EstimatePoses & _est_poses = est_poses_tsid;
-    EstimatePoses & _est_poses_idts = est_poses_idts;
+    EstimatePosesIDTS & _est_poses_idts = est_poses_idts;
  
     for (int i = 0; i < max_number; i++) {
+        ROS_WARN("%d time of init trial", i);
         random_init_pose(_est_poses,  _est_poses_idts);
         double c = solve_once(_est_poses,  _est_poses_idts,  true);
-        ROS_INFO("Got better cost %f", c);
 
         if (c < cost) {
             ROS_INFO("Got better cost %f", c);
@@ -483,10 +486,13 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int max_number) {
     }
 
     if (cost_updated) {
-        for (auto it2: it.second) {
-            auto _id = it2.first;
-            memcpy(_est_poses[ts][_id], _est_poses_trail[ts][_id], 4*sizeof(double));
-            delete [] (_est_poses_trail[ts][_id]);
+        for (auto it : est_poses_tsid) {
+            auto ts = it.first;
+            for (auto it2: it.second) {
+                auto _id = it2.first;
+                memcpy(_est_poses[ts][_id], _est_poses_best[ts][_id], 4*sizeof(double));
+                delete [] (_est_poses_best[ts][_id]);
+            }
         }
     }
 
@@ -543,14 +549,14 @@ double SwarmLocalizationSolver::solve() {
             max.z() - min.z() > INIT_BBX_Z
         ) {
             ROS_INFO("No init before, try to init");
-            finish_init = solve_with_multiple_init(last_drone_num);
+            finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
                 last_drone_num = drone_num;
                 ROS_INFO("Finish init\n");
             }
         } else {
             ROS_WARN("BOUNDING BOX too small; Pending more movement");
-            return;
+            return -1;
         }
        
     } else if (has_new_keyframe) {
