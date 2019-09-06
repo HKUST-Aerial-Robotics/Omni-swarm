@@ -387,6 +387,8 @@ public:
         
         int frame_num = 0, thread_num, min_frame_num;
         float acpt_cost = 0.4, kf_movement = 0.2;
+        float init_xy_movement = 2.0;
+        float init_z_movement = 1.0;
 
         std::string swarm_node_config;
 
@@ -396,6 +398,8 @@ public:
         nh.param<float>("force_freq", force_freq, 1.0f);
         nh.param<float>("max_accept_cost", acpt_cost, 10.0f);
         nh.param<float>("min_kf_movement", kf_movement, 0.4f);
+        nh.param<float>("init_xy_movement", init_xy_movement, 2.0f);
+        nh.param<float>("init_z_movement", init_z_movement, 1.0f);
         nh.param<int>("thread_num", thread_num, 4);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");

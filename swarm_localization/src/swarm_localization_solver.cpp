@@ -37,10 +37,7 @@ using namespace std::chrono;
 #define INIT_Z_ERROR 0.05
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
-#define INIT_BBX_XY 1.5
-#define INIT_BBX_Z 1.0
-//#define INIT_BBX_XY 0.5
-//#define INIT_BBX_Z 0.2
+
 #define INIT_TRIAL 5
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -544,9 +541,9 @@ double SwarmLocalizationSolver::solve() {
         auto bbx = boundingbox_sldwin();
         auto min = bbx.first;
         auto max = bbx.second;
-        if (max.x() - min.x() > INIT_BBX_XY &&
-            max.y() - min.y() > INIT_BBX_XY &&
-            max.z() - min.z() > INIT_BBX_Z
+        if (max.x() - min.x() > init_xy_movement &&
+            max.y() - min.y() > init_xy_movement &&
+            max.z() - min.z() > init_z_movement
         ) {
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
