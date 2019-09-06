@@ -108,6 +108,8 @@ inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
 struct SwarmFrameError {
     SwarmFrame sf;
     std::map<int, int> id2poseindex;
+    std::map<int, bool> yaw_observability;
+    std::map<int, double> yaw_init;
     int self_id = -1;
     bool is_lastest_frame = false;
     Pose self_pose;
@@ -129,7 +131,11 @@ struct SwarmFrameError {
                     t_pose[3] = T(sf.id2nodeframe.at(_id).yaw());
                 } else {
                     t_pose[2] =  _poses[index][2];
-                    t_pose[3] =  _poses[index][3];
+                    if (yaw_observability.at(_id)) {
+                        t_pose[3] =  _poses[index][3];
+                    } else {
+                        t_pose[3] = T(yaw_init.at(_id));
+                    }
                 }
 
             } else {
@@ -299,11 +305,19 @@ struct SwarmFrameError {
 
     }
 
+
     bool first_init_mode = false;
 
-    SwarmFrameError(const SwarmFrame &_sf, const std::map<int, int> &_id2poseindex, bool _is_lastest_frame, bool _first_init_mode = false) :
+    SwarmFrameError(const SwarmFrame &_sf, 
+                    const std::map<int, int> &_id2poseindex, 
+                    const std::map<int, bool> & _yaw_observability, 
+                    const std::map<int, double> & _yaw_init,
+                    bool _is_lastest_frame, 
+                    bool _first_init_mode = false) :
             sf(_sf),
             id2poseindex(_id2poseindex),
+            yaw_observability(_yaw_observability),
+            yaw_init(_yaw_init),
             is_lastest_frame(_is_lastest_frame),
             first_init_mode(_first_init_mode) {
             self_id = _sf.self_id;
@@ -325,6 +339,8 @@ struct SwarmHorizonError {
     const std::vector<NodeFrame> nf_windows;
     std::map<int64_t, int> ts2nfindex;
     std::map<int64_t, int> ts2poseindex;
+    bool yaw_observability;
+    std::vector<double> yaw_init;
     int64_t last_ts = -1;
     int64_t first_ts = -1;
 
@@ -332,9 +348,12 @@ struct SwarmHorizonError {
     int _id = -1;
     bool is_self_node = false;
     bool first_init_mode;
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _is_self_node, bool _first_init_mode) :
+
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init, bool _is_self_node, bool _first_init_mode) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
+            yaw_observability(_yaw_observability),
+            yaw_init(_yaw_init),
             is_self_node(_is_self_node),
             first_init_mode(_first_init_mode){
 
@@ -369,7 +388,11 @@ struct SwarmHorizonError {
                 t_pose[3] = T(_nf.yaw());
             } else {
                 t_pose[2] =  _poses[index][2];
-                t_pose[3] =  _poses[index][3];
+                if (yaw_observability) {
+                    t_pose[3] =  _poses[index][3];
+                } else {
+                    t_pose[3] = T(yaw_init.at(ts2nfindex.at(ts)));
+                }
             }
         } else {
             ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));

@@ -38,6 +38,8 @@ using namespace std::chrono;
 #define NOT_MOVING_THRES 0.01
 #define NOT_MOVING_YAW 0.01
 
+#define THRES_YAW_OBSER_XY 1.0
+
 #define INIT_TRIAL 5
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
@@ -496,11 +498,12 @@ bool SwarmLocalizationSolver::solve_with_multiple_init(int max_number) {
     return cost_updated;
 }
 
-std::pair<Eigen::Vector3d, Eigen::Vector3d> SwarmLocalizationSolver::boundingbox_sldwin() const {
+
+std::pair<Eigen::Vector3d, Eigen::Vector3d> SwarmLocalizationSolver::boundingbox_sldwin(int _id) const {
     double xmax=-1000, xmin = 1000, ymax = -1000, ymin = 1000, zmax = -1000, zmin = 1000;
     for (const SwarmFrame & _sf : sf_sld_win ) {
-        if (_sf.HasID(self_id) && _sf.id2nodeframe.at(self_id).vo_available ) {
-            Vector3d pos = _sf.id2nodeframe.at(self_id).position();
+        if (_sf.HasID(_id) && _sf.id2nodeframe.at(_id).vo_available ) {
+            Vector3d pos = _sf.id2nodeframe.at(_id).position();
             if (pos.x() > xmax) {
                 xmax = pos.x();
             }
@@ -538,7 +541,7 @@ double SwarmLocalizationSolver::solve() {
     // Should not reinit when drone_num > last drone num
     if (!finish_init) {
         //Init procedure
-        auto bbx = boundingbox_sldwin();
+        auto bbx = boundingbox_sldwin(self_id);
         auto min = bbx.first;
         auto max = bbx.second;
         if (max.x() - min.x() > init_xy_movement &&
@@ -609,19 +612,34 @@ unsigned int SwarmLocalizationSolver::sliding_window_size() const {
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) const {
     //Here we will only send
-    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, is_lastest_frame, !finish_init);
+    std::map<int, double> yaw_init;
+    for (const auto & it : sf.id2nodeframe) {
+//            auto _id = it.first;
+        const NodeFrame &_nf = it.second;
+        //First we come to distance error
+        if (_nf.frame_available) {
+            yaw_init[_nf.id] = est_poses_tsid.at(_nf.ts).at(_nf.id)[3];
+        }
+    }
+    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init, is_lastest_frame, !finish_init);
     int res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     int poses_num = id2poseindex.size();
     
-    for (int i =0;i < poses_num; i ++) {
+    for (auto it : id2poseindex) {
+        int _id = it.first;
         if (!finish_init) {
             //When not finish init; only estimate XY position
             cost_function->AddParameterBlock(2);
         } else {
-            cost_function->AddParameterBlock(4);
+            if (!yaw_observability.at(_id)) {
+                cost_function->AddParameterBlock(3);
+            } else {
+                cost_function->AddParameterBlock(4);
+            }
         }
     }
+
     assert(res_num > 0 &&"Set cost function with SF has 0 res num");
     cost_function->SetNumResiduals(res_num);
     return cost_function;
@@ -655,7 +673,12 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
 
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const {
-    auto she = new SwarmHorizonError(nf_win, ts2poseindex, is_self, !finish_init);
+    int _id = nf_win[0].id;
+    std::vector<double> yaw_init;
+    for (NodeFrame & _nf : nf_win) {
+        yaw_init.push_back(est_poses_tsid.at(_nf.ts).at(_nf.id)[3]);
+    }
+    auto she = new SwarmHorizonError(nf_win, ts2poseindex, yaw_observability.at(_id), yaw_init, is_self, !finish_init);
     auto cost_function = new HorizonCost(she);
     int res_num = she->residual_count();
 
@@ -663,11 +686,16 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     if (is_self) {
         poses_num = nf_win.size() - 1;
     }
+
     for (int i =0;i < poses_num; i ++) {
         if (!finish_init) {
             cost_function->AddParameterBlock(2);
         } else {
-            cost_function->AddParameterBlock(4);
+            if (!yaw_observability.at(_id)) {
+                cost_function->AddParameterBlock(3);
+            } else {
+                cost_function->AddParameterBlock(4);
+            }
         }
     }
 //        ROS_INFO("SFHorizon res %d", res_num);
@@ -834,20 +862,49 @@ void SwarmLocalizationSolver::cutting_edges() {
     }*/
 }
 
+void SwarmLocalizationSolver::estimate_yaw_observability() {
+    yaw_observability.clear();
+    if (!finish_init) {
+        printf("YAW observability: ");
+        for (int _id : all_nodes) {
+            yaw_observability[_id] = false;
+            printf("%d: %s ", _id, yaw_observability[_id]?"true":"false");
+        }
+        printf("\n");
+        return;
+    }
+    printf("YAW observability: ");
+    for (int _id: all_nodes) {
+        auto bbx = boundingbox_sldwin(_id);
+        auto min = bbx.first;
+        auto max = bbx.second;
+
+        if (max.x() - min.x() > THRES_YAW_OBSER_XY || max.y() - min.y() > THRES_YAW_OBSER_XY) {
+            yaw_observability[_id] = true;
+        } else {
+            yaw_observability[_id] = false;
+        }
+
+        printf("%d: %s ", _id, yaw_observability[_id]?"true":"false");
+    }
+
+    printf("\n");
+}
+
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
 
     ros::Time t1 = ros::Time::now();
     Problem problem;
 
-
 //        if (solve_count % 10 == 0)
     printf("SOLVE COUNT %d Trying to solve size %d, TS %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
-
+    estimate_yaw_observability();
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
-
     cutting_edges();
+
+
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
         this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);

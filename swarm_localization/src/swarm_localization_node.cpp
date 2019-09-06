@@ -406,7 +406,7 @@ public:
 
         load_nodes_from_file(swarm_node_config);
 
-        swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num, kf_movement);
+        swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num, kf_movement, init_xy_movement, init_z_movement);
 
         nh.param<double>("initial_random_noise", swarm_localization_solver->initial_random_noise, 1.0);
 

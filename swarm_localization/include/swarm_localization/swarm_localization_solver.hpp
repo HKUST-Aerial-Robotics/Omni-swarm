@@ -116,7 +116,9 @@ class SwarmLocalizationSolver {
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;
 
-    std::pair<Eigen::Vector3d, Eigen::Vector3d> boundingbox_sldwin() const;
+    std::pair<Eigen::Vector3d, Eigen::Vector3d> boundingbox_sldwin(int _id) const;
+
+    void estimate_yaw_observability();
 public:
     int self_id = -1;
     unsigned int thread_num;
@@ -130,6 +132,7 @@ public:
     ros::Time last_est_time_tick = ros::Time::now();
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
+    std::map <int, bool> yaw_observability;
 
     SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
                             int _thread_num = 4, double kf_movement = 0.2,
