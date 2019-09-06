@@ -128,11 +128,17 @@ public:
     bool finish_init = false;
 
     ros::Time last_est_time_tick = ros::Time::now();
+    float init_xy_movement = 2.0;
+    float init_z_movement = 1.0;
 
     SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
-                            int _thread_num = 4, double kf_movement = 0.2) :
+                            int _thread_num = 4, double kf_movement = 0.2,
+                            float _init_xy_movement = 2.0,
+                            float _init_z_movement = 1.0) :
             max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
-            thread_num(_thread_num), acpt_cost(_acpt_cost),min_accept_keyframe_movement(kf_movement) {
+            thread_num(_thread_num), acpt_cost(_acpt_cost),min_accept_keyframe_movement(kf_movement),
+            init_xy_movement(_init_xy_movement),init_z_movement(_init_z_movement)
+    {
     }
 
    
