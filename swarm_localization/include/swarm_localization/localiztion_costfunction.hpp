@@ -125,8 +125,8 @@ struct SwarmFrameError {
                 t_pose[1] =  _poses[index][1];
 
                 if (first_init_mode) {
-                    t_pose[2] = sf.id2nodeframe[_id].position().z();
-                    t_pose[3] = sf.id2nodeframe[_id].yaw();
+                    t_pose[2] = T(sf.id2nodeframe.at(_id).position().z());
+                    t_pose[3] = T(sf.id2nodeframe.at(_id).yaw());
                 } else {
                     t_pose[2] =  _poses[index][2];
                     t_pose[3] =  _poses[index][3];
@@ -364,9 +364,9 @@ struct SwarmHorizonError {
             t_pose[0] =  _poses[index][0];
             t_pose[1] =  _poses[index][1];
             if (first_init_mode) {
-                const NodeFrame & _nf = nf_windows[ts2nfindex[ts]];
-                t_pose[2] = _nf.position().z();
-                t_pose[3] = _nf.yaw();
+                const NodeFrame & _nf = nf_windows.at(ts2nfindex.at(ts));
+                t_pose[2] = T(_nf.position().z());
+                t_pose[3] = T(_nf.yaw());
             } else {
                 t_pose[2] =  _poses[index][2];
                 t_pose[3] =  _poses[index][3];
