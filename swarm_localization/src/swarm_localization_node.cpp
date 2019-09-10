@@ -85,7 +85,7 @@ class SwarmLocalizationNode {
 
         } else {
             if (nf.node->HasVO()) {
-                ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
+                // ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
                 // ROS_WARN("Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
@@ -368,10 +368,7 @@ private:
             high_resolution_clock::time_point t2 = high_resolution_clock::now();
             auto duration = duration_cast<microseconds>( t2 - t1 ).count();
             // double dts = (ros::Time::now() - ts).toSec();
-            ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
-
-
-            
+            //ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
         }
     }
 
