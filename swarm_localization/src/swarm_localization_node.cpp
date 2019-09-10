@@ -72,7 +72,8 @@ class SwarmLocalizationNode {
 
         for (unsigned int i = 0; i < _nf.dismap_ids.size(); i++) {
             if (nodedef_has_id(_nf.dismap_ids[i])) {
-                nf.dis_map[_nf.dismap_ids[i]] = _nf.dismap_dists[i] + nf.bias(_nf.dismap_ids[i]);
+                // nf.dis_map[_nf.dismap_ids[i]] = _nf.dismap_dists[i] + nf.bias(_nf.dismap_ids[i]);
+                nf.dis_map[_nf.dismap_ids[i]] = nf.to_real_distance(_nf.dismap_dists[i], _nf.dismap_ids[i]);
             }
 
         }

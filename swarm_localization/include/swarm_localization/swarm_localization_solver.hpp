@@ -53,7 +53,6 @@ class SwarmLocalizationSolver {
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
-    double min_accept_keyframe_movement = 0.2;
 
 //    std::vector<double*> _swarm_est_poses;
 //
@@ -124,6 +123,7 @@ public:
     unsigned int thread_num;
     double cost_now = 0;
     double acpt_cost = 0.4;
+    double min_accept_keyframe_movement = 0.2;
 
     double initial_random_noise = 1.0;
 
