@@ -35,7 +35,7 @@ namespace Swarm {
 
     public:
 
-        std::map<int, double> bias;
+        std::map<int, std::vector<double>> coeffs;
 
         int id = -1;
 
@@ -63,6 +63,11 @@ namespace Swarm {
             return has_armarkers;
         }
 
+        double to_real_distance(const double mea, int _id) const {
+            assert(coeffs.find(_id) != coeffs.end() && "NO SUCH ID ON IN DISTANCE PARAMS");
+            auto _coeffs = coeffs.at(_id);
+            return _coeffs[0] + _coeffs[1] * mea;
+        }
 
         Node(int _id) :
                 id(_id) {
@@ -88,8 +93,8 @@ namespace Swarm {
                 const YAML::Node & bias_node = config["bias"];
                 for(auto it=bias_node.begin();it!=bias_node.end();++it) {
                     int _node_id = it->first.as<int>();
-                    double _bias = it->second.as<double>();
-                    this->bias[_node_id] = _bias;
+                    std::vector<double> _coeffs = it->second.as<std::vector<double>>();
+                    this->coeffs[_node_id] = _coeffs;
                 }
             }
             catch (YAML::ParserException & e){
@@ -142,8 +147,8 @@ class NodeFrame {
             is_static = _node->IsStatic();
         }
 
-        double bias(int _id) const {
-            return node->bias.at(_id);
+        double to_real_distance(const double & measure, int _id) const {
+            return node->to_real_distance(measure, _id);
         }
 
         NodeFrame() {

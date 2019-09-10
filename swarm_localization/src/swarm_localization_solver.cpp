@@ -624,7 +624,6 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init, is_lastest_frame, !finish_init);
     int res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
-    int poses_num = id2poseindex.size();
     
     for (auto it : id2poseindex) {
         int _id = it.first;
