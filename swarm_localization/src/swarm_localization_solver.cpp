@@ -24,7 +24,7 @@
 
 using namespace std::chrono;
 
-// #define DEBUG_OUTPUT_POSES
+#define DEBUG_OUTPUT_POSES
 //#define COMPUTE_COV
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -41,6 +41,7 @@ using namespace std::chrono;
 #define THRES_YAW_OBSER_XY 1.0
 
 #define INIT_TRIAL 5
+
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -209,8 +210,9 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
                 Pose transfered_now(Tlast*dpose);
                 transfered_now.to_vector_xyzyaw(_p);
             }
+            // ROS_INFO("Init ID %d at %d with predict value", _nf.id, TSShort(ts));
         } else {
-
+            ROS_INFO("Init ID %d at %d with random value", _nf.id, TSShort(ts));
             _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
             _last.set_att(_nf.pose().att());
 
@@ -262,20 +264,97 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
 }
 
 void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
+    if (sf_sld_win.size() > 0) {
+        last_kf_ts = sf_sld_win.back().ts;
+    }
+
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-
+    ROS_INFO("New keyframe %d; Details", TSShort(sf.ts));
     for (auto it : sf.id2nodeframe) {
         if (it.second.is_static) {
             ROS_INFO("Is static");
             this->init_static_nf_in_keyframe(sf.ts, it.second);
         } else {
+            auto _nf = it.second;
+            double _pose[4];
+            _nf.pose().to_vector_xyzyaw(_pose);
+            printf("ID %d pose %f %f %f %f; DIS:", _nf.id, _pose[0], _pose[1], _pose[2], _pose[3]);
+            for (auto it2: _nf.dis_map) {
+                printf("%d %f;", it2.first, it2.second);
+            }
+            printf("\n");
             this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
         }
     }
     last_kf_ts = sf.ts;
     has_new_keyframe = true;
 
+    ROS_INFO("KF %d details\n", TSShort(sf.ts));
+    if (finish_init) {
+        for (auto it : sf.id2nodeframe) {
+            auto id = it.first;
+            auto _nf = it.second;
+            ROS_INFO("\n\nID %d ", id);
+            if (est_poses_idts[id].find(last_kf_ts) == est_poses_idts[id].end() ) {
+                ROS_INFO("Can't find id in last KF %d", TSShort(last_kf_ts));
+                continue;
+            }
+
+            double* pose_last = est_poses_idts[id][last_kf_ts];
+            if (all_sf[last_kf_ts].id2nodeframe.find(id) == all_sf[last_kf_ts].id2nodeframe.end() || !all_sf[last_kf_ts].id2nodeframe[id].vo_available) 
+                return;
+            Pose pose_vo_last = all_sf[last_kf_ts].id2nodeframe[id].pose();
+            int64_t ts =  sf.ts;
+            double * pose = est_poses_idts[id][ts];
+            auto pose_vo = all_sf[ts].id2nodeframe[id].pose();
+            auto poseest = Pose(pose, true);
+            ROS_INFO("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg",
+                    pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
+            ROS_INFO("POSEST     %3.4f %3.4f %3.4f YAW %5.4fdeg",
+                    poseest.pos().x(), poseest.pos().y(), poseest.pos().z(), pose_vo.yaw()*57.3);
+            Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
+            Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
+            Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
+            double ang_err = ERRVOEST.yaw()*1000;
+            
+            ROS_WARN("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f",
+                    ERRVOEST.pos().x()*1000, ERRVOEST.pos().y()*1000, ERRVOEST.pos().z()*1000, ang_err);
+
+            ROS_INFO("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg",
+                    DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
+
+            ROS_INFO("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n\n",
+                    DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z(), DposeEST.yaw()*57.3);
+
+            printf("DISTANCES ");
+            for (auto itj : _nf.dis_map) {
+                int _idj = itj.first;
+                double dis = itj.second;
+                if (all_sf[ts].id2nodeframe[_idj].vo_available) {
+                    Pose posj_est(est_poses_idts[_idj][ts], true);
+                    double est_dis = (posj_est.pos() - poseest.pos()).norm();
+                    printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
+                }
+
+            }
+
+            printf("DETETCTIONS ");
+            for (auto itj : _nf.detected_nodes) {
+                int _idj = itj.first;
+                Pose det = itj.second;
+                if (all_sf[ts].id2nodeframe[_idj].vo_available) {
+                    Pose posj_est(est_poses_idts[_idj][ts], true);
+                    Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
+                    double est_dis = (posj_est.pos() - poseest.pos()).norm();
+                    printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f",_idj, det.pos().x(), det.pos().y(), det.pos().z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
+                }
+
+            }
+
+            printf("\n");
+        }
+    }    
 }
 
 void SwarmLocalizationSolver::replace_last_kf(const SwarmFrame &sf) {
@@ -332,6 +411,8 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
         //For here the drone num increase
         drone_num = _ids.size();
     }
+
+    
 }
 
 
@@ -610,7 +691,7 @@ unsigned int SwarmLocalizationSolver::sliding_window_size() const {
 }
 
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) const {
+SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const {
     //Here we will only send
     std::map<int, double> yaw_init;
     for (const auto & it : sf.id2nodeframe) {
@@ -622,7 +703,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
         }
     }
     SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init, is_lastest_frame, !finish_init);
-    int res_num = sferror->residual_count();
+    res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     
     for (auto it : id2poseindex) {
@@ -662,12 +743,19 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
             param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
         }
     }
+    int res_num = 0;
+    CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
+    problem.AddResidualBlock(cost, nullptr, pose_state);
 
-    problem.AddResidualBlock(
-            _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame),
-            nullptr,
-            pose_state
-    );
+    if (finish_init) {
+        printf("SF Evaluate ERROR ts %d", TSShort(ts));
+        double * res = new double[res_num];
+        cost->Evaluate(pose_state.data(), res, nullptr);
+        for (int i = 0; i < res_num; i++) {
+            printf(" %f ", res[i]);
+        }
+        printf("\n");
+    }
 }
 
 CostFunction *
@@ -953,60 +1041,67 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //std::cout << summary.FullReport() << std::endl;
 
 #ifdef DEBUG_OUTPUT_POSES
+    if (finish_init) {
 
-    for (auto it : est_poses_idts) {
-        auto id = it.first;
-        ROS_INFO("\n\nID %d ", id);
-        double* pose_last = nullptr;
-        Pose pose_vo_last;
-        for(auto it2 : it.second) {
-            auto ts = it2.first;
-            double * pose = it2.second;
-            auto pose_vo = all_sf[ts].id2nodeframe[id].pose();
-            auto poseest = Pose(pose, true);
-            ROS_INFO("TS %ld POS %3.4f %3.4f %3.4f YAW %5.4fdeg", (ts/1000000)%1000000, pose[0], pose[1], pose[2], wrap_angle(pose[3])*57.3);
-            ROS_INFO("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg",
-                     pose_vo.position.x(), pose_vo.position.y(), pose_vo.position.z(), pose_vo.yaw()*57.3);
-            ROS_INFO("POSVOEST     %3.4f %3.4f %3.4f YAW %5.4fdeg",
-                     poseest.position.x(), poseest.position.y(), poseest.position.z(), pose_vo.yaw()*57.3);
-            if (pose_last!=nullptr) {
-                Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
-                Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
-                Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
-                ERRVOEST.position = ERRVOEST.position / VO_DRIFT_METER;
-                double ang_err = ERRVOEST.yaw()/ VO_ERROR_ANGLE;
-                
-                ROS_WARN("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f",
-                         ERRVOEST.position.x(), ERRVOEST.position.y(), ERRVOEST.position.z(), ang_err);
+        for (auto it : est_poses_idts) {
+            auto id = it.first;
+            ROS_INFO("\n\nID %d ", id);
+            double* pose_last = nullptr;
+            Pose pose_vo_last;
+            // for(auto it2 : it.second) {
+                // auto ts = it2.first;
+                // double * pose = it2.second;
+                auto ts = sf_sld_win.back().ts;
+                if (est_poses_tsid[ts].find(id) == est_poses_tsid[ts].end()) {
+                    continue;
+                }
 
-                ROS_INFO("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg",
-                         DposeVO.position.x(), DposeVO.position.y(), DposeVO.position.z(), DposeVO.yaw()*57.3);
+                double * pose = est_poses_tsid[ts][id];
+                auto pose_vo = all_sf[ts].id2nodeframe[id].pose();
+                auto poseest = Pose(pose, true);
+                ROS_INFO("TS %d POS %3.4f %3.4f %3.4f YAW %5.4fdeg", TSShort(ts), pose[0], pose[1], pose[2], wrap_angle(pose[3])*57.3);
+                ROS_INFO("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg",
+                        pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
+                ROS_INFO("POSVOEST     %3.4f %3.4f %3.4f YAW %5.4fdeg",
+                        poseest.pos().x(), poseest.pos().y(), poseest.pos().z(), pose_vo.yaw()*57.3);
+                if (pose_last!=nullptr) {
+                    Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
+                    Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
+                    Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
+                    double ang_err = ERRVOEST.yaw()/ VO_ERROR_ANGLE;
+                    
+                    ROS_WARN("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f",
+                            ERRVOEST.pos().x()/VO_DRIFT_METER, ERRVOEST.pos().y()/VO_DRIFT_METER, ERRVOEST.pos().z()/VO_DRIFT_METER, ang_err);
 
-                ROS_INFO("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n\n",
-                         DposeEST.position.x(), DposeEST.position.y(), DposeEST.position.z(), DposeEST.yaw()*57.3);
+                    ROS_INFO("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg",
+                            DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
+
+                    ROS_INFO("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n\n",
+                            DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z(), DposeEST.yaw()*57.3);
+                }
+
+                printf("DISTANCES ");
+                for (auto itj : all_sf[ts].id2nodeframe[id].dis_map) {
+                    int _idj = itj.first;
+                    double dis = itj.second;
+                    if (all_sf[ts].id2nodeframe[_idj].vo_available) {
+                        Pose posj_vo = all_sf[ts].id2nodeframe[_idj].pose();
+                        Pose posj_est(est_poses_idts[_idj][ts], true);
+                        double vo_dis = (posj_vo.pos() - pose_vo.pos()).norm();
+                        double est_dis = (posj_est.pos() - Pose(pose, true).pos()).norm();
+                        printf(" DIS %4.2f VO %4.2f EST %4.2f ", dis, vo_dis, est_dis);
+                    }
+
+                }
+
+                printf("\n");
 
 
-
-
-            }
-
-            printf("DISTANCES ");
-            for (auto itj : all_sf[ts].id2nodeframe[id].dis_map) {
-                int _idj = itj.first;
-                double dis = itj.second;
-                Pose posj_vo = all_sf[ts].id2nodeframe[_idj].pose();
-                Pose posj_est(est_poses_idts[_idj][ts], true);
-                double vo_dis = (posj_vo.position - pose_vo.position).norm();
-                double est_dis = (posj_est.position - Pose(pose, true).position).norm();
-                printf(" DIS %4.2f VO %4.2f EST %4.2f ", dis, vo_dis, est_dis);
-            }
-
-            printf("\n");
-
-
-            pose_last = pose;
-            pose_vo_last = pose_vo;
+                pose_last = pose;
+                pose_vo_last = pose_vo;
+            // }
         }
+
     }
 #endif
 

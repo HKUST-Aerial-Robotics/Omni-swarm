@@ -77,7 +77,7 @@ class SwarmLocalizationSolver {
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
     CostFunction *
-    _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame) const;
+    _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
 
 
     void
