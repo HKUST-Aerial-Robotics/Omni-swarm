@@ -345,10 +345,10 @@ class LocalProxy {
             }
             if (dt1 > 0 && dt2 <= 0) {
                 if (fabs(dt1) < fabs(dt2)) {
-                    ROS_INFO("final dt %fms", dt1 * 1000);
+                    //ROS_INFO("final dt %fms", dt1 * 1000);
                     return self_odoms[ptr];
                 } else {
-                    ROS_INFO("final dt %fms", dt2 * 1000);
+                    //ROS_INFO("final dt %fms", dt2 * 1000);
                     return self_odoms[ptr-1];
                 }
             }

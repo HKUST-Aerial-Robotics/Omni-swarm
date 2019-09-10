@@ -2,15 +2,15 @@
     <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
     <arg name="detection" default="true" />
-   <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
+   <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen" launch-prefix="gdb -ex run --args ">
         <rosparam>
             force_freq: 1
             max_accept_cost: 10
             max_keyframe_num: 50
             min_keyframe_num: 5
             thread_num: 4
-            init_xy_movement : 2.0
-            init_z_movement : 1.0
+            init_xy_movement : 0.3
+            init_z_movement : 0.2
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
@@ -26,6 +26,5 @@
     </node>
     <include file="$(find swarm_yolo)/launch/drone_detector.launch">
     <arg name="debug_show" value="cv" />
-    <arg name="output" value="log" />
     </include>
 </launch>

@@ -188,7 +188,7 @@ public:
             tmp[2] = poseb[2] - posea[2];
 
             YawRotatePoint(-posea[3], tmp, dpose);*/
-            double dyaw = b.yaw() - a.yaw();
+            double dyaw = wrap_angle(b.yaw() - a.yaw());
             Eigen::Vector3d dp = b.position - a.position;
             p.attitude = (Eigen::Quaterniond)AngleAxisd(dyaw, Vector3d::UnitZ());
 
