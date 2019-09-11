@@ -37,7 +37,7 @@ class Pose {
     double _yaw = 0;
 
     void update_yaw() {
-        _yaw = this->rpy().z();
+        _yaw = wrap_angle(this->rpy().z());
         attitude_yaw_only = (Eigen::Quaterniond)AngleAxisd(_yaw, Vector3d::UnitZ());
     }
 
