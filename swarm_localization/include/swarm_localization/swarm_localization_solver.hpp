@@ -95,6 +95,7 @@ class SwarmLocalizationSolver {
     int judge_is_key_frame(const SwarmFrame &sf);
 
     void add_as_keyframe(const SwarmFrame &sf);
+    void print_frame(const SwarmFrame & sf) const;
     void replace_last_kf(const SwarmFrame & sf);
     
     bool solve_with_multiple_init(int max_number = 10);
