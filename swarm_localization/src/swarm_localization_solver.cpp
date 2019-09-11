@@ -295,7 +295,7 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
         Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
         double ang_err = ERRVOEST.yaw()*1000;
         
-        ROS_WARN("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f",
+        ROS_WARN("ERRVOEST(mm)       %6.5f %6.5f %6.5f ANG  %3.2f",
                 ERRVOEST.pos().x()*1000, ERRVOEST.pos().y()*1000, ERRVOEST.pos().z()*1000, ang_err);
 
         ROS_INFO("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg",
@@ -309,6 +309,11 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
             int _idj = itj.first;
             double dis = itj.second;
             if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                if (est_poses_idts.find(_idj) == est_poses_idts.end() || est_poses_idts.at(_idj).find(ts) == est_poses_idts.at(_idj).end()) {
+                    ROS_INFO("Can't find %d at %d", _idj, TSShort(ts));
+                    continue;
+                }
+
                 Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
                 double est_dis = (posj_est.pos() - poseest.pos()).norm();
                 printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
@@ -320,7 +325,7 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
         for (auto itj : _nf.detected_nodes) {
             int _idj = itj.first;
             Pose det = itj.second;
-            if (sf.id2nodeframe.at(_idj).vo_available) {
+            if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
                 Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
                 Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
                 double est_dis = (posj_est.pos() - poseest.pos()).norm();
