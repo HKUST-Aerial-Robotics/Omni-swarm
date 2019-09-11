@@ -340,7 +340,7 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
 
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-    ROS_INFO("New keyframe %d; Details", TSShort(sf.ts));
+    ROS_INFO("\n\nNew keyframe %d; Details", TSShort(sf.ts));
     for (auto it : sf.id2nodeframe) {
         if (it.second.is_static) {
             ROS_INFO("Is static");
