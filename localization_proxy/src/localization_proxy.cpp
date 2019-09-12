@@ -149,8 +149,9 @@ class LocalProxy {
         quat.x() = odom.pose.pose.orientation.x;
         quat.y() = odom.pose.pose.orientation.y;
         quat.z() = odom.pose.pose.orientation.z;
-
+            
         self_odom = odom;
+        // self_odom.header.stamp = ros::Time::now();
         self_odoms.push_back(odom);
 
         if (self_odoms.size() > 1000) {
@@ -411,8 +412,10 @@ class LocalProxy {
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
         // ROS_INFO("SD");
-        static int count = 0;
-        count ++;
+        if (sd.detected_nodes.size() == 0) {
+            return;
+        }
+
         int i = find_sf_swarm_detected(sd.header.stamp);
         int sd_self_id = sd.self_drone_id;
         if (sd_self_id < 0) {
