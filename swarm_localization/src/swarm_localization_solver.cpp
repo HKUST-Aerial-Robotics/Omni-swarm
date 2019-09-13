@@ -519,18 +519,20 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
         int _id = it.first;
 
         NodeFrame & nf = it.second;
-        if(est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end()) {
-            auto ret = this->PredictNode(nf);
-            sfs.node_poses[_id] = ret.first;
-            sfs.node_covs[_id] = ret.second;
-            //Give node velocity predict here
-            sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
-            auto ret2 = this->NodeCooridnateOffset(nf.id);
-            sfs.base_coor_poses[_id] = ret2.first;
-            sfs.base_coor_covs[_id] = ret2.second;
-        } else {
-            // Maybe use previous results
-            // ROS_WARN("No id %d found in last kf", nf.id);
+        if (est_poses_tsid_saved.find(last_saved_est_kf_ts) != est_poses_tsid_saved.end()) {
+            if(est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end()) {
+                auto ret = this->PredictNode(nf);
+                sfs.node_poses[_id] = ret.first;
+                sfs.node_covs[_id] = ret.second;
+                //Give node velocity predict here
+                sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
+                auto ret2 = this->NodeCooridnateOffset(nf.id);
+                sfs.base_coor_poses[_id] = ret2.first;
+                sfs.base_coor_covs[_id] = ret2.second;
+            } else {
+                // Maybe use previous results
+                // ROS_WARN("No id %d found in last kf", nf.id);
+            }
         }
     }
 
@@ -670,12 +672,12 @@ double SwarmLocalizationSolver::solve() {
 
 void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
     ROS_INFO("Start sync poses to saved while init successful");
+    int64_t last_ts = sf_sld_win.back().ts;
     for (const SwarmFrame & sf : sf_sld_win) {
         //Only update param in sf to saved
         for (auto it : sf.id2nodeframe) {
             int _id = it.first;
             const NodeFrame _nf = it.second;
-
             if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
                 est_poses_tsid_saved[sf.ts] = std::map<int,double*>();
             }
@@ -694,6 +696,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             if (_est_poses_tsid.find(sf.ts) !=_est_poses_tsid.end() &&
                 _est_poses_tsid.at(sf.ts).find(_id) != _est_poses_tsid.at(sf.ts).end()
             ) {
+                last_ts = sf.ts;
                 memcpy(est_poses_tsid_saved[sf.ts][_id], _est_poses_tsid.at(sf.ts).at(_id), 4*sizeof(double));
                 memcpy(est_poses_idts_saved[_id][sf.ts], _est_poses_tsid.at(sf.ts).at(_id), 4*sizeof(double));
             } 
@@ -701,7 +704,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
     }
     ROS_INFO("finish sync");
 
-    last_saved_est_kf_ts = sf_sld_win.back().ts;
+    last_saved_est_kf_ts = last_ts;
 }
 
 unsigned int SwarmLocalizationSolver::sliding_window_size() const {
