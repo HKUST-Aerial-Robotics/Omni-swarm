@@ -669,6 +669,7 @@ double SwarmLocalizationSolver::solve() {
 }
 
 void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
+    ROS_INFO("Start sync poses to saved while init successful");
     for (const SwarmFrame & sf : sf_sld_win) {
         //Only update param in sf to saved
         for (auto it : sf.id2nodeframe) {
@@ -683,17 +684,22 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             }
 
             if (est_poses_tsid_saved[sf.ts].find(_id) == est_poses_tsid_saved[sf.ts].end()) {
-                est_poses_tsid_saved[sf.ts][_id] = new double[6];
+                est_poses_tsid_saved[sf.ts][_id] = new double[4];
             }
 
             if (est_poses_idts_saved[_id].find(sf.ts) == est_poses_idts_saved[_id].end()) {
-                est_poses_idts_saved[_id][sf.ts] = new double[6];
-            }
-
-            memcpy(est_poses_tsid_saved[sf.ts][_id], _est_poses_tsid.at(sf.ts).at(_id), 6* sizeof(double));
-            memcpy(est_poses_idts_saved[_id][sf.ts], _est_poses_tsid.at(sf.ts).at(_id), 6* sizeof(double));
+                est_poses_idts_saved[_id][sf.ts] = new double[4];
+            }  
+            
+            if (_est_poses_tsid.find(sf.ts) !=_est_poses_tsid.end() &&
+                _est_poses_tsid.at(sf.ts).find(_id) != _est_poses_tsid.at(sf.ts).end()
+            ) {
+                memcpy(est_poses_tsid_saved[sf.ts][_id], _est_poses_tsid.at(sf.ts).at(_id), 4*sizeof(double));
+                memcpy(est_poses_idts_saved[_id][sf.ts], _est_poses_tsid.at(sf.ts).at(_id), 4*sizeof(double));
+            } 
         }
     }
+    ROS_INFO("finish sync");
 
     last_saved_est_kf_ts = sf_sld_win.back().ts;
 }
