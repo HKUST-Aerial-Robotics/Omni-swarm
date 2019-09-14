@@ -17,7 +17,6 @@ find_package(catkin REQUIRED COMPONENTS
         std_msgs
         geometry_msgs
         swarm_msgs
-        camera_models
         )
 find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
