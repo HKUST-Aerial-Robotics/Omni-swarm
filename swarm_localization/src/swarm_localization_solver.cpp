@@ -741,9 +741,13 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
         }
     }
 
-    assert(res_num > 0 &&"Set cost function with SF has 0 res num");
-    cost_function->SetNumResiduals(res_num);
-    return cost_function;
+    // assert(res_num > 0 &&"Set cost function with SF has 0 res num");
+    if (res_num > 0) {
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    } else {
+        return nullptr;
+    }
 }
 
 
@@ -752,6 +756,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
     //TODO: Deal with static object in this function!!!
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
+    std::vector<int> _id_list;
     int64_t ts = sf.ts;
     for(auto it : sf.id2nodeframe) {
         int _id = it.first;
@@ -760,23 +765,42 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         } else {
             // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
             pose_state.push_back(swarm_est_poses.at(ts).at(_id));
+            _id_list.push_back(_id);
             id2poseindex[_id] = pose_state.size() - 1;
             param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
         }
     }
     int res_num = 0;
     CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
-    problem.AddResidualBlock(cost, nullptr, pose_state);
-
-    if (finish_init) {
-        printf("SF Evaluate ERROR ts %d", TSShort(ts));
-        double * res = new double[res_num];
-        cost->Evaluate(pose_state.data(), res, nullptr);
-        for (int i = 0; i < res_num; i++) {
-            printf(" %f ", res[i]);
+    if (cost != nullptr) {
+        problem.AddResidualBlock(cost, nullptr, pose_state);
+        if (finish_init) {
+            printf("SF Evaluate ERROR ts %d", TSShort(ts));
+            double * res = new double[res_num];
+            cost->Evaluate(pose_state.data(), res, nullptr);
+            for (int i = 0; i < res_num; i++) {
+                printf(" %f ", res[i]);
+            }
+            printf("\n");
         }
-        printf("\n");
+    } else {
+        for (int i = 0; i < pose_state.size(); i ++) {
+            double * _state = pose_state[i];
+            int _id = _id_list[i];
+            if (!finish_init) {
+                //When not finish init; only estimate XY position
+                problem.AddParameterBlock(_state, 2);
+            } else {
+                if (!yaw_observability.at(_id)) {
+                    problem.AddParameterBlock(_state, 3);
+                } else {
+                    problem.AddParameterBlock(_state, 4);
+                }
+            }
+        }
+
     }
+
 }
 
 CostFunction *
