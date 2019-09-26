@@ -38,6 +38,7 @@ typedef std::vector<Quaterniond> quat_array;
 
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
+#define INIT_FIXED_Z
 
 //#define ENABLE_HISTORY_COV
 
@@ -127,7 +128,11 @@ struct SwarmFrameError {
                 t_pose[1] =  _poses[index][1];
 
                 if (first_init_mode) {
+#ifdef INIT_FIXED_Z
                     t_pose[2] = T(sf.id2nodeframe.at(_id).position().z());
+#else
+                    t_pose[2] =  _poses[index][2];
+#endif
                     t_pose[3] = T(sf.id2nodeframe.at(_id).yaw());
                 } else {
                     t_pose[2] =  _poses[index][2];
@@ -384,7 +389,11 @@ struct SwarmHorizonError {
             t_pose[1] =  _poses[index][1];
             if (first_init_mode) {
                 const NodeFrame & _nf = nf_windows.at(ts2nfindex.at(ts));
+#ifdef INIT_FIXED_Z
+                t_pose[2] =  _poses[index][2];
+#else           
                 t_pose[2] = T(_nf.position().z());
+#endif
                 t_pose[3] = T(_nf.yaw());
             } else {
                 t_pose[2] =  _poses[index][2];
