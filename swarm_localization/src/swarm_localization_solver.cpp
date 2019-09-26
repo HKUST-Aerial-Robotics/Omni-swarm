@@ -34,7 +34,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
 #define INIT_FXIED_YAW
-#define INIT_Z_ERROR 0.05
+#define INIT_Z_ERROR 0.2
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
 
@@ -163,13 +163,17 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
                 double * p = it2.second;
                 p[0] = rand_FloatRange(-10, 10);
                 p[1] = rand_FloatRange(-10, 10);
-                // p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
+#ifdef INIT_FIXED_Z
                 p[2] = all_sf[it.first].id2nodeframe[it2.first].position().z();
-    #ifdef INIT_FXIED_YAW
+#else
+                p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
+#endif
+
+#ifdef INIT_FXIED_YAW
                 p[3] = all_sf[it.first].id2nodeframe[it2.first].yaw();
-    #elif
+#elif
                 p[3] = rand_FloatRange(-M_PI, M_PI);
-    #endif
+#endif
             }
         }
     }
@@ -731,7 +735,11 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
         int _id = it.first;
         if (!finish_init) {
             //When not finish init; only estimate XY position
+#ifdef INIT_FIXED_Z
             cost_function->AddParameterBlock(2);
+#else
+            cost_function->AddParameterBlock(3);
+#endif
         } else {
             if (!yaw_observability.at(_id)) {
                 cost_function->AddParameterBlock(3);
@@ -789,7 +797,11 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
             int _id = _id_list[i];
             if (!finish_init) {
                 //When not finish init; only estimate XY position
+#ifdef INIT_FIXED_Z
                 problem.AddParameterBlock(_state, 2);
+#else
+                problem.AddParameterBlock(_state, 3);
+#endif
             } else {
                 if (!yaw_observability.at(_id)) {
                     problem.AddParameterBlock(_state, 3);
@@ -821,7 +833,11 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
 
     for (int i =0;i < poses_num; i ++) {
         if (!finish_init) {
+#ifdef INIT_FIXED_Z
             cost_function->AddParameterBlock(2);
+#else
+            cost_function->AddParameterBlock(3);
+#endif
         } else {
             if (!yaw_observability.at(_id)) {
                 cost_function->AddParameterBlock(3);
