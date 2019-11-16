@@ -530,7 +530,7 @@ class LocalProxy {
             ROS_WARN("Receive self message; Return");
             return;
         }
-        std::vector<uint8_t> buf = income_data.data;
+        auto buf = income_data.data;
         mavlink_message_t msg;
         mavlink_status_t status;
 
