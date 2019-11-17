@@ -30,7 +30,6 @@ add_message_files(
         node_detected.msg
         swarm_detected.msg
         swarm_drone_basecoor.msg
-        FeatureDescriptor.msg
         ImageDescriptor.msg
         LoopConnection.msg
 )

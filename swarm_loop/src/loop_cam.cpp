@@ -29,15 +29,20 @@ void LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
 }
 
 ImageDescriptor LoopCam::feature_detect(const cv::Mat & _img) {
-    cv::xfeatures2d::BriefDescriptorExtractor extractor;
-
+    auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
     ImageDescriptor img_des;
     std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
 
-    cv::FAST(_img, keypoints, FAST_THRES, true);
+    // cv::FAST(_img, keypoints, FAST_THRES, true);
 
-	for (int i = 0; i < (int)keypoints.size(); i++) {
+    cv::Mat mask;
+    //TODO:Mask drones
+    _des->detectAndCompute(_img, mask, keypoints, descriptors);
+    
+    // std::cout << "Features " << keypoints.size();
+	
+    for (int i = 0; i < (int)keypoints.size(); i++) {
 		Eigen::Vector3d tmp_p;
 		cam->liftProjective(Eigen::Vector2d(keypoints[i].pt.x, keypoints[i].pt.y), tmp_p);
 		cv::KeyPoint tmp_norm;
@@ -48,9 +53,13 @@ ImageDescriptor LoopCam::feature_detect(const cv::Mat & _img) {
         img_des.all_features_2d.push_back(point_2d_norm);
 	}
 
-	extractor.compute( _img, keypoints, descriptors);
-
-    return img_des;
+	// _des->compute( _img, keypoints, descriptors);
+    
+    // std::cout << "Features " << keypoints.size() <<  "; DIMS " << descriptors.dims <<  "; COLS " << descriptors.cols << " ROWS" << descriptors.rows << std::endl;
+    // std::cout << "Type" << descriptors.type() << std::endl;
+    // std::cout << descriptors.row(500);
+    img_des.feature_descriptor = std::vector<uint8_t>(descriptors.data, descriptors.data + ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
+    return std::move(img_des);
 }
 
 cv::Mat & LoopCam::pop_image_ts(ros::Time ts) {

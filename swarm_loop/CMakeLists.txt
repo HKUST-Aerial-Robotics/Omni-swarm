@@ -2,11 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(swarm_loop)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosmsg
@@ -43,20 +41,38 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-add_executable(${PROJECT_NAME}_node 
-  src/swarm_loop_node.cpp
+add_library(${PROJECT_NAME}_lib
   src/loop_cam.cpp
   src/loop_detector.cpp
   src/loop_net.cpp
   include/loop_cam.h
   include/loop_detector.h
   include/loop_net.h
-  )
+)
 
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(${PROJECT_NAME}_node 
+  src/swarm_loop_node.cpp
+)
+  
+add_executable(${PROJECT_NAME}_test
+  src/swarm_loop_test.cpp
+)
 
-target_link_libraries(${PROJECT_NAME}_node
+
+
+
+add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_test ${PROJECT_NAME}_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+target_link_libraries(${PROJECT_NAME}_lib
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
- )
+)
 
+target_link_libraries(${PROJECT_NAME}_node
+   ${PROJECT_NAME}_lib
+)
+
+target_link_libraries(${PROJECT_NAME}_test
+   ${PROJECT_NAME}_lib
+ )
