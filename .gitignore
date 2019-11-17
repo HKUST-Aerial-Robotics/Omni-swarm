@@ -10,3 +10,4 @@ swarm_localization/.vscode/
 swarm_detection/.vscode/
 localization_proxy/.vscode/
 swarm_loop/build/
+swarm_loop/.vscode/c_cpp_properties.json
