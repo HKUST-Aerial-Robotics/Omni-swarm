@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   swarm_msgs
   camera_models
+  loop_fusion
   vins
 )
 
