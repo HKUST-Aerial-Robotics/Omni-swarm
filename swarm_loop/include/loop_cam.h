@@ -14,7 +14,8 @@ using namespace swarm_msgs;
 using namespace camodocal;
 
 #define FAST_THRES (20.0f)
-
+#define ORB_FEATURE_SIZE (32) // For ORB
+#define LOOP_FEATURE_NUM (1000)
 
 class LoopCam {
     int cam_count = 0;
@@ -30,7 +31,8 @@ public:
     void on_keyframe_message(const vins::VIOKeyframe& msg);
 
     cv::Mat & pop_image_ts(ros::Time ts);
+    ImageDescriptor feature_detect(const cv::Mat & _img);
+
 private:
     CameraPtr cam;
-    ImageDescriptor feature_detect(const cv::Mat & _img);
 };
