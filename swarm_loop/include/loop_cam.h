@@ -26,7 +26,7 @@ class LoopCam {
     std::vector<double> image_ts_queue;
 
 public:
-    LoopDetector * loop_detector = nullptr;
+    // LoopDetector * loop_detector = nullptr;
 
     LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE);
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);

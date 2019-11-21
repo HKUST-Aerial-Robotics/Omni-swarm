@@ -67,7 +67,7 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
     //TODO: Optimize copy here
     memcpy(img_des.feature_descriptor, descriptors.data, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
     // img_des.feature_descriptor = std::vector<uint8_t>(descriptors.data, descriptors.data + ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
-    return std::move(img_des);
+    return img_des;
 }
 
 cv::Mat & LoopCam::pop_image_ts(ros::Time ts) {

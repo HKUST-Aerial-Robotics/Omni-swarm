@@ -30,3 +30,10 @@ inline void ROSPoints2LCM( const std::vector<geometry_msgs::Point32> & src, std:
 inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::vector<Point3d_t> & dst) {
     
 }
+
+
+inline cv::Mat cvfeatureFromByte(uint8_t*data, int feature_num=1000, int feature_len = 32) {
+    cv::Mat mat(feature_num, feature_len, CV_8UC1);
+    memcpy(mat.data, data, feature_num*feature_len*sizeof(uint8_t));
+    return mat;
+}
