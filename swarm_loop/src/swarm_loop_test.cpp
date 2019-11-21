@@ -1,5 +1,6 @@
 #include <loop_cam.h>
 #include <opencv2/opencv.hpp>
+#include <swarm_msgs/swarm_lcm_converter.hpp>
 
 int main(int argc, char **argv) {
     ROS_INFO("SWARM_LOOP INIT");
@@ -17,7 +18,7 @@ int main(int argc, char **argv) {
     
     cv::Mat img = cv::imread(test_img_file.c_str(), cv::IMREAD_GRAYSCALE);
     LoopCam cam(camera_config_path, BRIEF_PATTHER_FILE);
-    auto des = cam.feature_detect(img);
+    auto des =  toROSMsg(cam.feature_detect(img));
     ros::Rate r(10);
     while (true) {
         ROS_INFO("Publishing the descriptors....");

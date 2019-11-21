@@ -1,0 +1,31 @@
+struct Pose_t {
+    double   position[3];
+    double   orientation[4]; 
+}
+
+struct Point2d_t {
+    float x;
+    float y;
+}
+
+struct Point3d_t {
+    double x;
+    double y;
+    double z;
+}
+
+
+struct ImageDescriptor_t {
+    int64_t  timestamp;
+    int32_t drone_id;
+
+    Point2d_t all_features_2d[1000];
+    byte feature_descriptor[32000];
+
+    Pose_t pose_cam;
+    Pose_t pose_drone;
+
+    int32_t npoints;
+    Point2d_t keyfeature_point_2d_norm[npoints];
+    Point3d_t keyfeature_point_3d[npoints];
+}
