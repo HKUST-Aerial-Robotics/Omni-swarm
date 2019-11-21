@@ -50,7 +50,6 @@ catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES swarm_msgs
 #  CATKIN_DEPENDS message_generation message_runtime nav_msgs odometry_msgs std_msgs
-#  DEPENDS system_lib
 )
 
 ###########

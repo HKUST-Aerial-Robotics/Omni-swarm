@@ -9,6 +9,7 @@
 #include <functional>
 #include <loop_detector.h>
 #include <vins/VIOKeyframe.h>
+#include <swarm_msgs/ImageDescriptor_t.hpp>
     
 using namespace swarm_msgs;
 using namespace camodocal;
@@ -22,16 +23,17 @@ class LoopCam {
     int loop_duration = 10;
 
     std::vector<cv::Mat> image_queue;
+    std::vector<double> image_ts_queue;
 
 public:
     LoopDetector * loop_detector = nullptr;
 
     LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE);
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);
-    void on_keyframe_message(const vins::VIOKeyframe& msg);
+    ImageDescriptor_t on_keyframe_message(const vins::VIOKeyframe& msg);
 
     cv::Mat & pop_image_ts(ros::Time ts);
-    ImageDescriptor feature_detect(const cv::Mat & _img);
+    ImageDescriptor_t feature_detect(const cv::Mat & _img);
 
 private:
     CameraPtr cam;

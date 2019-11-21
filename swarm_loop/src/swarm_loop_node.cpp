@@ -11,8 +11,7 @@ LoopNet * loop_net = nullptr;
 
 ros::Subscriber cam_sub;
 public:
-    SwarmLoopNode(ros::NodeHandle& nh)
-    {
+    SwarmLoopNode(ros::NodeHandle& nh) {
         //Init Loop Net
         int _bport = -1;
         std::string _broadcast_ip = "0.0.0.0";
