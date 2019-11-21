@@ -1,9 +1,53 @@
 #include <loop_detector.h>
+#include <swarm_msgs/swarm_lcm_converter.hpp>
+#include <opencv2/opencv.hpp>
+#include <chrono> 
+using namespace std::chrono; 
 
-void LoopDetector::on_image_recv(const ImageDescriptor & img_des) {
+void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
+    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor);
+    // std::cout << "FEATUREX"<< featurex.size() << std::endl;
+
+    ROS_INFO("Querying image descriptor ");
+
+    int _id = db.add(feature);
+
+    if (db.size() > 50) {
+        auto start = high_resolution_clock::now(); 
+
+        DBoW3::QueryResults ret;
+        db.query(feature, ret, 1, _id - 50);
+        auto stop = high_resolution_clock::now(); 
+
+        if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
+            std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count() <<" RES: " << ret << std::endl;
+            if (ret.size() > 0 && !img.empty()) {
+                int _old_id = ret[0].Id;
+                if (id2imgs.find(_old_id)!= id2imgs.end()) {
+                    cv::Mat _show;
+                    cv::hconcat(img, id2imgs[_old_id], _show);
+                    cv::imshow("Loop", _show);
+                    cv::waitKey(30);
+                }
+            }
+        }        
+
+    }
+
+    //Then Add
+    if (! img.empty() ) {
+        id2imgs[_id] = img;
+    }
+
+    ROS_INFO("Adding image descriptor %d to database", _id);
 
 }
 
 void LoopDetector::on_loop_connection(const LoopConnection & loop_conn) {
+
+}
+
+LoopDetector::LoopDetector(const std::string & voc_path):
+    voc(voc_path), db(voc, false, 0) {
 
 }
