@@ -11,6 +11,8 @@
 using namespace swarm_msgs;
 
 #define LOOP_BOW_THRES 0.015
+#define MATCH_INDEX_DIST 50
+
 class LoopDetector {
     DBoW3::Vocabulary voc;
     DBoW3::Database db;

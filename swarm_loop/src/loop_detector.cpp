@@ -12,11 +12,11 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
     int _id = db.add(feature);
 
-    if (db.size() > 50) {
+    if (db.size() > MATCH_INDEX_DIST) {
         auto start = high_resolution_clock::now(); 
 
         DBoW3::QueryResults ret;
-        db.query(feature, ret, 1, _id - 50);
+        db.query(feature, ret, 1, _id - MATCH_INDEX_DIST);
         auto stop = high_resolution_clock::now(); 
 
         if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
