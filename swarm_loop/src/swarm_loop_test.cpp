@@ -5,7 +5,7 @@
 #include <chrono> 
 using namespace std::chrono; 
 
-// #define DEBUG_IMAGE
+#define DEBUG_IMAGE
 
 LoopDetector ld("/home/xuhao/swarm_ws/src/swarm_localization/support_files/ORBvoc.txt");
 
