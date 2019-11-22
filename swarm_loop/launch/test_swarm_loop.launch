@@ -1,0 +1,5 @@
+<launch>
+    <node name="swarm_loop_test" pkg="swarm_loop" type="swarm_loop_test" output="screen" />
+    <!-- <node name="vins" pkg="vins" type="vins_node" output="screen" args="/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/vi_car.yaml" /> -->
+    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" args="/home/xuhao/bags/vo_bag/realsense/realsense_n3_unsync.yaml" />
+</launch>

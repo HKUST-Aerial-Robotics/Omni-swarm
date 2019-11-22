@@ -23,12 +23,23 @@ inline Pose_t fromROSPose(const geometry_msgs::Pose & pose) {
 }
 
 
-inline void ROSPoints2LCM( const std::vector<geometry_msgs::Point32> & src, std::vector<Point2d_t> & dst) {
-
+inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::vector<Point2d_t> & dst) {
+    for (auto pt : src) {
+        Point2d_t pt2;
+        pt2.x = pt.x;
+        pt2.y = pt.y;
+        dst.push_back(pt2);
+    }
 }
 
 inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::vector<Point3d_t> & dst) {
-    
+    for (auto pt : src) {
+        Point3d_t pt3;
+        pt3.x = pt.x;
+        pt3.y = pt.y;
+        pt3.z = pt.z;
+        dst.push_back(pt3);
+    }
 }
 
 
