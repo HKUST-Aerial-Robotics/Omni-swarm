@@ -14,7 +14,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
     ROS_INFO("Querying image descriptor ");
 
     int _id = db.add(feature);
-    std::cout << "Add Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count() << std::endl;
+    std::cout << "Add Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
 
     if (db.size() > MATCH_INDEX_DIST) {
 
@@ -23,7 +23,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         auto stop = high_resolution_clock::now(); 
 
         if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
-            std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count() <<" RES: " << ret << std::endl;
+            std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << ret << std::endl;
             if (ret.size() > 0 && !img.empty()) {
                 int _old_id = ret[0].Id;
                 if (id2imgs.find(_old_id)!= id2imgs.end()) {

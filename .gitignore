@@ -12,3 +12,4 @@ localization_proxy/.vscode/
 swarm_loop/build/
 swarm_loop/.vscode/
 .vscode/
+support_files/ORBvoc.txt
