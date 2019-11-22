@@ -2,7 +2,6 @@
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-#include <Eigen/Eigen>
 #include <swarm_msgs/ImageDescriptor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
