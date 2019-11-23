@@ -64,6 +64,19 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 }
 
 
+
+std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
+    std::vector<cv::KeyPoint> cvKpts;
+
+    for (auto pt : pts) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        cvKpts.push_back(kp);
+    }
+
+    return std::move(cvKpts);
+}
+
 bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret) {
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
     ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
@@ -81,9 +94,27 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         cv::Mat _show;
         auto img_new = id2imgs[_img_index_now];
         auto img_old = id2imgs[_img_index_old];
-        cv::hconcat(img_new, img_old, _show);
+    
+        auto nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(matched_2d_norm_now));
+        auto oldKPs = cvPoints2Keypoints(loop_cam->project_to_image(matched_2d_norm_old));
+        std::vector<cv::DMatch> matches;
+        for (int i = 0; i < matched_2d_norm_old.size(); i ++) {
+            cv::DMatch dm;
+            dm.queryIdx = i;
+            dm.trainIdx = i;
+            
+            ROS_INFO("NOW %f %f OLD %f %f", 
+                matched_2d_norm_now[i].x, matched_2d_norm_now[i].y,
+                matched_2d_norm_old[i].x, matched_2d_norm_old[i].y);
+
+            matches.push_back(dm);
+        }
+
+        ROS_INFO("HAMMING GIVES %d matches", matches.size());
+        // drawMatches(const Mat& img1, const vector<KeyPoint>& keypoints1, const Mat& img2, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches1to2, Mat& outImg)
+        cv::drawMatches(img_new, nowKPs, img_old, oldKPs, matches, _show);
         cv::imshow("Loop", _show);
-        cv::waitKey(10);
+        cv::waitKey(-1);
     }
 
 }
@@ -109,11 +140,11 @@ bool searchInAera(  uint8_t * window_descriptor,
                     uint8_t * descriptors_old,
                     int & bestIndex) {
     bestIndex = -1;
-    int bestDist = 128;
+    double bestDist = 10000;
     for(int i = 0; i < LOOP_FEATURE_NUM ; i++)
     {
 
-        int dis = HammingDis(window_descriptor, descriptors_old + i*ORB_FEATURE_SIZE);
+        double dis = HammingDis(window_descriptor, descriptors_old + i*ORB_FEATURE_SIZE);
         if(dis < bestDist)
         {
             bestDist = dis;
@@ -146,6 +177,7 @@ void searchByBRIEFDes(  std::vector<cv::Point2f> &matched_2d_old_norm,
                     toCV(keypoints_new_norm[i]));
             matched_3d_new.push_back(
                     toCV(keypoints_new_3d[i]));
+            ROS_INFO("Good match, old index %d", best_index);
             matched_2d_old_norm.push_back(
                     toCV(keypoints_old_norm[best_index])
             );

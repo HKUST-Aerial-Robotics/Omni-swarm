@@ -6,7 +6,6 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <camodocal/camera_models/Camera.h>
 #include <functional>
-#include <loop_detector.h>
 #include <vins/VIOKeyframe.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include "loop_defines.h"
@@ -33,6 +32,8 @@ public:
     cv::Mat pop_image_ts(ros::Time ts);
     ImageDescriptor_t feature_detect(const cv::Mat & _img);
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
+
+    std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);
 
 private:
     CameraPtr cam;
