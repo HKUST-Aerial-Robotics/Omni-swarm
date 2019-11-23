@@ -14,11 +14,16 @@ class LoopDetector {
     DBoW3::Vocabulary voc;
     DBoW3::Database db;
     std::map<unsigned int, cv::Mat> id2imgs;
-    // std::map<
+    std::map<unsigned int, ImageDescriptor_t> id2imgdes;
+
+    bool compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret);
+
 public:
     LoopDetector(const std::string & voc_path);
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());
     void on_loop_connection(const LoopConnection & loop_conn);
 
-    LoopConnection compute_loop(const ImageDescriptor_t & img_now, const ImageDescriptor_t & img_des);
+
+
+
 };
