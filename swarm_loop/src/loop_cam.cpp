@@ -138,3 +138,20 @@ cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
     cv::Mat ret;
     return ret;
 }
+
+
+std::vector<cv::Point2f> LoopCam::project_to_image(std::vector<cv::Point2f> points_norm2d) {
+    std::vector<cv::Point2f> ret;
+    for (auto pt : points_norm2d) {
+        Eigen::Vector3d p3d(pt.x, pt.y, 1);
+        Eigen::Vector2d p2d;
+        cam->spaceToPlane(p3d, p2d);
+        cv::Point2f cvpt2d;
+        cvpt2d.x = p2d.x();
+        cvpt2d.y = p2d.y();
+
+        ret.push_back(cvpt2d);
+    }
+
+    return ret;
+}

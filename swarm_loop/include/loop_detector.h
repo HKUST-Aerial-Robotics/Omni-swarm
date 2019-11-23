@@ -7,6 +7,7 @@
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include <DBoW3/DBoW3.h>
 #include "loop_defines.h"
+#include <loop_cam.h>
 
 using namespace swarm_msgs;
 
@@ -22,8 +23,5 @@ public:
     LoopDetector(const std::string & voc_path);
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());
     void on_loop_connection(const LoopConnection & loop_conn);
-
-
-
-
+    LoopCam * loop_cam = nullptr;
 };

@@ -89,6 +89,7 @@ public:
         loop_net = new LoopNet(_broadcast_ip, _bport);
         loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE);
         loop_detector = new LoopDetector(ORB_VOC);
+        loop_detector->loop_cam = loop_cam;
 
         camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);
