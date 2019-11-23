@@ -65,3 +65,22 @@ inline cv::Point3f toCV(Point3d_t a) {
     pt.z = a.z;
     return pt;
 }
+
+
+inline std::vector<cv::Point2f> toCV(std::vector<Point2d_t> arr) {
+    std::vector<cv::Point2f> _arr;
+    for (auto a : arr) {
+        _arr.push_back(toCV(a));
+    }
+    return _arr;
+}
+
+
+inline std::vector<cv::Point2f> toCV(Point2d_t * arr, int len) {
+    std::vector<cv::Point2f> _arr;
+    for (int i = 0; i < len; i++) {
+        auto a = arr[i];
+        _arr.push_back(toCV(a));
+    }
+    return _arr;
+}
