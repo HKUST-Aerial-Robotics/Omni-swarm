@@ -113,23 +113,22 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         toCV(new_img_desc.landmarks_2d_norm));
 
     auto oldKPs = cvPoints2Keypoints(loop_cam->project_to_image(
-        toCV(old_img_desc.all_features_2d_norm, 100)));
+        toCV(old_img_desc.all_features_2d_norm, 1000)));
 
-    auto _orb = cv::ORB::create();
+    auto _orb = cv::ORB::create(1000);
     _orb->compute(img_new, nowKPs, des_new);
-    _orb = cv::ORB::create();
-    _orb->compute(img_old, oldKPs, des_old);
+    // _orb->detectAndCompute(img_new, cv::Mat(), nowKPs, des_new);
 
+    _orb = cv::ORB::create(1000);
+    // _orb->compute(img_old, oldKPs, des_old);
+    
+    _orb->detectAndCompute(img_old, cv::Mat(), oldKPs, des_old);
     std::vector<cv::DMatch> matches;
     double max_dist = 0; double min_dist = 100;
 
     bf->match(des_new, des_old, matches);
 
-
     cv::Mat _show;
-
-    nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(
-        toCV(new_img_desc.landmarks_2d_norm)));
 
     cv::drawMatches(img_new, nowKPs, img_old, oldKPs, matches, _show);
     cv::imshow("Loop", _show);
