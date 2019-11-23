@@ -6,16 +6,15 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include <DBoW3/DBoW3.h>
+#include "loop_defines.h"
 
 using namespace swarm_msgs;
-
-#define LOOP_BOW_THRES 0.015
-#define MATCH_INDEX_DIST 50
 
 class LoopDetector {
     DBoW3::Vocabulary voc;
     DBoW3::Database db;
     std::map<unsigned int, cv::Mat> id2imgs;
+    // std::map<
 public:
     LoopDetector(const std::string & voc_path);
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());

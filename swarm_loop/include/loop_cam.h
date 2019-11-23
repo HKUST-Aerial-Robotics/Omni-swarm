@@ -9,14 +9,12 @@
 #include <loop_detector.h>
 #include <vins/VIOKeyframe.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
+#include "loop_defines.h"
     
 using namespace swarm_msgs;
 using namespace camodocal;
 
-#define FAST_THRES (20.0f)
-#define ORB_FEATURE_SIZE (32) // For ORB
-#define LOOP_FEATURE_NUM (1000)
-// #define USE_CUDA
+
 
 class LoopCam {
     int cam_count = 0;
@@ -32,7 +30,7 @@ public:
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);
     std::pair<ImageDescriptor_t, cv::Mat> on_keyframe_message(const vins::VIOKeyframe& msg);
 
-    cv::Mat & pop_image_ts(ros::Time ts);
+    cv::Mat pop_image_ts(ros::Time ts);
     ImageDescriptor_t feature_detect(const cv::Mat & _img);
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
