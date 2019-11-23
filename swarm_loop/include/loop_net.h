@@ -6,6 +6,7 @@
 #include <string>
 #include <lcm/lcm-cpp.hpp>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
+#include "loop_defines.h"
 
 using namespace swarm_msgs;
 

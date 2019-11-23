@@ -23,10 +23,13 @@ void LoopCam::on_camera_message(const sensor_msgs::ImageConstPtr& msg) {
 std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
-    cv::Mat & img = pop_image_ts(msg.header.stamp);
+    cv::Mat img = pop_image_ts(msg.header.stamp);
     ImageDescriptor_t ides;
+    ides.landmark_num = 0;
     if (img.empty()) {
-        return std::pair<ImageDescriptor_t, cv::Mat> (ides, img);
+        ROS_INFO("No Image; Exiting;");
+        cv::Mat _img;
+        return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
     }
     auto start = high_resolution_clock::now();
     ides = feature_detect(img);
@@ -108,10 +111,11 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
     return img_des;
 }
 
-cv::Mat & LoopCam::pop_image_ts(ros::Time ts) {
+cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
     ROS_INFO("Pop image... queue len %d", image_queue.size());
     double ts_sec = ts.toSec();
     if (image_queue.size() == 0) {
+        ROS_INFO("Pop image with NOTHING");
         cv::Mat ret;
         return ret;
     }
