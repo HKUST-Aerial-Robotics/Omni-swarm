@@ -2,6 +2,7 @@
 #include <swarm_msgs/ImageDescriptor.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point32.h>
+#include <opencv2/opencv.hpp>
 
 inline swarm_msgs::ImageDescriptor toROSMsg(const ImageDescriptor_t & _img) {
     swarm_msgs::ImageDescriptor img_des;
@@ -47,4 +48,20 @@ inline cv::Mat cvfeatureFromByte(uint8_t*data, int feature_num=1000, int feature
     cv::Mat mat(feature_num, feature_len, CV_8UC1);
     memcpy(mat.data, data, feature_num*feature_len*sizeof(uint8_t));
     return mat;
+}
+
+
+inline cv::Point2f toCV(Point2d_t a) {
+    cv::Point2f pt;
+    pt.x = a.x;
+    pt.y = a.y;
+    return pt;
+}
+
+inline cv::Point3f toCV(Point3d_t a) {
+    cv::Point3f pt;
+    pt.x = a.x;
+    pt.y = a.y;
+    pt.z = a.z;
+    return pt;
 }
