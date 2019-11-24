@@ -2,7 +2,7 @@
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             camera_config_path: /home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml
-            debug_image : false
+            debug_image : true
         </rosparam>
         <remap from="~left_camera" to="/cam0/image_raw"/>
     </node>
