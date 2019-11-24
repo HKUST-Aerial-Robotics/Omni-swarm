@@ -29,7 +29,7 @@ void searchByBRIEFDesCV(  std::vector<cv::Point2f> &matched_2d_old_norm,
 void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto start = high_resolution_clock::now(); 
 
-    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor);
+    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor, LOOP_FEATURE_NUM);
     // std::cout << "FEATUREX"<< featurex.size() << std::endl;
 
     int _id = db.add(feature);
@@ -87,80 +87,6 @@ std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
 }
 
 
-/*compute loop saved code 
- // cv::Mat des_old;
-    cv::Mat des_new(new_img_desc.landmarks_2d_norm.size(), ORB_FEATURE_SIZE, CV_8UC1, new_img_desc.landmarks_descriptors.data());
-    cv::Mat des_old(LOOP_FEATURE_NUM, ORB_FEATURE_SIZE, CV_8U, old_img_desc.feature_descriptor);
-
-    auto img_old = id2imgs[_img_index_old];
-    auto img_new = id2imgs[_img_index_now];
-
-    auto nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(
-        toCV(new_img_desc.landmarks_2d_norm)));
-
-    auto nowPts = loop_cam->project_to_image(
-        toCV(new_img_desc.landmarks_2d_norm));
-
-    auto oldKPs = cvPoints2Keypoints(loop_cam->project_to_image(
-        toCV(old_img_desc.all_features_2d_norm, 1000)));
-
-    auto _orb = cv::ORB::create(1000);
-    _orb->compute(img_new, nowKPs, des_new);
-    // _orb->detectAndCompute(img_new, cv::Mat(), nowKPs, des_new);
-
-    _orb = cv::ORB::create(1000);
-    // _orb->compute(img_old, oldKPs, des_old);
-    
-    _orb->detectAndCompute(img_old, cv::Mat(), oldKPs, des_old);
-    std::vector<cv::DMatch> matches;
-    double max_dist = 0; double min_dist = 100;
-
-    bf->match(des_new, des_old, matches);
-
-    cv::Mat _show;
-
-    cv::drawMatches(img_new, nowKPs, img_old, oldKPs, matches, _show);
-    cv::imshow("Loop", _show);
-
-    //Then try optical flow
-
-
-
-      searchByBRIEFDesCV(matched_2d_norm_old, matched_2d_norm_now, matched_3d_norm_now,
-        old_img_desc.feature_descriptor, new_img_desc.landmarks_descriptors.data(),
-        old_img_desc.all_features_2d_norm, new_img_desc.landmarks_2d_norm, new_img_desc.landmarks_3d);
-
-    
-    if (id2imgs.find(_img_index_now) != id2imgs.end() &&
-        id2imgs.find(_img_index_old) != id2imgs.end()) {
-        cv::Mat _show;
-        auto img_new = id2imgs[_img_index_now];
-        auto img_old = id2imgs[_img_index_old];
-    
-        auto nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(matched_2d_norm_now));
-        auto oldKPs = cvPoints2Keypoints(loop_cam->project_to_image(matched_2d_norm_old));
-        std::vector<cv::DMatch> matches;
-        for (int i = 0; i < matched_2d_norm_old.size(); i ++) {
-            cv::DMatch dm;
-            dm.queryIdx = i;
-            dm.trainIdx = i;
-            
-            ROS_INFO("NOW %f %f OLD %f %f", 
-                matched_2d_norm_now[i].x, matched_2d_norm_now[i].y,
-                matched_2d_norm_old[i].x, matched_2d_norm_old[i].y);
-
-            matches.push_back(dm);
-        }
-
-        ROS_INFO("HAMMING GIVES %d matches", matches.size());
-        // drawMatches(const Mat& img1, const vector<KeyPoint>& keypoints1, const Mat& img2, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches1to2, Mat& outImg)
-        cv::drawMatches(img_new, nowKPs, img_old, oldKPs, matches, _show);
-        cv::imshow("Loop", _show);
-        cv::waitKey(10);
-    }
-
-*/
-
 bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret) {
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
     ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
@@ -171,42 +97,38 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     //Tetst BruteMatcher Here
     auto bf = cv::BFMatcher::create(cv::NORM_HAMMING, true);
 
-    auto img_old = id2imgs[_img_index_old];
-    auto img_new = id2imgs[_img_index_now];
+    auto img_old_small = cv::Mat(old_img_desc.image_height, old_img_desc.image_width, CV_8UC1, old_img_desc.image.data());
+    auto img_new_small = cv::Mat(new_img_desc.image_height, new_img_desc.image_width, CV_8UC1, new_img_desc.image.data());
    
     std::vector<cv::Point2f> tracked;// = nowPts;
     std::vector<float> err;
     std::vector<unsigned char> status;
-    cv::Mat img_new_small, img_old_small;
  
     auto nowPts = loop_cam->project_to_image(
         toCV(new_img_desc.landmarks_2d_norm));
     std::vector<cv::Point2f> nowPtsSmall;
 
     for (auto pt : nowPts) {
-        pt.x = pt.x/2;
-        pt.y = pt.y/2;
+        pt.x = pt.x/LOOP_IMAGE_DOWNSAMPLE;
+        pt.y = pt.y/LOOP_IMAGE_DOWNSAMPLE;
         nowPtsSmall.push_back(pt);
     }
-
-    cv::resize(img_new, img_new_small, img_new.size() / 2);
-    cv::resize(img_old, img_old_small, img_new.size() / 2);
     
-    // cv::calcOpticalFlowPyrLK(img_new, img_old, nowPts, tracked, status, err, cv::Size(21, 21), 3);
     cv::calcOpticalFlowPyrLK(img_new_small, img_old_small, nowPtsSmall, tracked, status, err, cv::Size(21, 21), 3);
     std::vector<cv::Point2f> good_new;
     
     for(uint i = 0; i < nowPts.size(); i++) {
         if(status[i] == 1) {
-            matched_2d_norm_now.push_back(nowPts[i]);
+            matched_2d_norm_now.push_back(toCV(new_img_desc.landmarks_2d_norm[i]));
             matched_3d_now.push_back(toCV(new_img_desc.landmarks_3d[i]));
-            matched_2d_norm_old.push_back(tracked[i]);
+            Eigen::Vector2d p_tracker(tracked[i].x, tracked[i].y);
+            matched_2d_norm_old.push_back(loop_cam->project_to_norm2d(tracked[i]*LOOP_IMAGE_DOWNSAMPLE));
         }
     }
 
     if (enable_visualize) {
-        cv::cvtColor(img_new, img_new, cv::COLOR_GRAY2BGR);
-        cv::cvtColor(img_old, img_old, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(img_new_small, img_new_small, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(img_old_small, img_old_small, cv::COLOR_GRAY2BGR);
         
         std::vector<cv::DMatch> matches;
         std::vector<cv::KeyPoint> oldKPs;
@@ -240,6 +162,7 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         cv::Mat _show;
         std::cout << "NOWLPS size " << nowKPs.size() << " OLDLPs " << oldKPs.size() << std::endl;
         cv::drawMatches(img_new_small, cvPoints2Keypoints(nowPtsSmall), img_old_small, oldKPs, matches, _show);
+        cv::resize(_show, _show, _show.size()*2);
         cv::imshow("Track Loop", _show);
         cv::waitKey(10);
     }
@@ -247,7 +170,6 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
 
 
     return false;
-    //Test END here
 
 }
 

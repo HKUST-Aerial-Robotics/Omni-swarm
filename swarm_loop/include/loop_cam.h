@@ -35,6 +35,8 @@ public:
 
     std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);
 
+    cv::Point2d project_to_norm2d(cv::Point2f p);
+
 private:
     CameraPtr cam;
 };
