@@ -182,7 +182,9 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         cv::Mat r, rvec, t, D, tmp_r;
         cv::Mat inliers;
 
+        //TODO: Prepare initial pose for swarm
         Swarm::Pose initial_cam_pose(old_img_desc.pose_cam);
+
         PnPInitialFromCamPose(Swarm::Pose(old_img_desc.pose_cam), rvec, t);
         
         start = high_resolution_clock::now();
@@ -199,10 +201,10 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         std::cout << "CamPoseOLD             ";
         initial_cam_pose.print();
 
-        auto p = PnPRestoCamPose(rvec, t);
+        auto p_cam = PnPRestoCamPose(rvec, t);
 
         std::cout << "PnP solved camera Pose ";
-        p.print();
+        p_cam.print();
 
 
         //Show Result
