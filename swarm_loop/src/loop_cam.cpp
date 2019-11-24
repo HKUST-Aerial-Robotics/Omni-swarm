@@ -30,6 +30,23 @@ cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p) {
     return ret;
 }
 
+void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
+    auto start = high_resolution_clock::now();
+    std::vector<uchar> data_encode;
+    
+    std::vector<int> params;
+    params.push_back( cv::IMWRITE_JPEG_QUALITY );
+    params.push_back( 75 );
+
+    cv::imencode(".jpg", _img, _img_desc.image, params);
+    std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+    std::cout << "JPG SIZE" << data_encode.size() << std::endl;
+
+    _img_desc.image_height = _img.size().height;
+    _img_desc.image_width = _img.size().width;
+    _img_desc.image_size = _img_desc.image.size();
+}
+
 std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
@@ -47,12 +64,12 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     cv::resize(img, img_small, img.size()/LOOP_IMAGE_DOWNSAMPLE);
 
     ides = feature_detect(img);
-    ides.image = std::vector<unsigned char>(img_small.data, img_small.data + img_small.size().height * img_small.size().width);
-    ides.image_height = img_small.size().height;
-    ides.image_width = img_small.size().width;
-    ides.image_size = ides.image_width*ides.image_height;
 
     std::cout << "FeatureDetect Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+
+  
+    encode_image(img_small, ides);
+
 
     ides.timestamp = msg.header.stamp.toSec();
     ides.drone_id = -1; // -1 is self drone;

@@ -25,4 +25,5 @@ public:
     void on_loop_connection(const LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
     bool enable_visualize = true;
+    cv::Mat decode_image(const ImageDescriptor_t & _img_desc);
 };

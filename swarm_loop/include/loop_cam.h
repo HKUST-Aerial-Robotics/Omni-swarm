@@ -37,6 +37,8 @@ public:
 
     cv::Point2d project_to_norm2d(cv::Point2f p);
 
+    void encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc);
+
 private:
     CameraPtr cam;
 };
