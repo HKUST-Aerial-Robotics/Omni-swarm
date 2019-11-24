@@ -14,3 +14,6 @@
 
 #define LOOP_IMAGE_DOWNSAMPLE 2
 #define JPG_QUALITY 50
+
+#define MIN_LOOP_NUM 25
+
