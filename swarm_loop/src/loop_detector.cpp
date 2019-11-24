@@ -2,6 +2,8 @@
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <opencv2/opencv.hpp>
 #include <chrono> 
+#include <opencv2/core/eigen.hpp>
+
 using namespace std::chrono; 
 
 bool searchInAera(  uint8_t * window_descriptor,
@@ -100,6 +102,12 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
     ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
 
+    Eigen::Vector3d cam_old_world(
+        old_img_desc.pose_cam.position[0],
+        old_img_desc.pose_cam.position[1],
+        old_img_desc.pose_cam.position[2]);
+
+
     std::vector<cv::Point2f> matched_2d_norm_now, matched_2d_norm_old;
     std::vector<cv::Point3f> matched_3d_now;
 
@@ -145,12 +153,17 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     cv::Mat r, rvec, t, D, tmp_r;
     cv::Mat inliers;
 
+
+    Eigen::Vector3d Tinitial = cam_old_world;
+    cv::eigen2cv(Tinitial, t);
+
     start = high_resolution_clock::now();
     solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99,  inliers);
 
     std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
     // std::cout << "INLIER" << inliers << std::endl;
     std::cout << "R " << rvec << " T" << t << std::endl;
+    std::cout << "TcamOLD" << cam_old_world << std::endl;
 
     if (enable_visualize) {
         cv::cvtColor(img_new_small, img_new_small, cv::COLOR_GRAY2BGR);

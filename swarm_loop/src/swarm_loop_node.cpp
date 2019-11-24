@@ -34,7 +34,7 @@ class SwarmLoopNode {
         int keyframe_size = viokf.feature_points_2d_norm.size();
 
         if ( dpos < min_movement_keyframe || keyframe_size < MIN_KEYFEATURES) {
-            ROS_INFO("THROW Keyframe MOVE %3.2fm LANDMARK %d", dpos, keyframe_size);
+            // ROS_INFO("THROW Keyframe MOVE %3.2fm LANDMARK %d", dpos, keyframe_size);
             return;
         } else {
             last_keyframe_position = drone_pos;
