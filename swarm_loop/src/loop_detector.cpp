@@ -136,6 +136,21 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
             matched_2d_norm_old.push_back(loop_cam->project_to_norm2d(tracked[i]*LOOP_IMAGE_DOWNSAMPLE));
         }
     }
+    
+
+    //Compute PNP
+
+    cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
+
+    cv::Mat r, rvec, t, D, tmp_r;
+    cv::Mat inliers;
+
+    start = high_resolution_clock::now();
+    solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99,  inliers);
+
+    std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+    // std::cout << "INLIER" << inliers << std::endl;
+    std::cout << "R " << rvec << " T" << t << std::endl;
 
     if (enable_visualize) {
         cv::cvtColor(img_new_small, img_new_small, cv::COLOR_GRAY2BGR);
@@ -170,9 +185,18 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
 
             }
         }
+
+        std::vector<cv::DMatch> good_matches;
+
+        for( int i = 0; i < inliers.rows; i++)
+        {
+            int n = inliers.at<int>(i);
+            good_matches.push_back(matches[n]);
+        }
+
         cv::Mat _show;
         std::cout << "NOWLPS size " << nowKPs.size() << " OLDLPs " << oldKPs.size() << std::endl;
-        cv::drawMatches(img_new_small, cvPoints2Keypoints(nowPtsSmall), img_old_small, oldKPs, matches, _show);
+        cv::drawMatches(img_new_small, cvPoints2Keypoints(nowPtsSmall), img_old_small, oldKPs, good_matches, _show);
         cv::resize(_show, _show, _show.size()*2);
         cv::imshow("Track Loop", _show);
         cv::waitKey(10);
