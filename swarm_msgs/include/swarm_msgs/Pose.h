@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <geometry_msgs/Pose.h>
+#include "Pose_t.hpp"
 
 using namespace Eigen;
 
@@ -127,6 +128,13 @@ public:
         update_yaw();
     }
 
+    Pose(Eigen::Matrix3d R, Eigen::Vector3d T) {
+        attitude = R;
+        attitude.normalize();
+        position = T;
+        update_yaw();
+    }
+
     Pose(double v[], bool xyzyaw = false) {
         if (xyzyaw) {
             this->attitude = AngleAxisd(v[3], Vector3d::UnitZ());
@@ -144,6 +152,18 @@ public:
         update_yaw();
     }
 
+    Pose(const Pose_t & pose_t) {
+        attitude.x() = pose_t.orientation[0];
+        attitude.y() = pose_t.orientation[1];
+        attitude.z() = pose_t.orientation[2];
+        attitude.w() = pose_t.orientation[3];
+
+        position.x() = pose_t.position[0];
+        position.y() = pose_t.position[1];
+        position.z() = pose_t.position[2];
+        update_yaw();
+    }
+
     geometry_msgs::Pose to_ros_pose() const {
         geometry_msgs::Pose pose;
         pose.orientation.w = attitude.w();
@@ -155,6 +175,8 @@ public:
         pose.position.z = position.z();
         return pose;
     }
+
+
 
     friend Pose operator*(Pose a, Pose b) {
         Pose p;

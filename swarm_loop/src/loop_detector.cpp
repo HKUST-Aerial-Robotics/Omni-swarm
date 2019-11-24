@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <chrono> 
 #include <opencv2/core/eigen.hpp>
+#include <swarm_msgs/Pose.h>
 
 using namespace std::chrono; 
 
@@ -98,21 +99,45 @@ cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
     return ret;
 }
 
+void PnPInitialFromCamPose(const Swarm::Pose &p, cv::Mat & rvec, cv::Mat & tvec) {
+    Eigen::Matrix3d R_w_c = p.att().toRotationMatrix();
+    Eigen::Matrix3d R_inital = R_w_c.inverse();
+    Eigen::Vector3d T_w_c = p.pos();
+    cv::Mat tmp_r;
+    Eigen::Vector3d P_inital = -(R_inital * T_w_c);
+
+    cv::eigen2cv(R_inital, tmp_r);
+    cv::Rodrigues(tmp_r, rvec);
+    cv::eigen2cv(P_inital, tvec);
+}
+
+Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
+    cv::Mat r;
+    cv::Rodrigues(rvec, r);
+    Eigen::Matrix3d R_pnp, R_w_c_old;
+    cv::cv2eigen(r, R_pnp);
+    R_w_c_old = R_pnp.transpose();
+    Eigen::Vector3d T_pnp, T_w_c_old;
+    cv::cv2eigen(tvec, T_pnp);
+    T_w_c_old = R_w_c_old * (-T_pnp);
+
+    return Swarm::Pose(R_w_c_old, T_w_c_old);
+}
+
+
 bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret) {
+
+    if (id2imgdes[_img_index_now].landmark_num < MIN_LOOP_NUM) {
+        return true;
+    }
+    //Recover imformation
+
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
     ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
-
-    Eigen::Vector3d cam_old_world(
-        old_img_desc.pose_cam.position[0],
-        old_img_desc.pose_cam.position[1],
-        old_img_desc.pose_cam.position[2]);
-
 
     std::vector<cv::Point2f> matched_2d_norm_now, matched_2d_norm_old;
     std::vector<cv::Point3f> matched_3d_now;
 
-    //Tetst BruteMatcher Here
-    auto bf = cv::BFMatcher::create(cv::NORM_HAMMING, true);
 
     auto img_old_small = decode_image(old_img_desc);
     auto img_new_small = decode_image(new_img_desc);
@@ -121,6 +146,7 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     std::vector<float> err;
     std::vector<unsigned char> status;
  
+    //Prepare points
     auto nowPts = loop_cam->project_to_image(
         toCV(new_img_desc.landmarks_2d_norm));
     std::vector<cv::Point2f> nowPtsSmall;
@@ -130,6 +156,8 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         pt.y = pt.y/LOOP_IMAGE_DOWNSAMPLE;
         nowPtsSmall.push_back(pt);
     }
+
+    //Preform Optical Flow
     auto start = high_resolution_clock::now();    
     cv::calcOpticalFlowPyrLK(img_new_small, img_old_small, nowPtsSmall, tracked, status, err, cv::Size(21, 21), 3);
     std::cout << "OPTICAL FLOW Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
@@ -146,77 +174,98 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     }
     
 
-    //Compute PNP
+    if(matched_3d_now.size() > MIN_LOOP_NUM) {
+        //Compute PNP
 
-    cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
+        cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
-    cv::Mat r, rvec, t, D, tmp_r;
-    cv::Mat inliers;
+        cv::Mat r, rvec, t, D, tmp_r;
+        cv::Mat inliers;
 
-
-    Eigen::Vector3d Tinitial = cam_old_world;
-    cv::eigen2cv(Tinitial, t);
-
-    start = high_resolution_clock::now();
-    solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99,  inliers);
-
-    std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    // std::cout << "INLIER" << inliers << std::endl;
-    std::cout << "R " << rvec << " T" << t << std::endl;
-    std::cout << "TcamOLD" << cam_old_world << std::endl;
-
-    if (enable_visualize) {
-        cv::cvtColor(img_new_small, img_new_small, cv::COLOR_GRAY2BGR);
-        cv::cvtColor(img_old_small, img_old_small, cv::COLOR_GRAY2BGR);
+        Swarm::Pose initial_cam_pose(old_img_desc.pose_cam);
+        PnPInitialFromCamPose(Swarm::Pose(old_img_desc.pose_cam), rvec, t);
         
-        std::vector<cv::DMatch> matches;
-        std::vector<cv::KeyPoint> oldKPs;
-        matches.clear();
+        start = high_resolution_clock::now();
 
-        auto nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(
-            toCV(new_img_desc.landmarks_2d_norm)));
+        std::cout << "Init R " << rvec << " T" << t << std::endl;
+        
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99,  inliers);
 
-        for(uint i = 0; i < nowKPs.size(); i++)
-        {
-            if(status[i] == 1) {
-                good_new.push_back(tracked[i]);
-                // draw the tracks
-                cv::KeyPoint kp;
-                kp.pt = tracked[i];
-                cv::KeyPoint kp2;
-                kp2.pt = nowPts[i];
-                // nowKPs.push_back(kp2);
+        success = success && (inliers.rows > MIN_LOOP_NUM);
+        std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+        // std::cout << "3D pts" << matched_3d_now << "\n2D pts" << matched_2d_norm_old << std::endl; 
+        // std::cout << "INLIER" << inliers << std::endl;
+        std::cout << "R " << rvec << " T" << t << std::endl;
+        std::cout << "CamPoseOLD             ";
+        initial_cam_pose.print();
 
-                cv::line(img_new_small, nowPtsSmall[i], tracked[i], colors[i], 2);
-                cv::circle(img_new_small, nowPtsSmall[i], 5, colors[i], -1);
-                
-                oldKPs.push_back(kp);
-                cv::DMatch dmatch;
-                dmatch.queryIdx = i;
-                dmatch.trainIdx = oldKPs.size() - 1;
-                matches.push_back(dmatch);
+        auto p = PnPRestoCamPose(rvec, t);
 
+        std::cout << "PnP solved camera Pose ";
+        p.print();
+
+
+        //Show Result
+        if (enable_visualize) {
+            cv::cvtColor(img_new_small, img_new_small, cv::COLOR_GRAY2BGR);
+            cv::cvtColor(img_old_small, img_old_small, cv::COLOR_GRAY2BGR);
+            
+            std::vector<cv::DMatch> matches;
+            std::vector<cv::KeyPoint> oldKPs;
+            matches.clear();
+
+            auto nowKPs = cvPoints2Keypoints(loop_cam->project_to_image(
+                toCV(new_img_desc.landmarks_2d_norm)));
+
+            for(uint i = 0; i < nowKPs.size(); i++)
+            {
+                if(status[i] == 1) {
+                    good_new.push_back(tracked[i]);
+                    // draw the tracks
+                    cv::KeyPoint kp;
+                    kp.pt = tracked[i];
+                    cv::KeyPoint kp2;
+                    kp2.pt = nowPts[i];
+                    // nowKPs.push_back(kp2);
+
+                    cv::line(img_new_small, nowPtsSmall[i], tracked[i], colors[i], 2);
+                    cv::circle(img_new_small, nowPtsSmall[i], 5, colors[i], -1);
+                    
+                    oldKPs.push_back(kp);
+                    cv::DMatch dmatch;
+                    dmatch.queryIdx = i;
+                    dmatch.trainIdx = oldKPs.size() - 1;
+                    matches.push_back(dmatch);
+
+                }
             }
+
+            std::vector<cv::DMatch> good_matches;
+
+            for( int i = 0; i < inliers.rows; i++)
+            {
+                int n = inliers.at<int>(i);
+                good_matches.push_back(matches[n]);
+            }
+
+            cv::Mat _show;
+            std::cout << "NOWLPS size " << nowKPs.size() << " OLDLPs " << oldKPs.size() << std::endl;
+            cv::drawMatches(img_new_small, cvPoints2Keypoints(nowPtsSmall), img_old_small, oldKPs, good_matches, _show);
+            cv::resize(_show, _show, _show.size()*2);
+
+            if (success) {
+	            cv::putText(_show, "SUCCESS LOOP", cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
+            } else {
+	            cv::putText(_show, "FAILED LOOP", cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
+            }
+
+
+            cv::imshow("Track Loop", _show);
+            cv::waitKey(10);
         }
 
-        std::vector<cv::DMatch> good_matches;
-
-        for( int i = 0; i < inliers.rows; i++)
-        {
-            int n = inliers.at<int>(i);
-            good_matches.push_back(matches[n]);
-        }
-
-        cv::Mat _show;
-        std::cout << "NOWLPS size " << nowKPs.size() << " OLDLPs " << oldKPs.size() << std::endl;
-        cv::drawMatches(img_new_small, cvPoints2Keypoints(nowPtsSmall), img_old_small, oldKPs, good_matches, _show);
-        cv::resize(_show, _show, _show.size()*2);
-        cv::imshow("Track Loop", _show);
-        cv::waitKey(10);
+        return success;
     }
-   
-
-
     return false;
 
 }
