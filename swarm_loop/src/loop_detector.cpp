@@ -69,6 +69,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
 
     ROS_INFO("Adding image descriptor %d to database", _id);
+    std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
 
 }
 
