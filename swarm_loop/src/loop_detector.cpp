@@ -121,8 +121,10 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         pt.y = pt.y/LOOP_IMAGE_DOWNSAMPLE;
         nowPtsSmall.push_back(pt);
     }
-    
+    auto start = high_resolution_clock::now();    
     cv::calcOpticalFlowPyrLK(img_new_small, img_old_small, nowPtsSmall, tracked, status, err, cv::Size(21, 21), 3);
+    std::cout << "OPTICAL FLOW Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+
     std::vector<cv::Point2f> good_new;
     
     for(uint i = 0; i < nowPts.size(); i++) {

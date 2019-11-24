@@ -32,15 +32,14 @@ cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p) {
 
 void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
     auto start = high_resolution_clock::now();
-    std::vector<uchar> data_encode;
     
     std::vector<int> params;
     params.push_back( cv::IMWRITE_JPEG_QUALITY );
-    params.push_back( 75 );
+    params.push_back( JPG_QUALITY );
 
     cv::imencode(".jpg", _img, _img_desc.image, params);
     std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    std::cout << "JPG SIZE" << data_encode.size() << std::endl;
+    std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
 
     _img_desc.image_height = _img.size().height;
     _img_desc.image_width = _img.size().width;
