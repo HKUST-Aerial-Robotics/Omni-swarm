@@ -19,15 +19,17 @@ struct ImageDescriptor_t {
     int64_t  timestamp;
     int32_t drone_id;
 
-    Point2d_t all_features_2d_norm[1000];
-    byte feature_descriptor[32000];
+    byte feature_descriptor[6400];
+
+    int32_t image_width;
+    int32_t image_height;
+    int32_t image_size;
+    byte image[image_size];
 
     Pose_t pose_cam;
     Pose_t pose_drone;
 
     int32_t landmark_num;
-    int32_t landmark_descriptor_length;
     Point2d_t landmarks_2d_norm[landmark_num];
     Point3d_t landmarks_3d[landmark_num];
-    byte landmarks_descriptors[landmark_descriptor_length];
 }

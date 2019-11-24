@@ -20,6 +20,16 @@ void LoopCam::on_camera_message(const sensor_msgs::ImageConstPtr& msg) {
     cam_count ++;
 }
 
+cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p) {
+    Eigen::Vector3d tmp_p;
+    cam->liftProjective(Eigen::Vector2d(p.x, p.y), tmp_p);
+    cv::Point2f ret;
+    ret.x = tmp_p.x()/tmp_p.z();
+    ret.y = tmp_p.y()/tmp_p.z();
+
+    return ret;
+}
+
 std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
@@ -31,8 +41,17 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
         cv::Mat _img;
         return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
     }
+
     auto start = high_resolution_clock::now();
+    cv::Mat img_small;
+    cv::resize(img, img_small, img.size()/LOOP_IMAGE_DOWNSAMPLE);
+
     ides = feature_detect(img);
+    ides.image = std::vector<unsigned char>(img_small.data, img_small.data + img_small.size().height * img_small.size().width);
+    ides.image_height = img_small.size().height;
+    ides.image_width = img_small.size().width;
+    ides.image_size = ides.image_width*ides.image_height;
+
     std::cout << "FeatureDetect Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     ides.timestamp = msg.header.stamp.toSec();
@@ -40,16 +59,15 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     ides.pose_cam = fromROSPose(msg.pose_cam);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.landmark_num = msg.feature_points_2d_uv.size();
-    ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
+    // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
 
     ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
     ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
 
-    auto desc = landmark_desc_compute(img, msg.feature_points_2d_uv);
-    std::cout << "ORB DESC " << desc.size() << std::endl;
-    ides.landmarks_descriptors = std::vector<unsigned char>(desc.data, desc.data + ides.landmark_num*ORB_FEATURE_SIZE);
+    std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
 
-    return std::pair<ImageDescriptor_t, cv::Mat> (ides, img);
+    cv::Mat _img;
+    return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
 }
 
 
@@ -91,8 +109,8 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
     auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
     _des->detectAndCompute(_img, mask, keypoints, descriptors);
 #endif
-    // std::cout << "Features " << keypoints.size();
-	
+
+    /*
     for (int i = 0; i < (int)keypoints.size(); i++) {
 		Eigen::Vector3d tmp_p;
 		cam->liftProjective(Eigen::Vector2d(keypoints[i].pt.x, keypoints[i].pt.y), tmp_p);
@@ -100,14 +118,9 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
         point_2d_norm.x = tmp_p.x()/tmp_p.z();
         point_2d_norm.y = tmp_p.y()/tmp_p.z();
         img_des.all_features_2d_norm[i] = point_2d_norm;
-	}
-
-    // std::cout << "Features " << keypoints.size() <<  "; DIMS " << descriptors.dims <<  "; COLS " << descriptors.cols << " ROWS" << descriptors.rows << std::endl;
-    // std::cout << "Type" << descriptors.type() << std::endl;
-    // std::cout << descriptors.row(500);
-    //TODO: Optimize copy here
+	}*/
+    memset(img_des.feature_descriptor, 0, 32000);
     memcpy(img_des.feature_descriptor, descriptors.data, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
-    // img_des.feature_descriptor = std::vector<uint8_t>(descriptors.data, descriptors.data + ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
     return img_des;
 }
 
