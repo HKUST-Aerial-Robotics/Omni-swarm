@@ -87,6 +87,14 @@ std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
 }
 
 
+cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
+    auto start = high_resolution_clock::now();
+    auto ret = cv::imdecode(_img_desc.image, cv::IMREAD_GRAYSCALE);
+    std::cout << "IMDECODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+
+    return ret;
+}
+
 bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret) {
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
     ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
@@ -97,8 +105,8 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
     //Tetst BruteMatcher Here
     auto bf = cv::BFMatcher::create(cv::NORM_HAMMING, true);
 
-    auto img_old_small = cv::Mat(old_img_desc.image_height, old_img_desc.image_width, CV_8UC1, old_img_desc.image.data());
-    auto img_new_small = cv::Mat(new_img_desc.image_height, new_img_desc.image_width, CV_8UC1, new_img_desc.image.data());
+    auto img_old_small = decode_image(old_img_desc);
+    auto img_new_small = decode_image(new_img_desc);
    
     std::vector<cv::Point2f> tracked;// = nowPts;
     std::vector<float> err;
