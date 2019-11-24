@@ -16,7 +16,7 @@ class LoopDetector {
     DBoW3::Database db;
     std::map<unsigned int, cv::Mat> id2imgs;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
-
+    std::vector<cv::Scalar> colors;
     bool compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret);
 
 public:
@@ -24,4 +24,5 @@ public:
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());
     void on_loop_connection(const LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
+    bool enable_visualize = true;
 };
