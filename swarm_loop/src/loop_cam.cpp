@@ -141,10 +141,10 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
 }
 
 cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
-    ROS_INFO("Pop image... queue len %d", image_queue.size());
+    // ROS_INFO("Pop image... queue len %d", image_queue.size());
     double ts_sec = ts.toSec();
     if (image_queue.size() == 0) {
-        ROS_INFO("Pop image with NOTHING");
+        ROS_WARN("Pop image with NOTHING");
         cv::Mat ret;
         return ret;
     }
@@ -157,13 +157,13 @@ cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
     }
 
     if (fabs(image_ts_queue[0] -  ts_sec ) < 0.001) {
-        ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
+        // ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
         image_queue.erase(image_queue.begin());
         image_ts_queue.erase(image_ts_queue.begin());
         return image_queue[0];
     }
 
-    ROS_ERROR("Can't found image!!!");
+    // ROS_ERROR("Can't found image!!!");
     cv::Mat ret;
     return ret;
 }
