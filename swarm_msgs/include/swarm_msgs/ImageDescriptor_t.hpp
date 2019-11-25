@@ -19,12 +19,11 @@
 class ImageDescriptor_t
 {
     public:
-        int64_t    timestamp;
+        double     timestamp;
 
         int32_t    drone_id;
 
-        /// Point2d_t all_features_2d_norm[1000];
-        uint8_t    feature_descriptor[32000];
+        uint8_t    feature_descriptor[6400];
 
         int32_t    image_width;
 
@@ -34,13 +33,11 @@ class ImageDescriptor_t
 
         std::vector< uint8_t > image;
 
-        Pose_t     pose_cam;
-
         Pose_t     pose_drone;
 
-        int32_t    landmark_num;
+        Pose_t     camera_extrinsic;
 
-        int32_t    landmark_descriptor_length;
+        int32_t    landmark_num;
 
         std::vector< Point2d_t > landmarks_2d_norm;
 
@@ -142,13 +139,13 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
 {
     int pos = 0, tlen;
 
-    tlen = __int64_t_encode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
+    tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __byte_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 32000);
+    tlen = __byte_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 6400);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->image_width, 1);
@@ -165,16 +162,13 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
-    tlen = this->pose_cam._encodeNoHash(buf, offset + pos, maxlen - pos);
-    if(tlen < 0) return tlen; else pos += tlen;
-
     tlen = this->pose_drone._encodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->landmark_num, 1);
+    tlen = this->camera_extrinsic._encodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->landmark_descriptor_length, 1);
+    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->landmark_num, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
     for (int a0 = 0; a0 < this->landmark_num; a0++) {
@@ -194,13 +188,13 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 {
     int pos = 0, tlen;
 
-    tlen = __int64_t_decode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
+    tlen = __double_decode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __byte_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 32000);
+    tlen = __byte_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 6400);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->image_width, 1);
@@ -218,16 +212,13 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
-    tlen = this->pose_cam._decodeNoHash(buf, offset + pos, maxlen - pos);
-    if(tlen < 0) return tlen; else pos += tlen;
-
     tlen = this->pose_drone._decodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->landmark_num, 1);
+    tlen = this->camera_extrinsic._decodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->landmark_descriptor_length, 1);
+    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->landmark_num, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
     try {
@@ -256,16 +247,15 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 int ImageDescriptor_t::_getEncodedSizeNoHash() const
 {
     int enc_size = 0;
-    enc_size += __int64_t_encoded_array_size(NULL, 1);
+    enc_size += __double_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
-    enc_size += __byte_encoded_array_size(NULL, 32000);
+    enc_size += __byte_encoded_array_size(NULL, 6400);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __byte_encoded_array_size(NULL, this->image_size);
-    enc_size += this->pose_cam._getEncodedSizeNoHash();
     enc_size += this->pose_drone._getEncodedSizeNoHash();
-    enc_size += __int32_t_encoded_array_size(NULL, 1);
+    enc_size += this->camera_extrinsic._getEncodedSizeNoHash();
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     for (int a0 = 0; a0 < this->landmark_num; a0++) {
         enc_size += this->landmarks_2d_norm[a0]._getEncodedSizeNoHash();
@@ -284,7 +274,7 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x7490f45e387b6d2aLL +
+    uint64_t hash = 0x4e993ab1924bb178LL +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Point2d_t::_computeHash(&cp) +
