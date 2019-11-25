@@ -72,7 +72,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
 
     ides.timestamp = msg.header.stamp.toSec();
     ides.drone_id = -1; // -1 is self drone;
-    ides.pose_cam = fromROSPose(msg.pose_cam);
+    ides.camera_extrinsic = fromROSPose(msg.camera_extrisinc);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.landmark_num = msg.feature_points_2d_uv.size();
     // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
@@ -89,7 +89,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
 
 cv::Mat LoopCam::landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv) {
     cv::Mat ret;
-    ROS_INFO("Compute %d landmark desc...", points_uv.size());
+    ROS_INFO("Compute %ld landmark desc...", points_uv.size());
     auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
     std::vector<cv::KeyPoint> kps;
     for (auto pt : points_uv) {
@@ -135,7 +135,7 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
         point_2d_norm.y = tmp_p.y()/tmp_p.z();
         img_des.all_features_2d_norm[i] = point_2d_norm;
 	}*/
-    memset(img_des.feature_descriptor, 0, 32000);
+    // memset(img_des.feature_descriptor, 0, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
     memcpy(img_des.feature_descriptor, descriptors.data, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
     return img_des;
 }

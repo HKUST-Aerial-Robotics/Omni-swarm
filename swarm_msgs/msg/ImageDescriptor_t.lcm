@@ -16,7 +16,7 @@ struct Point3d_t {
 
 
 struct ImageDescriptor_t {
-    int64_t  timestamp;
+    double  timestamp;
     int32_t drone_id;
 
     byte feature_descriptor[6400];
@@ -26,8 +26,9 @@ struct ImageDescriptor_t {
     int32_t image_size;
     byte image[image_size];
 
-    Pose_t pose_cam;
     Pose_t pose_drone;
+
+    Pose_t camera_extrinsic;
 
     int32_t landmark_num;
     Point2d_t landmarks_2d_norm[landmark_num];

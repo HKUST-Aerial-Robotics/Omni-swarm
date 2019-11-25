@@ -176,7 +176,9 @@ public:
         return pose;
     }
 
-
+    Swarm::Pose inverse() const {
+        return Swarm::Pose(this->to_isometry().inverse());
+    }
 
     friend Pose operator*(Pose a, Pose b) {
         Pose p;

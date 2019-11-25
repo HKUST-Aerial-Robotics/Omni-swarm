@@ -7,72 +7,54 @@
 
 using namespace std::chrono; 
 
-bool searchInAera(  uint8_t * window_descriptor,
-                    uint8_t * descriptors_old,
-                    int & bestIndex);
-
-void searchByBRIEFDes(  std::vector<cv::Point2f> &matched_2d_old_norm,
-                        std::vector<cv::Point2f> &matched_2d_new_norm,
-                        std::vector<cv::Point3f> &matched_3d_new,
-                        uint8_t * descriptors_old,
-                        uint8_t * descriptors_now,
-                        const Point2d_t * keypoints_old_norm,
-                        const std::vector<Point2d_t> &keypoints_new_norm,
-                        const std::vector<Point3d_t> &keypoints_new_3d);
-
-void searchByBRIEFDesCV(  std::vector<cv::Point2f> &matched_2d_old_norm,
-                        std::vector<cv::Point2f> &matched_2d_new_norm,
-                        std::vector<cv::Point3f> &matched_3d_new,
-                        uint8_t * descriptors_old,
-                        uint8_t * descriptors_now,
-                        const Point2d_t * keypoints_old_norm,
-                        const std::vector<Point2d_t> &keypoints_new_norm,
-                        const std::vector<Point3d_t> &keypoints_new_3d);
-
 void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto start = high_resolution_clock::now(); 
 
     cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor, LOOP_FEATURE_NUM);
     // std::cout << "FEATUREX"<< featurex.size() << std::endl;
+    if (img_des.landmark_num >= MIN_LOOP_NUM) {
+        int _id = db.add(feature);
 
-    int _id = db.add(feature);
-    std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
-    
-    id2imgdes[_id] = img_des;
+        std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+        
+        id2imgdes[_id] = img_des;
 
-    if (!img.empty() ) {
-        id2imgs[_id] = img;
-    }
+        if (!img.empty() ) {
+            id2imgs[_id] = img;
+        }
 
-    if (db.size() > MATCH_INDEX_DIST) {
+        if (db.size() > MATCH_INDEX_DIST) {
 
-        DBoW3::QueryResults ret;
-        ROS_INFO("Querying image....");
+            DBoW3::QueryResults ret;
+            ROS_INFO("Querying image....");
 
-        db.query(feature, ret, 1, _id - MATCH_INDEX_DIST);
-        auto stop = high_resolution_clock::now(); 
+            db.query(feature, ret, 1, _id - MATCH_INDEX_DIST);
+            auto stop = high_resolution_clock::now(); 
 
-        if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
-            std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << ret << std::endl;
-            
-            if (ret.size() > 0) {
-                int _old_id = ret[0].Id;
-                LoopConnection ret;
-                bool success = compute_loop(_id, _old_id, ret);
-                if (success) {
-                    on_loop_connection(ret);
+            if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
+                std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << ret << std::endl;
+                
+                if (ret.size() > 0) {
+                    int _old_id = ret[0].Id;
+                    LoopConnection ret;
+                    bool success = compute_loop(_id, _old_id, ret);
+                    if (success) {
+                        on_loop_connection(ret);
+                    }
                 }
-            }
-        } else {
-            std::cout << "No matched image" << std::endl;
-        }      
+            } else {
+                std::cout << "No matched image" << std::endl;
+            }      
 
+        }
+
+
+
+        ROS_INFO("Adding image descriptor %d to database", _id);
+        std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+    } else {
+        ROS_WARN("Frame contain too less landmark %d, give up", img_des.landmark_num);
     }
-
-
-
-    ROS_INFO("Adding image descriptor %d to database", _id);
-    std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
 
 }
 
@@ -183,29 +165,63 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
         cv::Mat inliers;
 
         //TODO: Prepare initial pose for swarm
-        Swarm::Pose initial_cam_pose(old_img_desc.pose_cam);
+        Swarm::Pose old_extrinsic(old_img_desc.camera_extrinsic);
+        Swarm::Pose drone_pose_now(new_img_desc.pose_drone);
 
-        PnPInitialFromCamPose(Swarm::Pose(old_img_desc.pose_cam), rvec, t);
+        Swarm::Pose initial_old_drone_pose(old_img_desc.pose_drone);
+
+        Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
+
+        PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
         
         start = high_resolution_clock::now();
 
-        std::cout << "Init R " << rvec << " T" << t << std::endl;
-        
+        // std::cout << "Init R " << rvec << " T" << t << std::endl;
         bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99,  inliers);
 
-        success = success && (inliers.rows > MIN_LOOP_NUM);
+        auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
+
+        auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
+
+        //We use yaw only DPose in pose graph
+        Swarm::Pose DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+
         std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-        // std::cout << "3D pts" << matched_3d_now << "\n2D pts" << matched_2d_norm_old << std::endl; 
-        // std::cout << "INLIER" << inliers << std::endl;
-        std::cout << "R " << rvec << " T" << t << std::endl;
-        std::cout << "CamPoseOLD             ";
-        initial_cam_pose.print();
 
-        auto p_cam = PnPRestoCamPose(rvec, t);
+        success = success && (inliers.rows > MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
 
-        std::cout << "PnP solved camera Pose ";
-        p_cam.print();
+        if (success) {
+            /*
+            std::cout << "CamPoseOLD             ";
+            initial_old_cam_pose.print();
+            std::cout << "PnP solved camera Pose ";
+            p_cam_old_in_new.print();
+            */
 
+            std::cout << "DRONE POSE OLD  ";
+            initial_old_drone_pose.print();
+            std::cout << "DRONE POSE NOW  ";
+            drone_pose_now.print();
+
+            std::cout << "Initial DPose    ";
+            Swarm::Pose::DeltaPose(initial_old_drone_pose, drone_pose_now, true).print();
+            std::cout << "PnP solved DPose ";
+            DP_old_to_new.print();
+
+            LoopConnection loc;
+            loc.dpos.x = DP_old_to_new.pos().x();
+            loc.dpos.y = DP_old_to_new.pos().y();
+            loc.dpos.z = DP_old_to_new.pos().z();
+            loc.dyaw = DP_old_to_new.yaw();
+
+            loc.id_a = old_img_desc.drone_id;
+            loc.ts_a = ros::Time(old_img_desc.timestamp);
+
+            loc.id_b = new_img_desc.drone_id;
+            loc.ts_b = ros::Time(new_img_desc.timestamp);
+            
+            on_loop_connection(loc);
+        }
 
         //Show Result
         if (enable_visualize) {
@@ -286,108 +302,4 @@ LoopDetector::LoopDetector(const std::string & voc_path):
         int b = rng.uniform(0, 256);
         colors.push_back(cv::Scalar(r,g,b));
     }
-}
-
-double HammingDis(uint8_t * a,  uint8_t * b)
-{
-    cv::Mat d1(1, ORB_FEATURE_SIZE, CV_8UC1, a);
-    cv::Mat d2(1, ORB_FEATURE_SIZE, CV_8UC1, b);
-
-    return cv::norm(d1, d2, cv::NORM_HAMMING);
-}
-
-bool searchInAera(  uint8_t * window_descriptor,
-                    uint8_t * descriptors_old,
-                    int & bestIndex) {
-    bestIndex = -1;
-    double bestDist = 10000;
-    for(int i = 0; i < LOOP_FEATURE_NUM ; i++)
-    {
-
-        double dis = HammingDis(window_descriptor, descriptors_old + i*ORB_FEATURE_SIZE);
-        if(dis < bestDist)
-        {
-            bestDist = dis;
-            bestIndex = i;
-        }
-    }
-
-    if (bestIndex != -1 && bestDist < 80)
-    {
-      return true;
-    }
-    else
-      return false;
-}
-
-void searchByBRIEFDes(  std::vector<cv::Point2f> &matched_2d_old_norm,
-                        std::vector<cv::Point2f> &matched_2d_new_norm,
-                        std::vector<cv::Point3f> &matched_3d_new,
-                        uint8_t * descriptors_old,
-                        uint8_t * descriptors_now,
-                        const Point2d_t * keypoints_old_norm,
-                        const std::vector<Point2d_t> &keypoints_new_norm,
-                        const std::vector<Point3d_t> &keypoints_new_3d) {
-    for(int i = 0; i < keypoints_new_norm.size(); i++)
-    {
-        int best_index = -1;
-        int landmark_new_num = keypoints_new_norm.size();
-        if (searchInAera(descriptors_now + landmark_new_num * ORB_FEATURE_SIZE, descriptors_old, best_index)) {
-            matched_2d_new_norm.push_back(
-                    toCV(keypoints_new_norm[i]));
-            matched_3d_new.push_back(
-                    toCV(keypoints_new_3d[i]));
-            ROS_INFO("Good match, old index %d", best_index);
-            matched_2d_old_norm.push_back(
-                    toCV(keypoints_old_norm[best_index])
-            );
-        }
-
-    }
-}
-
-
-void searchByBRIEFDesCV(std::vector<cv::Point2f> &matched_2d_old_norm,
-                        std::vector<cv::Point2f> &matched_2d_new_norm,
-                        std::vector<cv::Point3f> &matched_3d_new,
-                        uint8_t * descriptors_old,
-                        uint8_t * descriptors_now,
-                        const Point2d_t * keypoints_old_norm,
-                        const std::vector<Point2d_t> &keypoints_new_norm,
-                        const std::vector<Point3d_t> &keypoints_new_3d) {
-    // bf = cv.BFMatcher()
-    // matches = bf.knnMatch(des1,des2,k=2)
-    auto bf = cv::BFMatcher::create(cv::NORM_HAMMING, true);
-    cv::Mat des_new(keypoints_new_norm.size(), ORB_FEATURE_SIZE, CV_8UC1, descriptors_now);
-    cv::Mat des_old(LOOP_FEATURE_NUM, ORB_FEATURE_SIZE, CV_8UC1, descriptors_old);
-
-    std::vector<cv::DMatch> matches;
-    double max_dist = 0; double min_dist = 100;
-
-    bf->match(des_new, des_old, matches);
-
-    for (auto mat : matches) {
-        if (mat.distance > max_dist) {
-            max_dist = mat.distance;
-        }
-        if (mat.distance < min_dist) {
-            min_dist = mat.distance;
-        }
-    }
-
-    std::vector< cv::DMatch > good_matches;
-    for(auto m : matches) { 
-        if( m.distance < 0.6*max_dist ) {
-            matched_2d_new_norm.push_back(
-                toCV(keypoints_new_norm[m.queryIdx])
-            );
-            matched_2d_old_norm.push_back(
-                toCV(keypoints_old_norm[m.trainIdx])
-            );
-            matched_3d_new.push_back(
-                toCV(keypoints_new_3d[m.queryIdx])
-            );
-        }
-    }
-
 }
