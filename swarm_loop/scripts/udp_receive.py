@@ -3,7 +3,7 @@
 import socket
 import struct
 
-MCAST_GRP = '239.255.76.67'
+MCAST_GRP = '224.0.0.251'
 MCAST_PORT = 7667
 
 

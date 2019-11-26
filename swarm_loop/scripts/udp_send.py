@@ -2,7 +2,7 @@
 
 import socket
 
-MCAST_GRP = '239.255.76.67'
+MCAST_GRP = '224.0.0.251'
 MCAST_PORT = 7667
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
