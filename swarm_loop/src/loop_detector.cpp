@@ -48,8 +48,6 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         }
 
-
-
         ROS_INFO("Adding image descriptor %d to database", _id);
         std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
     } else {
@@ -288,7 +286,7 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
 
 }
 
-void LoopDetector::on_loop_connection(const LoopConnection & loop_conn) {
+void LoopDetector::on_loop_connection(LoopConnection & loop_conn) {
     on_loop_cb(loop_conn);
 }
 

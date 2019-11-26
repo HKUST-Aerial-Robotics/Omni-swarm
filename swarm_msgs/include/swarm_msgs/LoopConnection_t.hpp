@@ -29,6 +29,8 @@ class LoopConnection_t
 
         double     dyaw;
 
+        int64_t    msg_id;
+
     public:
         /**
          * Encode a message into binary form.
@@ -143,6 +145,9 @@ int LoopConnection_t::_encodeNoHash(void *buf, int offset, int maxlen) const
     tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->dyaw, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = __int64_t_encode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     return pos;
 }
 
@@ -168,6 +173,9 @@ int LoopConnection_t::_decodeNoHash(const void *buf, int offset, int maxlen)
     tlen = __double_decode_array(buf, offset + pos, maxlen - pos, &this->dyaw, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = __int64_t_decode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     return pos;
 }
 
@@ -180,6 +188,7 @@ int LoopConnection_t::_getEncodedSizeNoHash() const
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += this->dpos._getEncodedSizeNoHash();
     enc_size += __double_encoded_array_size(NULL, 1);
+    enc_size += __int64_t_encoded_array_size(NULL, 1);
     return enc_size;
 }
 
@@ -191,7 +200,7 @@ uint64_t LoopConnection_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, LoopConnection_t::getHash };
 
-    uint64_t hash = 0x7d4a547a90beacb9LL +
+    uint64_t hash = 0x6672acef3285a123LL +
          Time_t::_computeHash(&cp) +
          Time_t::_computeHash(&cp) +
          Point3d_t::_computeHash(&cp);
