@@ -215,10 +215,10 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
             loc.dyaw = DP_old_to_new.yaw();
 
             loc.id_a = old_img_desc.drone_id;
-            loc.ts_a = ros::Time(old_img_desc.timestamp);
+            loc.ts_a = toROSTime(old_img_desc.timestamp);
 
             loc.id_b = new_img_desc.drone_id;
-            loc.ts_b = ros::Time(new_img_desc.timestamp);
+            loc.ts_b = toROSTime(new_img_desc.timestamp);
             
             on_loop_connection(loc);
         }
@@ -289,7 +289,7 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
 }
 
 void LoopDetector::on_loop_connection(const LoopConnection & loop_conn) {
-
+    on_loop_cb(loop_conn);
 }
 
 LoopDetector::LoopDetector(const std::string & voc_path):

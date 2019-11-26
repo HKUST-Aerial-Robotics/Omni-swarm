@@ -14,9 +14,13 @@ struct Point3d_t {
     double z;
 }
 
+struct Time_t {
+    int32_t sec;
+    int32_t nsec;
+}
 
 struct ImageDescriptor_t {
-    double  timestamp;
+    Time_t  timestamp;
     int32_t drone_id;
 
     byte feature_descriptor[6400];
@@ -33,4 +37,14 @@ struct ImageDescriptor_t {
     int32_t landmark_num;
     Point2d_t landmarks_2d_norm[landmark_num];
     Point3d_t landmarks_3d[landmark_num];
+}
+
+
+struct LoopConnection_t {
+    Time_t ts_a;
+    Time_t ts_b;
+    int32_t id_a;
+    int32_t id_b;
+    Point3d_t dpos;
+    double dyaw;
 }
