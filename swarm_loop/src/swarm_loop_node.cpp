@@ -13,6 +13,7 @@ double DT_MS(system_clock::time_point start) {
 }
 
 class SwarmLoopNode {
+public:
     LoopDetector * loop_detector = nullptr;
     LoopCam * loop_cam = nullptr;
     LoopNet * loop_net = nullptr;
@@ -122,6 +123,10 @@ int main(int argc, char **argv) {
     //ros::MultiThreadedSpinner spinner(4); // Use 4 threads
     //spinner.spin();
     ros::spin();
+    while (true) {
+        ros::spinOnce();
+        loopnode.loop_net->lcm_handle();
+    }
 
     return 0;
 }
