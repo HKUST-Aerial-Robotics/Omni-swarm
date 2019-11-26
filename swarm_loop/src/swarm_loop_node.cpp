@@ -26,6 +26,13 @@ class SwarmLoopNode {
         loop_cam->on_camera_message(msg);
     }
     
+
+    void on_loop_connection (const LoopConnection & loop_con, bool is_local = false) {
+        if(is_local) {
+            loop_net->broadcast_loop_connection(loop_con);
+        }
+        
+    } 
     
     void VIOKF_callback(const vins::VIOKeyframe & viokf) {
         
@@ -49,6 +56,10 @@ class SwarmLoopNode {
 
         std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
         
+        if (ret.first.landmark_num > MIN_LOOP_NUM) {
+            loop_net->broadcast_img_desc(ret.first);
+        }
+
         //Check ides vaild
         if (debug_image) {
             loop_detector->on_image_recv(ret.first, ret.second);
@@ -66,7 +77,7 @@ public:
     SwarmLoopNode(ros::NodeHandle& nh) {
         //Init Loop Net
         int _bport = -1;
-        std::string _broadcast_ip = "0.0.0.0";
+        std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
         std::string ORB_VOC = "";
@@ -74,8 +85,7 @@ public:
         nh.param<int>("broadcast_port", _bport, 9988);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
-        nh.param<std::string>("broadcast_ip", _broadcast_ip, 
-            "192.168.63.255");
+        nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://192.168.3.255:1000?ttl=1");
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
         nh.param<std::string>("BRIEF_PATTHER_FILE", BRIEF_PATTHER_FILE, 
@@ -86,11 +96,15 @@ public:
 
         nh.param<bool>("debug_image", debug_image, false);
         
-        loop_net = new LoopNet(_broadcast_ip, _bport);
+        loop_net = new LoopNet(_lcm_uri);
         loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE);
         loop_detector = new LoopDetector(ORB_VOC);
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;
+
+        loop_detector->on_loop_cb = [&] (const LoopConnection & loop_con) {
+            this->on_loop_connection(loop_con, true);
+        };
 
         camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);

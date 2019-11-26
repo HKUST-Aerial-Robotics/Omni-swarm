@@ -10,6 +10,7 @@
 #include <lcm/lcm_coretypes.h>
 
 #include <vector>
+#include "Time_t.hpp"
 #include "Pose_t.hpp"
 #include "Pose_t.hpp"
 #include "Point2d_t.hpp"
@@ -19,7 +20,7 @@
 class ImageDescriptor_t
 {
     public:
-        double     timestamp;
+        Time_t     timestamp;
 
         int32_t    drone_id;
 
@@ -139,7 +140,7 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
 {
     int pos = 0, tlen;
 
-    tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
+    tlen = this->timestamp._encodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
@@ -188,7 +189,7 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 {
     int pos = 0, tlen;
 
-    tlen = __double_decode_array(buf, offset + pos, maxlen - pos, &this->timestamp, 1);
+    tlen = this->timestamp._decodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
     tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
@@ -247,7 +248,7 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 int ImageDescriptor_t::_getEncodedSizeNoHash() const
 {
     int enc_size = 0;
-    enc_size += __double_encoded_array_size(NULL, 1);
+    enc_size += this->timestamp._getEncodedSizeNoHash();
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __byte_encoded_array_size(NULL, 6400);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
@@ -274,7 +275,8 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x4e993ab1924bb178LL +
+    uint64_t hash = 0x148788abbbbfff19LL +
+         Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Point2d_t::_computeHash(&cp) +

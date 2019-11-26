@@ -3,6 +3,8 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point32.h>
 #include <opencv2/opencv.hpp>
+#include <swarm_msgs/LoopConnection.h>
+#include "LoopConnection_t.hpp"
 
 inline swarm_msgs::ImageDescriptor toROSMsg(const ImageDescriptor_t & _img) {
     swarm_msgs::ImageDescriptor img_des;
@@ -83,4 +85,48 @@ inline std::vector<cv::Point2f> toCV(Point2d_t * arr, int len) {
         _arr.push_back(toCV(a));
     }
     return _arr;
+}
+
+
+inline ros::Time toROSTime(Time_t _time) {
+    return ros::Time(_time.sec, _time.nsec);
+}
+
+inline Time_t toLCMTime(ros::Time _time) {
+    Time_t t;
+    t.sec = _time.sec;
+    t.nsec = _time.nsec;
+    return t;
+}
+
+
+inline swarm_msgs::LoopConnection toROSLoopConnection(const LoopConnection_t & loop_con) {
+    swarm_msgs::LoopConnection loop_conn;
+    loop_conn.ts_a =  toROSTime(loop_con.ts_a);
+    loop_conn.ts_b =  toROSTime(loop_con.ts_b);
+
+    loop_conn.id_a = loop_con.id_a;
+    loop_conn.id_b = loop_con.id_b;
+
+    loop_conn.dpos.x = loop_con.dpos.x;
+    loop_conn.dpos.y = loop_con.dpos.y;
+    loop_conn.dpos.z = loop_con.dpos.z;
+    loop_conn.dyaw = loop_con.dyaw;
+
+    return loop_conn;
+}
+
+inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & loop_con) {
+    LoopConnection_t loop_conn;
+    loop_conn.ts_a =  toLCMTime(loop_con.ts_a);
+    loop_conn.ts_b =  toLCMTime(loop_con.ts_b);
+
+    loop_conn.id_a = loop_con.id_a;
+    loop_conn.id_b = loop_con.id_b;
+
+    loop_conn.dpos.x = loop_con.dpos.x;
+    loop_conn.dpos.y = loop_con.dpos.y;
+    loop_conn.dpos.z = loop_con.dpos.z;
+
+    return loop_conn;
 }

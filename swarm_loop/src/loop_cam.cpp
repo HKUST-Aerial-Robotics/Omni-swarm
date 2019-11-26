@@ -70,7 +70,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     encode_image(img_small, ides);
 
 
-    ides.timestamp = msg.header.stamp.toSec();
+    ides.timestamp = toLCMTime(msg.header.stamp);
     ides.drone_id = -1; // -1 is self drone;
     ides.camera_extrinsic = fromROSPose(msg.camera_extrisinc);
     ides.pose_drone = fromROSPose(msg.pose_drone);
