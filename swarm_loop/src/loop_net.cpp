@@ -49,6 +49,6 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
         // ROS_INFO("Receive self sent Loop message");
         return;
     }
-    
+    loopconn_callback(*msg);
     ROS_INFO("Received Loop Connection from LCM!!!");    
 }

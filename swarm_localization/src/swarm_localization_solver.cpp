@@ -42,6 +42,8 @@ using namespace std::chrono;
 
 #define INIT_TRIAL 5
 
+//For testing loop closure for single drone, use 1
+#define MIN_DRONES_NUM 1
 
 bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
     //Detect if it's outlier
@@ -54,7 +56,8 @@ bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
     std::vector<int> ret(0);
-    if (_ids.size() < 2)
+
+    if (_ids.size() < MIN_DRONES_NUM)
         return 0;
 
     if (sf_sld_win.empty()) {

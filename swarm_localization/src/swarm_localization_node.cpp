@@ -22,7 +22,7 @@
 #include <std_msgs/Float32.h>
 #include <chrono>
 #include <swarm_msgs/swarm_drone_basecoor.h>
-
+#include <swarm_msgs/LoopConnection.h>
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -147,6 +147,11 @@ class SwarmLocalizationNode {
         return sf;
     }
 
+
+    void on_loop_connection_received(const swarm_msgs::LoopConnection & loop_conn) {
+        this->swarm_localization_solver->add_new_swarm_connection(loop_conn);
+    }
+
     double t_last = 0;
 protected:
     void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
@@ -234,6 +239,7 @@ private:
 
     ros::Subscriber recv_sf_est, recv_sf_predict;
     ros::Subscriber recv_drone_odom_now;
+    ros::Subscriber loop_connection_sub;
     ros::Publisher fused_drone_data_pub, fused_drone_basecoor_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
@@ -382,6 +388,10 @@ public:
         recv_sf_predict = nh.subscribe("/swarm_drones/swarm_frame_predict", 1,
                                           &SwarmLocalizationNode::predict_swarm, this,
                                           ros::TransportHints().tcpNoDelay());
+        
+        loop_connection_sub = nh.subscribe("/swarm_loop/loop_connection", 10, 
+                                    &SwarmLocalizationNode::on_loop_connection_received, this, 
+                                    ros::TransportHints().tcpNoDelay());
         
         int frame_num = 0, thread_num, min_frame_num;
         float acpt_cost = 0.4, kf_movement = 0.2;

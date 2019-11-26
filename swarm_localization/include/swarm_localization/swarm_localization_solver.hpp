@@ -10,6 +10,7 @@
 #include <functional>
 #include <swarm_localization/swarm_types.hpp>
 #include <mutex>
+#include <swarm_msgs/LoopConnection.h>
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
@@ -148,6 +149,7 @@ public:
    
     void add_new_swarm_frame(const SwarmFrame &sf);
 
+    void add_new_swarm_connection(const swarm_msgs::LoopConnection & loop_con);
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 

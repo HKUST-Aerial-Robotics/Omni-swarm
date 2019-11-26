@@ -27,6 +27,7 @@ public:
     }
 
     std::function<void(const ImageDescriptor_t &)> img_desc_callback;
+    std::function<void(const LoopConnection_t &)> loopconn_callback;
 
     void setup_network(std::string _lcm_uri);
     void broadcast_img_desc(ImageDescriptor_t & img_des);

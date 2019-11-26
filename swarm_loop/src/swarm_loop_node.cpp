@@ -33,7 +33,7 @@ public:
         if(is_local) {
             loop_net->broadcast_loop_connection(loop_con);
         }
-        
+        loopconn_pub.publish(loop_con);
     } 
     
     void VIOKF_callback(const vins::VIOKeyframe & viokf) {
@@ -74,6 +74,7 @@ public:
 
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
+    ros::Publisher loopconn_pub;
 
 public:
     SwarmLoopNode(ros::NodeHandle& nh) {
@@ -112,8 +113,14 @@ public:
             loop_detector->on_image_recv(img_desc);
         };
 
+        loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
+            auto loc = toROSLoopConnection(loop_conn);
+            on_loop_connection(loc, false);
+        };
+
         camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);
+        loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 1);
     }
 };
 
