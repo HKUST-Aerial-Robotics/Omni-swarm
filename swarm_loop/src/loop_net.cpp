@@ -6,11 +6,12 @@ void LoopNet::setup_network(std::string _lcm_uri) {
         exit(-1);
     }
     lcm.subscribe("SWARM_LOOP_IMG_DES", &LoopNet::on_img_desc_recevied, this);
+    lcm.subscribe("SWARM_LOOP_CONN", &LoopNet::on_loop_connection_recevied, this);
 }
 
 void LoopNet::broadcast_img_desc(const ImageDescriptor_t & img_des) {
+    ROS_INFO("Broadcast Loop Image");
     lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
-
 }
 
 void LoopNet::broadcast_loop_connection(const LoopConnection & loop_conn) {
