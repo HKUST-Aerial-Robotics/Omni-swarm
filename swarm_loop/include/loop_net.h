@@ -8,6 +8,7 @@
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include "loop_defines.h"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
+#include <functional>
 
 using namespace swarm_msgs;
 
@@ -22,6 +23,8 @@ public:
         this->setup_network(_lcm_uri);
     }
 
+    std::function<void(const ImageDescriptor_t &)> img_desc_callback;
+
     void setup_network(std::string _lcm_uri);
     void broadcast_img_desc(const ImageDescriptor_t & img_des);
     void broadcast_loop_connection(const LoopConnection & loop_conn);
@@ -34,7 +37,7 @@ public:
                 const std::string& chan, 
                 const ImageDescriptor_t* msg);
 
-    void lcm_handle() {
-        lcm.handle();
+    int lcm_handle() {
+        return lcm.handle();
     }
 };
