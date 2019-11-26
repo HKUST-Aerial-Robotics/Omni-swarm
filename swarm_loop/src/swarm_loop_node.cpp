@@ -5,6 +5,7 @@
 #include "loop_detector.h"
 #include <chrono> 
 #include <Eigen/Eigen>
+#include <thread>
 
 using namespace std::chrono; 
 
@@ -107,6 +108,10 @@ public:
             this->on_loop_connection(loop_con, true);
         };
 
+        loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
+            loop_detector->on_image_recv(img_desc);
+        };
+
         camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);
     }
@@ -122,11 +127,11 @@ int main(int argc, char **argv) {
 
     //ros::MultiThreadedSpinner spinner(4); // Use 4 threads
     //spinner.spin();
+    std::thread thread([&] {
+        while(0 == loopnode.loop_net->lcm_handle()) {
+        }
+    });
     ros::spin();
-    while (true) {
-        ros::spinOnce();
-        loopnode.loop_net->lcm_handle();
-    }
 
     return 0;
 }

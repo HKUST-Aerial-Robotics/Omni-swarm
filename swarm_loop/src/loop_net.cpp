@@ -24,7 +24,9 @@ void LoopNet::on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
                 const ImageDescriptor_t* msg) {
 
     ROS_INFO("Received image desc from LCM!!!");
-
+    printf("Image desc recevied\n");
+    fflush(stdout);
+    this->img_desc_callback(*msg);
 }
 
 
@@ -32,4 +34,6 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 
                 const LoopConnection_t* msg) {
     ROS_INFO("Received Loop Connection from LCM!!!");
+    printf("Loop connection recevied\n");
+    
 }
