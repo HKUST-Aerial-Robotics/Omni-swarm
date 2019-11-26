@@ -15,7 +15,8 @@ class LoopNet {
     std::string broadcast_ip;
     int port = 9988;
     lcm::LCM lcm;
-    public:
+
+public:
     LoopNet(std::string _lcm_uri):
         lcm(_lcm_uri) {
         this->setup_network(_lcm_uri);
