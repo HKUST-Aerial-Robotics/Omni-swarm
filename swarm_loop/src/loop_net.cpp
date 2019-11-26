@@ -5,6 +5,7 @@ void LoopNet::setup_network(std::string _lcm_uri) {
         ROS_ERROR("LCM %s failed", _lcm_uri.c_str());
         exit(-1);
     }
+    lcm.subscribe("SWARM_LOOP_IMG_DES", &LoopNet::on_img_desc_recevied, this);
 }
 
 void LoopNet::broadcast_img_desc(const ImageDescriptor_t & img_des) {
