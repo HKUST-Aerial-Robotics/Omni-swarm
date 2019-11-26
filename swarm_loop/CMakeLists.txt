@@ -44,7 +44,9 @@ include_directories(
   ${DBoW3_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME}_lib
+
+add_executable(${PROJECT_NAME}_node 
+  src/swarm_loop_node.cpp
   src/loop_cam.cpp
   src/loop_detector.cpp
   src/loop_net.cpp
@@ -53,33 +55,14 @@ add_library(${PROJECT_NAME}_lib
   include/loop_net.h
 )
 
-add_executable(${PROJECT_NAME}_node 
-  src/swarm_loop_node.cpp
-)
-  
-add_executable(${PROJECT_NAME}_test
-  src/swarm_loop_test.cpp
-)
-
-
 
 
 add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_lib 
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(${PROJECT_NAME}_test ${PROJECT_NAME}_lib 
-    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(${PROJECT_NAME}_lib
+target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
    ${DBoW3_LIBRARIES} 
    lcm
 )
-
-target_link_libraries(${PROJECT_NAME}_node
-   ${PROJECT_NAME}_lib
-)
-
-target_link_libraries(${PROJECT_NAME}_test
-   ${PROJECT_NAME}_lib
- )

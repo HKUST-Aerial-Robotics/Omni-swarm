@@ -5,7 +5,8 @@
 #include "opencv2/features2d.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
-#include <chrono> 
+#include <chrono>
+
 using namespace std::chrono; 
 
 LoopCam::LoopCam(const std::string & camera_config_path, const std::string & BRIEF_PATTERN_FILE) {
@@ -124,6 +125,7 @@ ImageDescriptor_t LoopCam::feature_detect(const cv::Mat & _img) {
     cv::Mat mask;
     auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
     _des->detectAndCompute(_img, mask, keypoints, descriptors);
+    std::cout << "ORB Keypoints";
 #endif
 
     /*

@@ -29,7 +29,7 @@ public:
     }
     
 
-    void on_loop_connection (const LoopConnection & loop_con, bool is_local = false) {
+    void on_loop_connection (LoopConnection & loop_con, bool is_local = false) {
         if(is_local) {
             loop_net->broadcast_loop_connection(loop_con);
         }
@@ -87,7 +87,7 @@ public:
         nh.param<int>("broadcast_port", _bport, 9988);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
-        nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://192.168.3.255:1000?ttl=1");
+        nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
         nh.param<std::string>("BRIEF_PATTHER_FILE", BRIEF_PATTHER_FILE, 
@@ -104,7 +104,7 @@ public:
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;
 
-        loop_detector->on_loop_cb = [&] (const LoopConnection & loop_con) {
+        loop_detector->on_loop_cb = [&] (LoopConnection & loop_con) {
             this->on_loop_connection(loop_con, true);
         };
 
