@@ -206,19 +206,16 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
             std::cout << "PnP solved DPose ";
             DP_old_to_new.print();
 
-            LoopConnection loc;
-            loc.dpos.x = DP_old_to_new.pos().x();
-            loc.dpos.y = DP_old_to_new.pos().y();
-            loc.dpos.z = DP_old_to_new.pos().z();
-            loc.dyaw = DP_old_to_new.yaw();
+            ret.dpos.x = DP_old_to_new.pos().x();
+            ret.dpos.y = DP_old_to_new.pos().y();
+            ret.dpos.z = DP_old_to_new.pos().z();
+            ret.dyaw = DP_old_to_new.yaw();
 
-            loc.id_a = old_img_desc.drone_id;
-            loc.ts_a = toROSTime(old_img_desc.timestamp);
+            ret.id_a = old_img_desc.drone_id;
+            ret.ts_a = toROSTime(old_img_desc.timestamp);
 
-            loc.id_b = new_img_desc.drone_id;
-            loc.ts_b = toROSTime(new_img_desc.timestamp);
-            
-            on_loop_connection(loc);
+            ret.id_b = new_img_desc.drone_id;
+            ret.ts_b = toROSTime(new_img_desc.timestamp);
         }
 
         //Show Result

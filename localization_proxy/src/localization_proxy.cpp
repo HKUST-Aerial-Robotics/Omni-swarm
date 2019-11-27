@@ -572,7 +572,7 @@ class LocalProxy {
         uwb_senddata_pub.publish(buffer);
     }
 
-    void send_swarm_mavlink(int32_t ts, const float *dis) {
+    void send_self_odometry_and_distance(int32_t ts, const float *dis) {
 
         mavlink_message_t msg;
 
@@ -789,7 +789,7 @@ class LocalProxy {
         return nf;
     }
 
-    void send_for_predict() {
+    void send_predicted_swarm_frame() {
         swarm_frame sf;
         //Will predict till to vo stamp now
         ros::Time tnow = self_odom.header.stamp;
@@ -805,7 +805,7 @@ class LocalProxy {
             if (_nf != nullptr) {
                 node_frame nf = predict_nf(*_nf, tnow);
                 sf.node_frames.push_back(nf);
-                ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms", _id, (tnow - _nf->header.stamp).toSec()*1000 );
+                // ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms", _id, (tnow - _nf->header.stamp).toSec()*1000 );
             } else {
                 ROS_WARN_THROTTLE(1.0, "Node %d can't find in queue %ld", _id, sf_queue.size());
             }
@@ -817,7 +817,49 @@ class LocalProxy {
 
     std::set<int> all_nodes;
 
-    void ParseSwarmInfo(const remote_uwb_info &info, swarm_frame &sf) {
+
+    swarm_frame create_swarm_frame_from_self_odom() {
+        swarm_frame sf;
+
+        std::map<int, Odometry> id_odoms;
+        std::map<int, bool> vo_available;
+
+        //Because all information we use is from 0.02s ago
+        sf.header.stamp = self_odom.header.stamp;
+        // ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
+        //        sf.header.stamp = info.header.stamp;
+
+        //Switch this to real odom from 0.02 ago
+
+        if (_force_id < 0) {
+            node_frame self_nf;
+            self_nf.id = self_id;
+            self_nf.header.stamp = self_odom.header.stamp;
+            self_nf.vo_available = odometry_available;
+            Eigen::Quaterniond q;
+            q.w() = self_odom.pose.pose.orientation.w;
+            q.x() = self_odom.pose.pose.orientation.x;
+            q.y() = self_odom.pose.pose.orientation.y;
+            q.z() = self_odom.pose.pose.orientation.z;
+            Eigen::Vector3d rpy = quat2eulers(q);
+            self_nf.yaw = rpy.z();
+            self_nf.position.x = self_odom.pose.pose.position.x;
+            self_nf.position.y = self_odom.pose.pose.position.y;
+            self_nf.position.z = self_odom.pose.pose.position.z;
+            self_nf.velocity.x = self_odom.twist.twist.linear.x;
+            self_nf.velocity.y = self_odom.twist.twist.linear.y;
+            self_nf.velocity.z = self_odom.twist.twist.linear.z;
+            sf.node_frames.push_back(self_nf);
+        }
+
+        all_nodes.insert(self_id);
+
+        return sf;
+    }
+
+    swarm_frame create_swarm_frame_from_uwb(const remote_uwb_info &info) {
+        swarm_frame sf;
+
         int drone_num = info.node_ids.size() + 1;
         const std::vector<unsigned int> &ids = info.node_ids;
 
@@ -883,16 +925,16 @@ class LocalProxy {
             }
 
         }
+
+        return sf;
     }
 
-    void on_remote_nodes_data_recv(const remote_uwb_info &info) {
+    void on_uwb_distance_measurement(const remote_uwb_info &info) {
         ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
         //Using last distances, assume cost 0.02 time offset
-        swarm_frame sf;
-
-        ParseSwarmInfo(info, sf);
+        swarm_frame sf = create_swarm_frame_from_uwb(info);
 //        ROS_INFO("push sf %d", info.sys_time);
         sf_queue.push_back(sf);
 
@@ -911,41 +953,45 @@ class LocalProxy {
             }
         }
 
+        send_self_odometry_and_distance(info.sys_time, self_dis);
 
-        send_swarm_mavlink(info.sys_time, self_dis);
-
-
-        if (!odometry_updated) {
-            //No new vo for 2 frame
-            // odometry_available = false;
-        }
         odometry_updated = false;
 
-        if (_node_predict_nodelay) {
-            send_for_predict();
-        } else if (sf_queue.size() > no_detection_wait) {
-            //Pub two frame before
-            swarm_frame & _sf = sf_queue[sf_queue.size() - no_detection_wait - 1];
-            ROS_INFO_THROTTLE(1.0, "Will pub %ld for predict Dt %3.1fms", sf_queue.size() - no_detection_wait - 1,
-                (ros::Time::now()- _sf.header.stamp).toSec()*1000
-            );
-            
-            swarm_frame_nosd_pub.publish(_sf);
+        send_predicted_swarm_frame();
+        process_swarm_frame_queue();
+    }
+
+
+    void predict_swarm_frame_callback(const ros::TimerEvent & e) {
+        swarm_frame sf = create_swarm_frame_from_self_odom();
+
+        sf_queue.push_back(sf);
+
+        float self_dis[100] = {0};
+
+        for (int i = 0; i < 10; i++) {
+            self_dis[i] = -1;
         }
+
+        send_self_odometry_and_distance( ROSTIME2LPS(sf.header.stamp), self_dis);
+
+        odometry_updated = false;
+
+        send_predicted_swarm_frame();
         process_swarm_frame_queue();
     }
 
     std::map<int, ros::Publisher> drone_odom_pubs;
     bool publish_remote_odom = false;
     int sf_queue_max_size = 10;
-    int no_detection_wait = 3;
-    bool _node_predict_nodelay = false; //If enable this, will use velocity to predict near 40ms, which gives less than 1cm error
+    bool _enable_uwb = true;
+    bool _transmission_wifi = false;
     sensor_msgs::TimeReference uwb_time_ref;
 
     int _force_id = -1;
     void on_uwb_timeref(const sensor_msgs::TimeReference &ref) {
         uwb_time_ref = ref;
-    }
+    }       
 
     ros::Time LPS2ROSTIME(const int32_t &lps_time) {
         ros::Time base = uwb_time_ref.header.stamp - ros::Duration(uwb_time_ref.time_ref.toSec());
@@ -959,24 +1005,28 @@ class LocalProxy {
     ros::Time tsstart = ros::Time::now();
 
     ros::Subscriber based_sub;
-    
+    ros::Timer keyframe_callback_timer;
+
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
         ROS_INFO("Start SWARM Drone Proxy");
         // bigger than 3 is ok
-        nh.param<int>("no_detection_wait", no_detection_wait, 4);
         nh.param<int>("sf_queue_size", sf_queue_max_size, 10);
         nh.param<int>("force_id", _force_id, -1); //Use a force id to publish the swarm frame messages, which means you can direct use gcs to compute same thing
+        nh.param<int>("self_id", self_id, 0); 
+
         nh.param<bool>("publish_remote_odom", publish_remote_odom, false);
-        nh.param<bool>("node_predict_nodelay", _node_predict_nodelay, true);
+
+        nh.param<bool>("enable_uwb", _enable_uwb, true);
+        nh.param<bool>("transmission_wifi", _transmission_wifi, false);
+        
         nh.param<double>("send_fused_freq", send_fused_freq, 30.0);
         nh.param<double>("send_rel_fused_freq", send_rel_fused_freq, 0.0);
         nh.param<double>("send_fused_basecoor_freq", send_fused_basecoor_freq, 30.0);
         // read /vins_estimator/odometry and send to uwb by mavlink
         local_odometry_sub = nh.subscribe("/vins_estimator/imu_propagate", 10, &LocalProxy::on_local_odometry_recv, this,
                                           ros::TransportHints().tcpNoDelay());
-        swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &LocalProxy::on_remote_nodes_data_recv, this,
-                                      ros::TransportHints().tcpNoDelay());
+       
         swarm_rel_sub = nh.subscribe("/swarm_drones/swarm_drone_fused_relative", 1,
                                      &LocalProxy::on_swarm_fused_relative_recv, this, ros::TransportHints().tcpNoDelay());
         
@@ -986,16 +1036,29 @@ public:
         swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &LocalProxy::on_swarm_detected, this,
                                         ros::TransportHints().tcpNoDelay());
 #endif
+
+
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 1);
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
-
-        uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
-
-        uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
-
-        uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 10, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
-
+        
         based_sub = nh.subscribe("/swarm_drones/swarm_drone_basecoor", 1, &LocalProxy::on_swarm_fused_basecoor_recv, this, ros::TransportHints().tcpNoDelay());
+
+        if (_enable_uwb) {
+            uwb_timeref_sub = nh.subscribe("/uwb_node/time_ref", 1, &LocalProxy::on_uwb_timeref, this, ros::TransportHints().tcpNoDelay());
+            swarm_data_sub = nh.subscribe("/uwb_node/remote_nodes", 1, &LocalProxy::on_uwb_distance_measurement, this,
+                                      ros::TransportHints().tcpNoDelay());
+            if (!_transmission_wifi) {
+                uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
+                uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 10, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
+            }
+        } else {
+            //Init LCM transmission here
+            //
+            keyframe_callback_timer =  nh.createTimer(ros::Duration(0.01), &LocalProxy::predict_swarm_frame_callback, this);
+            
+            uwb_senddata_pub = nh.advertise<data_buffer>("/uwb_node/send_broadcast_data", 1);
+            uwb_incoming_sub = nh.subscribe("/uwb_node/incoming_broadcast_data", 10, &LocalProxy::parse_mavlink_data, this, ros::TransportHints().tcpNoDelay());
+        }
     }
 };
 

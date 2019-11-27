@@ -18,14 +18,14 @@ using namespace camodocal;
 class LoopCam {
     int cam_count = 0;
     int loop_duration = 10;
-
+    int self_id = 0;
     std::vector<cv::Mat> image_queue;
     std::vector<double> image_ts_queue;
 
 public:
     // LoopDetector * loop_detector = nullptr;
 
-    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE);
+    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id);
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);
     std::pair<ImageDescriptor_t, cv::Mat> on_keyframe_message(const vins::VIOKeyframe& msg);
 
