@@ -376,6 +376,11 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     has_new_keyframe = true;
 }
 
+void SwarmLocalizationSolver::add_new_swarm_connection(const swarm_msgs::LoopConnection & loop_con) {
+    
+}
+
+
 void SwarmLocalizationSolver::replace_last_kf(const SwarmFrame &sf) {
     delete_frame_i(sf_sld_win.size()-1);
     sf_sld_win.push_back(sf);
@@ -632,6 +637,7 @@ std::pair<Eigen::Vector3d, Eigen::Vector3d> SwarmLocalizationSolver::boundingbox
         Eigen::Vector3d(xmax, ymax, zmax));
 }
 
+        
 double SwarmLocalizationSolver::solve() {
     if (self_id < 0 || sf_sld_win.size() < min_frame_number)
         return -1;

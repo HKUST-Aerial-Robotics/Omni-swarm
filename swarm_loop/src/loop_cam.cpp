@@ -9,7 +9,7 @@
 
 using namespace std::chrono; 
 
-LoopCam::LoopCam(const std::string & camera_config_path, const std::string & BRIEF_PATTERN_FILE) {
+LoopCam::LoopCam(const std::string & camera_config_path, const std::string & BRIEF_PATTERN_FILE, int _self_id): self_id(_self_id) {
     camodocal::CameraFactory cam_factory;
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
 }
@@ -52,6 +52,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     
     cv::Mat img = pop_image_ts(msg.header.stamp);
     ImageDescriptor_t ides;
+
     ides.landmark_num = 0;
     if (img.empty()) {
         ROS_INFO("No Image; Exiting;");
@@ -72,7 +73,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
 
 
     ides.timestamp = toLCMTime(msg.header.stamp);
-    ides.drone_id = -1; // -1 is self drone;
+    ides.drone_id = self_id; // -1 is self drone;
     ides.camera_extrinsic = fromROSPose(msg.camera_extrisinc);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.landmark_num = msg.feature_points_2d_uv.size();

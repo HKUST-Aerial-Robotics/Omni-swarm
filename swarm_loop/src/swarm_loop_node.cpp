@@ -21,6 +21,7 @@ public:
     ros::Subscriber cam_sub;
     bool debug_image = false;
     double min_movement_keyframe = 0.3;
+    int self_id = 0;
 
     Eigen::Vector3d last_keyframe_position = Eigen::Vector3d(10000, 10000, 10000);
 
@@ -33,6 +34,8 @@ public:
         if(is_local) {
             loop_net->broadcast_loop_connection(loop_con);
         }
+
+        ROS_INFO("Pub loop conn. is local %d", is_local);
         loopconn_pub.publish(loop_con);
     } 
     
@@ -79,13 +82,12 @@ public:
 public:
     SwarmLoopNode(ros::NodeHandle& nh) {
         //Init Loop Net
-        int _bport = -1;
         std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
         std::string ORB_VOC = "";
 
-        nh.param<int>("broadcast_port", _bport, 9988);
+        nh.param<int>("self_id", self_id, 0);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
@@ -93,14 +95,13 @@ public:
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
         nh.param<std::string>("BRIEF_PATTHER_FILE", BRIEF_PATTHER_FILE, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/support_files/brief_pattern.yml");
-
-        nh.param<std::string>("BRIEF_PATTHER_FILE", ORB_VOC, 
+        nh.param<std::string>("ORB_VOC", ORB_VOC, 
             "/home/xuhao/swarm_ws/src/swarm_localization/support_files/ORBvoc.txt");
 
         nh.param<bool>("debug_image", debug_image, false);
         
         loop_net = new LoopNet(_lcm_uri);
-        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE);
+        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id);
         loop_detector = new LoopDetector(ORB_VOC);
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;

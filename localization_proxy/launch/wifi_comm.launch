@@ -1,12 +1,11 @@
 <launch>
-    <include file="$(find inf_uwb_ros)/launch/uwb_node.launch">
-    </include>
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <rosparam>
             send_fused_freq: 0.0
             send_fused_basecoor_freq: 30.0
             self_id: 0
+            enable_uwb: false
        </rosparam>
     </node>
 </launch>

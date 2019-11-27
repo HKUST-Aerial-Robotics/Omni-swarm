@@ -14,8 +14,6 @@
 using namespace swarm_msgs;
 
 class LoopNet {
-    std::string broadcast_ip;
-    int port = 9988;
     lcm::LCM lcm;
 
     std::set<int64_t> sent_message;
