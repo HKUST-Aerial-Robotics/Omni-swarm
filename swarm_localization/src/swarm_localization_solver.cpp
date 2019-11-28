@@ -24,8 +24,7 @@
 
 using namespace std::chrono;
 
-#define DEBUG_OUTPUT_POSES
-//#define COMPUTE_COV
+// #define DEBUG_OUTPUT_POSES
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
@@ -33,7 +32,7 @@ using namespace std::chrono;
 //#define MAX_SOLVER_TIME 1.0
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
-#define INIT_FXIED_YAW
+// #define INIT_FXIED_YAW
 #define INIT_Z_ERROR 0.2
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
@@ -42,16 +41,11 @@ using namespace std::chrono;
 
 #define INIT_TRIAL 5
 
+#define BEGIN_MIN_LOOP_DT 1.0
+
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
-
-bool SwarmLocalizationSolver::detect_outlier(const SwarmFrame &sf) const {
-    //Detect if it's outlier
-
-    // for (int i = 0; i  < s)
-    return false;
-}
-
+#define RE_ESTIMATE_SELF_POSES
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -376,7 +370,7 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
 }
 
 void SwarmLocalizationSolver::add_new_swarm_connection(const swarm_msgs::LoopConnection & loop_con) {
-    
+    all_loops.push_back(loop_con);
 }
 
 
@@ -400,10 +394,6 @@ void SwarmLocalizationSolver::replace_last_kf(const SwarmFrame &sf) {
 
 void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     process_frame_clear();
-    if (detect_outlier(sf)) {
-        ROS_INFO("Outlier detected!");
-        return;
-    }
 
     auto _ids = sf.node_id_list;
     for (int _id : _ids) {
@@ -835,9 +825,11 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     int res_num = she->residual_count();
 
     int poses_num = nf_win.size();
+#ifndef ENABLE_LOOP
     if (is_self) {
         poses_num = nf_win.size() - 1;
     }
+#endif
 
     for (int i =0;i < poses_num; i ++) {
         if (!finish_init) {
@@ -877,7 +869,6 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     std::vector<double*> pose_win;
     std::map<int64_t, int> ts2poseindex;
 
-    // for (auto it: nfs) {
     for (const SwarmFrame & sf : sf_sld_win) {
         int64_t ts = sf.ts;
         if (nfs.find(ts) != nfs.end()) {
@@ -897,17 +888,24 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         } 
 
     }
-
+#ifdef RE_ESTIMATE_SELF_POSES
+        //Do not reestimate first
+        // pose_win.erase(pose_win.begin());
+        if (_id == self_id) {
+            problem.SetParameterBlockConstant(pose_win[0]);
+        }
+#else
     if (_id == self_id) {
         //Delete last one that don't need to estimate
         pose_win.erase(pose_win.end() - 1);
-
         //Not estimate myself; useless
+        //For Loop only 
         for (double * _p : pose_win) {
             problem.SetParameterBlockConstant(_p);
         }
         return;
     }
+#endif
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
@@ -1048,15 +1046,15 @@ void SwarmLocalizationSolver::estimate_yaw_observability() {
 }
 
 bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) {
-    int64_t tsa = _loc.ts_a.toNSec();
-    int64_t tsb = _loc.ts_b.toNSec();
+    ros::Time tsa = _loc.ts_a;
+    ros::Time tsb = _loc.ts_b;
     
     int _ida = _loc.id_a;
     int _idb = _loc.id_b;
     int _index_a = -1;
     int _index_b = -1;
-    double min_ts_err_a = 1e15;
-    double min_ts_err_b = 1e15;
+    double min_ts_err_a = 10000;
+    double min_ts_err_b = 10000;
 
     //Give up if first timestamp is bigger than 1 sec than tsa
     if (sf_sld_win.empty()) {
@@ -1064,28 +1062,55 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         return false;
     }
 
-    if(sf_sld_win[0].ts > tsa + 1e9 ) {
-        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa), _ida, TSShort(tsb), _idb);
+    if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
+        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, sf_sld_win[0].ts);
         return false;
     }
+
+    loc_ret = Swarm::LoopConnection(_loc);
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         //Find suitable timestamp for tsa
         //If the first frame is older than tsa, than useless
 
-        if (sf_sld_win[i].HasID(_ida) && abs(sf_sld_win[i].id2nodeframe[_ida].ts - tsa)/1e9 < min_ts_err_a) {
-            min_ts_err_a = abs(sf_sld_win[i].id2nodeframe[_ida].ts - tsa)/1e9;
+        if (sf_sld_win[i].HasID(_ida) && fabs((sf_sld_win[i].id2nodeframe[_ida].stamp - tsa).toSec()) < min_ts_err_a) {
+            NodeFrame & _nf_a = sf_sld_win[i].id2nodeframe[_ida];
+            min_ts_err_a = fabs((_nf_a.stamp - tsa).toSec());
             _index_a = i;
+            // printf("Dt %f, DPOSE", (_nf_a.stamp - tsa).toSec()*1000);
+            // Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a).print();
         }
 
-        if (sf_sld_win[i].HasID(_idb) && abs(sf_sld_win[i].id2nodeframe[_idb].ts - tsb)/1e9 < min_ts_err_b) {
-            min_ts_err_b = abs(sf_sld_win[i].id2nodeframe[_idb].ts - tsb)/1e9;
+        if (sf_sld_win[i].HasID(_idb) && fabs((sf_sld_win[i].id2nodeframe[_idb].stamp - tsb).toSec()) < min_ts_err_b) {
+            min_ts_err_b = fabs((sf_sld_win[i].id2nodeframe[_idb].stamp - tsb).toSec());
             _index_b = i;
         }
     }
 
-    ROS_INFO("loop [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", TSShort(tsa), _ida, TSShort(tsb), _idb, min_ts_err_a, min_ts_err_b);
+    ROS_INFO("loop [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
+        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
 
+    NodeFrame & _nf_a = sf_sld_win[_index_a].id2nodeframe[_ida];
+    NodeFrame & _nf_b = sf_sld_win[_index_b].id2nodeframe[_idb];
+
+
+    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a); //2->0
+    Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose); //1->3
+
+    Pose new_loop = dpose_self_a * loc_ret.relative_pose * dpose_self_b;
+
+
+    printf("DPOSE A");
+    dpose_self_a.print();
+    printf("DPOSE B");
+    dpose_self_b.print();
+    printf("ORIGINAL LOOP");
+    loc_ret.relative_pose.print();
+    printf("NEW LOOP");
+    new_loop.print();
+
+
+    loc_ret.relative_pose = new_loop;
 
     return true;
 }
@@ -1157,7 +1182,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     double equv_cost = summary.final_cost / sliding_window_size();
 
-    equv_cost = equv_cost / (double) (drone_num * (drone_num - 1));
+    if (drone_num > 1) {
+        equv_cost = equv_cost / (double) (drone_num * (drone_num - 1));
+    }
+
     equv_cost = sqrt(equv_cost)/ERROR_NORMLIZED;
     if (!report) {
         return equv_cost;
@@ -1168,17 +1196,18 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //std::cout << summary.FullReport() << std::endl;
 
 #ifdef DEBUG_OUTPUT_POSES
-    if (finish_init) {
+    //if (finish_init) 
+    {
 
         for (auto it : est_poses_idts) {
             auto id = it.first;
             ROS_INFO("\n\nID %d ", id);
             double* pose_last = nullptr;
             Pose pose_vo_last;
-            // for(auto it2 : it.second) {
-                // auto ts = it2.first;
+            for(auto it2 : it.second) {
+                auto ts = it2.first;
                 // double * pose = it2.second;
-                auto ts = sf_sld_win.back().ts;
+                // auto ts = sf_sld_win.back().ts;
                 if (est_poses_tsid[ts].find(id) == est_poses_tsid[ts].end()) {
                     continue;
                 }
@@ -1225,7 +1254,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
                 pose_last = pose;
                 pose_vo_last = pose_vo;
-            // }
+            }
         }
 
     }
@@ -1235,18 +1264,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     solve_count++;
 
     ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
-    // exit(-1);
-    ros::Time t3 = ros::Time::now();
-#ifdef COMPUTE_COV
-    this->compute_covariance(problem, param_indexs);    
-#endif
-    //Use this jacobian to give a covariance function for each state. than add marginalization
-    ros::Time t4 = ros::Time::now();
 
-    ROS_INFO("Dt1 %3.2f ms DT2 %3.2f DT3 %3.2f TOTAL %3.2f",
+    ROS_INFO("Dt1 %3.2f ms TOTAL %3.2f",
         (t2-t1).toSec()*1000,
-        (t3-t2).toSec()*1000,
-        (t4-t3).toSec()*1000,
         (ros::Time::now() - t1).toSec()*1000
     );
 
@@ -1254,81 +1274,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 }
 
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
-
-void SwarmLocalizationSolver::compute_covariance(Problem & problem, TSIDArray param_indexs) {
-
-    //This function still has bug when static
-
-    ceres::Covariance::Options cov_options;
-    // cov_options.algorithm_type = DENSE_SVD;
-    // cov_options.null_space_rank = 1;
-    Covariance covariance(cov_options);
-    std::vector<std::pair<const double*, const double*> > covariance_blocks;
-
-    Problem::EvaluateOptions evaluate_options_;
-    evaluate_options_.num_threads = 1;
-    evaluate_options_.apply_loss_function = true;
-    CRSMatrix jacobian;
-    problem.Evaluate(evaluate_options_, NULL, NULL, NULL, &jacobian);
-    auto jacb = CRSMatrixToEigenMatrix(jacobian);
-    high_resolution_clock::time_point t1 = high_resolution_clock::now();
-
-    // ROS_INFO("ID %d Mat rows %ld cols %ld\n", self_id, jacb.rows(), jacb.cols());
-    auto JtJ = (jacb.transpose()*jacb).sparseView();
-    Eigen::SimplicialLLT <Eigen::SparseMatrix<double>> solver;
-    
-    solver.compute(JtJ);
-    Eigen::SparseMatrix<double> I(JtJ.rows(), JtJ.rows());
-    I.setIdentity();
-    Eigen::MatrixXd cov = Eigen::MatrixXd(solver.solve(I))*ERROR_NORMLIZED*ERROR_NORMLIZED;
-    // ROS_INFO("COV size %d %d", cov.cols(), cov.rows());
-    // std::cout << cov << std::endl;
-    for (int i = 0; i < 4; i++) {
-        for (int j =0; j < 4; j++) {
-            if (cov(i,j) > 10) {
-                cov(i, j) = 10;
-            }
-            if (cov(i,j) < 0) {
-                cov(i,j) = 0;
-            }
-        }
-    }
-    
-    //Init self this last with 0
-    if (est_cov_tsid.find(sf_sld_win.back().ts) == est_cov_tsid.end()) {
-        est_cov_tsid[sf_sld_win.back().ts] = std::map<int,Eigen::Matrix4d>();
-    }
-
-    est_cov_tsid[sf_sld_win.back().ts][self_id] = Eigen::Matrix4d::Zero();
-
-    for (int j = 0; j < cov.cols() / 4; j ++ ) {
-        int64_t _ts = param_indexs[j].first;
-        int _id = param_indexs[j].second;
-        if (est_cov_tsid.find(_ts) == est_cov_tsid.end()) {
-            est_cov_tsid[_ts] = std::map<int,Eigen::Matrix4d>();
-        }
-        // ROS_INFO("set cov %ld %d", _ts, _id);
-
-        est_cov_tsid[_ts][_id] = cov.block<4, 4>(4*j,4*j);
-        // int j = 0;
-        // if (param_indexs[j].first == ts ) {
-#ifdef DEBUG_OUTPUT_COV
-        printf("\nTS %d ", TSShort(_ts));
-        printf("ID %d SD %4.3lf %4.3lf %4.3lf %4.3lf", _id, cov(4*j,4*j), 
-                cov(4*j+1,4*j+1), 
-                cov(4*j+2,4*j+2), 
-                cov(4*j+3,4*j+3));
-            // fflush(stdout);
-        // }
-#endif
-    }
-
-    printf("\n");
-    high_resolution_clock::time_point t2 = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-    ROS_INFO("Eigen compute covariance %4.3fms\n", duration/1000.0);
-
-}
 
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix) {
     Eigen::MatrixXd eigen_matrix;
