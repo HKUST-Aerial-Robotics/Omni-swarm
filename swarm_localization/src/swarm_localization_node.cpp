@@ -355,7 +355,7 @@ private:
     void predict_swarm(const swarm_frame &_sf) {
         // ros::Time ts = ros::Time::now();
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
-        if (_sf.node_frames.size() > 1) {
+        if (_sf.node_frames.size() >= 1) {
             if (swarm_localization_solver->CanPredictSwarm()) {
                 SwarmFrame sf = swarm_frame_from_msg(_sf);
                 SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);

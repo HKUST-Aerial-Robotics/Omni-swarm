@@ -31,6 +31,9 @@ typedef std::vector<Quaterniond> quat_array;
 #define VO_DRIFT_METER_Z 0.005
 #define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
 #define DISTANCE_MEASURE_ERROR 0.1
+#define LOOP_COV 0.05
+#define LOOP_YAWCOV 0.01
+
 #define ERROR_NORMLIZED 0.01
 //#define DETECTION_COV_POS 10
 #define DETECTION_COV_POS 1
@@ -161,7 +164,7 @@ struct SwarmLoopError {
             T relpose_est[4];
             estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
 
-            pose_error(relpose_est, rel_pose, _residual + res_count);
+            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d::Ones() * LOOP_COV,LOOP_YAWCOV);
             res_count = res_count + 4;
         }
         return res_count;
