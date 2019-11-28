@@ -78,9 +78,9 @@ class SwarmLocalizationSolver {
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
-    std::vector<Swarm::LoopConnection> find_available_loops();
+    std::vector<Swarm::LoopConnection> find_available_loops() const;
 
-    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret);
+    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) const;
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
@@ -91,10 +91,16 @@ class SwarmLocalizationSolver {
 
     CostFunction *
     _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const;
-
-    void cutting_edges();
-
+    
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
+    
+    CostFunction *
+    _setup_cost_function_by_loop(std::vector<Swarm::LoopConnection> loops);
+
+    void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
+    
+    
+    void cutting_edges();
 
     double solve_once(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts, bool report = false);
     
