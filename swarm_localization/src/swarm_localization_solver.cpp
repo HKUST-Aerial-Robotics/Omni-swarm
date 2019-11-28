@@ -335,7 +335,6 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
             if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
                 Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
                 Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
-                double est_dis = (posj_est.pos() - poseest.pos()).norm();
                 printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f",_idj, det.pos().x(), det.pos().y(), det.pos().z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
             }
 
@@ -801,7 +800,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
             printf("\n");
         }
     } else {
-        for (int i = 0; i < pose_state.size(); i ++) {
+        for (unsigned int i = 0; i < pose_state.size(); i ++) {
             double * _state = pose_state[i];
             int _id = _id_list[i];
             if (!finish_init) {
@@ -1070,7 +1069,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         return false;
     }
 
-    for (int i = 0; i < sf_sld_win.size(); i++ ) {
+    for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         //Find suitable timestamp for tsa
         //If the first frame is older than tsa, than useless
 
@@ -1092,10 +1091,15 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 }
 
 std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops() {
+    std::vector<LoopConnection> good_loops;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
-        bool success =  loop_from_src_loop_connection(_loc, loc_ret);
+        if(loop_from_src_loop_connection(_loc, loc_ret)) {
+            good_loops.push_back(loc_ret);
+        }
     }
+
+    return good_loops;
 }
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
@@ -1110,6 +1114,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
 
+    //Find loops
+    find_available_loops();
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
@@ -1123,6 +1129,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     for (int _id: all_nodes) {
         this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
+
+
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 
