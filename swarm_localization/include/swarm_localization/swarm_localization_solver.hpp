@@ -21,6 +21,7 @@ using namespace ceres;
 
 struct SwarmFrameError;
 struct SwarmHorizonError;
+struct SwarmLoopError;
 
 inline float rand_FloatRange(float a, float b) {
     return ((b - a) * ((float) rand() / RAND_MAX)) + a;
@@ -36,6 +37,7 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
 
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
+typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, 7> LoopCost;
 
 //Poses is dict of timestamp and then id;
 //state<ts,id>
@@ -55,8 +57,8 @@ class SwarmLocalizationSolver {
 
     unsigned int solve_count = 0;
 
-//    std::vector<double*> _swarm_est_poses;
-//
+
+    std::vector<swarm_msgs::LoopConnection> all_loops;
 
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
@@ -76,6 +78,10 @@ class SwarmLocalizationSolver {
 
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
+
+    std::vector<Swarm::LoopConnection> find_available_loops();
+
+    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret);
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;

@@ -307,7 +307,6 @@ private:
                 Pose _pose = it.second;
                 Pose DPose = Pose::DeltaPose(self_pose, _pose, true);
 
-
                 double dyaw = DPose.yaw();
                 sfr.ids.push_back(id);
                 sfr.relative_drone_position.push_back(DPose.to_ros_pose().position);

@@ -9,6 +9,8 @@
 #include "yaml-cpp/yaml.h"
 #include <exception>
 #include <set>
+#include <swarm_msgs/LoopConnection.h>
+
 using namespace Swarm;
 
 typedef std::map<int, double> DisMap;
@@ -115,6 +117,30 @@ namespace Swarm {
             return anntena_pos;
         }
     };
+
+class LoopConnection {
+public:
+    int64_t ts_a;
+    int64_t ts_b;
+    int id_a;
+    int id_b;
+    Pose relative_pose;
+    Pose self_pose_a;
+    Pose self_pose_b;
+    
+    LoopConnection(swarm_msgs::LoopConnection loc) {
+        id_a = loc.id_a;
+        id_b = loc.id_b;
+        ts_a = loc.ts_a.toNSec();
+        ts_b = loc.ts_b.toNSec();
+
+        relative_pose = Pose(loc.dpos, loc.dyaw);
+    }
+
+    LoopConnection() {
+
+    }
+};
 
 class NodeFrame {
     public:

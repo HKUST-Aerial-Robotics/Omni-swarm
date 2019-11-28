@@ -34,11 +34,11 @@ typedef std::vector<Quaterniond> quat_array;
 #define ERROR_NORMLIZED 0.01
 //#define DETECTION_COV_POS 10
 #define DETECTION_COV_POS 1
-#define DISABLE_DETECTION_YAW
 
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
 #define INIT_FIXED_Z
+#define ENABLE_LOOP
 
 //#define ENABLE_HISTORY_COV
 
@@ -105,6 +105,75 @@ inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
     p[2] = T(_p.z());
 }
 
+struct SwarmLoopError {
+    std::vector<Swarm::LoopConnection> locs;
+    std::map<int, std::map<int64_t, int>> id_ts_poseindex;
+
+    template<typename T>
+    inline void get_pose(int _id, int64_t ts, T const *const *_poses, T * t_pose) const {
+        if (has_id_ts(_id, ts)) {
+                int index = id_ts_poseindex.at(_id).at(ts);
+                t_pose[0] =  _poses[index][0];
+                t_pose[1] =  _poses[index][1];
+                t_pose[2] =  _poses[index][2];
+                t_pose[3] =  _poses[index][3];
+        } else {
+            ROS_ERROR("No pose of ID %d ts %d in Loop error;exit;", _id, TSShort(ts));
+            exit(-1);
+        }
+    }
+
+    template<typename T>
+    inline void estimate_relpose(int ida, int64_t tsa, int idb, int64_t tsb, T const *const *_poses, T *relpose) const {
+        T posea[4] , poseb[4];
+        get_pose(ida, tsa, _poses, posea);
+        get_pose(idb, tsb, _poses, poseb);
+        DeltaPose(posea, poseb, relpose);
+    }
+
+    bool has_id_ts(int _id, int64_t ts) const {
+        if (id_ts_poseindex.find(_id) != id_ts_poseindex.end()) {
+            if(id_ts_poseindex.at(_id).find(ts) != id_ts_poseindex.at(_id).end()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    template<typename T>
+    inline int loop_relpose_residual(const Swarm::LoopConnection & loc, T const *const *_poses, T *_residual, int res_count) const {
+        int _ida = loc.id_a;
+        int _idb = loc.id_b;
+        int64_t _tsa = loc.ts_a;
+        int64_t _tsb = loc.ts_b;
+
+        if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
+            Pose _rel_pose = loc.relative_pose;
+            T rel_pose[4];
+            _rel_pose.to_vector_xyzyaw(rel_pose);
+
+            T relpose_est[4];
+            estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
+
+            pose_error(relpose_est, rel_pose, _residual + res_count);
+            res_count = res_count + 4;
+        }
+        return res_count;
+    }
+
+    int residual_count() {
+        return locs.size()*4;
+    }
+
+    template<typename T>
+    bool operator()(T const *const *_poses, T *_residual) const {
+        int res_count = 0;
+        for (auto & loc : locs) {
+            res_count = loop_relpose_residual(loc, _poses, _residual, res_count);
+        }
+        return true;
+    }
+};
 
 struct SwarmFrameError {
     SwarmFrame sf;
@@ -223,14 +292,8 @@ struct SwarmFrameError {
 
                 Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
 
-#ifdef DISABLE_DETECTION_YAW
                 position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
                 res_count = res_count + 3;
-#else
-                Eigen::Vector3d ang_cov = _nf.detected_nodes_angvar[_id] * DETECTION_COV_ANG;
-                pose_error(relpose_est, rel_pose, _residual + res_count, pos_cov, ang_cov.z());
-                res_count = res_count + 4;
-#endif
             }
         }
         // ROS_INFO("Work with detected node");
@@ -262,11 +325,7 @@ struct SwarmFrameError {
                 if (_nf.has_detect_relpose) {
                     for (const auto & it: _nf.detected_nodes) {
                         if (has_id(it.first) && _nf.enabled_detection.at(it.first)) {
-#ifdef DISABLE_DETECTION_YAW
                             res_count = res_count + 3;
-#else
-                            res_count = res_count + 4;
-#endif
                         }
                     }
                 }

@@ -216,6 +216,9 @@ bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsig
 
             ret.id_b = new_img_desc.drone_id;
             ret.ts_b = toROSTime(new_img_desc.timestamp);
+
+            ret.self_pose_a = toROSPose(old_img_desc.pose_drone);
+            ret.self_pose_b = toROSPose(new_img_desc.pose_drone);
         }
 
         //Show Result
