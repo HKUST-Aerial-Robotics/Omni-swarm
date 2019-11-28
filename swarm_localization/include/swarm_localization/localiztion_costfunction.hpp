@@ -37,6 +37,7 @@ typedef std::vector<Quaterniond> quat_array;
 
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
+#define INIT_FXIED_YAW
 #define INIT_FIXED_Z
 #define ENABLE_LOOP
 
@@ -436,19 +437,20 @@ struct SwarmHorizonError {
     template<typename T>
     inline void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
 
+#ifndef ENABLE_LOOP
         if (is_self_node && ts == last_ts) {
             Pose _pose = nf_windows.back().pose();
             _pose.to_vector_xyzyaw(t_pose);
             return;
         }
-
+#endif
         if (ts2poseindex.find(ts) != ts2poseindex.end()) {
             int index = ts2poseindex.at(ts);
             t_pose[0] =  _poses[index][0];
             t_pose[1] =  _poses[index][1];
             if (first_init_mode) {
                 const NodeFrame & _nf = nf_windows.at(ts2nfindex.at(ts));
-#ifdef INIT_FIXED_Z
+#ifndef INIT_FIXED_Z
                 t_pose[2] =  _poses[index][2];
 #else           
                 t_pose[2] = T(_nf.position().z());

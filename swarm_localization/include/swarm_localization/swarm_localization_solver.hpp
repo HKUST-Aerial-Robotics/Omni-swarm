@@ -63,7 +63,6 @@ class SwarmLocalizationSolver {
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
     EstimateCOV est_cov_tsid;
-    bool detect_outlier(const SwarmFrame &sf) const;
     void delete_frame_i(int i);
 
     bool is_frame_useful(unsigned int i) const;
@@ -117,8 +116,6 @@ class SwarmLocalizationSolver {
     std::map<unsigned int, unsigned int> node_kf_count;
 
     bool has_new_keyframe = false;
-
-    void compute_covariance(Problem & problem, std::vector<std::pair<int64_t, int>> param_indexs);
 
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;

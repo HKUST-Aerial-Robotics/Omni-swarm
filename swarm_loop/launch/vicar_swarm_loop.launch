@@ -1,5 +1,9 @@
 <launch>
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+    <arg name="rand" default="10.0" />
+    <arg name="num" default="5" />
+    <arg name="detection" default="true" />
+    
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="log">
         <rosparam>
             camera_config_path: /home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml
             debug_image : true
@@ -11,7 +15,7 @@
     </node>
     <node name="vins_estimator" pkg="vins" type="vins_node" output="log" args="/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/vi_car.yaml" />
     
-    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
+    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <rosparam>
             send_fused_freq: 0.0
@@ -19,5 +23,19 @@
             self_id: 0
             enable_uwb: false
        </rosparam>
+    </node>
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
+        <rosparam>
+            force_freq: 5
+            max_accept_cost: 10
+            max_keyframe_num: 100
+            min_keyframe_num: 5
+            thread_num: 2
+            min_kf_movement : 0.5
+            init_xy_movement : 1.0
+            init_z_movement : 0
+        </rosparam>
+        <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
+        <param name="initial_random_noise" value="$(arg rand)" type="double" />
     </node>
 </launch>
