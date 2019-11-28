@@ -135,6 +135,9 @@ public:
         ts_b = loc.ts_b.toNSec();
 
         relative_pose = Pose(loc.dpos, loc.dyaw);
+
+        self_pose_a = Pose(loc.self_pose_a);
+        self_pose_b = Pose(loc.self_pose_b);
     }
 
     LoopConnection() {
