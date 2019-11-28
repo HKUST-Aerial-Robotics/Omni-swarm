@@ -395,15 +395,6 @@ struct SwarmFrameError {
     }
 };
 
-struct SolvedPosewithCov{
-    double pose[4]  = {0}; //xyzyaw
-    Eigen::Vector3d pos_cov = Eigen::Vector3d(0, 0, 0);
-    double yaw_cov = 0;
-    SolvedPosewithCov () {
-
-    }
-};
-
 //Error for correlation vo drift
 struct SwarmHorizonError {
     const std::vector<NodeFrame> nf_windows;
