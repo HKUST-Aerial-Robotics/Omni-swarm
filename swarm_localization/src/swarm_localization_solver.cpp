@@ -32,7 +32,6 @@ using namespace std::chrono;
 //#define MAX_SOLVER_TIME 1.0
 // #define DEBUG_OUTPUT_COV
 // #define ENABLE_HISTORY_COV
-// #define INIT_FXIED_YAW
 #define INIT_Z_ERROR 0.2
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
@@ -46,6 +45,8 @@ using namespace std::chrono;
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
 #define RE_ESTIMATE_SELF_POSES
+
+#define DEBUG_PLAY_NEW_KF
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -168,7 +169,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
 
 #ifdef INIT_FXIED_YAW
                 p[3] = all_sf[it.first].id2nodeframe[it2.first].yaw();
-#elif
+#else
                 p[3] = rand_FloatRange(-M_PI, M_PI);
 #endif
             }
@@ -363,8 +364,9 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
         }
     }
 
+#ifdef DEBUG_PLAY_NEW_KF
     print_frame(sf);
-
+#endif
     last_kf_ts = sf.ts;
     has_new_keyframe = true;
 }
@@ -756,6 +758,25 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     }
 }
 
+    
+CostFunction *
+SwarmLocalizationSolver:: _setup_cost_function_by_loop(std::vector<Swarm::LoopConnection> loops) {
+    // auto she = new SwarmLoopError(loops, ts2poseindex);
+    // auto cost_function = new HorizonCost(she);
+    // int res_num = she->residual_count();
+    // cost_function->SetNumResiduals(res_num);
+}
+    
+void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
+
+    std::vector<double*> pose_state; // For involved poses
+
+    auto good_loops = find_available_loops();
+    ROS_INFO("Find %d good loops", good_loops.size());
+    // _setup_cost_function_by_loop(good_loops);
+    // problem.AddResidualBlock(cost, nullptr, pose_state);
+}
+    
 
 
 void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
@@ -766,7 +787,11 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
     int64_t ts = sf.ts;
     for(auto it : sf.id2nodeframe) {
         int _id = it.first;
+#ifdef ENABLE_LOOP
+        if (is_lastest_frame) {
+#else
         if (is_lastest_frame && _id == self_id) {
+#endif
             continue;
         } else {
             // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
@@ -1045,7 +1070,7 @@ void SwarmLocalizationSolver::estimate_yaw_observability() {
     printf("\n");
 }
 
-bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) {
+bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1073,25 +1098,22 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         //Find suitable timestamp for tsa
         //If the first frame is older than tsa, than useless
 
-        if (sf_sld_win[i].HasID(_ida) && fabs((sf_sld_win[i].id2nodeframe[_ida].stamp - tsa).toSec()) < min_ts_err_a) {
-            NodeFrame & _nf_a = sf_sld_win[i].id2nodeframe[_ida];
-            min_ts_err_a = fabs((_nf_a.stamp - tsa).toSec());
+        if (sf_sld_win[i].HasID(_ida) && fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec()) < min_ts_err_a) {
+            min_ts_err_a = fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec());
             _index_a = i;
-            // printf("Dt %f, DPOSE", (_nf_a.stamp - tsa).toSec()*1000);
-            // Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a).print();
         }
 
-        if (sf_sld_win[i].HasID(_idb) && fabs((sf_sld_win[i].id2nodeframe[_idb].stamp - tsb).toSec()) < min_ts_err_b) {
-            min_ts_err_b = fabs((sf_sld_win[i].id2nodeframe[_idb].stamp - tsb).toSec());
+        if (sf_sld_win[i].HasID(_idb) && fabs((sf_sld_win[i].id2nodeframe.at(_idb).stamp - tsb).toSec()) < min_ts_err_b) {
+            min_ts_err_b = fabs((sf_sld_win.at(i).id2nodeframe.at(_idb).stamp - tsb).toSec());
             _index_b = i;
         }
     }
 
-    ROS_INFO("loop [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
+    ROS_INFO("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
         _idb, min_ts_err_a*1000, min_ts_err_b*1000);
 
-    NodeFrame & _nf_a = sf_sld_win[_index_a].id2nodeframe[_ida];
-    NodeFrame & _nf_b = sf_sld_win[_index_b].id2nodeframe[_idb];
+    const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
+    const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a); //2->0
@@ -1115,7 +1137,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     return true;
 }
 
-std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops() {
+std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops() const{
     std::vector<LoopConnection> good_loops;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
@@ -1140,7 +1162,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     cutting_edges();
 
     //Find loops
-    find_available_loops();
+
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()

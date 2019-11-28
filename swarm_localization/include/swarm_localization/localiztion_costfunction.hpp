@@ -37,8 +37,8 @@ typedef std::vector<Quaterniond> quat_array;
 
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
-#define INIT_FXIED_YAW
-#define INIT_FIXED_Z
+// #define INIT_FXIED_YAW
+// #define INIT_FIXED_Z
 #define ENABLE_LOOP
 
 //#define ENABLE_HISTORY_COV
@@ -109,6 +109,11 @@ inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
 struct SwarmLoopError {
     std::vector<Swarm::LoopConnection> locs;
     std::map<int, std::map<int64_t, int>> id_ts_poseindex;
+
+    SwarmLoopError(std::vector<Swarm::LoopConnection> _locs, std::map<int, std::map<int64_t, int>>  _id_ts_poseindex) :
+        locs(_locs), id_ts_poseindex(_id_ts_poseindex) {
+
+    }
 
     template<typename T>
     inline void get_pose(int _id, int64_t ts, T const *const *_poses, T * t_pose) const {
