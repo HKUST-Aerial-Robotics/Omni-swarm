@@ -1156,8 +1156,17 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
 
-    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a); //2->0
-    Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose); //1->3
+    printf("SELF POSE A");
+    _nf_a.self_pose.print();
+    printf("SELF POSE B");
+    _nf_b.self_pose.print();
+    printf("SELF POSE A1");
+    loc_ret.self_pose_a.print();
+    printf("SELF POSE B1");
+    loc_ret.self_pose_b.print();
+
+    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
+    Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
 
     Pose new_loop = dpose_self_a * loc_ret.relative_pose * dpose_self_b;
 
