@@ -760,21 +760,63 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
     
 CostFunction *
-SwarmLocalizationSolver:: _setup_cost_function_by_loop(std::vector<Swarm::LoopConnection> loops) {
-    // auto she = new SwarmLoopError(loops, ts2poseindex);
-    // auto cost_function = new HorizonCost(she);
-    // int res_num = she->residual_count();
-    // cost_function->SetNumResiduals(res_num);
+SwarmLocalizationSolver:: _setup_cost_function_by_loop(const std::vector<Swarm::LoopConnection> & loops, IDTSIndex  _id_ts_poseindex) const {
+    auto sle = new SwarmLoopError(loops, _id_ts_poseindex);
+    auto cost_function = new LoopCost(sle);
+    int res_num = sle->residual_count();
+    cost_function->SetNumResiduals(res_num);
+    std::set<int> all_index;
+    for (auto it : _id_ts_poseindex) {
+        for (auto it2 : it.second) {
+            if (all_index.find(it2.second) == all_index.end() ) {
+                cost_function->AddParameterBlock(4);
+                all_index.insert(it2.second);
+            }
+        }
+    }
+
+    return cost_function;
 }
     
 void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
 
     std::vector<double*> pose_state; // For involved poses
+    std::set<double*> added_poses;
 
-    auto good_loops = find_available_loops();
+    std::vector<Swarm::LoopConnection>  good_loops = find_available_loops();
+    if (good_loops.size() == 0) {
+        ROS_INFO("No loop; Return");
+        return;
+    }
     ROS_INFO("Find %d good loops", good_loops.size());
-    // _setup_cost_function_by_loop(good_loops);
-    // problem.AddResidualBlock(cost, nullptr, pose_state);
+    IDTSIndex  _id_ts_poseindex;
+
+    for (auto loc : good_loops) {
+         if (_id_ts_poseindex.find(loc.id_a) == _id_ts_poseindex.end()) {
+            _id_ts_poseindex[loc.id_a] = std::map<int64_t, int>();
+        }
+
+        if (_id_ts_poseindex.find(loc.id_b) == _id_ts_poseindex.end()) {
+            _id_ts_poseindex[loc.id_b] = std::map<int64_t, int>();
+        }
+
+        double * posea = est_poses_idts.at(loc.id_a).at(loc.ts_a);
+        if (added_poses.find(posea) == added_poses.end()) {
+            pose_state.push_back(posea);
+            _id_ts_poseindex[loc.id_a][loc.ts_a] = pose_state.size() - 1;
+            added_poses.insert(posea);
+        }
+
+        double * poseb = est_poses_idts.at(loc.id_b).at(loc.ts_b);
+        if (added_poses.find(poseb) == added_poses.end()) {
+            pose_state.push_back(poseb);
+            _id_ts_poseindex[loc.id_b][loc.ts_b] = pose_state.size() - 1;
+            added_poses.insert(poseb);
+        }
+    }
+
+    CostFunction * cost = _setup_cost_function_by_loop(good_loops, _id_ts_poseindex);
+    problem.AddResidualBlock(cost, nullptr, pose_state);
 }
     
 
@@ -818,20 +860,25 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         for (unsigned int i = 0; i < pose_state.size(); i ++) {
             double * _state = pose_state[i];
             int _id = _id_list[i];
-            if (!finish_init) {
-                //When not finish init; only estimate XY position
-#ifdef INIT_FIXED_Z
-                problem.AddParameterBlock(_state, 2);
-#else
-                problem.AddParameterBlock(_state, 3);
-#endif
-            } else {
-                if (!yaw_observability.at(_id)) {
-                    problem.AddParameterBlock(_state, 3);
-                } else {
-                    problem.AddParameterBlock(_state, 4);
-                }
-            }
+            
+            problem.AddParameterBlock(_state, 4);
+
+// COMMENT FOR TESTING LOOP!!!!
+//             if (!finish_init) {
+//                 //When not finish init; only estimate XY position
+// #ifdef INIT_FIXED_Z
+//                 problem.AddParameterBlock(_state, 2);
+// #else
+//                 problem.AddParameterBlock(_state, 3);
+// #endif
+//             } else {
+//                 if (!yaw_observability.at(_id)) {
+//                     problem.AddParameterBlock(_state, 3);
+//                 } else {
+//                     problem.AddParameterBlock(_state, 4);
+//                 }
+//             }
+
         }
 
     }
@@ -857,19 +904,21 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
 #endif
 
     for (int i =0;i < poses_num; i ++) {
-        if (!finish_init) {
-#ifdef INIT_FIXED_Z
-            cost_function->AddParameterBlock(2);
-#else
-            cost_function->AddParameterBlock(3);
-#endif
-        } else {
-            if (!yaw_observability.at(_id)) {
-                cost_function->AddParameterBlock(3);
-            } else {
-                cost_function->AddParameterBlock(4);
-            }
-        }
+//         if (!finish_init) {
+// #ifdef INIT_FIXED_Z
+//             cost_function->AddParameterBlock(2);
+// #else
+//             cost_function->AddParameterBlock(3);
+// #endif
+//         } else {
+//             if (!yaw_observability.at(_id)) {
+//                 cost_function->AddParameterBlock(3);
+//             } else {
+//                 cost_function->AddParameterBlock(4);
+//             }
+//         }
+//Comment for debug swarm LOOP
+        cost_function->AddParameterBlock(4);
     }
 //        ROS_INFO("SFHorizon res %d", res_num);
     if (res_num == 0) {
@@ -1121,6 +1170,9 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 
     Pose new_loop = dpose_self_a * loc_ret.relative_pose * dpose_self_b;
 
+    loc_ret.ts_a = _nf_a.ts;
+    loc_ret.ts_b = _nf_b.ts;
+
 
     printf("DPOSE A");
     dpose_self_a.print();
@@ -1177,7 +1229,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
 
-
+    setup_problem_with_loops(est_poses_idts, problem);
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 

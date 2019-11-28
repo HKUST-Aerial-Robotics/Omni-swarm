@@ -45,6 +45,8 @@ typedef std::map<int64_t, std::map<int,double*>> EstimatePoses;
 typedef std::map<int64_t, std::map<int, Eigen::Matrix4d>> EstimateCOV;
 typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
 typedef std::vector<std::pair<int64_t, int>> TSIDArray;
+typedef std::map<int, std::map<int64_t, int>>  IDTSIndex;
+
 class SwarmLocalizationSolver {
 
     std::mutex solve_lock;
@@ -95,7 +97,7 @@ class SwarmLocalizationSolver {
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
     CostFunction *
-    _setup_cost_function_by_loop(std::vector<Swarm::LoopConnection> loops);
+    _setup_cost_function_by_loop(const std::vector<Swarm::LoopConnection> & loops, IDTSIndex _id_ts_poseindex) const;
 
     void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
     
