@@ -456,16 +456,7 @@ std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const Node
         Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
 
         ret.first = transfered_now;
-        // ROS_INFO("Request cov %ld %d", last_saved_est_kf_ts, nf.id);
-#ifdef COMPUTE_COV
-        if (nf.id != self_id){
-            ret.second = est_cov_tsid.at(last_saved_est_kf_ts).at(nf.id);
-        } else {
-            ret.second = Eigen::Matrix4d::Zero();
-        }
-#else
-    ret.second = Eigen::Matrix4d::Zero();
-#endif
+        ret.second = Eigen::Matrix4d::Zero();
 
     } else {
         ROS_ERROR("Can't Predict Node Pose: Not inited");
@@ -1178,6 +1169,8 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     dpose_self_a.print();
     printf("DPOSE B");
     dpose_self_b.print();
+
+    //HAS BUG HERE
     printf("ORIGINAL LOOP");
     loc_ret.relative_pose.print();
     printf("NEW LOOP");
