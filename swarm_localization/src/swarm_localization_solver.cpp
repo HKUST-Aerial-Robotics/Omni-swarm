@@ -1048,6 +1048,55 @@ void SwarmLocalizationSolver::estimate_yaw_observability() {
     printf("\n");
 }
 
+bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) {
+    int64_t tsa = _loc.ts_a.toNSec();
+    int64_t tsb = _loc.ts_b.toNSec();
+    
+    int _ida = _loc.id_a;
+    int _idb = _loc.id_b;
+    int _index_a = -1;
+    int _index_b = -1;
+    double min_ts_err_a = 1e15;
+    double min_ts_err_b = 1e15;
+
+    //Give up if first timestamp is bigger than 1 sec than tsa
+    if (sf_sld_win.empty()) {
+        ROS_WARN("Can't find loop No sld win");
+        return false;
+    }
+
+    if(sf_sld_win[0].ts > tsa + 1e9 ) {
+        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa), _ida, TSShort(tsb), _idb);
+        return false;
+    }
+
+    for (int i = 0; i < sf_sld_win.size(); i++ ) {
+        //Find suitable timestamp for tsa
+        //If the first frame is older than tsa, than useless
+
+        if (sf_sld_win[i].HasID(_ida) && abs(sf_sld_win[i].id2nodeframe[_ida].ts - tsa)/1e9 < min_ts_err_a) {
+            min_ts_err_a = abs(sf_sld_win[i].id2nodeframe[_ida].ts - tsa)/1e9;
+            _index_a = i;
+        }
+
+        if (sf_sld_win[i].HasID(_idb) && abs(sf_sld_win[i].id2nodeframe[_idb].ts - tsb)/1e9 < min_ts_err_b) {
+            min_ts_err_b = abs(sf_sld_win[i].id2nodeframe[_idb].ts - tsb)/1e9;
+            _index_b = i;
+        }
+    }
+
+    ROS_INFO("loop [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", TSShort(tsa), _ida, TSShort(tsb), _idb, min_ts_err_a, min_ts_err_b);
+
+
+    return true;
+}
+
+std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops() {
+    for (auto _loc : all_loops) {
+        Swarm::LoopConnection loc_ret;
+        bool success =  loop_from_src_loop_connection(_loc, loc_ret);
+    }
+}
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
 
@@ -1161,7 +1210,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
                         double est_dis = (posj_est.pos() - Pose(pose, true).pos()).norm();
                         printf(" DIS %4.2f VO %4.2f EST %4.2f ", dis, vo_dis, est_dis);
                     }
-
                 }
 
                 printf("\n");

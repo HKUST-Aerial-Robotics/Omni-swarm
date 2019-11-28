@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <swarm_msgs/LoopConnection.h>
 #include "LoopConnection_t.hpp"
+#include <swarm_msgs/Pose.h>
 
 inline swarm_msgs::ImageDescriptor toROSMsg(const ImageDescriptor_t & _img) {
     swarm_msgs::ImageDescriptor img_des;
@@ -24,6 +25,20 @@ inline Pose_t fromROSPose(const geometry_msgs::Pose & pose) {
     t.position[2] = pose.position.z;
     return t;
 }
+
+inline geometry_msgs::Pose toROSPose(const Pose_t & t) {
+    geometry_msgs::Pose pose;
+    pose.orientation.x = t.orientation[0];
+    pose.orientation.y = t.orientation[1];
+    pose.orientation.z = t.orientation[2];
+    pose.orientation.w = t.orientation[3];
+
+    pose.position.x = t.position[0];
+    pose.position.y = t.position[1];
+    pose.position.z = t.position[2];
+    return pose;
+}
+
 
 
 inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::vector<Point2d_t> & dst) {
@@ -113,8 +128,12 @@ inline swarm_msgs::LoopConnection toROSLoopConnection(const LoopConnection_t & l
     loop_conn.dpos.z = loop_con.dpos.z;
     loop_conn.dyaw = loop_con.dyaw;
 
+    loop_conn.self_pose_a = toROSPose(loop_con.self_pose_a);
+    loop_conn.self_pose_b = toROSPose(loop_con.self_pose_b);
+
     return loop_conn;
 }
+
 
 inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & loop_con) {
     LoopConnection_t loop_conn;
@@ -127,6 +146,10 @@ inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & l
     loop_conn.dpos.x = loop_con.dpos.x;
     loop_conn.dpos.y = loop_con.dpos.y;
     loop_conn.dpos.z = loop_con.dpos.z;
+
+
+    loop_conn.self_pose_a = fromROSPose(loop_con.self_pose_a);
+    loop_conn.self_pose_b = fromROSPose(loop_con.self_pose_b);
 
     return loop_conn;
 }
