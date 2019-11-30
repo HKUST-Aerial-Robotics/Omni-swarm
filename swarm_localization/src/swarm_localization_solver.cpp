@@ -260,11 +260,13 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
 }
 
 void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
-    printf("\n");
-    ROS_INFO("------------------------------------\nKF %d details", TSShort(sf.ts));
     if (!finish_init) {
         return;
     }
+    
+    printf("\n");
+    ROS_INFO("------------------------------------\nKF %d details", TSShort(sf.ts));
+
     const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
 
     for (auto it : sf.id2nodeframe) {
