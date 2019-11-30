@@ -646,7 +646,7 @@ double SwarmLocalizationSolver::solve() {
 }
 
 void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
-    ROS_INFO("Start sync poses to saved while init successful");
+    ROS_INFO("Sync poses to saved while init successful");
     int64_t last_ts = sf_sld_win.back().ts;
     for (const SwarmFrame & sf : sf_sld_win) {
         //Only update param in sf to saved
@@ -677,7 +677,6 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             } 
         }
     }
-    ROS_INFO("finish sync");
 
     last_saved_est_kf_ts = last_ts;
 }
@@ -1354,11 +1353,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     solve_time_count += summary.total_time_in_seconds;
     solve_count++;
 
-    ROS_INFO("Average solve time %3.2fms", solve_time_count *1000 / solve_count);
-
-    ROS_INFO("Dt1 %3.2f ms TOTAL %3.2f",
-        (t2-t1).toSec()*1000,
-        (ros::Time::now() - t1).toSec()*1000
+    ROS_INFO("AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms", solve_time_count *1000 / solve_count, (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000
     );
 
     return equv_cost;
