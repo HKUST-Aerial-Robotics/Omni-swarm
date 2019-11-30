@@ -50,6 +50,13 @@ using namespace std::chrono;
 #define SINGLE_DRONE_SFS_THRES 3
 // #define DEBUG_OUTPUT_LOOPS
 
+#define USING_BACKWARD
+
+#ifdef USING_BACKWARD
+#include "backward.hpp"
+#define BACKWARD_HAS_BFD 1
+#endif
+
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
     std::vector<int> ret(0);
