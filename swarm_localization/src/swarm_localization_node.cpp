@@ -252,7 +252,6 @@ private:
     std::map<int, int> ids_index_in_arr;
     std::map<int, Node *> all_node_defs;
 
-
     ros::Timer timer;
 
 
