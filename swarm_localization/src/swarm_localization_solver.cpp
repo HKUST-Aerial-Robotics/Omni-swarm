@@ -25,18 +25,21 @@
 using namespace std::chrono;
 
 // #define DEBUG_OUTPUT_POSES
+// #define DEBUG_OUTPUT_LOOPS
+// #define DEBUG_OUTPUT_COV
+
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 #define ENABLE_REPLACE
 #define MAX_SOLVER_TIME 0.5
-//#define MAX_SOLVER_TIME 1.0
-// #define DEBUG_OUTPUT_COV
-// #define ENABLE_HISTORY_COV
-#define INIT_Z_ERROR 0.2
+
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
 
 #define THRES_YAW_OBSER_XY 1.0
+
+#define RAND_INIT_XY 5
+#define RAND_INIT_Z 1
 
 #define INIT_TRIAL 5
 
@@ -48,7 +51,6 @@ using namespace std::chrono;
 
 #define DEBUG_PLAY_NEW_KF
 #define SINGLE_DRONE_SFS_THRES 3
-// #define DEBUG_OUTPUT_LOOPS
 
 #define USING_BACKWARD
 
@@ -56,6 +58,8 @@ using namespace std::chrono;
 #include "backward.hpp"
 #define BACKWARD_HAS_BFD 1
 #endif
+
+
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -168,19 +172,10 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
         for (auto it2 : it.second) {
             if (it2.first != self_id) {
                 double * p = it2.second;
-                p[0] = rand_FloatRange(-10, 10);
-                p[1] = rand_FloatRange(-10, 10);
-#ifdef INIT_FIXED_Z
-                p[2] = all_sf[it.first].id2nodeframe[it2.first].position().z();
-#else
-                p[2] = rand_FloatRange(-INIT_Z_ERROR, INIT_Z_ERROR);
-#endif
-
-#ifdef INIT_FXIED_YAW
+                p[0] = rand_FloatRange(-RAND_INIT_XY, RAND_INIT_XY);
+                p[1] = rand_FloatRange(-RAND_INIT_XY, RAND_INIT_XY);
+                p[2] = rand_FloatRange(-RAND_INIT_Z, RAND_INIT_Z);
                 p[3] = all_sf[it.first].id2nodeframe[it2.first].yaw();
-#else
-                p[3] = rand_FloatRange(-M_PI, M_PI);
-#endif
             }
         }
     }
@@ -191,48 +186,38 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
     auto _p = new double[4];
-    if (_id != self_id) {
-        double noise = this->initial_random_noise;
-
-        Pose _last;
+    if (_id != self_id || finish_init) {
+        Pose est_last;
         if (last_kf_ts > 0 && est_poses_idts.find(_id) != est_poses_idts.end()) {
             //Use last solve relative res, e.g init with last
 
             int64_t last_ts_4node = est_poses_idts[_id].rbegin()->first;
-            _last = Pose(est_poses_tsid[last_ts_4node][_id], true);
+            est_last = Pose(est_poses_tsid[last_ts_4node][_id], true);
 
             Pose last_vo = all_sf[last_ts_4node].id2nodeframe[_id].pose();
             Pose now_vo = _nf.pose();
-            now_vo.set_yaw_only();
-            last_vo.set_yaw_only();
 
-            Eigen::Isometry3d TnowVO = now_vo.to_isometry();
-            Eigen::Isometry3d TlastVO = last_vo.to_isometry();
+            Pose dpose = Pose::DeltaPose(last_vo, now_vo, true);
 
-            Eigen::Isometry3d Tlast = _last.to_isometry();
-            Eigen::Isometry3d dpose = TlastVO.inverse()*TnowVO;
-            Pose dpose_(dpose);
-
-            if ( dpose_.pos().norm() < NOT_MOVING_THRES && fabs(dpose_.yaw()) < NOT_MOVING_YAW ) {
+            if ( dpose.pos().norm() < NOT_MOVING_THRES && fabs(dpose.yaw()) < NOT_MOVING_YAW ) {
                 //NOT MOVING; Merging pose
                 delete _p;
                 _p = est_poses_tsid[last_ts_4node][_id];
             } else {
-                Pose transfered_now(Tlast*dpose);
-                transfered_now.to_vector_xyzyaw(_p);
+                Pose predict_now = est_last * dpose;
+                predict_now.to_vector_xyzyaw(_p);
             }
             // ROS_INFO("Init ID %d at %d with predict value", _nf.id, TSShort(ts));
         } else {
             ROS_INFO("Init ID %d at %d with random value", _nf.id, TSShort(ts));
-            _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
-            _last.set_att(_nf.pose().att());
-
-            _last.to_vector_xyzyaw(_p);
+            est_last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-RAND_INIT_XY, RAND_INIT_XY));
+            est_last.set_att(_nf.pose().att());
+            est_last.to_vector_xyzyaw(_p);
         }
     } else {
+        //Only not finish and self id use this
         Pose p = _nf.pose();
         p.to_vector_xyzyaw(_p);
-        // ROS_INFO("x y z yaw:%7.6f %7.6f %7.6f Y %7.6f", _p[0], _p[1], _p[2], _p[3]*57.3, noise);
     }
 
     if (est_poses.find(ts) == est_poses.end()) {
@@ -257,7 +242,7 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
     } else {
         _p = new double[4];
         Pose _last;
-        double noise = this->initial_random_noise;
+        double noise = RAND_INIT_XY;
         _last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-noise, noise));
         _last.set_att(_nf.pose().att());
         _last.to_vector_xyzyaw(_p);
@@ -440,31 +425,21 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 }
 
 
-std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, bool attitude_yaw_only) const {
+std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const NodeFrame & nf) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
     if (last_saved_est_kf_ts > 0 && finish_init &&
         est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
 
         //Use last solve relative res, e.g init with last
         int _id = nf.id;
-        Pose _last = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
+        Pose est_last = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
 
         Pose last_vo = all_sf.at(last_saved_est_kf_ts).id2nodeframe.at(_id).pose();
         Pose now_vo = nf.pose();
 
-        if (attitude_yaw_only) {
-            now_vo.set_yaw_only();
-            last_vo.set_yaw_only();
-        }
-        Eigen::Isometry3d TnowVO = now_vo.to_isometry();
-        Eigen::Isometry3d TlastVO = last_vo.to_isometry();
 
-
-        Eigen::Isometry3d Tlast = _last.to_isometry();
-
-        Pose transfered_now(Tlast*TlastVO.inverse()*TnowVO);
-
-        ret.first = transfered_now;
+        Pose predict_now = est_last * Pose::DeltaPose(last_vo, now_vo, true);
+        ret.first = predict_now;
         ret.second = Eigen::Matrix4d::Zero();
 
     } else {
@@ -476,7 +451,7 @@ std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const Node
 }
 
 
-std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::NodeCooridnateOffset(int _id, bool attitude_yaw_only) const {
+std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::NodeCooridnateOffset(int _id) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
     if (last_saved_est_kf_ts > 0 && finish_init &&
         est_poses_tsid_saved.at(last_saved_est_kf_ts).find(_id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {

@@ -149,8 +149,6 @@ public:
     double acpt_cost = 0.4;
     double min_accept_keyframe_movement = 0.2;
 
-    double initial_random_noise = 1.0;
-
     bool finish_init = false;
 
     bool enable_to_init = false;
@@ -177,8 +175,8 @@ public:
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
-    std::pair<Pose, Eigen::Matrix4d> PredictNode(const NodeFrame & nf, bool attitude_yaw_only=false) const;
-    std::pair<Pose, Eigen::Matrix4d> NodeCooridnateOffset(int _id, bool attitude_yaw_only=false) const;
+    std::pair<Pose, Eigen::Matrix4d> PredictNode(const NodeFrame & nf) const;
+    std::pair<Pose, Eigen::Matrix4d> NodeCooridnateOffset(int _id) const;
 
     bool CanPredictSwarm() {
         return finish_init;
