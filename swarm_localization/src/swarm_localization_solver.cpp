@@ -27,6 +27,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_POSES
 // #define DEBUG_OUTPUT_LOOPS
 // #define DEBUG_OUTPUT_COV
+#define DEBUG_OUTPUT_NEW_KF
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -49,7 +50,6 @@ using namespace std::chrono;
 #define MIN_DRONES_NUM 1
 #define RE_ESTIMATE_SELF_POSES
 
-#define DEBUG_PLAY_NEW_KF
 #define SINGLE_DRONE_SFS_THRES 3
 
 #define USING_BACKWARD
@@ -260,7 +260,8 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
 }
 
 void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
-    ROS_INFO("KF %d details\n", TSShort(sf.ts));
+    printf("\n");
+    ROS_INFO("-----------------------\nKF %d details", TSShort(sf.ts));
     if (!finish_init) {
         return;
     }
@@ -269,7 +270,7 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
     for (auto it : sf.id2nodeframe) {
         auto id = it.first;
         auto _nf = it.second;
-        ROS_INFO("\n\nID %d ", id);
+        printf("ID %d \n", id);
         if (est_poses_idts.at(id).find(last_kf_ts) == est_poses_idts.at(id).end() ) {
             ROS_INFO("Can't find id in last KF %d", TSShort(last_kf_ts));
             continue;
@@ -282,54 +283,58 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
         double * pose = est_poses_idts.at(id).at(ts);
         auto pose_vo = sf.id2nodeframe.at(id).pose();
         auto poseest = Pose(pose, true);
-        ROS_INFO("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg",
+        printf("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
                 pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
-        ROS_INFO("POSEST     %3.4f %3.4f %3.4f YAW %5.4fdeg",
+        printf("POSEST     %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
                 poseest.pos().x(), poseest.pos().y(), poseest.pos().z(), pose_vo.yaw()*57.3);
         Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
         Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
         Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
         double ang_err = ERRVOEST.yaw()*1000;
         
-        ROS_WARN("ERRVOEST(mm)       %6.5f %6.5f %6.5f ANG  %3.2f",
+        printf("ERRVOEST(mm)       %6.5f %6.5f %6.5f ANG  %3.2f\n",
                 ERRVOEST.pos().x()*1000, ERRVOEST.pos().y()*1000, ERRVOEST.pos().z()*1000, ang_err);
 
-        ROS_INFO("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg",
+        printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
                 DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
 
-        ROS_INFO("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n\n",
+        printf("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
                 DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z(), DposeEST.yaw()*57.3);
 
-        printf("DISTANCES ");
-        for (auto itj : _nf.dis_map) {
-            int _idj = itj.first;
-            double dis = itj.second;
-            if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
-                if (est_poses_idts.find(_idj) == est_poses_idts.end() || est_poses_idts.at(_idj).find(ts) == est_poses_idts.at(_idj).end()) {
-                    ROS_INFO("Can't find %d at %d", _idj, TSShort(ts));
-                    continue;
+        if (_nf.dis_map.size() > 0) {
+            printf("DISTANCES ");
+            for (auto itj : _nf.dis_map) {
+                int _idj = itj.first;
+                double dis = itj.second;
+                if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                    if (est_poses_idts.find(_idj) == est_poses_idts.end() || est_poses_idts.at(_idj).find(ts) == est_poses_idts.at(_idj).end()) {
+                        printf("Can't find %d at %d\n", _idj, TSShort(ts));
+                        continue;
+                    }
+
+                    Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
+                    double est_dis = (posj_est.pos() - poseest.pos()).norm();
+                    printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
+                }
+            }
+            printf("\n");
+        }
+
+        if ( _nf.detected_nodes.size() > 0) {
+            printf("DETETCTIONS ");
+            for (auto itj : _nf.detected_nodes) {
+                int _idj = itj.first;
+                Pose det = itj.second;
+                if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                    Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
+                    Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
+                    printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f\n",_idj, det.pos().x(), det.pos().y(), det.pos().z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
                 }
 
-                Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
-                double est_dis = (posj_est.pos() - poseest.pos()).norm();
-                printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
             }
-
+            printf("\n");
         }
-
-        printf("DETETCTIONS ");
-        for (auto itj : _nf.detected_nodes) {
-            int _idj = itj.first;
-            Pose det = itj.second;
-            if (sf.HasID(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
-                Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
-                Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
-                printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f",_idj, det.pos().x(), det.pos().y(), det.pos().z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
-            }
-
-        }
-
-        printf("\n");
+        printf("--------------------------------------------------------------------\n\n");
     }    
 }
 
@@ -340,7 +345,7 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
 
     sf_sld_win.push_back(sf);
     all_sf[sf.ts] = sf;
-    ROS_INFO("\n\nNew keyframe %d; Details", TSShort(sf.ts));
+    ROS_INFO("New keyframe %d found, size %ld/%d", TSShort(sf.ts), sf_sld_win.size(), max_frame_number);
     for (auto it : sf.id2nodeframe) {
         if (it.second.is_static) {
             ROS_INFO("Is static");
@@ -349,16 +354,11 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
             auto _nf = it.second;
             double _pose[4];
             _nf.pose().to_vector_xyzyaw(_pose);
-            printf("ID %d pose %f %f %f %f; DIS:", _nf.id, _pose[0], _pose[1], _pose[2], _pose[3]);
-            for (auto it2: _nf.dis_map) {
-                printf("%d %f;", it2.first, it2.second);
-            }
-            printf("\n");
             this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
         }
     }
 
-#ifdef DEBUG_PLAY_NEW_KF
+#ifdef DEBUG_OUTPUT_NEW_KF
     print_frame(sf);
 #endif
     last_kf_ts = sf.ts;
