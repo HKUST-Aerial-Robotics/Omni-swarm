@@ -254,6 +254,8 @@ private:
 
     ros::Timer timer;
 
+    bool pub_swarm_odom = false;
+
 
     int self_id = -1;
 
@@ -358,17 +360,18 @@ private:
             if (swarm_localization_solver->CanPredictSwarm()) {
                 SwarmFrame sf = swarm_frame_from_msg(_sf);
                 SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
-
-                for (auto it: _sfs.node_poses) {
-                    this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
+                if (pub_swarm_odom) {
+                    for (auto it: _sfs.node_poses) {
+                        this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
+                    }
                 }
+
 
                 pub_fused_relative(_sfs, sf.stamp);
             } else {
                 ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
             }
             
-
             high_resolution_clock::time_point t2 = high_resolution_clock::now();
             auto duration = duration_cast<microseconds>( t2 - t1 ).count();
             // double dts = (ros::Time::now() - ts).toSec();
@@ -407,6 +410,7 @@ public:
         nh.param<float>("init_xy_movement", init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", init_z_movement, 1.0f);
         nh.param<int>("thread_num", thread_num, 4);
+        nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
