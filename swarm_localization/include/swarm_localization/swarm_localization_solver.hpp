@@ -65,6 +65,22 @@ class SwarmLocalizationSolver {
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
     EstimateCOV est_cov_tsid;
+
+    unsigned int max_frame_number = 20;
+    unsigned int min_frame_number = 10;
+
+    std::set<int> all_nodes;
+
+    unsigned int last_drone_num = 0;
+
+    std::map<unsigned int, unsigned int> node_kf_count;
+
+    std::vector<Swarm::LoopConnection> good_loops;
+    std::map<int, std::set<int>> loop_edges;
+
+    bool has_new_keyframe = false;
+
+
     void delete_frame_i(int i);
 
     bool is_frame_useful(unsigned int i) const;
@@ -80,9 +96,10 @@ class SwarmLocalizationSolver {
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
-    std::vector<Swarm::LoopConnection> find_available_loops() const;
+    std::vector<Swarm::LoopConnection> find_available_loops(std::map<int, std::set<int>> & loop_edges) const;
 
     bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) const;
+
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
@@ -114,23 +131,17 @@ class SwarmLocalizationSolver {
     
     bool solve_with_multiple_init(int max_number = 10);
     
-    unsigned int max_frame_number = 20;
-    unsigned int min_frame_number = 10;
-
-    std::set<int> all_nodes;
-
-    unsigned int last_drone_num = 0;
-
-    std::map<unsigned int, unsigned int> node_kf_count;
-
-    bool has_new_keyframe = false;
+   
 
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;
 
     std::pair<Eigen::Vector3d, Eigen::Vector3d> boundingbox_sldwin(int _id) const;
 
-    void estimate_yaw_observability();
+    void estimate_observability();
+    std::set<int> loop_observable_set(const std::map<int, std::set<int>> & loop_edges) const;
+
+
 public:
     int self_id = -1;
     unsigned int thread_num;
@@ -142,10 +153,12 @@ public:
 
     bool finish_init = false;
 
+    bool enable_to_init = false;
     ros::Time last_est_time_tick = ros::Time::now();
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
     std::map <int, bool> yaw_observability;
+    std::map <int, bool> pos_observability;
 
     SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
                             int _thread_num = 4, double kf_movement = 0.2,

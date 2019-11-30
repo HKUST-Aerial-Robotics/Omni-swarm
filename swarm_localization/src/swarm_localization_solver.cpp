@@ -47,6 +47,7 @@ using namespace std::chrono;
 #define RE_ESTIMATE_SELF_POSES
 
 #define DEBUG_PLAY_NEW_KF
+#define SINGLE_DRONE_SFS_THRES 3
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -627,17 +628,11 @@ double SwarmLocalizationSolver::solve() {
     if (!has_new_keyframe)
         return cost_now;
 
-    // if (!finish_init || drone_num > last_drone_num) {
-    // Should not reinit when drone_num > last drone num
+    estimate_observability();
+
     if (!finish_init) {
         //Init procedure
-        auto bbx = boundingbox_sldwin(self_id);
-        auto min = bbx.first;
-        auto max = bbx.second;
-        if (max.x() - min.x() > init_xy_movement &&
-            max.y() - min.y() > init_xy_movement &&
-            max.z() - min.z() > init_z_movement
-        ) {
+        if (enable_to_init) {
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
@@ -726,11 +721,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
         int _id = it.first;
         if (!finish_init) {
             //When not finish init; only estimate XY position
-#ifdef INIT_FIXED_Z
-            cost_function->AddParameterBlock(2);
-#else
             cost_function->AddParameterBlock(3);
-#endif
         } else {
             if (!yaw_observability.at(_id)) {
                 cost_function->AddParameterBlock(3);
@@ -774,7 +765,6 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     std::vector<double*> pose_state; // For involved poses
     std::set<double*> added_poses;
 
-    std::vector<Swarm::LoopConnection>  good_loops = find_available_loops();
     if (good_loops.size() == 0) {
         ROS_INFO("No loop; Return");
         return;
@@ -849,9 +839,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
             } else {
                 problem.AddParameterBlock(_state, 4);
             }
-
         }
-
     }
 
 }
@@ -1032,18 +1020,100 @@ void SwarmLocalizationSolver::cutting_edges() {
     }*/
 }
 
-void SwarmLocalizationSolver::estimate_yaw_observability() {
-    yaw_observability.clear();
-    if (!finish_init) {
-        printf("YAW observability: ");
-        for (int _id : all_nodes) {
-            yaw_observability[_id] = false;
-            printf("%d: %s ", _id, yaw_observability[_id]?"true":"false");
+std::set<int> SwarmLocalizationSolver::loop_observable_set(const std::map<int, std::set<int>> & loop_edges) const {
+    std::set<int> observerable_set;
+    observerable_set.insert(self_id);
+    
+    if (all_nodes.size() > 1) {
+        //Check min tree here
+        std::vector<int> queue;
+        queue.push_back(self_id);
+        while(true) {
+            if (queue.empty()) {
+                break;
+            }
+
+            int _id = queue[0];
+            queue.erase(queue.begin());
+            
+            //Send nodes connect to _id to obs set and queue
+            if (loop_edges.find(_id) != loop_edges.end()) {
+                for (auto _c_id : loop_edges.at(_id)) {
+                    if (observerable_set.find(_c_id) == observerable_set.end()) {
+                        //Not in set yet, add to set and queue
+                        observerable_set.insert(_c_id);
+                        queue.push_back(_c_id);
+                    }
+                }
+            }
         }
-        printf("\n");
-        return;
     }
+    
+    printf("Loop observable nodes is: ");
+    for (auto _id : observerable_set) {
+        printf("%d, ", _id);
+    }
+    printf("\n");
+    return observerable_set;
+}
+
+void SwarmLocalizationSolver::estimate_observability() {
+    yaw_observability.clear();
+    good_loops = find_available_loops(loop_edges);
+
+    for (int _id : all_nodes) {
+        //Can't deal with machines power on later than movement
+        pos_observability[_id] = false;
+        yaw_observability[_id] = false;
+    }
+
+
+    auto bbx = boundingbox_sldwin(self_id);
+    auto min = bbx.first;
+    auto max = bbx.second;
+        if (max.x() - min.x() > init_xy_movement &&
+            max.y() - min.y() > init_xy_movement &&
+            max.z() - min.z() > init_z_movement
+    ) {
+        // If bbx is big enough
+        enable_to_init = true;
+        for (int _id : all_nodes) {
+            //Can't deal with machines power on later than movement
+            pos_observability[_id] = true;
+        }
+
+        ROS_INFO("Solve with enough movement");
+
+    }
+
+    std::set<int> _loop_observable_set = loop_observable_set(loop_edges);
+    
+    if (sf_sld_win.size() > SINGLE_DRONE_SFS_THRES && all_nodes.size() == 1) {
+        //Has 3 KF and 1 big
+        enable_to_init = true;
+        ROS_INFO("Solve with single drone");
+    }
+
+    if (!enable_to_init) {
+
+        if (_loop_observable_set.size() < all_nodes.size()) {
+            ROS_INFO("Can't initial with loop only, the OB/ALL size %d/%d", 
+                _loop_observable_set.size(),
+                all_nodes.size()
+            );
+        } else {
+            ROS_INFO("Solve with loop");
+            enable_to_init = true;
+        }
+    }
+
+    for (int _id : _loop_observable_set) {
+        pos_observability[_id] = true;
+        yaw_observability[_id] = true;
+    }
+
     printf("YAW observability: ");
+    
     for (int _id: all_nodes) {
         auto bbx = boundingbox_sldwin(_id);
         auto min = bbx.first;
@@ -1051,10 +1121,7 @@ void SwarmLocalizationSolver::estimate_yaw_observability() {
 
         if (max.x() - min.x() > THRES_YAW_OBSER_XY || max.y() - min.y() > THRES_YAW_OBSER_XY) {
             yaw_observability[_id] = true;
-        } else {
-            yaw_observability[_id] = false;
         }
-
         printf("%d: %s ", _id, yaw_observability[_id]?"true":"false");
     }
 
@@ -1142,12 +1209,21 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     return true;
 }
 
-std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops() const{
+std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const{
+    loop_edges.clear();
     std::vector<LoopConnection> good_loops;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         if(loop_from_src_loop_connection(_loc, loc_ret)) {
             good_loops.push_back(loc_ret);
+            if (loop_edges.find(loc_ret.id_a) == loop_edges.end()) {
+                loop_edges[loc_ret.id_a] = std::set<int>();
+            }
+            if (loop_edges.find(loc_ret.id_b) == loop_edges.end()) {
+                loop_edges[loc_ret.id_b] = std::set<int>();
+            }
+            loop_edges[loc_ret.id_a].insert(loc_ret.id_b);
+            loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
     }
 
@@ -1161,13 +1237,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 //        if (solve_count % 10 == 0)
     printf("SOLVE COUNT %d Trying to solve size %d, TS %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
-    estimate_yaw_observability();
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
-
-    //Find loops
-
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
