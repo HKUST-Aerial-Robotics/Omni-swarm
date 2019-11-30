@@ -48,6 +48,7 @@ using namespace std::chrono;
 
 #define DEBUG_PLAY_NEW_KF
 #define SINGLE_DRONE_SFS_THRES 3
+#define DEBUG_OUTPUT_LOOPS
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -766,10 +767,10 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     std::set<double*> added_poses;
 
     if (good_loops.size() == 0) {
-        ROS_INFO("No loop; Return");
+        // ROS_INFO("No loop; Return");
         return;
     }
-    ROS_INFO("Find %ld good loops", good_loops.size());
+    // ROS_INFO("Find %ld good loops", good_loops.size());
     IDTSIndex  _id_ts_poseindex;
 
     for (auto loc : good_loops) {
@@ -1009,7 +1010,7 @@ void SwarmLocalizationSolver::cutting_edges() {
         }
     }
 
-    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d)", distance_count, total_distance_count, detection_count, total_detection_count);
+    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %d", distance_count, total_distance_count, detection_count, total_detection_count, good_loops.size());
     /*
     for (auto & sf : sf_sld_win) {
         for (auto & it : sf.id2nodeframe) {
@@ -1060,6 +1061,8 @@ std::set<int> SwarmLocalizationSolver::loop_observable_set(const std::map<int, s
 void SwarmLocalizationSolver::estimate_observability() {
     yaw_observability.clear();
     good_loops = find_available_loops(loop_edges);
+
+    ROS_INFO("GOOD LOOPS NUM %d", good_loops.size());
 
     for (int _id : all_nodes) {
         //Can't deal with machines power on later than movement
@@ -1167,13 +1170,12 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         }
     }
 
-    ROS_INFO("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
-        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
 
+   
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
-
+/*
     printf("SELF POSE A");
     _nf_a.self_pose.print();
     printf("SELF POSE B");
@@ -1181,7 +1183,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     printf("SELF POSE A1");
     loc_ret.self_pose_a.print();
     printf("SELF POSE B1");
-    loc_ret.self_pose_b.print();
+    loc_ret.self_pose_b.print();*/
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
@@ -1191,18 +1193,18 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     loc_ret.ts_a = _nf_a.ts;
     loc_ret.ts_b = _nf_b.ts;
 
-
+/*
     printf("DPOSE A");
     dpose_self_a.print();
     printf("DPOSE B");
     dpose_self_b.print();
-
-    //HAS BUG HERE
+*/
+/*
     printf("ORIGINAL LOOP");
-    loc_ret.relative_pose.print();
-    printf("NEW LOOP");
+    loc_ret.relative_pose.print();*/
+    printf("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
+        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
     new_loop.print();
-
 
     loc_ret.relative_pose = new_loop;
 
