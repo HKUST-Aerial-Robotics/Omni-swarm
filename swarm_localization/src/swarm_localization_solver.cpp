@@ -48,7 +48,7 @@ using namespace std::chrono;
 
 #define DEBUG_PLAY_NEW_KF
 #define SINGLE_DRONE_SFS_THRES 3
-#define DEBUG_OUTPUT_LOOPS
+// #define DEBUG_OUTPUT_LOOPS
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
