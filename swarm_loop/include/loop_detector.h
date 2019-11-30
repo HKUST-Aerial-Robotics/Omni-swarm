@@ -20,7 +20,7 @@ protected:
     std::map<unsigned int, cv::Mat> id2imgs;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
-    bool compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret);
+    bool compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret);
 
 public:
     std::function<void(LoopConnection &)> on_loop_cb;

@@ -1010,7 +1010,7 @@ void SwarmLocalizationSolver::cutting_edges() {
         }
     }
 
-    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %d", distance_count, total_distance_count, detection_count, total_detection_count, good_loops.size());
+    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %ld", distance_count, total_distance_count, detection_count, total_detection_count, good_loops.size());
     /*
     for (auto & sf : sf_sld_win) {
         for (auto & it : sf.id2nodeframe) {
@@ -1062,7 +1062,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     yaw_observability.clear();
     good_loops = find_available_loops(loop_edges);
 
-    ROS_INFO("GOOD LOOPS NUM %d", good_loops.size());
+    ROS_INFO("GOOD LOOPS NUM %ld", good_loops.size());
 
     for (int _id : all_nodes) {
         //Can't deal with machines power on later than movement
@@ -1100,7 +1100,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     if (!enable_to_init) {
 
         if (_loop_observable_set.size() < all_nodes.size()) {
-            ROS_INFO("Can't initial with loop only, the OB/ALL size %d/%d", 
+            ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld", 
                 _loop_observable_set.size(),
                 all_nodes.size()
             );
@@ -1149,7 +1149,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
-        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, sf_sld_win[0].ts);
+        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts));
         return false;
     }
 
