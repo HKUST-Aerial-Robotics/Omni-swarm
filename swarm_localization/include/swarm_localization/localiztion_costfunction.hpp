@@ -41,11 +41,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define DETECTION_COV_ANG 1
 #define ENABLE_DETECTION
 // #define INIT_FXIED_YAW
-// #define INIT_FIXED_Z
 #define ENABLE_LOOP
-
-//#define ENABLE_HISTORY_COV
-
 
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
@@ -189,47 +185,28 @@ struct SwarmFrameError {
     std::map<int, int> id2poseindex;
     std::map<int, bool> yaw_observability;
     std::map<int, double> yaw_init;
-    int self_id = -1;
-    bool is_lastest_frame = false;
-    Pose self_pose;
 
     template<typename T>
     inline void get_pose(int _id, T const *const *_poses, T * t_pose) const {
 //        printf("%d", _id);
-        if (_id == self_id && is_lastest_frame) {
-            self_pose.to_vector_xyzyaw(t_pose);
-            return;
-        } else {
-            if (id2poseindex.find(_id) != id2poseindex.end()) {
-                int index = id2poseindex.at(_id);
-                t_pose[0] =  _poses[index][0];
-                t_pose[1] =  _poses[index][1];
-
-                if (first_init_mode) {
-#ifdef INIT_FIXED_Z
-                    t_pose[2] = T(sf.id2nodeframe.at(_id).position().z());
-#else
-                    t_pose[2] =  _poses[index][2];
-#endif
-                    t_pose[3] = T(sf.id2nodeframe.at(_id).yaw());
-                } else {
-                    t_pose[2] =  _poses[index][2];
-                    if (yaw_observability.at(_id)) {
-                        t_pose[3] =  _poses[index][3];
-                    } else {
-                        t_pose[3] = T(yaw_init.at(_id));
-                    }
-                }
-
+        if (id2poseindex.find(_id) != id2poseindex.end()) {
+            int index = id2poseindex.at(_id);
+            t_pose[0] =  _poses[index][0];
+            t_pose[1] =  _poses[index][1];
+            t_pose[2] =  _poses[index][2];
+            if (yaw_observability.at(_id)) {
+                t_pose[3] =  _poses[index][3];
             } else {
-                ROS_ERROR("No pose of ID %d in SF %d error;exit; SF Has only %ld id ", _id, TSShort(sf.ts), sf.id2nodeframe.size());
-                for (auto it : id2poseindex) {
-                    ROS_ERROR("id %d", it.first);
-                }
-                exit(-1);
+                t_pose[3] = T(yaw_init.at(_id));
             }
-        }
 
+        } else {
+            ROS_ERROR("No pose of ID %d in SF %d error;exit; SF Has only %ld id ", _id, TSShort(sf.ts), sf.id2nodeframe.size());
+            for (auto it : id2poseindex) {
+                ROS_ERROR("id %d", it.first);
+            }
+            exit(-1);
+        }
     }
 
     template<typename T>
@@ -250,21 +227,9 @@ struct SwarmFrameError {
 
 
 
-#ifdef NO_ANNETAPOS
         return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
                     + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
                     + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
-#else
-        T pa[3], pb[3];
-        T p_anna[3], p_annb[3];
-        EigenVec2T(sf.id2nodeframe.at(idi).get_anntena_pos(), p_anna);
-        EigenVec2T(sf.id2nodeframe.at(idj).get_anntena_pos(), p_annb);
-        PoseTransformPoint(posea, p_anna, pa);
-        PoseTransformPoint(poseb, p_annb, pb);
-        return sqrt((pb[0] - pa[0]) * (pb[0] - pa[0])
-                    + (pb[1] - pa[1]) * (pb[1] - pa[1])
-                    + (pb[2] - pa[2]) * (pb[2] - pa[2]));
-#endif
 
     }
 
@@ -309,11 +274,6 @@ struct SwarmFrameError {
         return res_count;
     }
 
-    template<typename T>
-    inline int nodeframe_first_init_align_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
-        return res_count;
-    }
-
     int residual_count() {
         int res_count = 0;
         for (const auto & it : sf.id2nodeframe) {
@@ -330,7 +290,6 @@ struct SwarmFrameError {
                             res_count++;
                     }
                 }
-#ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     for (const auto & it: _nf.detected_nodes) {
                         if (has_id(it.first) && _nf.enabled_detection.at(it.first)) {
@@ -338,7 +297,6 @@ struct SwarmFrameError {
                         }
                     }
                 }
-#endif
             }
         }
         return res_count;
@@ -360,15 +318,9 @@ struct SwarmFrameError {
                 if (_nf.dists_available) {
                     res_count = nodeframe_distance_residual(_nf, _poses, _residual, res_count);
                 }
-#ifdef ENABLE_DETECTION
                 if (_nf.has_detect_relpose) {
                     res_count = nodeframe_relpose_residual(_nf, _poses, _residual, res_count);
                 }
-#endif          
-                /*
-                if (first_init_mode && _nf.id != self_id) {
-                    res_count = nodeframe_first_init_align_residual(_nf, _poses, _residual, res_count);
-                } */
 
             }
 
@@ -379,22 +331,16 @@ struct SwarmFrameError {
     }
 
 
-    bool first_init_mode = false;
+    bool no_est_yaw_init_mode = false;
 
     SwarmFrameError(const SwarmFrame &_sf, 
                     const std::map<int, int> &_id2poseindex, 
                     const std::map<int, bool> & _yaw_observability, 
-                    const std::map<int, double> & _yaw_init,
-                    bool _is_lastest_frame, 
-                    bool _first_init_mode = false) :
+                    const std::map<int, double> & _yaw_init = std::map<int, double> ()) :
             sf(_sf),
             id2poseindex(_id2poseindex),
             yaw_observability(_yaw_observability),
-            yaw_init(_yaw_init),
-            is_lastest_frame(_is_lastest_frame),
-            first_init_mode(_first_init_mode) {
-            self_id = _sf.self_id;
-            self_pose = sf.id2nodeframe.at(self_id).pose();
+            yaw_init(_yaw_init){
     }
 };
 
@@ -405,22 +351,15 @@ struct SwarmHorizonError {
     std::map<int64_t, int> ts2poseindex;
     bool yaw_observability;
     std::vector<double> yaw_init;
-    int64_t last_ts = -1;
-    int64_t first_ts = -1;
 
     std::vector<Pose> delta_poses;
     int _id = -1;
-    bool is_self_node = false;
-    bool first_init_mode;
 
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init, bool _is_self_node, bool _first_init_mode) :
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
             yaw_observability(_yaw_observability),
-            yaw_init(_yaw_init),
-            is_self_node(_is_self_node),
-            first_init_mode(_first_init_mode){
-
+            yaw_init(_yaw_init){
         ts2nfindex[_nf_win[0].ts] = 0;
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
@@ -428,40 +367,20 @@ struct SwarmHorizonError {
             ts2nfindex[_nf.ts] = i;
         }
 
-        last_ts = nf_windows.back().ts;
-        first_ts = nf_windows.front().ts;
         _id = nf_windows.back().id;
     }
 
     template<typename T>
     inline void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
-
-#ifndef ENABLE_LOOP
-        if (is_self_node && ts == last_ts) {
-            Pose _pose = nf_windows.back().pose();
-            _pose.to_vector_xyzyaw(t_pose);
-            return;
-        }
-#endif
         if (ts2poseindex.find(ts) != ts2poseindex.end()) {
             int index = ts2poseindex.at(ts);
             t_pose[0] =  _poses[index][0];
             t_pose[1] =  _poses[index][1];
-            if (first_init_mode) {
-                const NodeFrame & _nf = nf_windows.at(ts2nfindex.at(ts));
-#ifndef INIT_FIXED_Z
-                t_pose[2] =  _poses[index][2];
-#else           
-                t_pose[2] = T(_nf.position().z());
-#endif
-                t_pose[3] = T(_nf.yaw());
+            t_pose[2] =  _poses[index][2];
+            if (yaw_observability) {
+                t_pose[3] =  _poses[index][3];
             } else {
-                t_pose[2] =  _poses[index][2];
-                if (yaw_observability) {
-                    t_pose[3] =  _poses[index][3];
-                } else {
-                    t_pose[3] = T(yaw_init.at(ts2nfindex.at(ts)));
-                }
+                t_pose[3] = T(yaw_init.at(ts2nfindex.at(ts)));
             }
         } else {
             ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
