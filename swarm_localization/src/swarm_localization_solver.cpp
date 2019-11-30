@@ -718,7 +718,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
             yaw_init[_nf.id] = est_poses_tsid.at(_nf.ts).at(_nf.id)[3];
         }
     }
-    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init, is_lastest_frame, !finish_init);
+    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init);
     res_num = sferror->residual_count();
     auto cost_function  = new SFErrorCost(sferror);
     
@@ -779,7 +779,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
         ROS_INFO("No loop; Return");
         return;
     }
-    ROS_INFO("Find %d good loops", good_loops.size());
+    ROS_INFO("Find %ld good loops", good_loops.size());
     IDTSIndex  _id_ts_poseindex;
 
     for (auto loc : good_loops) {
@@ -820,19 +820,11 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
     int64_t ts = sf.ts;
     for(auto it : sf.id2nodeframe) {
         int _id = it.first;
-#ifdef ENABLE_LOOP
-        if (is_lastest_frame) {
-#else
-        if (is_lastest_frame && _id == self_id) {
-#endif
-            continue;
-        } else {
-            // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
-            pose_state.push_back(swarm_est_poses.at(ts).at(_id));
-            _id_list.push_back(_id);
-            id2poseindex[_id] = pose_state.size() - 1;
-            param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
-        }
+        // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
+        pose_state.push_back(swarm_est_poses.at(ts).at(_id));
+        _id_list.push_back(_id);
+        id2poseindex[_id] = pose_state.size() - 1;
+        param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
     }
     int res_num = 0;
     CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
@@ -852,23 +844,11 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
             double * _state = pose_state[i];
             int _id = _id_list[i];
             
-            problem.AddParameterBlock(_state, 4);
-
-// COMMENT FOR TESTING LOOP!!!!
-//             if (!finish_init) {
-//                 //When not finish init; only estimate XY position
-// #ifdef INIT_FIXED_Z
-//                 problem.AddParameterBlock(_state, 2);
-// #else
-//                 problem.AddParameterBlock(_state, 3);
-// #endif
-//             } else {
-//                 if (!yaw_observability.at(_id)) {
-//                     problem.AddParameterBlock(_state, 3);
-//                 } else {
-//                     problem.AddParameterBlock(_state, 4);
-//                 }
-//             }
+            if (!yaw_observability.at(_id)) {
+                problem.AddParameterBlock(_state, 3);
+            } else {
+                problem.AddParameterBlock(_state, 4);
+            }
 
         }
 
@@ -883,35 +863,19 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
     for (NodeFrame & _nf : nf_win) {
         yaw_init.push_back(est_poses_tsid.at(_nf.ts).at(_nf.id)[3]);
     }
-    auto she = new SwarmHorizonError(nf_win, ts2poseindex, yaw_observability.at(_id), yaw_init, is_self, !finish_init);
+    auto she = new SwarmHorizonError(nf_win, ts2poseindex, yaw_observability.at(_id), yaw_init);
     auto cost_function = new HorizonCost(she);
     int res_num = she->residual_count();
 
     int poses_num = nf_win.size();
-#ifndef ENABLE_LOOP
-    if (is_self) {
-        poses_num = nf_win.size() - 1;
-    }
-#endif
 
     for (int i =0;i < poses_num; i ++) {
-//         if (!finish_init) {
-// #ifdef INIT_FIXED_Z
-//             cost_function->AddParameterBlock(2);
-// #else
-//             cost_function->AddParameterBlock(3);
-// #endif
-//         } else {
-//             if (!yaw_observability.at(_id)) {
-//                 cost_function->AddParameterBlock(3);
-//             } else {
-//                 cost_function->AddParameterBlock(4);
-//             }
-//         }
-//Comment for debug swarm LOOP
-        cost_function->AddParameterBlock(4);
+        if (!yaw_observability.at(_id)) {
+            cost_function->AddParameterBlock(3);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
     }
-//        ROS_INFO("SFHorizon res %d", res_num);
     if (res_num == 0) {
         ROS_WARN("Set cost function with NF has 0 res num; NF id %d WIN %ld", nf_win[0].id, nf_win.size());
         // exit(-1);
@@ -953,24 +917,11 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         } 
 
     }
-#ifdef RE_ESTIMATE_SELF_POSES
         //Do not reestimate first
         // pose_win.erase(pose_win.begin());
         if (_id == self_id) {
             problem.SetParameterBlockConstant(pose_win[0]);
         }
-#else
-    if (_id == self_id) {
-        //Delete last one that don't need to estimate
-        pose_win.erase(pose_win.end() - 1);
-        //Not estimate myself; useless
-        //For Loop only 
-        for (double * _p : pose_win) {
-            problem.SetParameterBlockConstant(_p);
-        }
-        return;
-    }
-#endif
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
