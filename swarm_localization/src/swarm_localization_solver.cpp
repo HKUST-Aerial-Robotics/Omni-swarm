@@ -1202,10 +1202,11 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 /*
     printf("ORIGINAL LOOP");
     loc_ret.relative_pose.print();*/
+#ifdef DEBUG_OUTPUT_LOOPS
     printf("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
         _idb, min_ts_err_a*1000, min_ts_err_b*1000);
     new_loop.print();
-
+#endif
     loc_ret.relative_pose = new_loop;
 
     return true;
@@ -1256,9 +1257,14 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
 
-    setup_problem_with_loops(est_poses_idts, problem);
+    num_res_blks_sf = problem.NumResidualBlocks();
+    num_res_sf = problem.NumResiduals();
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
+
+    setup_problem_with_loops(est_poses_idts, problem);
+
+    ROS_INFO("Loop residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 
 
     ceres::Solver::Options options;
