@@ -13,22 +13,23 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
     cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor, LOOP_FEATURE_NUM);
     // std::cout << "FEATUREX"<< featurex.size() << std::endl;
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
+
         int _id = db.add(feature);
-
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
-        
         id2imgdes[_id] = img_des;
-
         if (!img.empty() ) {
             id2imgs[_id] = img;
         }
+
+        ROS_INFO("Adding image descriptor %d to database", _id);
+        bool success = false;
 
         if (db.size() > MATCH_INDEX_DIST) {
 
             DBoW3::QueryResults ret;
             ROS_INFO("Querying image....");
 
-            db.query(feature, ret, 1, _id - MATCH_INDEX_DIST);
+            db.query(feature, ret, 1, db.size() - MATCH_INDEX_DIST);
             auto stop = high_resolution_clock::now(); 
 
             if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
@@ -37,7 +38,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
                 if (ret.size() > 0) {
                     int _old_id = ret[0].Id;
                     LoopConnection ret;
-                    bool success = compute_loop(_id, _old_id, ret);
+                    success = compute_loop(img_des, _old_id, ret);
                     if (success) {
                         on_loop_connection(ret);
                     }
@@ -45,10 +46,8 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
             } else {
                 std::cout << "No matched image" << std::endl;
             }      
+        } 
 
-        }
-
-        ROS_INFO("Adding image descriptor %d to database", _id);
         std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
     } else {
         ROS_WARN("Frame contain too less landmark %d, give up", img_des.landmark_num);
@@ -105,15 +104,14 @@ Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
 }
 
 
-bool LoopDetector::compute_loop(const unsigned int & _img_index_now, const unsigned int & _img_index_old, LoopConnection & ret) {
+bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret) {
 
-    if (id2imgdes[_img_index_now].landmark_num < MIN_LOOP_NUM) {
-        return true;
+    if (new_img_desc.landmark_num < MIN_LOOP_NUM) {
+        return false;
     }
     //Recover imformation
 
     ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
-    ImageDescriptor_t new_img_desc = id2imgdes[_img_index_now];
 
     std::vector<cv::Point2f> matched_2d_norm_now, matched_2d_norm_old;
     std::vector<cv::Point3f> matched_3d_now;
