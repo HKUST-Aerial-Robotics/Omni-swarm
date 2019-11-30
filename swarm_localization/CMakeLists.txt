@@ -7,6 +7,7 @@ add_compile_options(-std=c++11)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
 
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -20,7 +21,8 @@ find_package(catkin REQUIRED COMPONENTS
         )
 find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
-
+find_package(Backward)
+list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
 catkin_package(
  INCLUDE_DIRS include
         #  LIBRARIES swarm_localization
@@ -32,6 +34,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${CERES_INCLUDE_DIRS}
+  /usr/local/include
 )
 
 add_executable(${PROJECT_NAME}_node
@@ -43,6 +46,7 @@ add_executable(${PROJECT_NAME}_node
 
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_backward(${PROJECT_NAME}_node)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
@@ -50,4 +54,6 @@ target_link_libraries(${PROJECT_NAME}_node
         ${CERES_LIBRARIES}
         ${camera_models_LIBRARIES}
         ${YAML_CPP_LIBRARIES}
-        )
+        dl
+        bfd
+)
