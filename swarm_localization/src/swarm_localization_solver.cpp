@@ -1282,7 +1282,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     }
 
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
-              << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n\n\n";
+              << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     //std::cout << summary.FullReport() << std::endl;
 
 #ifdef DEBUG_OUTPUT_POSES
@@ -1353,8 +1353,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     solve_time_count += summary.total_time_in_seconds;
     solve_count++;
 
-    ROS_INFO("AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms", solve_time_count *1000 / solve_count, (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000
-    );
+    ROS_INFO("AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms", solve_time_count *1000 / solve_count, 
+    (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000);
 
     return equv_cost;
 }
