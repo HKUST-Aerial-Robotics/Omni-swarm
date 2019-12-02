@@ -24,7 +24,13 @@ class ImageDescriptor_t
 
         int32_t    drone_id;
 
-        uint8_t    feature_descriptor[6400];
+        int32_t    feature_descriptor_size;
+
+        std::vector< uint8_t > feature_descriptor;
+
+        int32_t    image_desc_size;
+
+        std::vector< double > image_desc;
 
         int32_t    image_width;
 
@@ -148,8 +154,21 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
     tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __byte_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 6400);
+    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor_size, 1);
     if(tlen < 0) return tlen; else pos += tlen;
+
+    if(this->feature_descriptor_size > 0) {
+        tlen = __byte_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
+        if(tlen < 0) return tlen; else pos += tlen;
+    }
+
+    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->image_desc_size, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
+    if(this->image_desc_size > 0) {
+        tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
+        if(tlen < 0) return tlen; else pos += tlen;
+    }
 
     tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->image_width, 1);
     if(tlen < 0) return tlen; else pos += tlen;
@@ -200,8 +219,23 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
     tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->drone_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    tlen = __byte_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], 6400);
+    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor_size, 1);
     if(tlen < 0) return tlen; else pos += tlen;
+
+    if(this->feature_descriptor_size) {
+        this->feature_descriptor.resize(this->feature_descriptor_size);
+        tlen = __byte_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
+        if(tlen < 0) return tlen; else pos += tlen;
+    }
+
+    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->image_desc_size, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
+    if(this->image_desc_size) {
+        this->image_desc.resize(this->image_desc_size);
+        tlen = __double_decode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
+        if(tlen < 0) return tlen; else pos += tlen;
+    }
 
     tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->image_width, 1);
     if(tlen < 0) return tlen; else pos += tlen;
@@ -258,7 +292,10 @@ int ImageDescriptor_t::_getEncodedSizeNoHash() const
     int enc_size = 0;
     enc_size += this->timestamp._getEncodedSizeNoHash();
     enc_size += __int32_t_encoded_array_size(NULL, 1);
-    enc_size += __byte_encoded_array_size(NULL, 6400);
+    enc_size += __int32_t_encoded_array_size(NULL, 1);
+    enc_size += __byte_encoded_array_size(NULL, this->feature_descriptor_size);
+    enc_size += __int32_t_encoded_array_size(NULL, 1);
+    enc_size += __double_encoded_array_size(NULL, this->image_desc_size);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
@@ -284,7 +321,7 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x37743854fc73a956LL +
+    uint64_t hash = 0x15c6856f17fea04bLL +
          Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +

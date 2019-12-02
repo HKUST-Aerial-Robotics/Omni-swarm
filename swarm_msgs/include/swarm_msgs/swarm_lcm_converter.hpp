@@ -67,7 +67,6 @@ inline cv::Mat cvfeatureFromByte(uint8_t*data, int feature_num, int feature_len 
     return mat;
 }
 
-
 inline cv::Point2f toCV(Point2d_t a) {
     cv::Point2f pt;
     pt.x = a.x;

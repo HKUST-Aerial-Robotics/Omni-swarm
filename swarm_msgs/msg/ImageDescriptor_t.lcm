@@ -23,7 +23,11 @@ struct ImageDescriptor_t {
     Time_t  timestamp;
     int32_t drone_id;
 
-    byte feature_descriptor[6400];
+    int32_t feature_descriptor_size;
+    byte feature_descriptor[feature_descriptor_size];
+
+    int32_t image_desc_size;
+    double image_desc[image_desc_size];
 
     int32_t image_width;
     int32_t image_height;

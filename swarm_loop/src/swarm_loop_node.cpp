@@ -101,7 +101,7 @@ public:
         nh.param<bool>("debug_image", debug_image, false);
         
         loop_net = new LoopNet(_lcm_uri);
-        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id);
+        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, nh);
         loop_detector = new LoopDetector(ORB_VOC);
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;

@@ -10,12 +10,9 @@ using namespace std::chrono;
 void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto start = high_resolution_clock::now(); 
 
-    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor, LOOP_FEATURE_NUM);
-    // std::cout << "FEATUREX"<< featurex.size() << std::endl;
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
-
-        int _id = db.add(feature);
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+        int _id = add_to_database(img_des);
         id2imgdes[_id] = img_des;
         if (!img.empty() ) {
             id2imgs[_id] = img;
@@ -24,24 +21,19 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         ROS_INFO("Adding image descriptor %d to database", _id);
         bool success = false;
 
-        if (db.size() > MATCH_INDEX_DIST) {
+        if (database_size() > MATCH_INDEX_DIST) {
 
-            DBoW3::QueryResults ret;
             ROS_INFO("Querying image....");
 
-            db.query(feature, ret, 1, db.size() - MATCH_INDEX_DIST);
+            int _old_id = query_from_database(img_des, - MATCH_INDEX_DIST);
             auto stop = high_resolution_clock::now(); 
 
-            if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
-                std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << ret << std::endl;
-                
-                if (ret.size() > 0) {
-                    int _old_id = ret[0].Id;
-                    LoopConnection ret;
-                    success = compute_loop(img_des, _old_id, ret);
-                    if (success) {
-                        on_loop_connection(ret);
-                    }
+            if (_old_id >= 0 ) {
+                std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << _old_id << std::endl;                
+                LoopConnection ret;
+                success = compute_loop(img_des, _old_id, ret);
+                if (success) {
+                    on_loop_connection(ret);
                 }
             } else {
                 std::cout << "No matched image" << std::endl;
@@ -103,6 +95,36 @@ Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
     return Swarm::Pose(R_w_c_old, T_w_c_old);
 }
 
+int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
+#ifdef USE_DEEPNET
+
+#else
+    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor.data, LOOP_FEATURE_NUM);
+    int _id = db.add(feature);
+    return _id;
+#endif
+
+}
+
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int max_index) {
+#ifdef USE_DEEPNET
+
+#else
+    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_desc.feature_descriptor.data, LOOP_FEATURE_NUM);
+    DBoW3::QueryResults ret;
+    db.query(feature, ret, 1, db.size() - max_index);
+
+    if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
+        return ret[0].Id;
+    }
+    return -1;
+
+#endif
+}
+
+int LoopDetector::database_size() const {
+    return db.size();
+}
 
 bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret) {
 
@@ -299,3 +321,16 @@ LoopDetector::LoopDetector(const std::string & voc_path):
         colors.push_back(cv::Scalar(r,g,b));
     }
 }
+
+
+LoopDetector::LoopDetector(): db(false, 0) {
+    cv::RNG rng;
+    for(int i = 0; i < 100; i++)
+    {
+        int r = rng.uniform(0, 256);
+        int g = rng.uniform(0, 256);
+        int b = rng.uniform(0, 256);
+        colors.push_back(cv::Scalar(r,g,b));
+    }
+}
+
