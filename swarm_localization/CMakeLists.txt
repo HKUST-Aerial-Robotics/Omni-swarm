@@ -21,8 +21,10 @@ find_package(catkin REQUIRED COMPONENTS
         )
 find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
+# list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
+
 find_package(Backward)
-list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
+
 catkin_package(
  INCLUDE_DIRS include
         #  LIBRARIES swarm_localization
