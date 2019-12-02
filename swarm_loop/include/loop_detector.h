@@ -5,21 +5,27 @@
 #include <swarm_msgs/ImageDescriptor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
-#include <DBoW3/DBoW3.h>
 #include "loop_defines.h"
 #include <loop_cam.h>
 #include <functional>
+
+#ifdef USE_DEEPNET
 #include <faiss/IndexFlat.h>
+#else
+#include <DBoW3/DBoW3.h>
+#endif
 
 using namespace swarm_msgs;
 
 class LoopDetector {
 
 protected:
+#ifdef USE_DEEPNET
+    faiss::IndexFlatIP index;
+#else
     DBoW3::Vocabulary voc;
     DBoW3::Database db;
-    faiss::IndexFlatIP index;
-
+#endif
     std::map<unsigned int, cv::Mat> id2imgs;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
@@ -33,8 +39,11 @@ protected:
 public:
     std::function<void(LoopConnection &)> on_loop_cb;
 
-    LoopDetector(const std::string & voc_path);
+#ifdef USE_DEEPNET
     LoopDetector();
+#else
+    LoopDetector(const std::string & voc_path);
+#endif
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());
     void on_loop_connection(LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;

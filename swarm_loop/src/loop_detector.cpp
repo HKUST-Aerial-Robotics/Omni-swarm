@@ -327,6 +327,18 @@ void LoopDetector::on_loop_connection(LoopConnection & loop_conn) {
     on_loop_cb(loop_conn);
 }
 
+#ifdef USE_DEEPNET
+LoopDetector::LoopDetector(): index(DEEP_DESC_SIZE) {
+    cv::RNG rng;
+    for(int i = 0; i < 100; i++)
+    {
+        int r = rng.uniform(0, 256);
+        int g = rng.uniform(0, 256);
+        int b = rng.uniform(0, 256);
+        colors.push_back(cv::Scalar(r,g,b));
+    }
+}
+#else
 LoopDetector::LoopDetector(const std::string & voc_path):
     voc(voc_path), db(voc, false, 0) {
     cv::RNG rng;
@@ -338,16 +350,7 @@ LoopDetector::LoopDetector(const std::string & voc_path):
         colors.push_back(cv::Scalar(r,g,b));
     }
 }
+#endif
 
 
-LoopDetector::LoopDetector(): index(DEEP_DESC_SIZE) {
-    cv::RNG rng;
-    for(int i = 0; i < 100; i++)
-    {
-        int r = rng.uniform(0, 256);
-        int g = rng.uniform(0, 256);
-        int b = rng.uniform(0, 256);
-        colors.push_back(cv::Scalar(r,g,b));
-    }
-}
 

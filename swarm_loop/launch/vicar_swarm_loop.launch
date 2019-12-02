@@ -6,16 +6,15 @@
     
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="log">
         <rosparam>
-            camera_config_path: /home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
-            #lcm_uri: udpm://239.255.76.67:7667?ttl=1
             self_id: 0
         </rosparam>
        <param name="debug_image" value="$(arg display)" type="bool" />
+       <param name="camera_config_path" value="$(env HOME)/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml" type="string" />
 
         <remap from="~left_camera" to="/cam0/image_raw"/>
     </node>
-    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" args="/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/vi_car.yaml" />
+    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" args="$(env HOME)/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/vi_car.yaml" />
     
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
@@ -48,4 +47,16 @@
         <param name="nchnls" type="string" value="1" />
         <remap from="left_camera" to="/cam0/image_raw"/>
     </node>
+
+    <node pkg="swarm_yolo" name="swarm_yolo" type="detect.py" output="screen">
+        <param name="image_topic" type="string" value="/camera/infra1/image_rect_raw" />
+		<param name="model_def" type="string" value="$(find swarm_yolo)/config/yolov3-tiny-1class.cfg" />
+		<param name="weights_path" type="string" value="$(find swarm_yolo)/weights/yolov3-tiny_drone.pth" />
+		<param name="weights_trt_path" type="string" value="$(find swarm_yolo)/weights/yolov3-tiny_drone_trt.pth" />
+		<param name="class_path" type="string" value="$(find swarm_yolo)/config/drone.names" />
+		<param name="debug_show" type="string" value="true" />
+		<rosparam>
+            conf_thres: 0.6
+        </rosparam>
+	</node>
 </launch>
