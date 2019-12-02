@@ -10,6 +10,12 @@
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include "loop_defines.h"
     
+
+#ifdef USE_DEEPNET
+#include <tx2_whole_image_desc_server/WholeImageDescriptorCompute.h>
+using namespace tx2_whole_image_desc_server;
+#endif
+
 using namespace swarm_msgs;
 using namespace camodocal;
 
@@ -22,15 +28,20 @@ class LoopCam {
     std::vector<cv::Mat> image_queue;
     std::vector<double> image_ts_queue;
 
+#ifdef USE_DEEPNET
+    ros::ServiceClient deepnet_client;
+#endif
+
 public:
     // LoopDetector * loop_detector = nullptr;
 
-    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id);
+    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, ros::NodeHandle & nh);
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);
     std::pair<ImageDescriptor_t, cv::Mat> on_keyframe_message(const vins::VIOKeyframe& msg);
 
     cv::Mat pop_image_ts(ros::Time ts);
-    ImageDescriptor_t feature_detect(const cv::Mat & _img);
+    ImageDescriptor_t extractor_img_desc(const cv::Mat & _img);
+    ImageDescriptor_t extractor_img_desc_deepnet(const cv::Mat & _img);
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
     std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);

@@ -2,8 +2,11 @@
     <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
     <arg name="detection" default="true" />
-
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="log">
+    
+    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
+        args="/home/xuhao/bags/single_drone_loop_bag/realsense/realsense_n3_unsync.yaml" />
+    
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             camera_config_path: /home/xuhao/bags/single_drone_loop_bag/realsense/left.yaml
             debug_image : false
@@ -22,9 +25,7 @@
             enable_uwb: false
        </rosparam>
     </node>
-    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
-        args="/home/xuhao/bags/single_drone_loop_bag/realsense/realsense_n3_unsync.yaml" />
-     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen" >
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="log" >
         <rosparam>
             force_freq: 1
             max_accept_cost: 10000
