@@ -9,6 +9,7 @@
 #include "loop_defines.h"
 #include <loop_cam.h>
 #include <functional>
+#include <faiss/IndexFlat.h>
 
 using namespace swarm_msgs;
 
@@ -17,6 +18,8 @@ class LoopDetector {
 protected:
     DBoW3::Vocabulary voc;
     DBoW3::Database db;
+    faiss::IndexFlatIP index;
+
     std::map<unsigned int, cv::Mat> id2imgs;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
@@ -24,6 +27,8 @@ protected:
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index);
+
+
 
 public:
     std::function<void(LoopConnection &)> on_loop_cb;

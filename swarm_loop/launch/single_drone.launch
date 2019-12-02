@@ -9,7 +9,7 @@
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             camera_config_path: /home/xuhao/bags/single_drone_loop_bag/realsense/left.yaml
-            debug_image : false
+            debug_image : true
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             #lcm_uri: udpm://239.255.76.67:7667?ttl=1
             self_id: 0

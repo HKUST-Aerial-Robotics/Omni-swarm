@@ -2,15 +2,17 @@
     <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
     <arg name="detection" default="true" />
+    <arg name="display" default="false" />
     
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="log">
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             camera_config_path: /home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml
-            debug_image : false
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             #lcm_uri: udpm://239.255.76.67:7667?ttl=1
             self_id: 0
         </rosparam>
+       <param name="debug_image" value="$(arg display)" type="bool" />
+
         <remap from="~left_camera" to="/cam0/image_raw"/>
     </node>
     <node name="vins_estimator" pkg="vins" type="vins_node" output="log" args="/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/vi_car.yaml" />
@@ -24,7 +26,7 @@
             enable_uwb: false
        </rosparam>
     </node>
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="log">
         <rosparam>
             force_freq: 1
             max_accept_cost: 10000
@@ -38,5 +40,12 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
+    </node>
+    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="screen">
+        <param name="frozen_protobuf_file" type="string" value="$(find tx2_whole_image_desc_server)/tx2_py3_tfserver/models.keras/June2019/centeredinput-m1to1-240x320x1__mobilenetv2-block_9_add__K16__allpairloss/modelarch_and_weights.2000.480x640x1.pb" />
+        <param name="nrows" type="string" value="480" />
+        <param name="ncols" type="string" value="640" />
+        <param name="nchnls" type="string" value="1" />
+        <remap from="left_camera" to="/cam0/image_raw"/>
     </node>
 </launch>

@@ -38,6 +38,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
+  /usr/local/include/
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
@@ -65,4 +66,5 @@ target_link_libraries(${PROJECT_NAME}_node
    ${OpenCV_LIBRARIES}
    ${DBoW3_LIBRARIES} 
    lcm
+   faiss
 )
