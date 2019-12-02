@@ -641,7 +641,7 @@ double SwarmLocalizationSolver::solve() {
     if (finish_init) {
         sync_est_poses(this->est_poses_tsid);
     }
-
+    printf("\n\n");
     return cost_now;
 }
 
@@ -1353,7 +1353,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     solve_time_count += summary.total_time_in_seconds;
     solve_count++;
 
-    ROS_INFO("AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms", solve_time_count *1000 / solve_count, 
+    ROS_INFO("AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms\n", solve_time_count *1000 / solve_count, 
     (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000);
 
     return equv_cost;
