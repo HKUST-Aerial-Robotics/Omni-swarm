@@ -3,10 +3,12 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include "opencv2/features2d.hpp"
-#include "opencv2/xfeatures2d.hpp"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <chrono>
 
+#ifndef USE_DEEPNET
+#include "opencv2/xfeatures2d.hpp"
+#endif
 
 using namespace std::chrono; 
 

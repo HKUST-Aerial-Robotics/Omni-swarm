@@ -22,7 +22,7 @@ SET("OpenCV_DIR"  "/usr/local/share/OpenCV/")
 find_package(OpenCV 3.4 REQUIRED) 
 find_package(Eigen3 REQUIRED)
 find_package(lcm REQUIRED)
-find_package(DBoW3 REQUIRED)
+# find_package(DBoW3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -42,7 +42,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
-  ${DBoW3_INCLUDE_DIRS}
+  # ${DBoW3_INCLUDE_DIRS}
 )
 
 
@@ -64,7 +64,7 @@ add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_lib
 target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
-   ${DBoW3_LIBRARIES} 
+  #  ${DBoW3_LIBRARIES} 
    lcm
    faiss
 )
