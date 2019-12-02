@@ -23,9 +23,9 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         if (database_size() > MATCH_INDEX_DIST) {
 
-            ROS_INFO("Querying image....");
+            ROS_INFO("Querying image from database %d....", database_size());
 
-            int _old_id = query_from_database(img_des, - MATCH_INDEX_DIST);
+            int _old_id = query_from_database(img_des, MATCH_INDEX_DIST);
             auto stop = high_resolution_clock::now(); 
 
             if (_old_id >= 0 ) {
@@ -97,7 +97,8 @@ Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
 
 int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 #ifdef USE_DEEPNET
-
+    index.add(1, new_img_desc.image_desc.data());
+    return index.ntotal - 1;
 #else
     cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor.data, LOOP_FEATURE_NUM);
     int _id = db.add(feature);
@@ -108,7 +109,19 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 
 int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int max_index) {
 #ifdef USE_DEEPNET
+    float distances[SEARCH_NEAREST_NUM] = {0};
+    faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
+    index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
 
+    for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
+        // ROS_INFO("Find %ld, radius %f", labels[i], distances[i]);
+        if (labels[i] <= database_size() - max_index && distances[i] > INNER_PRODUCT_THRES) {
+            // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
+            return labels[i];
+        }
+    }
+
+    return -1;
 #else
     cv::Mat feature = cvfeatureFromByte((uint8_t*)img_desc.feature_descriptor.data, LOOP_FEATURE_NUM);
     DBoW3::QueryResults ret;
@@ -123,7 +136,11 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
 }
 
 int LoopDetector::database_size() const {
+#ifdef USE_DEEPNET
+    return index.ntotal;
+#else
     return db.size();
+#endif
 }
 
 bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret) {
@@ -323,7 +340,7 @@ LoopDetector::LoopDetector(const std::string & voc_path):
 }
 
 
-LoopDetector::LoopDetector(): db(false, 0) {
+LoopDetector::LoopDetector(): index(DEEP_DESC_SIZE) {
     cv::RNG rng;
     for(int i = 0; i < 100; i++)
     {

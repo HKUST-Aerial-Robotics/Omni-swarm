@@ -27,7 +27,7 @@ struct ImageDescriptor_t {
     byte feature_descriptor[feature_descriptor_size];
 
     int32_t image_desc_size;
-    double image_desc[image_desc_size];
+    float image_desc[image_desc_size];
 
     int32_t image_width;
     int32_t image_height;

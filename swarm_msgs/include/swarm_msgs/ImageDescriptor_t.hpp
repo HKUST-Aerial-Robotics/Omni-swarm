@@ -30,7 +30,7 @@ class ImageDescriptor_t
 
         int32_t    image_desc_size;
 
-        std::vector< double > image_desc;
+        std::vector< float > image_desc;
 
         int32_t    image_width;
 
@@ -166,7 +166,7 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
     if(tlen < 0) return tlen; else pos += tlen;
 
     if(this->image_desc_size > 0) {
-        tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
+        tlen = __float_encode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
@@ -233,7 +233,7 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 
     if(this->image_desc_size) {
         this->image_desc.resize(this->image_desc_size);
-        tlen = __double_decode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
+        tlen = __float_decode_array(buf, offset + pos, maxlen - pos, &this->image_desc[0], this->image_desc_size);
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
@@ -295,7 +295,7 @@ int ImageDescriptor_t::_getEncodedSizeNoHash() const
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __byte_encoded_array_size(NULL, this->feature_descriptor_size);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
-    enc_size += __double_encoded_array_size(NULL, this->image_desc_size);
+    enc_size += __float_encoded_array_size(NULL, this->image_desc_size);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
@@ -321,7 +321,7 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x15c6856f17fea04bLL +
+    uint64_t hash = 0x18938546414ea633LL +
          Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +

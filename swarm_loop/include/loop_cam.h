@@ -12,7 +12,7 @@
     
 
 #ifdef USE_DEEPNET
-#include <tx2_whole_image_desc_server/WholeImageDescriptorCompute.h>
+#include <tx2_whole_image_desc_server/WholeImageDescriptorComputeTS.h>
 using namespace tx2_whole_image_desc_server;
 #endif
 
@@ -41,7 +41,7 @@ public:
 
     cv::Mat pop_image_ts(ros::Time ts);
     ImageDescriptor_t extractor_img_desc(const cv::Mat & _img);
-    ImageDescriptor_t extractor_img_desc_deepnet(const cv::Mat & _img);
+    ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp);
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
     std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);
