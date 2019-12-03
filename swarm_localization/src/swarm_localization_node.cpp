@@ -24,6 +24,13 @@
 #include <swarm_msgs/swarm_drone_basecoor.h>
 #include <swarm_msgs/LoopConnection.h>
 
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward
+{
+    backward::SignalHandling sh;
+}
+
 using ceres::CostFunction;
 using ceres::Problem;
 using ceres::Solver;

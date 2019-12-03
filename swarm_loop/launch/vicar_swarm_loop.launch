@@ -25,7 +25,7 @@
             enable_uwb: false
        </rosparam>
     </node>
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="log">
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen" >
         <rosparam>
             force_freq: 1
             max_accept_cost: 10000
@@ -40,7 +40,7 @@
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
     </node>
-    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="screen">
+    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="log">
         <param name="frozen_protobuf_file" type="string" value="$(find tx2_whole_image_desc_server)/tx2_py3_tfserver/models.keras/June2019/centeredinput-m1to1-240x320x1__mobilenetv2-block_9_add__K16__allpairloss/modelarch_and_weights.2000.480x640x1.pb" />
         <param name="nrows" type="string" value="480" />
         <param name="ncols" type="string" value="640" />
@@ -48,15 +48,4 @@
         <remap from="left_camera" to="/cam0/image_raw"/>
     </node>
 
-    <node pkg="swarm_yolo" name="swarm_yolo" type="detect.py" output="screen">
-        <param name="image_topic" type="string" value="/camera/infra1/image_rect_raw" />
-		<param name="model_def" type="string" value="$(find swarm_yolo)/config/yolov3-tiny-1class.cfg" />
-		<param name="weights_path" type="string" value="$(find swarm_yolo)/weights/yolov3-tiny_drone.pth" />
-		<param name="weights_trt_path" type="string" value="$(find swarm_yolo)/weights/yolov3-tiny_drone_trt.pth" />
-		<param name="class_path" type="string" value="$(find swarm_yolo)/config/drone.names" />
-		<param name="debug_show" type="string" value="true" />
-		<rosparam>
-            conf_thres: 0.6
-        </rosparam>
-	</node>
 </launch>
