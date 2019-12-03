@@ -12,13 +12,18 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
-        int _id = add_to_database(img_des);
-        id2imgdes[_id] = img_des;
-        if (!img.empty() ) {
-            id2imgs[_id] = img;
+
+        if (!img_des.prevent_adding_db) {
+            int _id = add_to_database(img_des);
+            id2imgdes[_id] = img_des;
+            if (!img.empty() ) {
+                id2imgs[_id] = img;
+            }
+            ROS_INFO("Adding image descriptor %d to database", _id);
+        } else {
+            ROS_INFO("This image is prevent to adding to DB");
         }
 
-        ROS_INFO("Adding image descriptor %d to database", _id);
         bool success = false;
 
         if (database_size() > MATCH_INDEX_DIST) {

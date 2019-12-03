@@ -41,6 +41,7 @@ struct ImageDescriptor_t {
     int32_t landmark_num;
     Point2d_t landmarks_2d_norm[landmark_num];
     Point3d_t landmarks_3d[landmark_num];
+    boolean prevent_adding_db;
 
     int64_t msg_id;
 }
