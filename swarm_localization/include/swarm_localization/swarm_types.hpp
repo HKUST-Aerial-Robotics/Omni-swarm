@@ -19,6 +19,11 @@ inline int TSShort(int64_t ts) {
     return (ts/1000000)%10000000;
 }
 
+inline int64_t TSLong(int64_t ts) {
+    return (ts/1000000)%10000000000;
+}
+
+
 using namespace Eigen;
 namespace Swarm {
     class Node {
