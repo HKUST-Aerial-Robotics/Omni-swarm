@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(swarm_localization)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 add_compile_options(-std=c++11)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
@@ -56,6 +56,6 @@ target_link_libraries(${PROJECT_NAME}_node
         ${CERES_LIBRARIES}
         ${camera_models_LIBRARIES}
         ${YAML_CPP_LIBRARIES}
-        dl
-        bfd
+        cgraph
+        dw
 )

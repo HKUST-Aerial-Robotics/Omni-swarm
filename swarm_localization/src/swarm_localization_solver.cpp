@@ -21,6 +21,7 @@
 #include <swarm_localization/swarm_types.hpp>
 #include <set>
 #include <chrono>
+#include <graphviz/cgraph.h>
 
 using namespace std::chrono;
 
@@ -52,12 +53,6 @@ using namespace std::chrono;
 
 #define SINGLE_DRONE_SFS_THRES 3
 
-#define USING_BACKWARD
-
-#ifdef USING_BACKWARD
-#include "backward.hpp"
-#define BACKWARD_HAS_BFD 1
-#endif
 
 
 
@@ -429,7 +424,7 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 
 std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const NodeFrame & nf) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
-    if (last_saved_est_kf_ts > 0 && finish_init &&
+    if (last_saved_est_kf_ts > 0 && finish_init && est_poses_tsid_saved.find(last_saved_est_kf_ts) != est_poses_tsid_saved.end() &&
         est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
 
         //Use last solve relative res, e.g init with last
@@ -631,6 +626,7 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
+        generate_cgraph();
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
@@ -1359,6 +1355,86 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     return equv_cost;
 }
 
+
+void SwarmLocalizationSolver::generate_cgraph() {
+    ROS_INFO("Gen cgraph");
+    Agraph_t *g;
+    g = agopen("G", Agdirected, NULL);
+    char node_name[100] = {0};
+
+    agattr(g,AGRAPH,"shape","box");
+    agattr(g,AGRAPH,"style","filled");
+    agattr(g,AGNODE,"style","filled");
+    agattr(g,AGNODE,"color","white");
+
+    std::map<int64_t, std::map<int, Agnode_t*>> AGNodes;
+    
+    for (auto & sf : sf_sld_win) {
+        sprintf(node_name, "cluster_%d", TSShort(sf.ts));
+        auto sub_graph = agsubg(g, node_name, 1);
+        //	style=filled;
+        //   color=lightgrey;
+        // label = "process #1";
+        sprintf(node_name, "SwarmFrame %d", TSShort(sf.ts));
+        agattrsym (sub_graph, "label");
+        agset (sub_graph, "label", node_name);
+
+
+        AGNodes[sf.ts] = std::map<int, Agnode_t*>();
+        for (auto & _it : sf.id2nodeframe) {
+            int _id = _it.first;
+            NodeFrame & _nf = _it.second;
+            sprintf(node_name, "Node%d_%d", _id, TSShort(sf.ts));
+            auto ag_node = agnode(sub_graph, node_name, 1);
+            AGNodes[sf.ts][_id] = ag_node;
+        }
+    }
+    std::vector<double*> pose_win;
+
+    //Add all vio residuals
+    for (auto _id : all_nodes) {
+        // ROS_INFO("Gen edge for node %d", _id);
+        auto nfs = est_poses_idts.at(_id);
+        Agnode_t * node1 = nullptr;
+
+        for (const SwarmFrame & sf : sf_sld_win) {
+            int64_t ts = sf.ts;
+            // ROS_INFO("Gen edge for node %d", _id);
+            if (nfs.find(ts) != nfs.end()) {
+                // ROS_INFO("NFS can find ts %d", TSShort(ts));
+                auto _p = nfs[ts];
+                if (pose_win.size() < 1 || pose_win[pose_win.size()-1] != _p) {
+                    pose_win.push_back(nfs[ts]);
+                    if (node1 == nullptr) {
+                        node1 = AGNodes[ts][_id];
+                    } else {
+                        auto node2 = AGNodes[ts][_id];
+                        auto edge = agedge(g, node1, node2, "VIO",1);
+                        agattrsym (edge, "label");
+                        agset(edge, "label", "VIO");
+
+                        // printf("Adding edge...\n");
+                        node1 = node2;
+                    }
+                }
+            } 
+        }
+    }
+
+    //
+    for (auto & loop: good_loops) {
+        auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], "Loop", 1);
+        agattrsym (edge, "label");
+        agattrsym (edge, "color");
+        agset(edge, "label", "VIO");
+        agset(edge, "color", "red");
+    }
+    std::string graph_output =  "/home/xuhao/graph.dot";
+    FILE * f = fopen(graph_output.c_str(), "w");
+    agwrite(g,f);
+    agclose(g);
+}
+
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
 
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix) {
@@ -1377,3 +1453,4 @@ Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix) {
     }
     return eigen_matrix;
 }
+

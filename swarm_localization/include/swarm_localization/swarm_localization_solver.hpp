@@ -50,6 +50,7 @@ typedef std::map<int, std::map<int64_t, int>>  IDTSIndex;
 class SwarmLocalizationSolver {
 
     std::mutex solve_lock;
+    std::mutex predict_lock;
     std::vector<SwarmFrame> sf_sld_win;
     std::map<int64_t, SwarmFrame> all_sf;
     int64_t last_kf_ts = 0;
@@ -141,7 +142,7 @@ class SwarmLocalizationSolver {
     void estimate_observability();
     std::set<int> loop_observable_set(const std::map<int, std::set<int>> & loop_edges) const;
 
-
+    void generate_cgraph();
 public:
     int self_id = -1;
     unsigned int thread_num;
