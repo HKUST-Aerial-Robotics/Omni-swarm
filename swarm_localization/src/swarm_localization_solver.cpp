@@ -1364,8 +1364,10 @@ void SwarmLocalizationSolver::generate_cgraph() {
 
     agattr(g,AGRAPH,"shape","box");
     agattr(g,AGRAPH,"style","filled");
+    agattr(g,AGRAPH,"label","Pose Graphs");
     agattr(g,AGNODE,"style","filled");
-    agattr(g,AGNODE,"color","white");
+    agattr(g,AGEDGE,"color","black");
+    agattr(g,AGEDGE,"label","residual");
 
     std::map<int64_t, std::map<int, Agnode_t*>> AGNodes;
     
@@ -1426,7 +1428,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
         auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], "Loop", 1);
         agattrsym (edge, "label");
         agattrsym (edge, "color");
-        agset(edge, "label", "VIO");
+        agset(edge, "label", "Loop");
         agset(edge, "color", "red");
     }
     std::string graph_output =  "/home/xuhao/graph.dot";
