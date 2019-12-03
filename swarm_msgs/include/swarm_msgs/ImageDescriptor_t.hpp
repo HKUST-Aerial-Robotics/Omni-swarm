@@ -50,6 +50,8 @@ class ImageDescriptor_t
 
         std::vector< Point3d_t > landmarks_3d;
 
+        int8_t     prevent_adding_db;
+
         int64_t    msg_id;
 
     public:
@@ -203,6 +205,9 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
+    tlen = __boolean_encode_array(buf, offset + pos, maxlen - pos, &this->prevent_adding_db, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     tlen = __int64_t_encode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
@@ -281,6 +286,9 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
+    tlen = __boolean_decode_array(buf, offset + pos, maxlen - pos, &this->prevent_adding_db, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     tlen = __int64_t_decode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
@@ -309,6 +317,7 @@ int ImageDescriptor_t::_getEncodedSizeNoHash() const
     for (int a0 = 0; a0 < this->landmark_num; a0++) {
         enc_size += this->landmarks_3d[a0]._getEncodedSizeNoHash();
     }
+    enc_size += __boolean_encoded_array_size(NULL, 1);
     enc_size += __int64_t_encoded_array_size(NULL, 1);
     return enc_size;
 }
@@ -321,7 +330,7 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x18938546414ea633LL +
+    uint64_t hash = 0x8cfaf7dbdf7c8326LL +
          Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +

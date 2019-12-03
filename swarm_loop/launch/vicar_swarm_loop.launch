@@ -4,7 +4,7 @@
     <arg name="detection" default="true" />
     <arg name="display" default="false" />
     
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="log">
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             self_id: 0
@@ -25,7 +25,7 @@
             enable_uwb: false
        </rosparam>
     </node>
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen" >
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="log" >
         <rosparam>
             force_freq: 1
             max_accept_cost: 10000

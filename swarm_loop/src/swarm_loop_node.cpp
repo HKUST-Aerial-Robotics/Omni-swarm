@@ -22,7 +22,8 @@ public:
     bool debug_image = false;
     double min_movement_keyframe = 0.3;
     int self_id = 0;
-
+    bool recived_image = false;
+    ros::Time last_kftime;
     Eigen::Vector3d last_keyframe_position = Eigen::Vector3d(10000, 10000, 10000);
 
     void image_callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -37,10 +38,31 @@ public:
 
         ROS_INFO("Pub loop conn. is local %d", is_local);
         loopconn_pub.publish(loop_con);
-    } 
+    }
+
+    void VIOnonKF_callback(const vins::VIOKeyframe & viokf) {
+        //If never received image or 15 sec not receiving kf, use this as KF, this is ensure we don't missing data
+        //Note that for the second case, we will not add it to database, matching only
+            
+        if (!recived_image) {
+            ROS_INFO("USE non vio kf as KF at first!");
+            VIOKF_callback(viokf);
+            return;
+        }
+
+        if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
+            ROS_INFO("Broadcast non KF");
+            VIOKF_callback(viokf, false, false);
+        }
+    }
     
-    void VIOKF_callback(const vins::VIOKeyframe & viokf) {
-        
+    inline void VIOKF_callback(const vins::VIOKeyframe & viokf) {
+        VIOKF_callback(viokf, true, true);
+    }
+    
+    void VIOKF_callback(const vins::VIOKeyframe & viokf, bool adding, bool querying) {
+        last_kftime = viokf.header.stamp;
+        recived_image = true;
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
         int keyframe_size = viokf.feature_points_2d_norm.size();
@@ -55,6 +77,8 @@ public:
 
         auto start = high_resolution_clock::now();
         auto ret = loop_cam->on_keyframe_message(viokf);
+        ret.first.prevent_adding_db = !adding;
+
         if (ret.first.landmark_num == 0) {
             return;
         }
@@ -66,10 +90,12 @@ public:
         }
 
         //Check ides vaild
-        if (debug_image) {
-            loop_detector->on_image_recv(ret.first, ret.second);
-        } else {
-            loop_detector->on_image_recv(ret.first);
+        if (querying) {
+            if (debug_image) {
+                loop_detector->on_image_recv(ret.first, ret.second);
+            } else {
+                loop_detector->on_image_recv(ret.first);
+            }
         }
 
         std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
@@ -77,6 +103,7 @@ public:
 
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
+    ros::Subscriber viononkeyframe_sub;
     ros::Publisher loopconn_pub;
 
 public:
@@ -125,6 +152,7 @@ public:
 
         camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);
+        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1000, &SwarmLoopNode::VIOnonKF_callback, this);
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 1);
     }
 };
