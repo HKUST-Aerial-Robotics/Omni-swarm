@@ -29,7 +29,7 @@
         <rosparam>
             force_freq: 1
             max_accept_cost: 10000
-            max_keyframe_num: 1000
+            max_keyframe_num: 10000
             min_keyframe_num: 3
             thread_num: 2
             min_kf_movement : 0.5

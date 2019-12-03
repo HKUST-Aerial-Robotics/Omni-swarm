@@ -53,6 +53,7 @@ using namespace std::chrono;
 
 #define SINGLE_DRONE_SFS_THRES 3
 
+#define RANDOM_DELETE_KF 
 
 
 
@@ -138,26 +139,21 @@ bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) const {
 
 void SwarmLocalizationSolver::process_frame_clear() {
     //Delete non keyframe first
+    int _index = 0;
 
-    /*
-    while (i < sf_sld_win.size() && sf_sld_win.size() > max_frame_number) {
-        if (!is_frame_useful(i)) {
-            delete_frame_i(i);
-        } else {
-            i++;
-        }
-    } */
-
+#ifdef RANDOM_DELETE_KF
+    _index = rand()%(max_frame_number-1);
+#endif
     while (sf_sld_win.size() > max_frame_number) {
         ROS_INFO("Start clear frames");
-        SwarmFrame & sf = sf_sld_win[0];
+        SwarmFrame & sf = sf_sld_win[_index];
         for (auto it : sf.id2nodeframe) {
             if (est_cov_tsid.find(sf.ts) != est_cov_tsid.end() && sf.has_odometry(it.first)) {
                 last_lost_ts_of_node[it.first] = sf.ts;
             }
         }
 
-        delete_frame_i(0);
+        delete_frame_i(_index);
         ROS_INFO("Clear first frame from sld win, now size %ld", sf_sld_win.size());
     }
 }
@@ -626,7 +622,7 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        generate_cgraph();
+        // generate_cgraph();
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
@@ -1110,7 +1106,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     printf("\n");
 }
 
-bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret) const{
+bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1128,7 +1124,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
-        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts));
+        // ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts));
         return false;
     }
 
@@ -1187,16 +1183,39 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     new_loop.print();
 #endif
     loc_ret.relative_pose = new_loop;
-
+    dt_err = min_ts_err_a + min_ts_err_b;
     return true;
 }
 
 std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const{
     loop_edges.clear();
     std::vector<LoopConnection> good_loops;
+    std::map<int64_t, std::map<int64_t, double>> loop_errs;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
-        if(loop_from_src_loop_connection(_loc, loc_ret)) {
+        double dt_err = 0;
+        int idxa = loc_ret.id_a + TSLong(loc_ret.ts_a)*100;
+        int idxb = loc_ret.id_b + TSLong(loc_ret.ts_b)*100;
+
+        if(loop_from_src_loop_connection(_loc, loc_ret, dt_err)) {
+            if (loop_errs.find(idxa) != loop_errs.end()) {
+                if (loop_errs[idxa].find(idxb)!= loop_errs[idxa].end()) {
+                    // ROS_WARN("DUPLICATE EDGE from [%d]%d to [%d]%d!!!!", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b);
+                    if (dt_err > loop_errs[idxa][idxb]) {
+                        continue;
+                    }
+                }
+            } else {
+                loop_errs[idxa] = std::map<int64_t, double>();
+            }
+
+            if (loop_errs.find(idxb) == loop_errs.end()) {
+                loop_errs[idxb] = std::map<int64_t, double>();
+            }
+
+            loop_errs[idxa][idxb] = dt_err;
+            loop_errs[idxb][idxa] = dt_err;
+
             good_loops.push_back(loc_ret);
             if (loop_edges.find(loc_ret.id_a) == loop_edges.end()) {
                 loop_edges[loc_ret.id_a] = std::set<int>();
