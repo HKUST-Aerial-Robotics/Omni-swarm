@@ -5,7 +5,7 @@ project(swarm_localization)
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 add_compile_options(-std=c++11)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wnowrite-strings")
 
 
 ## Find catkin macros and libraries
