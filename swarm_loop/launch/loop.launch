@@ -1,0 +1,19 @@
+<launch>
+    <arg name="display" default="false" />
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+        <rosparam>
+            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+        </rosparam>
+        <rosparam command="load" file="$(env HOME)/SwarmConfig/drone_define.yaml" />
+       <param name="debug_image" value="$(arg display)" type="bool" />
+       <param name="camera_config_path" value="$(env HOME)/SwarmConfig/realsense/realsense_n3_unsync.yaml" type="string" />
+    <remap from="~left_camera" to="/cam0/image_raw"/>
+    </node>
+    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="screen">
+        <param name="frozen_protobuf_file" type="string" value="$(find tx2_whole_image_desc_server)/tx2_py3_tfserver/models.keras/June2019/centeredinput-m1to1-240x320x1__mobilenetv2-block_9_add__K16__allpairloss/modelarch_and_weights.2000.480x640x1.pb" />
+        <param name="nrows" type="string" value="480" />
+        <param name="ncols" type="string" value="640" />
+        <param name="nchnls" type="string" value="1" />
+        <remap from="left_camera" to="/camera/infra1/image_rect_raw"/>
+    </node>
+</launch>
