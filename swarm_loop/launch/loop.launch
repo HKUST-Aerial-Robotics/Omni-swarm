@@ -1,6 +1,7 @@
 <launch>
     <arg name="display" default="false" />
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+    <arg name="node_start_delay" default="10.0" />
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' ">
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
         </rosparam>
