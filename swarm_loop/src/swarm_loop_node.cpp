@@ -150,9 +150,9 @@ public:
             on_loop_connection(loc, false);
         };
 
-        camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this);
-        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this);
-        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1000, &SwarmLoopNode::VIOnonKF_callback, this);
+        camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
+        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1000, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 1);
     }
 };
