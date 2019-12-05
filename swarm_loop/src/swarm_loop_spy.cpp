@@ -24,6 +24,7 @@ public:
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
         loop_net = new LoopNet(_lcm_uri);
         loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
+            ROS_INFO("Received Img Desc");
             char win_name[100] = {0};
             sprintf(win_name, "Drone%d", img_desc.drone_id);
             auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);

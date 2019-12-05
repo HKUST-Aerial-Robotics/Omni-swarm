@@ -56,9 +56,18 @@ add_executable(${PROJECT_NAME}_node
   include/loop_net.h
 )
 
+add_executable(${PROJECT_NAME}_spy
+  src/swarm_loop_spy.cpp
+  src/loop_net.cpp
+)
 
 
-add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_lib 
+
+
+add_dependencies(${PROJECT_NAME}_node
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+  add_dependencies(${PROJECT_NAME}_spy
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(${PROJECT_NAME}_node
@@ -67,4 +76,11 @@ target_link_libraries(${PROJECT_NAME}_node
   #  ${DBoW3_LIBRARIES} 
    lcm
    faiss
+)
+
+
+target_link_libraries(${PROJECT_NAME}_spy
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+   lcm
 )
