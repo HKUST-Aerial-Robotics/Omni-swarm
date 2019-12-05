@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 2.8.3)
 project(swarm_localization)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+set(CMAKE_BUILD_TYPE "Release")
 add_compile_options(-std=c++11)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wnowrite-strings")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
 
 
 ## Find catkin macros and libraries
