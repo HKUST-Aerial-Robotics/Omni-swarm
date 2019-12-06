@@ -12,7 +12,8 @@ using namespace std::chrono;
 class SwarmLoopSpy {
 public:
     LoopNet * loop_net = nullptr;
-
+    std::map<int, ImageDescriptor_t> all_images;
+    ros::Timer timer;
 public:
     SwarmLoopSpy(ros::NodeHandle& nh) {
         //Init Loop Net
@@ -20,19 +21,31 @@ public:
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
         std::string ORB_VOC = "";
-
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
         loop_net = new LoopNet(_lcm_uri);
         loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
-            ROS_INFO("Received Img Desc");
+            ROS_INFO("Received Img Desc from %d", img_desc.drone_id);
+            all_images[img_desc.drone_id] = img_desc;
+        };
+        timer = nh.createTimer(ros::Duration(0.03), &SwarmLoopSpy::timer_callback, this);
+    }
+
+    void timer_callback(const ros::TimerEvent & e) {
+        for (auto &it : all_images) {
+            auto & img_desc = it.second;
             char win_name[100] = {0};
+            char frame_name[100] = {0};
             sprintf(win_name, "Drone%d", img_desc.drone_id);
             auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);
+            cv::cvtColor(ret, ret, cv::COLOR_GRAY2BGR);
+            sprintf(frame_name, "Frame %d", img_desc.msg_id);
+            cv::putText(ret, frame_name, cv::Point2f(10,10), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(255,0,255,255));
             cv::resize(ret, ret, cv::Size(), 2, 2);
             cv::imshow(win_name, ret);
-            cv::waitKey(30);
-        };
+        }
+        cv::waitKey(10);
     }
+
 };
 
 int main(int argc, char **argv) {
