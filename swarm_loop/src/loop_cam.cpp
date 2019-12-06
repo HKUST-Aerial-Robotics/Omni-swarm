@@ -53,7 +53,7 @@ void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
     _img_desc.image_size = _img_desc.image.size();
 }
 
-std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
+ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
     cv::Mat img = pop_image_ts(msg.header.stamp);
@@ -62,8 +62,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     ides.landmark_num = 0;
     if (img.empty()) {
         ROS_INFO("No Image; Exiting;");
-        cv::Mat _img;
-        return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
+        return ides;
     }
 
     auto start = high_resolution_clock::now();
@@ -72,12 +71,12 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
     ides = extractor_img_desc_deepnet(msg.header.stamp);
     if (ides.image_desc_size == 0) {
         cv::Mat _img;
-        return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
+        return ides;
     }
 #else
     ides = extractor_img_desc(img);
     if (ides.feature_descriptor_size == 0) {
-        return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
+        return ides;
     }
 #endif
     std::cout << "FeatureDetect Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
@@ -100,8 +99,7 @@ std::pair<ImageDescriptor_t, cv::Mat>  LoopCam::on_keyframe_message(const vins::
 
     std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
 
-    cv::Mat _img;
-    return std::pair<ImageDescriptor_t, cv::Mat> (ides, _img);
+    return ides;
 }
 
 

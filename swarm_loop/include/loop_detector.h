@@ -26,7 +26,6 @@ protected:
     DBoW3::Vocabulary voc;
     DBoW3::Database db;
 #endif
-    std::map<unsigned int, cv::Mat> id2imgs;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
     bool compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret);
@@ -44,7 +43,7 @@ public:
 #else
     LoopDetector(const std::string & voc_path);
 #endif
-    void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img=cv::Mat());
+    void on_image_recv(const ImageDescriptor_t & img_des);
     void on_loop_connection(LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
     bool enable_visualize = true;

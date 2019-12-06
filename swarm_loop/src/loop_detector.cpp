@@ -7,7 +7,7 @@
 
 using namespace std::chrono; 
 
-void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
+void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
     auto start = high_resolution_clock::now(); 
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
@@ -16,9 +16,6 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         if (!img_des.prevent_adding_db) {
             int _id = add_to_database(img_des);
             id2imgdes[_id] = img_des;
-            if (!img.empty() ) {
-                id2imgs[_id] = img;
-            }
             ROS_INFO("Adding image descriptor %d to database", _id);
         } else {
             ROS_INFO("This image is prevent to adding to DB");
