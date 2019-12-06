@@ -37,7 +37,7 @@ public:
 
     LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, ros::NodeHandle & nh);
     void on_camera_message(const sensor_msgs::ImageConstPtr& msg);
-    std::pair<ImageDescriptor_t, cv::Mat> on_keyframe_message(const vins::VIOKeyframe& msg);
+    ImageDescriptor_t on_keyframe_message(const vins::VIOKeyframe& msg);
 
     cv::Mat pop_image_ts(ros::Time ts);
     ImageDescriptor_t extractor_img_desc(const cv::Mat & _img);

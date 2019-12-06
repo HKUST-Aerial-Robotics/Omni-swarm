@@ -28,6 +28,7 @@ public:
             char win_name[100] = {0};
             sprintf(win_name, "Drone%d", img_desc.drone_id);
             auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);
+            cv::resize(ret, ret, cv::Size(), 2, 2);
             cv::imshow(win_name, ret);
             cv::waitKey(30);
         };
