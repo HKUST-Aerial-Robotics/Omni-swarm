@@ -13,7 +13,11 @@ void LoopNet::setup_network(std::string _lcm_uri) {
 }
 
 void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
-    ROS_INFO("Broadcast Loop Image");
+    ROS_INFO("Broadcast Loop Image: size %d", img_des.getEncodedSize());
+    if (img_des.getEncodedSize() < 0) {
+        ROS_ERROR("WRONG SIZE!!!");
+        exit(-1);
+    }
     img_des.msg_id = rand() + img_des.timestamp.nsec*RAND_MAX;
     sent_message.insert(img_des.msg_id);
     lcm.publish("SWARM_LOOP_IMG_DES", &img_des);

@@ -7,6 +7,13 @@
 #include <Eigen/Eigen>
 #include <thread>
 
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward
+{
+    backward::SignalHandling sh;
+}
+
 using namespace std::chrono; 
 
 double DT_MS(system_clock::time_point start) {
@@ -51,7 +58,6 @@ public:
         }
 
         if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
-            ROS_INFO("Broadcast non KF");
             VIOnonKF_process_callback(viokf);
         }
     }
@@ -72,8 +78,8 @@ public:
         ret.prevent_adding_db = !adding;
 
         std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
-        
-        loop_net->broadcast_img_desc(ret);
+        if (ret.landmark_num != 0)
+            loop_net->broadcast_img_desc(ret);
     }
     
     void VIOKF_callback(const vins::VIOKeyframe & viokf) {
@@ -82,7 +88,6 @@ public:
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
         int keyframe_size = viokf.feature_points_2d_norm.size();
-        bool adding = false;
 
         if (keyframe_size < MIN_LOOP_NUM) {
             ROS_INFO("VIOKF no enough feature, giveup");
@@ -90,8 +95,8 @@ public:
         }
 
         if (dpos < min_movement_keyframe) {
-            adding = false;
-            ROS_INFO("VIOKF no enough movement, will not add to db");
+            ROS_WARN("VIOKF no enough movement, will giveup");
+            return;
         } else {
             last_keyframe_position = drone_pos;
             ROS_INFO("ADD VIOKeyframe MOVE %3.2fm LANDMARK %d ", dpos, keyframe_size);
@@ -99,8 +104,7 @@ public:
 
         auto start = high_resolution_clock::now();
         auto ret = loop_cam->on_keyframe_message(viokf);
-        ret.prevent_adding_db = !adding;
-
+        ret.prevent_adding_db = false;
         if (ret.landmark_num == 0) {
             return;
         }
