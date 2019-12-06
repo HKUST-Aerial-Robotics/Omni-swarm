@@ -12,11 +12,13 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+        bool nothis_node = all_nodes.find(img_des.drone_id) == all_nodes.end();
 
-        if (!img_des.prevent_adding_db) {
+        if (!img_des.prevent_adding_db || nothis_node) {
             int _id = add_to_database(img_des);
             id2imgdes[_id] = img_des;
             ROS_INFO("Adding image descriptor %d to database", _id);
+            all_nodes.insert(img_des.drone_id);
         } else {
             ROS_INFO("This image is prevent to adding to DB");
         }
