@@ -33,7 +33,7 @@ protected:
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index);
 
-
+    std::set<int> all_nodes;
 
 public:
     std::function<void(LoopConnection &)> on_loop_cb;
