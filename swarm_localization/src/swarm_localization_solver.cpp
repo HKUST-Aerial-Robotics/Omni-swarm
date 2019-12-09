@@ -358,8 +358,9 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     has_new_keyframe = true;
 }
 
-void SwarmLocalizationSolver::add_new_swarm_connection(const swarm_msgs::LoopConnection & loop_con) {
+void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
     all_loops.push_back(loop_con);
+    has_new_keyframe = true;
 }
 
 
@@ -695,15 +696,10 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     
     for (auto it : id2poseindex) {
         int _id = it.first;
-        if (!finish_init) {
-            //When not finish init; only estimate XY position
+        if (!yaw_observability.at(_id)) {
             cost_function->AddParameterBlock(3);
         } else {
-            if (!yaw_observability.at(_id)) {
-                cost_function->AddParameterBlock(3);
-            } else {
-                cost_function->AddParameterBlock(4);
-            }
+            cost_function->AddParameterBlock(4);
         }
     }
 
@@ -1074,7 +1070,7 @@ void SwarmLocalizationSolver::estimate_observability() {
 
     if (!enable_to_init) {
 
-        if (_loop_observable_set.size() < all_nodes.size()) {
+        if (_loop_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
             ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld", 
                 _loop_observable_set.size(),
                 all_nodes.size()
