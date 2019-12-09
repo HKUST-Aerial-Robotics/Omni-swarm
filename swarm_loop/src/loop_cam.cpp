@@ -97,8 +97,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
     ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
 
-    std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
-
+    // std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
     return ides;
 }
 

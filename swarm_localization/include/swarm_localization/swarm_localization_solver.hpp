@@ -172,7 +172,7 @@ public:
    
     void add_new_swarm_frame(const SwarmFrame &sf);
 
-    void add_new_swarm_connection(const swarm_msgs::LoopConnection & loop_con);
+    void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
