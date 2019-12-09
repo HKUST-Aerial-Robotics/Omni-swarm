@@ -64,7 +64,6 @@ public:
     
     void VIOnonKF_process_callback(const vins::VIOKeyframe & viokf) {
         last_kftime = viokf.header.stamp;
-        recived_image = true;
         int keyframe_size = viokf.feature_points_2d_norm.size();
         bool adding = false;
 
@@ -73,6 +72,7 @@ public:
             return;
         }
 
+        recived_image = true;
         auto start = high_resolution_clock::now();
         auto ret = loop_cam->on_keyframe_message(viokf);
         ret.prevent_adding_db = !adding;
@@ -84,7 +84,6 @@ public:
     
     void VIOKF_callback(const vins::VIOKeyframe & viokf) {
         last_kftime = viokf.header.stamp;
-        recived_image = true;
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
         int keyframe_size = viokf.feature_points_2d_norm.size();
@@ -106,8 +105,11 @@ public:
         auto ret = loop_cam->on_keyframe_message(viokf);
         ret.prevent_adding_db = false;
         if (ret.landmark_num == 0) {
+            ROS_WARN("Null img desc, CNN no ready");
             return;
         }
+
+        recived_image = true;
 
         std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
         
@@ -131,7 +133,7 @@ public:
         std::string BRIEF_PATTHER_FILE = "";
         std::string ORB_VOC = "";
 
-        nh.param<int>("self_id", self_id, 0);
+        nh.param<int>("self_id", self_id, -1);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
@@ -151,6 +153,7 @@ public:
 #else
         loop_detector = new LoopDetector(ORB_VOC);
 #endif
+        loop_detector->self_id = self_id;
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;
 

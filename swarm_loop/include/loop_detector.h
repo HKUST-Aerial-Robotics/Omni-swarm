@@ -28,16 +28,16 @@ protected:
 #endif
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
-    bool compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret);
+    bool compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret, bool init_mode=false);
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
-    int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index, bool init_mode=false);
 
     std::set<int> all_nodes;
 
 public:
     std::function<void(LoopConnection &)> on_loop_cb;
-
+    int self_id = -1;
 #ifdef USE_DEEPNET
     LoopDetector();
 #else
