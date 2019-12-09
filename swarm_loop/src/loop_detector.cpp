@@ -9,6 +9,10 @@ using namespace std::chrono;
 
 void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
     auto start = high_resolution_clock::now(); 
+    if (img_des.drone_id!= this->self_id && database_size() == 0) {
+        ROS_INFO("Empty local database, where giveup remote image");
+        return;
+    } 
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
@@ -24,18 +28,24 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
         }
 
         bool success = false;
+        bool init_mode = nothis_node;
 
-        if (database_size() > MATCH_INDEX_DIST) {
+        if (database_size() > MATCH_INDEX_DIST || init_mode) {
 
-            ROS_INFO("Querying image from database %d....", database_size());
+            ROS_INFO("Querying image from database size %d....", database_size());
+            int _old_id = -1;
+            if (nothis_node) {
+                _old_id = query_from_database(img_des, 1, init_mode);
+            } else {
+                _old_id = query_from_database(img_des, MATCH_INDEX_DIST);
+            }
 
-            int _old_id = query_from_database(img_des, MATCH_INDEX_DIST);
             auto stop = high_resolution_clock::now(); 
 
             if (_old_id >= 0 ) {
                 std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << _old_id << std::endl;                
                 LoopConnection ret;
-                success = compute_loop(img_des, _old_id, ret);
+                success = compute_loop(img_des, _old_id, ret, init_mode);
                 if (success) {
                     on_loop_connection(ret);
                 }
@@ -111,15 +121,17 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 
 }
 
-int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int max_index) {
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int max_index, bool init_mode) {
 #ifdef USE_DEEPNET
     float distances[SEARCH_NEAREST_NUM] = {0};
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
 
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
-        // ROS_INFO("Find %ld, radius %f", labels[i], distances[i]);
-        if (labels[i] <= database_size() - max_index && distances[i] > INNER_PRODUCT_THRES) {
+        if (init_mode && labels[i] < database_size() - max_index && distances[i] > INIT_MODE_PRODUCT_THRES) {
+            return labels[i];
+        }
+        if (labels[i] < database_size() - max_index && distances[i] > INNER_PRODUCT_THRES) {
             // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
             return labels[i];
         }
@@ -147,7 +159,7 @@ int LoopDetector::database_size() const {
 #endif
 }
 
-bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret) {
+bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret, bool init_mode) {
 
     if (new_img_desc.landmark_num < MIN_LOOP_NUM) {
         return false;
@@ -167,7 +179,6 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
     std::vector<float> err;
     std::vector<unsigned char> status;
  
-    //Prepare points
     auto nowPts = loop_cam->project_to_image(
         toCV(new_img_desc.landmarks_2d_norm));
     std::vector<cv::Point2f> nowPtsSmall;
@@ -175,13 +186,13 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
     for (auto pt : nowPts) {
         pt.x = pt.x/LOOP_IMAGE_DOWNSAMPLE;
         pt.y = pt.y/LOOP_IMAGE_DOWNSAMPLE;
+        // std::cout << "now pts" << pt;
         nowPtsSmall.push_back(pt);
     }
 
     //Preform Optical Flow
     auto start = high_resolution_clock::now();    
     cv::calcOpticalFlowPyrLK(img_new_small, img_old_small, nowPtsSmall, tracked, status, err, cv::Size(21, 21), 3);
-    std::cout << "OPTICAL FLOW Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     std::vector<cv::Point2f> good_new;
     
@@ -193,9 +204,11 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
             matched_2d_norm_old.push_back(loop_cam->project_to_norm2d(tracked[i]*LOOP_IMAGE_DOWNSAMPLE));
         }
     }
-    
 
-    if(matched_3d_now.size() > MIN_LOOP_NUM) {
+    double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
+    ROS_INFO("Optical flow traced %d/%d cost %fms", matched_2d_norm_old.size(), nowPtsSmall.size(), dt);
+
+    if(matched_3d_now.size() > MIN_LOOP_NUM || (init_mode && matched_3d_now.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
 
         cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
@@ -208,6 +221,9 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
         Swarm::Pose drone_pose_now(new_img_desc.pose_drone);
 
         Swarm::Pose initial_old_drone_pose(old_img_desc.pose_drone);
+        // if (init_mode) {
+        initial_old_drone_pose = Swarm::Pose::Identity();
+        // }
 
         Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
 
@@ -225,9 +241,17 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
         //We use yaw only DPose in pose graph
         Swarm::Pose DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
 
-        std::cout << "SolvePnP Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+        double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
-        success = success && (inliers.rows > MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+        ROS_INFO("PnP solve %fms inlines %d, dyaw %f dpos %f",
+            dt, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm()
+        );
+        
+        if (init_mode) {
+            success = success && (inliers.rows > INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
+        } else {
+            success = success && (inliers.rows > MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+        }
 
         if (success) {
             /*
