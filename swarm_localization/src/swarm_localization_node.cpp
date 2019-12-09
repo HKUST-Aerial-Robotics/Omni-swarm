@@ -156,7 +156,8 @@ class SwarmLocalizationNode {
 
 
     void on_loop_connection_received(const swarm_msgs::LoopConnection & loop_conn) {
-        this->swarm_localization_solver->add_new_swarm_connection(loop_conn);
+        ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
+        this->swarm_localization_solver->add_new_loop_connection(loop_conn);
     }
 
     double t_last = 0;
@@ -183,10 +184,6 @@ protected:
             if (!has_this_drone(_id))
                 add_drone_id(_id);
         }
-
-
-        //
-
 
         double t_now = _sf.header.stamp.toSec();
 

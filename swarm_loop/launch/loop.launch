@@ -7,7 +7,7 @@
         </rosparam>
         <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
        <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/home/dji/SwarmConfig/realsense/realsense_n3_unsync.yaml" type="string" />
+       <param name="camera_config_path" value="/home/dji/SwarmConfig/realsense/left.yaml" type="string" />
     <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
     </node>
     <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="screen">

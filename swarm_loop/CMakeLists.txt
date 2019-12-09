@@ -61,6 +61,7 @@ add_executable(${PROJECT_NAME}_node
 add_executable(${PROJECT_NAME}_spy
   src/swarm_loop_spy.cpp
   src/loop_net.cpp
+  src/loop_cam.cpp
 )
 
 
