@@ -181,8 +181,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
     std::vector<float> err;
     std::vector<unsigned char> status;
  
-    auto nowPts = loop_cam->project_to_image(
-        toCV(new_img_desc.landmarks_2d_norm));
+    auto nowPts = toCV(new_img_desc.landmarks_2d);
     std::vector<cv::Point2f> nowPtsSmall;
 
     for (auto pt : nowPts) {

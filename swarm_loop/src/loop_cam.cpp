@@ -93,10 +93,9 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.landmark_num = msg.feature_points_2d_uv.size();
     // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
-
     ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
+    ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
     ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
-
     // std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
     return ides;
 }
