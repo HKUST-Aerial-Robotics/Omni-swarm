@@ -1,0 +1,19 @@
+<launch>
+    <arg name="rand" default="10.0" />
+    <arg name="num" default="5" />
+    <arg name="detection" default="true" />
+    
+    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
+        args="/home/xuhao/bags/swarm_loop/single_drone_loop_bag/realsense/realsense_n3_unsync.yaml" />
+    
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+        <rosparam>
+            camera_config_path: /home/xuhao/bags/swarm_loop/single_drone_loop_bag/realsense/left.yaml
+            debug_image : true
+            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+            #lcm_uri: udpm://239.255.76.67:7667?ttl=1
+            self_id: 0
+        </rosparam>
+        <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+    </node>
+</launch>

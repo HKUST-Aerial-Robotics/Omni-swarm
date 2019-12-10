@@ -33,3 +33,6 @@
 
 #define INIT_MODE_MIN_LOOP_NUM 15
 #define INIT_MODE_PRODUCT_THRES 0.5
+
+
+// #define DEBUG_SHOW_IMAGE

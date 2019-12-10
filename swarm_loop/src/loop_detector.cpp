@@ -207,7 +207,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
     }
 
     double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
-    ROS_INFO("Optical flow traced %d/%d cost %fms", matched_2d_norm_old.size(), nowPtsSmall.size(), dt);
+    ROS_INFO("Optical flow traced %ld/%ld cost %fms", matched_2d_norm_old.size(), nowPtsSmall.size(), dt);
 
     if(matched_3d_now.size() > MIN_LOOP_NUM || (init_mode && matched_3d_now.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
