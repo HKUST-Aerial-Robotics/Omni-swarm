@@ -97,7 +97,6 @@ public:
             ROS_WARN("VIOKF no enough movement, will giveup");
             return;
         } else {
-            last_keyframe_position = drone_pos;
             ROS_INFO("ADD VIOKeyframe MOVE %3.2fm LANDMARK %d ", dpos, keyframe_size);
         }
 
@@ -110,6 +109,7 @@ public:
         }
 
         recived_image = true;
+        last_keyframe_position = drone_pos;
 
         std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
         
