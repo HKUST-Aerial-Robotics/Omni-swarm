@@ -1,0 +1,13 @@
+<launch>
+    <arg name="display" default="false" />
+    <arg name="node_start_delay" default="30.0" />
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+        <rosparam>
+            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+        </rosparam>
+        <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
+       <param name="debug_image" value="$(arg display)" type="bool" />
+       <param name="camera_config_path" value="/home/dji/SwarmConfig/realsense/left.yaml" type="string" />
+    <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+    </node>
+</launch>
