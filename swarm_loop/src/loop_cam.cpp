@@ -66,7 +66,23 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     }
 
     auto start = high_resolution_clock::now();
-  
+
+#ifdef DEBUG_SHOW_IMAGE
+    ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
+    auto nowPts = toCV(ides.landmarks_2d);
+    cv::Mat img_color;
+    cv::cvtColor(img, img_color, cv::COLOR_GRAY2BGR);
+
+    for (auto pt: nowPts) {
+            // std::cout << pt << std::endl;
+        cv::circle(img_color, pt, 2, cv::Scalar(0,0, 255), -1);
+    }
+
+    cv::resize(img_color, img_color, cv::Size(), 2, 2);
+    cv::imshow("img", img_color);
+    cv::waitKey(30);
+#endif
+
 #ifdef USE_DEEPNET
     ides = extractor_img_desc_deepnet(msg.header.stamp);
     if (ides.image_desc_size == 0) {
@@ -96,7 +112,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
     ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
     ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
     ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
-    // std::cout << "Size of ImagePacket is" << ides.getEncodedSize() << std::endl;
+   
     return ides;
 }
 
@@ -206,9 +222,9 @@ cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
     }
 
     if (fabs(image_ts_queue[0] -  ts_sec ) < 0.001) {
-        // ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
-        image_queue.erase(image_queue.begin());
-        image_ts_queue.erase(image_ts_queue.begin());
+        ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
+        // image_queue.erase(image_queue.begin());
+        // image_ts_queue.erase(image_ts_queue.begin());
         return image_queue[0];
     }
 

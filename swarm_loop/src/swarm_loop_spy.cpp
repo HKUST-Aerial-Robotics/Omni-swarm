@@ -59,7 +59,7 @@ public:
                 cv::circle(ret, pt/2, 1, cv::Scalar(0,0, 255),1);
             }
 
-            cv::resize(ret, ret, cv::Size(), 2, 2);
+            cv::resize(ret, ret, cv::Size(), 4, 4);
             cv::imshow(win_name, ret);
         }
         cv::waitKey(10);
