@@ -52,8 +52,7 @@ public:
             sprintf(frame_name, "Frame %d", img_desc.msg_id);
             cv::putText(ret, frame_name, cv::Point2f(10,10), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(255,0,255,255));
 
-            auto nowPts = loop_cam->project_to_image(
-                toCV(img_desc.landmarks_2d_norm));
+            auto nowPts = toCV(img_desc.landmarks_2d);
 
             for (auto pt: nowPts) {
                 // std::cout << pt << std::endl;
