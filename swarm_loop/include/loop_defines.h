@@ -15,9 +15,12 @@
 #define JPG_QUALITY 95
 
 #define MIN_LOOP_NUM 15
+#define ACCEPT_LOOP_YAW (30) //ACCEPT MAX Yaw 
+#define MAX_LOOP_DIS 5.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
-#define ACCEPT_LOOP_YAW (30)
-#define MAX_LOOP_DIS 20
+#define INIT_MODE_MIN_LOOP_NUM 12 //Init mode we accepte this inlier number
+#define INIT_MODE_MIN_LOOP_NUM_L2 8 //Init mode we accepte this inlier number
+#define MAX_LOOP_DIS_L2 3.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
 #define DEG2RAD (0.01745277777777778)
 
@@ -31,11 +34,21 @@
 #define INNER_PRODUCT_THRES 0.85
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 
-#define INIT_MODE_MIN_LOOP_NUM 10
-#define INIT_MODE_PRODUCT_THRES 0.5
 
-#define ORB_HAMMING_DISTANCE 80
-#define ORB_UV_DISTANCE 1.5
+#define INIT_MODE_PRODUCT_THRES 0.5 //INIT mode we can accept this inner product as similar
 
-#define VISUALIZE_SCALE 1
+#define ORB_HAMMING_DISTANCE 80 //Max hamming
+#define ORB_UV_DISTANCE 1.5 //UV distance bigger than mid*this will be removed
+
+#define VISUALIZE_SCALE 1 //Scale for visuallize
+
+#define CROP_WIDTH_THRES 0.05 //If movement bigger than this, crop some matches down
+
+#define OUTLIER_XY_PRECENT_0 0.05 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_20 0.10 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_30 0.10 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_40 0.10 // This is given up match dx dy 
+
+#define PNP_REPROJECT_ERROR 15.0
+#define AVOID_GROUND_PRECENT 0.666 // This is for avoiding detect a lot feature on ground
 // #define DEBUG_SHOW_IMAGE

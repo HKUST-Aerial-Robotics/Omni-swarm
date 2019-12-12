@@ -128,14 +128,21 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
     float distances[SEARCH_NEAREST_NUM] = {0};
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
+    
+    //Must query or return has self id
+    bool return_must_self_id = (img_desc.drone_id != self_id);
 
+    double thres = INNER_PRODUCT_THRES;
+    if (init_mode) {
+        thres = INIT_MODE_PRODUCT_THRES;
+    }
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
-        if (init_mode && labels[i] < database_size() - max_index && distances[i] > INIT_MODE_PRODUCT_THRES) {
-            return labels[i];
-        }
-        if (labels[i] < database_size() - max_index && distances[i] > INNER_PRODUCT_THRES) {
+        int return_drone_id = id2imgdes.at(labels[i]).drone_id;
+        if (labels[i] < database_size() - max_index && distances[i] > thres) {
             // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
-            return labels[i];
+            if ((return_must_self_id && return_drone_id == self_id) || !return_must_self_id) {
+                return labels[i];
+            }
         }
     }
 
@@ -186,31 +193,204 @@ std::vector<cv::KeyPoint> detect_orb_by_region(cv::Mat _img, int features, int c
     return ret;
 }
 
-void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts1, std::vector<cv::Point2f> &tracked, std::vector<unsigned char> & status, bool visualize) {
+std::vector<cv::DMatch> filter_by_duv(const std::vector<cv::DMatch> & matches, 
+    std::vector<cv::KeyPoint> query_pts, 
+    std::vector<cv::KeyPoint> train_pts) {
+    std::vector<cv::DMatch> good_matches;
+    std::vector<float> uv_dis;
+    for (auto gm : matches) {
+        if (gm.queryIdx >= query_pts.size() || gm.trainIdx >= train_pts.size()) {
+            ROS_ERROR("out of size");
+            exit(-1);
+        } 
+        uv_dis.push_back(cv::norm(query_pts[gm.queryIdx].pt - train_pts[gm.trainIdx].pt));
+    }
+
+    std::sort(uv_dis.begin(), uv_dis.end());
+    
+    printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
+
+    double mid_dis = uv_dis[uv_dis.size()/2];
+
+    for (auto gm: matches) {
+        if (gm.distance < mid_dis*ORB_UV_DISTANCE) {
+            good_matches.push_back(gm);
+        }
+    }
+
+    return good_matches;
+}
+
+std::vector<cv::DMatch> filter_by_x(const std::vector<cv::DMatch> & matches, 
+    std::vector<cv::KeyPoint> query_pts, 
+    std::vector<cv::KeyPoint> train_pts, double OUTLIER_XY_PRECENT) {
+    std::vector<cv::DMatch> good_matches;
+    std::vector<float> dxs;
+    for (auto gm : matches) {
+        dxs.push_back(query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x);
+    }
+
+    std::sort(dxs.begin(), dxs.end());
+
+    int num = dxs.size();
+    int l = num*OUTLIER_XY_PRECENT;
+    if (l == 0) {
+        l = 1;
+    }
+    int r = num*(1-OUTLIER_XY_PRECENT);
+    if (r >= num - 1) {
+        r = num - 2;
+    }
+
+    if (r <= l ) {
+        return good_matches;
+    }
+
+    printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dxs[0], dxs[l], dxs[num/2], dxs[r], dxs[dxs.size() - 1]);
+
+    double lv = dxs[l];
+    double rv = dxs[r];
+
+    for (auto gm: matches) {
+        if (query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x > lv && query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x < rv) {
+            good_matches.push_back(gm);
+        }
+    }
+
+    return good_matches;
+}
+
+std::vector<cv::DMatch> filter_by_y(const std::vector<cv::DMatch> & matches, 
+    std::vector<cv::KeyPoint> query_pts, 
+    std::vector<cv::KeyPoint> train_pts, double OUTLIER_XY_PRECENT) {
+    std::vector<cv::DMatch> good_matches;
+    std::vector<float> dys;
+    for (auto gm : matches) {
+        dys.push_back(query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y);
+    }
+
+    std::sort(dys.begin(), dys.end());
+
+    int num = dys.size();
+    int l = num*OUTLIER_XY_PRECENT;
+    if (l == 0) {
+        l = 1;
+    }
+    int r = num*(1-OUTLIER_XY_PRECENT);
+    if (r >= num - 1) {
+        r = num - 2;
+    }
+
+    if (r <= l ) {
+        return good_matches;
+    }
+
+    printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dys[0], dys[l], dys[num/2], dys[r], dys[dys.size() - 1]);
+
+    double lv = dys[l];
+    double rv = dys[r];
+
+    for (auto gm: matches) {
+        if (query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y > lv && query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y < rv) {
+            good_matches.push_back(gm);
+        }
+    }
+
+    return good_matches;
+}
+
+
+std::vector<cv::DMatch>  replace_match_id(const std::vector<cv::DMatch> & matches, std::map<int, int> real_id1) {
+    std::vector<cv::DMatch> good_matches;
+    for (auto gm : matches) {
+        gm.trainIdx = real_id1[gm.trainIdx];
+        good_matches.push_back(gm);
+    }
+
+    return good_matches;
+}
+
+std::vector<cv::DMatch> filter_by_crop_x(const std::vector<cv::DMatch> & matches, 
+    std::vector<cv::KeyPoint> query_pts, 
+    std::vector<cv::KeyPoint> train_pts, int width) {
+    std::vector<float> dxs;
+    std::vector<cv::DMatch> good_matches;
+
+    for (auto gm : matches) {
+        dxs.push_back(query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x);
+    }
+
+    std::sort(dxs.begin(), dxs.end());
+    int mid_dx = (int) dxs[dxs.size()/2];
+    bool crop_width = fabs(mid_dx) > CROP_WIDTH_THRES*width;
+
+    printf("MIN DX %f, MID %f END %f\n", dxs[0], dxs[dxs.size()/2], dxs[dxs.size() - 1]);
+
+    if (crop_width) {
+        if (mid_dx > 0) {
+            printf("Cropping img1 %d->%d img2 %d->%d\n", width - mid_dx, width, 0, mid_dx);
+        } else {
+            printf("Cropping img1 %d->%d img2 %d->%d\n", 0, - mid_dx, width+ mid_dx, width);
+        }
+    }
+
+    for (auto gm : matches) {
+        bool use_match = true;
+        double pt1x = train_pts[gm.trainIdx].pt.x;
+        double pt2x = query_pts[gm.queryIdx].pt.x;
+        if (crop_width) {
+            if (mid_dx > 0) {
+                if(pt1x > width - mid_dx || pt2x < mid_dx) {
+                    use_match = false;
+                }
+            }
+
+            if (mid_dx < 0) {
+                if (pt1x < - mid_dx || pt2x > width + mid_dx) {
+                    use_match = false;
+                }
+            }
+        }
+        if (use_match) {
+            good_matches.push_back(gm);
+        }
+    }
+    return good_matches;
+
+}
+
+inline std::vector<cv::KeyPoint> to_keypoints_with_max_height(const std::vector<cv::Point2f> & pts, int max_y) {
+    std::vector<cv::KeyPoint> kps;
+    for (auto pt : pts) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        if (pt.y < max_y) {
+            kps.push_back(kp);
+        }
+    }
+    return kps;
+}
+
+
+void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts1, std::vector<cv::Point2f> &tracked, std::vector<unsigned char> & status, bool init_mode, bool visualize) {
 
     std::vector<cv::KeyPoint> kps1, kps2;
     std::vector<cv::DMatch> good_matches;
-    std::vector<int> real_id1;
+    std::map<int, int> real_id1;
     bool use_surf = false;
 
     std::vector<cv::Point2f> new_tracked;
-    cv::goodFeaturesToTrack(img2, new_tracked, 500, 0.01, 10);
-    for (auto pt : new_tracked) {
-        cv::KeyPoint kp;
-        kp.pt = pt;
-        kps2.push_back(kp);
-    }
 
-    // ROS_INFO("KPS2 %ld points", kps2.size());
-    // kps2 = detect_orb_by_region(img2, 500);
+    // Basically we are initial on ground, so we can use 2/3 precent plane for init
+    int no_gnd_height = img2.rows;
+    if (init_mode) {
+        no_gnd_height = img2.rows * AVOID_GROUND_PRECENT;
+    } 
 
-    for (auto pt: Pts1) {
-        cv::KeyPoint kp;
-        kp.pt = pt;
-        kps1.push_back(kp);
-    }
-
-    // cv::FAST::create();
+    cv::goodFeaturesToTrack(img2(cv::Rect(0, 0, img2.cols, no_gnd_height)), new_tracked, 500, 0.01, 5/LOOP_IMAGE_DOWNSAMPLE);
+    ROS_INFO("GFTT gives %ld new track", new_tracked.size());
+    kps2 = to_keypoints(new_tracked);
+    kps1 = to_keypoints_with_max_height(Pts1, no_gnd_height);
 
     if (use_surf) {
         // auto extractor = cv::DescriptorExtractor::create("SIFT");
@@ -229,10 +409,6 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         for (size_t i = 0; i < kps1.size(); i ++) {
             while ( j < Pts1.size() && cv::norm(Pts1[j] - kps1[i].pt) > 1) {
                 j++;
-            }
-
-            if (j < Pts1.size()) {
-                real_id1.push_back(j);
             }
         }
         auto matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
@@ -259,33 +435,40 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         _orb->compute(img1, kps1, desc1);
 
         size_t j = 0;
+
+        //Kps1
         for (size_t i = 0; i < kps1.size(); i ++) {
             while ( j < Pts1.size() && cv::norm(Pts1[j] - kps1[i].pt) > 1) {
                 j++;
             }
-            real_id1.push_back(j);
+            real_id1[i] = j;
         }
         cv::BFMatcher bfmatcher(cv::NORM_HAMMING, true);
         std::vector<cv::DMatch> matches;
         bfmatcher.match(desc2, desc1, matches);
-        std::vector<float> uv_dis;
-        for (auto gm : matches) {
-            uv_dis.push_back(cv::norm(kps2[gm.queryIdx].pt - Pts1[real_id1[gm.trainIdx]]));
+        printf("ORIGIN MATCHES %ld\n", matches.size());
+
+        kps1 = to_keypoints(Pts1);
+        matches = replace_match_id(matches, real_id1);
+        matches = filter_by_duv(matches, kps2, kps1);
+        printf("AFTER DUV MATCHES %ld\n", matches.size());
+
+        double thres = OUTLIER_XY_PRECENT_0;
+        if (matches.size() > 40 ) {
+            thres = OUTLIER_XY_PRECENT_40;
+        } else if (matches.size() > 30) {
+            thres = OUTLIER_XY_PRECENT_30;
+        } else if (matches.size() > 20) {
+            thres = OUTLIER_XY_PRECENT_20;
         }
 
-        std::sort(uv_dis.begin(), uv_dis.end());
-
-        double mid_dis = uv_dis[uv_dis.size()/2];
-
-        printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
-
-
-        for (auto gm : matches) {
-            if (cv::norm(kps2[gm.queryIdx].pt - Pts1[real_id1[gm.trainIdx]]) < mid_dis*ORB_UV_DISTANCE ) {
-                good_matches.push_back(gm);
-            }
-        }
-
+        matches = filter_by_x(matches, kps2, kps1, thres);
+        printf("AFTER DX MATCHES %ld\n", matches.size());
+        matches = filter_by_y(matches, kps2, kps1, thres);
+        printf("AFTER DY MATCHES %ld\n", matches.size());
+        // matches = filter_by_crop_x(matches, kps2, kps1, img1.cols);
+        // printf("AFTER CROP X MATCHES %ld\n", matches.size());
+        good_matches = matches;
     }
 
    
@@ -298,15 +481,24 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
     for (auto gm : good_matches) {
         // printf("HAMMING DIS %f UV DIS %f\n", gm.distance, cv::norm(kps2[gm.trainIdx].pt - Pts1[real_id1[gm.queryIdx]]));        
         // printf("HAMMING DIS %f UV DIS %f\n", gm.distance, cv::norm(kps2[gm.queryIdx].pt - Pts1[real_id1[gm.trainIdx]]));
-        auto _id1 = real_id1[gm.trainIdx];
+        auto _id1 = gm.trainIdx;
         auto _id2 = gm.queryIdx;
         tracked[_id1] = kps2[_id2].pt;
         status[_id1] = 1;
     }
 
     if (visualize) {
+        kps1.clear();
+        for (auto pt: Pts1) {
+            cv::KeyPoint kp;
+            kp.pt = pt;
+            kps1.push_back(kp);
+        }
         ROS_INFO("Good matches : %ld", good_matches.size());
         cv::Mat _show;
+	    cv::putText(img2, "IMG2", cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 3);
+	    cv::putText(img1, "IMG1", cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 0), 3);
+        
         cv::drawMatches(img2, kps2, img1, kps1, good_matches, _show);
         // cv::drawMatches(img1, kps1, img2, kps2, good_matches, _show);
         cv::resize(_show, _show, cv::Size(), VISUALIZE_SCALE, VISUALIZE_SCALE);
@@ -332,7 +524,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
     auto start = high_resolution_clock::now();    
     if (use_orb_matching) {
-        find_correspoding_pts(img_new_small, img_old_small, nowPtsSmall, tracked, status, enable_visualize);
+        find_correspoding_pts(img_new_small, img_old_small, nowPtsSmall, tracked, status, init_mode, enable_visualize);
     } else {
         cv::calcOpticalFlowPyrLK(img_new_small, img_old_small, nowPtsSmall, tracked, status, err, cv::Size(21, 21), 3);
 
@@ -363,6 +555,8 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             matched_2d_norm_now.push_back(now_norm_2d[i]);
             matched_3d_now.push_back(now_3d[i]);
             Eigen::Vector2d p_tracker(tracked[i].x, tracked[i].y);
+
+            //If old is remote drone may course reproject error here; We
             matched_2d_norm_old.push_back(loop_cam->project_to_norm2d(tracked[i]*LOOP_IMAGE_DOWNSAMPLE));
         }
     }
@@ -389,10 +583,23 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         
         start = high_resolution_clock::now();
 
-        // std::cout << "Init R " << rvec << " T" << t << std::endl;
-        //void solvePnPRansac(InputArray objectPoints, InputArray imagePoints, InputArray cameraMatrix, InputArray distCoeffs, OutputArray rvec, OutputArray tvec, bool useExtrinsicGuess=false, int iterationsCount=100, float reprojectionError=8.0, int minInliersCount=100, OutputArray inliers=noArray(), int flags=ITERATIVE )
-        //                                                                                 ExtrinsicGuess   iteration   reproject error minInliersCount
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            100,        10.0 / 460.0,     0.99,  inliers);
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            1000,        PNP_REPROJECT_ERROR/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_ITERATIVE);
+        
+        if (init_mode) {
+            bool _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
+            if (!_success) {
+                _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM_L2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_L2;            
+            }
+            success = _success;
+        } else {
+            success = success && (inliers.rows >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+        }
+
+        if (!success && init_mode) {
+            inliers = cv::Mat();
+            ROS_WARN("Solve pnp failed: inliers %d; retry with dls", inliers.rows);
+            success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            1000,        PNP_REPROJECT_ERROR / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_DLS);
+        }
 
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
 
@@ -403,13 +610,16 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
         double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
-        ROS_INFO("PnP solve %fms inlines %d, dyaw %f dpos %f", dt, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm()
-        );
+        ROS_INFO("PnPRansac %d solve %fms inlines %d, dyaw %f dpos %f", success, dt, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm());
         
         if (init_mode) {
-            success = success && (inliers.rows > INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
+            bool _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
+            if (!_success) {
+                _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM_L2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_L2;            
+            }
+            success = _success;
         } else {
-            success = success && (inliers.rows > MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+            success = success && (inliers.rows >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
         }
 
         
@@ -448,8 +658,8 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
                     
                     oldKPs.push_back(kp);
                     cv::DMatch dmatch;
-                    dmatch.queryIdx = i;
-                    dmatch.trainIdx = oldKPs.size() - 1;
+                    dmatch.queryIdx = oldKPs.size() - 1;
+                    dmatch.trainIdx = i;
                     matches.push_back(dmatch);
                 }
             }
@@ -465,9 +675,9 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             cv::Mat _show;
             std::cout << "NOWLPS size " << nowPtsSmall.size() << " OLDLPs " << oldKPs.size() << std::endl;
             if (success) {
-                cv::drawMatches(img_new, cvPoints2Keypoints(nowPtsSmall), img_old, oldKPs, good_matches, _show);
+                cv::drawMatches(img_old, oldKPs, img_new, cvPoints2Keypoints(nowPtsSmall), good_matches, _show);
             } else {
-                cv::drawMatches(img_new, cvPoints2Keypoints(nowPtsSmall), img_old, oldKPs, matches, _show);
+                cv::drawMatches(img_old, oldKPs, img_new, cvPoints2Keypoints(nowPtsSmall), matches, _show);
             }
             cv::resize(_show, _show, _show.size()*VISUALIZE_SCALE);
 
@@ -482,9 +692,9 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
             cv::imshow("Track Loop", _show);
             if (success) {
-                cv::waitKey(-1);
+                cv::waitKey(100);
             } else {
-                cv::waitKey(-1);
+                cv::waitKey(100);
             }
         }
 

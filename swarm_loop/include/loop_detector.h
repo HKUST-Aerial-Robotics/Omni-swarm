@@ -43,7 +43,7 @@ protected:
     int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index, bool init_mode=false);
 
     void find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts, std::vector<cv::Point2f> &tracked, 
-            std::vector<unsigned char> & status, bool visualize = false);
+            std::vector<unsigned char> & status, bool init_mode, bool visualize = false);
 
     std::set<int> all_nodes;
 

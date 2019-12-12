@@ -130,6 +130,17 @@ inline Time_t toLCMTime(ros::Time _time) {
 }
 
 
+inline std::vector<cv::KeyPoint> to_keypoints(const std::vector<cv::Point2f> & pts) {
+    std::vector<cv::KeyPoint> kps;
+    for (auto pt : pts) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        kps.push_back(kp);
+    }
+    return kps;
+}
+
+
 inline swarm_msgs::LoopConnection toROSLoopConnection(const LoopConnection_t & loop_con) {
     swarm_msgs::LoopConnection loop_conn;
     loop_conn.ts_a =  toROSTime(loop_con.ts_a);
@@ -148,7 +159,6 @@ inline swarm_msgs::LoopConnection toROSLoopConnection(const LoopConnection_t & l
 
     return loop_conn;
 }
-
 
 inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & loop_con) {
     LoopConnection_t loop_conn;
