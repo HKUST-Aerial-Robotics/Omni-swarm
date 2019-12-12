@@ -299,6 +299,30 @@ std::vector<cv::DMatch> filter_by_y(const std::vector<cv::DMatch> & matches,
     return good_matches;
 }
 
+std::vector<cv::DMatch> filter_by_hamming(const std::vector<cv::DMatch> & matches) {
+    std::vector<cv::DMatch> good_matches;
+    std::vector<float> dys;
+    for (auto gm : matches) {
+        dys.push_back(gm.distance);
+    }
+
+    std::sort(dys.begin(), dys.end());
+
+    printf("MIN DX DIS:%f, 2min %fm ax %f\n", dys[0], 2*dys[0], dys[dys.size() - 1]);
+
+    double max_hamming = 2*dys[0];
+    if (max_hamming < ORB_HAMMING_DISTANCE) {
+        max_hamming = ORB_HAMMING_DISTANCE;
+    }
+    for (auto gm: matches) {
+        if (gm.distance < max_hamming) {
+            good_matches.push_back(gm);
+        }
+    }
+
+    return good_matches;
+}
+
 
 std::vector<cv::DMatch>  replace_match_id(const std::vector<cv::DMatch> & matches, std::map<int, int> real_id1) {
     std::vector<cv::DMatch> good_matches;
@@ -309,6 +333,7 @@ std::vector<cv::DMatch>  replace_match_id(const std::vector<cv::DMatch> & matche
 
     return good_matches;
 }
+
 
 std::vector<cv::DMatch> filter_by_crop_x(const std::vector<cv::DMatch> & matches, 
     std::vector<cv::KeyPoint> query_pts, 
@@ -426,11 +451,10 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
             }
         }
     } else {
-        auto _orb = cv::ORB::create(1000);
+        auto _orb = cv::ORB::create(1000, 1.2f, 8, 31, 0, 4, cv::ORB::HARRIS_SCORE, 31, 20);
         cv::Mat desc1, desc2;
         _orb->compute(img2, kps2, desc2);
         // _orb->detectAndCompute(img2, cv::Mat(), kps2, desc2);
-        _orb = cv::ORB::create(1000);
         // _orb->detectAndCompute(img1, cv::Mat(), kps1, desc1, true);
         _orb->compute(img1, kps1, desc1);
 
@@ -443,13 +467,16 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
             }
             real_id1[i] = j;
         }
-        cv::BFMatcher bfmatcher(cv::NORM_HAMMING, true);
+        cv::BFMatcher bfmatcher(cv::NORM_HAMMING2, true);
         std::vector<cv::DMatch> matches;
         bfmatcher.match(desc2, desc1, matches);
         printf("ORIGIN MATCHES %ld\n", matches.size());
-
+        matches = filter_by_hamming(matches);
+        printf("AFTER HAMMING X MATCHES %ld\n", matches.size());
         kps1 = to_keypoints(Pts1);
         matches = replace_match_id(matches, real_id1);
+        
+        
         matches = filter_by_duv(matches, kps2, kps1);
         printf("AFTER DUV MATCHES %ld\n", matches.size());
 
@@ -461,14 +488,14 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         } else if (matches.size() > 20) {
             thres = OUTLIER_XY_PRECENT_20;
         }
-
+        
         matches = filter_by_x(matches, kps2, kps1, thres);
         printf("AFTER DX MATCHES %ld\n", matches.size());
         matches = filter_by_y(matches, kps2, kps1, thres);
         printf("AFTER DY MATCHES %ld\n", matches.size());
-        // matches = filter_by_crop_x(matches, kps2, kps1, img1.cols);
-        // printf("AFTER CROP X MATCHES %ld\n", matches.size());
         good_matches = matches;
+
+      
     }
 
    
@@ -507,6 +534,24 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
     }
 }
 
+bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, const Swarm::Pose & DP_old_to_new) {
+    bool success = pnp_success;
+    if (!pnp_success) {
+        return false;
+    }
+
+    if (init_mode) {
+        bool _success = (inliers >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
+        if (!_success) {
+        _success = (inliers >= INIT_MODE_MIN_LOOP_NUM_LEVEL2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_LEVEL2;            
+        }
+        success = _success;
+    } else {
+        success = (inliers >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+    }        
+
+    return success;
+}
 bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
@@ -583,44 +628,39 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         
         start = high_resolution_clock::now();
 
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            1000,        PNP_REPROJECT_ERROR/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_ITERATIVE);
-        
+        int iteratives = 100;
         if (init_mode) {
-            bool _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
-            if (!_success) {
-                _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM_L2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_L2;            
-            }
-            success = _success;
-        } else {
-            success = success && (inliers.rows >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
+            iteratives = 1000;
         }
-
-        if (!success && init_mode) {
-            inliers = cv::Mat();
-            ROS_WARN("Solve pnp failed: inliers %d; retry with dls", inliers.rows);
-            success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            1000,        PNP_REPROJECT_ERROR / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_DLS);
-        }
-
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
-
         auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
-
-        //We use yaw only DPose in pose graph
+        
         Swarm::Pose DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+        
+        success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
+
+        std::cout << "PnP solved DPose ";
+        DP_old_to_new.print();
+
+        success = false;
+        if (!success && init_mode) {
+            double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
+            ROS_WARN("Solve pnp failed cost %fms: inliers %d; retry with iterative", dt, inliers.rows);
+            inliers = cv::Mat();
+            success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
+            p_cam_old_in_new = PnPRestoCamPose(rvec, t);
+            p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
+            DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+            success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
+            if (success) {
+                ROS_INFO("DLS Success\n");
+            }
+        }
 
         double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
         ROS_INFO("PnPRansac %d solve %fms inlines %d, dyaw %f dpos %f", success, dt, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm());
-        
-        if (init_mode) {
-            bool _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
-            if (!_success) {
-                _success = success && (inliers.rows >= INIT_MODE_MIN_LOOP_NUM_L2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_L2;            
-            }
-            success = _success;
-        } else {
-            success = success && (inliers.rows >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
-        }
 
         
         initial_old_drone_pose.print();
@@ -636,6 +676,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
         //Show Result
         if (enable_visualize) {
+            // std::cout << "INLIERS" << inliers << std::endl;
             cv::Mat img_new, img_old;
             cv::cvtColor(img_new_small, img_new, cv::COLOR_GRAY2BGR);
             cv::cvtColor(img_old_small, img_old, cv::COLOR_GRAY2BGR);
@@ -762,22 +803,22 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
             first_try_match_mode
     );
 
-    if (!success) {
-        ROS_WARN("First try  failed, try second time");
+    // if (!success) {
+    //     ROS_WARN("First try  failed, try second time");
 
-        success = compute_relative_pose(img_new_small, img_old_small, nowPtsSmall, 
-            toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
-            Swarm::Pose(old_img_desc.camera_extrinsic),
-            Swarm::Pose(new_img_desc.pose_drone),
-            DP_old_to_new,
-            init_mode,
-            !first_try_match_mode
-        );
+    //     success = compute_relative_pose(img_new_small, img_old_small, nowPtsSmall, 
+    //         toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
+    //         Swarm::Pose(old_img_desc.camera_extrinsic),
+    //         Swarm::Pose(new_img_desc.pose_drone),
+    //         DP_old_to_new,
+    //         init_mode,
+    //         !first_try_match_mode
+    //     );
 
-        if (!success) {
-            ROS_WARN("Second try with match mode %d failed", !first_try_match_mode);
-        }
-    }
+    //     if (!success) {
+    //         ROS_WARN("Second try with match mode %d failed", !first_try_match_mode);
+    //     }
+    // }
 
 
     if (success) {
