@@ -101,6 +101,22 @@ inline std::vector<cv::Point2f> toCV(Point2d_t * arr, int len) {
     return _arr;
 }
 
+inline std::vector<cv::Point3f> toCV(Point3d_t * arr, int len) {
+    std::vector<cv::Point3f> _arr;
+    for (int i = 0; i < len; i++) {
+        auto a = arr[i];
+        _arr.push_back(toCV(a));
+    }
+    return _arr;
+}
+
+inline std::vector<cv::Point3f> toCV(std::vector<Point3d_t> arr) {
+    std::vector<cv::Point3f> _arr;
+    for (auto a : arr) {
+        _arr.push_back(toCV(a));
+    }
+    return _arr;
+}
 
 inline ros::Time toROSTime(Time_t _time) {
     return ros::Time(_time.sec, _time.nsec);
