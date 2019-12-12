@@ -643,7 +643,6 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         std::cout << "PnP solved DPose ";
         DP_old_to_new.print();
 
-        success = false;
         if (!success && init_mode) {
             double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
             ROS_WARN("Solve pnp failed cost %fms: inliers %d; retry with iterative", dt, inliers.rows);
