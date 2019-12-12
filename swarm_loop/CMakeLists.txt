@@ -61,7 +61,6 @@ add_executable(${PROJECT_NAME}_node
 add_executable(${PROJECT_NAME}_spy
   src/swarm_loop_spy.cpp
   src/loop_net.cpp
-  src/loop_cam.cpp
 )
 
 
@@ -87,4 +86,5 @@ target_link_libraries(${PROJECT_NAME}_spy
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
    lcm
+   dw
 )
