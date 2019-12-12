@@ -208,7 +208,7 @@ std::vector<cv::DMatch> filter_by_duv(const std::vector<cv::DMatch> & matches,
 
     std::sort(uv_dis.begin(), uv_dis.end());
     
-    printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
+    // printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
 
     double mid_dis = uv_dis[uv_dis.size()/2];
 
@@ -246,7 +246,7 @@ std::vector<cv::DMatch> filter_by_x(const std::vector<cv::DMatch> & matches,
         return good_matches;
     }
 
-    printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dxs[0], dxs[l], dxs[num/2], dxs[r], dxs[dxs.size() - 1]);
+    // printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dxs[0], dxs[l], dxs[num/2], dxs[r], dxs[dxs.size() - 1]);
 
     double lv = dxs[l];
     double rv = dxs[r];
@@ -285,7 +285,7 @@ std::vector<cv::DMatch> filter_by_y(const std::vector<cv::DMatch> & matches,
         return good_matches;
     }
 
-    printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dys[0], dys[l], dys[num/2], dys[r], dys[dys.size() - 1]);
+    // printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dys[0], dys[l], dys[num/2], dys[r], dys[dys.size() - 1]);
 
     double lv = dys[l];
     double rv = dys[r];
@@ -308,7 +308,7 @@ std::vector<cv::DMatch> filter_by_hamming(const std::vector<cv::DMatch> & matche
 
     std::sort(dys.begin(), dys.end());
 
-    printf("MIN DX DIS:%f, 2min %fm ax %f\n", dys[0], 2*dys[0], dys[dys.size() - 1]);
+    // printf("MIN DX DIS:%f, 2min %fm ax %f\n", dys[0], 2*dys[0], dys[dys.size() - 1]);
 
     double max_hamming = 2*dys[0];
     if (max_hamming < ORB_HAMMING_DISTANCE) {
@@ -417,88 +417,52 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
     kps2 = to_keypoints(new_tracked);
     kps1 = to_keypoints_with_max_height(Pts1, no_gnd_height);
 
-    if (use_surf) {
-        // auto extractor = cv::DescriptorExtractor::create("SIFT");
+    
+    auto _orb = cv::ORB::create(1000, 1.2f, 8, 31, 0, 4, cv::ORB::HARRIS_SCORE, 31, 20);
+    cv::Mat desc1, desc2;
+    _orb->compute(img2, kps2, desc2);
+    // _orb->detectAndCompute(img2, cv::Mat(), kps2, desc2);
+    // _orb->detectAndCompute(img1, cv::Mat(), kps1, desc1, true);
+    _orb->compute(img1, kps1, desc1);
 
-        auto _surf = cv::xfeatures2d::SIFT::create(1000, 3, 0.01, 1);
-        cv::Mat desc1, desc2;
-        // _surf->detectAndCompute(img2, cv::Mat(), kps2, desc2);
-        _surf->compute(img2, kps2, desc2);
-        // _orb->detectAndCompute(img2, cv::Mat(), kps2, desc2);
-        _surf = cv::xfeatures2d::SIFT::create(1000, 3, 0.01, 1);
-        // _surf->detectAndCompute(img1, cv::Mat(), kps1, desc1, true);
-        _surf->compute(img1, kps1, desc1);
+    size_t j = 0;
 
-
-        size_t j = 0;
-        for (size_t i = 0; i < kps1.size(); i ++) {
-            while ( j < Pts1.size() && cv::norm(Pts1[j] - kps1[i].pt) > 1) {
-                j++;
-            }
+    //Kps1
+    for (size_t i = 0; i < kps1.size(); i ++) {
+        while ( j < Pts1.size() && cv::norm(Pts1[j] - kps1[i].pt) > 1) {
+            j++;
         }
-        auto matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
-        std::vector< std::vector<cv::DMatch> > knn_matches;
-        matcher->knnMatch( desc1, desc2, knn_matches, 2 );
-        //-- Filter matches using the Lowe's ratio test
-        ROS_INFO("KPS1 %ld KPS2 %ld Knn match size %ld", kps1.size(), kps2.size(), knn_matches.size());
-        const float ratio_thresh = 0.7f;
-        for (size_t i = 0; i < knn_matches.size(); i++)
-        {
-            printf("Dis1 %f Dis2 %f\n", knn_matches[i][0].distance, knn_matches[i][1].distance);
-            if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
-            {
-                good_matches.push_back(knn_matches[i][0]);
-            }
-        }
-    } else {
-        auto _orb = cv::ORB::create(1000, 1.2f, 8, 31, 0, 4, cv::ORB::HARRIS_SCORE, 31, 20);
-        cv::Mat desc1, desc2;
-        _orb->compute(img2, kps2, desc2);
-        // _orb->detectAndCompute(img2, cv::Mat(), kps2, desc2);
-        // _orb->detectAndCompute(img1, cv::Mat(), kps1, desc1, true);
-        _orb->compute(img1, kps1, desc1);
-
-        size_t j = 0;
-
-        //Kps1
-        for (size_t i = 0; i < kps1.size(); i ++) {
-            while ( j < Pts1.size() && cv::norm(Pts1[j] - kps1[i].pt) > 1) {
-                j++;
-            }
-            real_id1[i] = j;
-        }
-        cv::BFMatcher bfmatcher(cv::NORM_HAMMING2, true);
-        std::vector<cv::DMatch> matches;
-        bfmatcher.match(desc2, desc1, matches);
-        printf("ORIGIN MATCHES %ld\n", matches.size());
-        matches = filter_by_hamming(matches);
-        printf("AFTER HAMMING X MATCHES %ld\n", matches.size());
-        kps1 = to_keypoints(Pts1);
-        matches = replace_match_id(matches, real_id1);
-        
-        
-        matches = filter_by_duv(matches, kps2, kps1);
-        printf("AFTER DUV MATCHES %ld\n", matches.size());
-
-        double thres = OUTLIER_XY_PRECENT_0;
-        if (matches.size() > 40 ) {
-            thres = OUTLIER_XY_PRECENT_40;
-        } else if (matches.size() > 30) {
-            thres = OUTLIER_XY_PRECENT_30;
-        } else if (matches.size() > 20) {
-            thres = OUTLIER_XY_PRECENT_20;
-        }
-        
-        matches = filter_by_x(matches, kps2, kps1, thres);
-        printf("AFTER DX MATCHES %ld\n", matches.size());
-        matches = filter_by_y(matches, kps2, kps1, thres);
-        printf("AFTER DY MATCHES %ld\n", matches.size());
-        good_matches = matches;
-
-      
+        real_id1[i] = j;
     }
+    cv::BFMatcher bfmatcher(cv::NORM_HAMMING2, true);
+    std::vector<cv::DMatch> matches;
+    bfmatcher.match(desc2, desc1, matches);
+    // printf("ORIGIN MATCHES %ld\n", matches.size());
+    matches = filter_by_hamming(matches);
+    // printf("AFTER HAMMING X MATCHES %ld\n", matches.size());
+    kps1 = to_keypoints(Pts1);
+    matches = replace_match_id(matches, real_id1);
+    
+    
+    matches = filter_by_duv(matches, kps2, kps1);
+    // printf("AFTER DUV MATCHES %ld\n", matches.size());
 
-   
+    double thres = OUTLIER_XY_PRECENT_0;
+    if (matches.size() > 40 ) {
+        thres = OUTLIER_XY_PRECENT_40;
+    } else if (matches.size() > 30) {
+        thres = OUTLIER_XY_PRECENT_30;
+    } else if (matches.size() > 20) {
+        thres = OUTLIER_XY_PRECENT_20;
+    }
+    
+    matches = filter_by_x(matches, kps2, kps1, thres);
+    // printf("AFTER DX MATCHES %ld\n", matches.size());
+    matches = filter_by_y(matches, kps2, kps1, thres);
+    // printf("AFTER DY MATCHES %ld\n", matches.size());
+    good_matches = matches;
+
+    
     tracked = std::vector<cv::Point2f> (Pts1.size());
     status = std::vector<unsigned char>(Pts1.size());
     std::fill(status.begin(), status.end(), 0);
@@ -640,12 +604,13 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         
         success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
 
-        std::cout << "PnP solved DPose ";
-        DP_old_to_new.print();
 
         if (!success && init_mode) {
             double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
             ROS_WARN("Solve pnp failed cost %fms: inliers %d; retry with iterative", dt, inliers.rows);
+            std::cout << "Failed PnP solved DPose ";
+            DP_old_to_new.print();
+
             inliers = cv::Mat();
             success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
             p_cam_old_in_new = PnPRestoCamPose(rvec, t);
@@ -661,12 +626,11 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
         ROS_INFO("PnPRansac %d solve %fms inlines %d, dyaw %f dpos %f", success, dt, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm());
 
-        
-        initial_old_drone_pose.print();
-        std::cout << "DRONE POSE NOW  ";
-        drone_pose_now.print();
+        // initial_old_drone_pose.print();
+        // std::cout << "DRONE POSE NOW  ";
+        // drone_pose_now.print();
 
-        std::cout << "Initial DPose    ";
+        // std::cout << "Initial DPose    ";
         Swarm::Pose::DeltaPose(initial_old_drone_pose, drone_pose_now, true).print();
         std::cout << "PnP solved DPose ";
         DP_old_to_new.print();
