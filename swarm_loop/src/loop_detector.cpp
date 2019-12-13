@@ -599,7 +599,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
         auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
         
-        Swarm::Pose DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+        DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
         
         success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
 
@@ -630,7 +630,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         // drone_pose_now.print();
 
         // std::cout << "Initial DPose    ";
-        Swarm::Pose::DeltaPose(initial_old_drone_pose, drone_pose_now, true).print();
+        // Swarm::Pose::DeltaPose(initial_old_drone_pose, drone_pose_now, true).print();
         std::cout << "PnP solved DPose ";
         DP_old_to_new.print();
 
