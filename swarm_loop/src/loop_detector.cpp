@@ -806,6 +806,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const un
         ret.self_pose_a = toROSPose(old_img_desc.pose_drone);
         ret.self_pose_b = toROSPose(new_img_desc.pose_drone);
 
+        return true;
     }
     return false;
 
