@@ -849,11 +849,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
 void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem& problem, int _id) const {
     auto nfs = est_poses_idts.at(_id);
 
-    if (nfs.size() < 2) {
-        ROS_INFO("Frame nums for id %d is to small:%ld", _id, nfs.size());
-        return;
-    }
-
+ 
     std::vector<NodeFrame> nf_win;
     std::vector<double*> pose_win;
     std::map<int64_t, int> ts2poseindex;
@@ -879,9 +875,13 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     }
         //Do not reestimate first
         // pose_win.erase(pose_win.begin());
-        if (_id == self_id) {
-            problem.SetParameterBlockConstant(pose_win[0]);
-        }
+    if (_id == self_id) {
+        problem.SetParameterBlockConstant(pose_win[0]);
+    }
+    if (nfs.size() < 2) {
+        ROS_INFO("Frame nums for id %d is to small:%ld", _id, nfs.size());
+        return;
+    }
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
