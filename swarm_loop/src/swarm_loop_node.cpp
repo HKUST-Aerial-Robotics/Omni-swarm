@@ -137,6 +137,14 @@ public:
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
+        
+        nh.param<int>("loop_image_downsample", LOOP_IMAGE_DOWNSAMPLE, 1);
+        nh.param<int>("init_loop_min_feature_num", INIT_MODE_MIN_LOOP_NUM, 10);
+        nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
+        nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
+        nh.param<int>("jpg_quality", JPG_QUALITY, 50);
+        
+
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
         nh.param<std::string>("BRIEF_PATTHER_FILE", BRIEF_PATTHER_FILE, 

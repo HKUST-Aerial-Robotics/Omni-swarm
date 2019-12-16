@@ -4,6 +4,11 @@
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
+            loop_image_downsample: 1
+            init_loop_min_feature_num: 10
+            init_loop_min_feature_num: 10
+            min_loop_feature_num: 15
+            jpg_quality: 50
         </rosparam>
         <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
        <param name="debug_image" value="$(arg display)" type="bool" />

@@ -595,7 +595,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         if (init_mode) {
             iteratives = 1000;
         }
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_DLS);
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/LOOP_IMAGE_DOWNSAMPLE/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
         auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
         
@@ -611,7 +611,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             DP_old_to_new.print();
 
             inliers = cv::Mat();
-            success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
+            success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ LOOP_IMAGE_DOWNSAMPLE / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
             p_cam_old_in_new = PnPRestoCamPose(rvec, t);
             p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
             DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);

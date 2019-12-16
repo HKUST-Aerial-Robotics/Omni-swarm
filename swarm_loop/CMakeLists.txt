@@ -56,11 +56,13 @@ add_executable(${PROJECT_NAME}_node
   include/loop_cam.h
   include/loop_detector.h
   include/loop_net.h
+  src/loop_params.cpp
 )
 
 add_executable(${PROJECT_NAME}_spy
   src/swarm_loop_spy.cpp
   src/loop_net.cpp
+  src/loop_params.cpp
 )
 
 
