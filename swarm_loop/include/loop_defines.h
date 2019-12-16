@@ -11,15 +11,15 @@
 // #define MIN_MOVEMENT_KEYFRAME 0.1
 #define MIN_MOVEMENT_KEYFRAME 0.4
 
-#define LOOP_IMAGE_DOWNSAMPLE 1
-#define JPG_QUALITY 95
+#define LOOP_IMAGE_DOWNSAMPLE 2
+#define JPG_QUALITY 50
 
 #define MIN_LOOP_NUM 15
 #define ACCEPT_LOOP_YAW (30) //ACCEPT MAX Yaw 
 #define MAX_LOOP_DIS 5.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
-#define INIT_MODE_MIN_LOOP_NUM 12 //Init mode we accepte this inlier number
-#define INIT_MODE_MIN_LOOP_NUM_LEVEL2 6 //Init mode we accepte this inlier number
+#define INIT_MODE_MIN_LOOP_NUM 10 //Init mode we accepte this inlier number
+#define INIT_MODE_MIN_LOOP_NUM_LEVEL2 10 //Init mode we accepte this inlier number
 #define MAX_LOOP_DIS_LEVEL2 3.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
 #define DEG2RAD (0.01745277777777778)
