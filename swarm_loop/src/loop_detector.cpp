@@ -17,7 +17,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
     all_nodes.insert(img_des.drone_id);
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
-        std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+        // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
         int new_added_image = -1;
@@ -60,6 +60,13 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
                 if (success) {
                     ROS_INFO("Adding success matched drone %d to database", img_des.drone_id);
                     success_loop_nodes.insert(img_des.drone_id);
+
+                    ROS_INFO("\nDetected pub loop %d->%d DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg\n",
+                        ret.id_a, ret.id_b,
+                        ret.dpos.x, ret.dpos.y, ret.dpos.z,
+                        ret.dyaw*57.3
+                    );
+
                     on_loop_connection(ret);
                 }
             } else {
@@ -140,18 +147,17 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
     
-    //Must query or return has self id
-    bool return_must_self_id = (img_desc.drone_id != self_id);
-
     double thres = INNER_PRODUCT_THRES;
+    
     if (init_mode) {
         thres = INIT_MODE_PRODUCT_THRES;
     }
+
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
         if (labels[i] < database_size() - max_index && distances[i] > thres) {
-            // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
-            if ((return_must_self_id && return_drone_id == self_id) || !return_must_self_id) {
+            if (img_desc.drone_id == self_id || return_drone_id == self_id) {
+                // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
                 return labels[i];
             }
         }
@@ -423,7 +429,7 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         no_gnd_height = img2.rows * AVOID_GROUND_PRECENT;
     } 
 
-    cv::goodFeaturesToTrack(img2(cv::Rect(0, 0, img2.cols, no_gnd_height)), new_tracked, 500, 0.01, 5/LOOP_IMAGE_DOWNSAMPLE);
+    cv::goodFeaturesToTrack(img2(cv::Rect(0, 0, img2.cols, no_gnd_height)), new_tracked, GFTT_PTS, 0.01, GFTT_MIN_DIS/LOOP_IMAGE_DOWNSAMPLE);
     ROS_INFO("GFTT gives %ld new track", new_tracked.size());
     kps2 = to_keypoints(new_tracked);
     kps1 = to_keypoints_with_max_height(Pts1, no_gnd_height);
@@ -481,8 +487,6 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
 
 
     for (auto gm : good_matches) {
-        // printf("HAMMING DIS %f UV DIS %f\n", gm.distance, cv::norm(kps2[gm.trainIdx].pt - Pts1[real_id1[gm.queryIdx]]));        
-        // printf("HAMMING DIS %f UV DIS %f\n", gm.distance, cv::norm(kps2[gm.queryIdx].pt - Pts1[real_id1[gm.trainIdx]]));
         auto _id1 = gm.trainIdx;
         auto _id2 = gm.queryIdx;
         tracked[_id1] = kps2[_id2].pt;
@@ -781,22 +785,26 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
             first_try_match_mode
     );
 
-    // if (!success) {
-    //     ROS_WARN("First try  failed, try second time");
+#ifdef ENABLE_OPTICAL_SEC_TRY_INIT
+    if (!success && init_mode) {
+        ROS_WARN("First init try failed, try second time");
 
-    //     success = compute_relative_pose(img_new_small, img_old_small, nowPtsSmall, 
-    //         toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
-    //         Swarm::Pose(old_img_desc.camera_extrinsic),
-    //         Swarm::Pose(new_img_desc.pose_drone),
-    //         DP_old_to_new,
-    //         init_mode,
-    //         !first_try_match_mode
-    //     );
+        success = compute_relative_pose(img_new_small, img_old_small, nowPtsSmall, 
+            toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
+            Swarm::Pose(old_img_desc.camera_extrinsic),
+            Swarm::Pose(new_img_desc.pose_drone),
+            DP_old_to_new,
+            init_mode,
+            false
+        );
 
-    //     if (!success) {
-    //         ROS_WARN("Second try with match mode %d failed", !first_try_match_mode);
-    //     }
-    // }
+        if (!success) {
+            ROS_WARN("Second try with match mode %d failed", !first_try_match_mode);
+        } else {
+            ROS_INFO("Init mode second trye with optical flow success");
+        }
+    }
+#endif
 
 
     if (success) {
