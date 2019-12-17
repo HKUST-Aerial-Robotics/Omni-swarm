@@ -43,7 +43,7 @@ public:
             loop_net->broadcast_loop_connection(loop_con);
         }
 
-        ROS_INFO("Pub loop conn. is local %d", is_local);
+        // ROS_INFO("Pub loop conn. is local %d", is_local);
         loopconn_pub.publish(loop_con);
     }
 

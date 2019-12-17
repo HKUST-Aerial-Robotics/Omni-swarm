@@ -54,3 +54,8 @@ extern int MIN_LOOP_NUM;
 #define PNP_REPROJECT_ERROR 10.0
 #define AVOID_GROUND_PRECENT 0.666 // This is for avoiding detect a lot feature on ground
 // #define DEBUG_SHOW_IMAGE
+
+// #define ENABLE_OPTICAL_SEC_TRY_INIT 
+
+#define GFTT_PTS 1000
+#define GFTT_MIN_DIS 10

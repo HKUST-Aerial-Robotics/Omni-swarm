@@ -7,7 +7,7 @@
             max_accept_cost: 10
             max_keyframe_num: 100
             min_keyframe_num: 1
-            thread_num: 2
+            thread_num: 1
             min_kf_movement : 0.5
             init_xy_movement : 2.0
             init_z_movement : 1.0

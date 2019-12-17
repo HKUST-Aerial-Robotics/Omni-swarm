@@ -1270,8 +1270,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     if (finish_init) {
         options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
-    }else {
+        options.max_num_iterations = 5;
     }
+    
     options.num_threads = thread_num;
     Solver::Summary summary;
 

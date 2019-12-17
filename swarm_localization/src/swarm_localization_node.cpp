@@ -263,6 +263,8 @@ private:
 
     int self_id = -1;
 
+    float predict_freq;
+
     void load_nodes_from_file(const std::string &path) {
         try {
             ROS_INFO("Loading swarmconfig from %s", path.c_str());
@@ -357,29 +359,35 @@ private:
         fused_drone_basecoor_pub.publish(sdb);
     }
 
+
+    double t_last_predict_swarm = 0;
+
     void predict_swarm(const swarm_frame &_sf) {
-        // ros::Time ts = ros::Time::now();
-        high_resolution_clock::time_point t1 = high_resolution_clock::now();
-        if (_sf.node_frames.size() >= 1) {
-            if (swarm_localization_solver->CanPredictSwarm()) {
-                SwarmFrame sf = swarm_frame_from_msg(_sf);
-                SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
-                if (pub_swarm_odom) {
-                    for (auto it: _sfs.node_poses) {
-                        this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
+        double t_now = ros::Time::now().toSec();
+        if (t_last_predict_swarm - t_now > 1.0/predict_freq) {
+            t_last_predict_swarm = t_now;
+            high_resolution_clock::time_point t1 = high_resolution_clock::now();
+            if (_sf.node_frames.size() >= 1) {
+                if (swarm_localization_solver->CanPredictSwarm()) {
+                    SwarmFrame sf = swarm_frame_from_msg(_sf);
+                    SwarmFrameState _sfs = swarm_localization_solver->PredictSwarm(sf);
+                    if (pub_swarm_odom) {
+                        for (auto it: _sfs.node_poses) {
+                            this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
+                        }
                     }
+
+
+                    pub_fused_relative(_sfs, sf.stamp);
+                } else {
+                    ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
                 }
-
-
-                pub_fused_relative(_sfs, sf.stamp);
-            } else {
-                ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
+                
+                high_resolution_clock::time_point t2 = high_resolution_clock::now();
+                auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+                // double dts = (ros::Time::now() - ts).toSec();
+                //ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
             }
-            
-            high_resolution_clock::time_point t2 = high_resolution_clock::now();
-            auto duration = duration_cast<microseconds>( t2 - t1 ).count();
-            // double dts = (ros::Time::now() - ts).toSec();
-            //ROS_INFO_THROTTLE(1.0, "Predict cost %ld mus", duration);
         }
     }
 
@@ -409,6 +417,7 @@ public:
         nh.param<int>("max_keyframe_num", frame_num, 20);
         nh.param<int>("min_keyframe_num", min_frame_num, 3);
         nh.param<float>("force_freq", force_freq, 1.0f);
+        nh.param<float>("predict_freq", predict_freq, 10.0f);
         nh.param<float>("max_accept_cost", acpt_cost, 10.0f);
         nh.param<float>("min_kf_movement", kf_movement, 0.4f);
         nh.param<float>("init_xy_movement", init_xy_movement, 2.0f);
