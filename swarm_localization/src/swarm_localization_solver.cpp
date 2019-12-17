@@ -1256,6 +1256,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 
+    num_res_sf = problem.NumResiduals();
     setup_problem_with_loops(est_poses_idts, problem);
 
     ROS_INFO("Loop residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
