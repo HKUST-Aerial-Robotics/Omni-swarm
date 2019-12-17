@@ -13,27 +13,28 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
         return;
     } 
 
-    all_nodes.insert(self_id);
+    success_loop_nodes.insert(self_id);
+    all_nodes.insert(img_des.drone_id);
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
-        bool nothis_node = all_nodes.find(img_des.drone_id) == all_nodes.end();
+        bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
-        if (!img_des.prevent_adding_db || nothis_node) {
-            int _id = add_to_database(img_des);
-            id2imgdes[_id] = img_des;
+        int new_added_image = -1;
+        if (!img_des.prevent_adding_db || init_mode) {
+            new_added_image = add_to_database(img_des);
+            id2imgdes[new_added_image] = img_des;
         } else {
             ROS_INFO("This image is prevent to adding to DB");
         }
 
         bool success = false;
-        bool init_mode = nothis_node;
 
         if (database_size() > MATCH_INDEX_DIST || init_mode) {
 
             ROS_INFO("Querying image from database size %d....", database_size());
             int _old_id = -1;
-            if (nothis_node) {
+            if (init_mode) {
                 _old_id = query_from_database(img_des, 1, init_mode);
             } else {
                 _old_id = query_from_database(img_des, MATCH_INDEX_DIST);
@@ -44,10 +45,21 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
             if (_old_id >= 0 ) {
                 std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << _old_id << std::endl;                
                 LoopConnection ret;
-                success = compute_loop(img_des, _old_id, ret, init_mode);
+
+                if (id2imgdes[_old_id].drone_id == self_id) {
+                    success = compute_loop(img_des, id2imgdes[_old_id], ret, init_mode);
+                } else {
+                    //We grab remote drone from database
+                    if (img_des.drone_id == self_id) {
+                        success = compute_loop(id2imgdes[_old_id], img_des, ret, init_mode);
+                    } else {
+                        ROS_WARN("Will not compute loop, drone id is %d(self %d), new_added_image id %d", img_des.drone_id, self_id, new_added_image);
+                    }
+                }
+
                 if (success) {
                     ROS_INFO("Adding success matched drone %d to database", img_des.drone_id);
-                    all_nodes.insert(img_des.drone_id);
+                    success_loop_nodes.insert(img_des.drone_id);
                     on_loop_connection(ret);
                 }
             } else {
@@ -515,6 +527,9 @@ bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, const Swar
 
     return success;
 }
+
+
+//img_old_small image must from local drone
 bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
@@ -710,16 +725,17 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
     return false;
 }
 
-bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret, bool init_mode) {
+
+bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, LoopConnection & ret, bool init_mode) {
 
     if (new_img_desc.landmark_num < MIN_LOOP_NUM) {
         return false;
     }
     //Recover imformation
-    ImageDescriptor_t old_img_desc = id2imgdes[_img_index_old];
+
+    assert(old_img_desc.drone_id == self_id && "old img desc must from self drone!");
 
     ROS_INFO("Compute loop %d->%d", old_img_desc.drone_id, new_img_desc.drone_id);
-
 
 
     auto img_old_small = decode_image(old_img_desc);
