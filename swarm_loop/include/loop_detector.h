@@ -29,7 +29,7 @@ protected:
 #endif
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::vector<cv::Scalar> colors;
-    bool compute_loop(const ImageDescriptor_t & new_img_desc, const unsigned int & _img_index_old, LoopConnection & ret, bool init_mode=false);
+    bool compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, LoopConnection & ret, bool init_mode=false);
     bool compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
@@ -45,6 +45,7 @@ protected:
     void find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts, std::vector<cv::Point2f> &tracked, 
             std::vector<unsigned char> & status, bool init_mode, bool visualize = false);
 
+    std::set<int> success_loop_nodes;
     std::set<int> all_nodes;
 
 public:
