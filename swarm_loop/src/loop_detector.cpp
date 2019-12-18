@@ -25,8 +25,8 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
 
         int new_added_image = -1;
         if (!img_des.prevent_adding_db || new_node) {
-            new_added_image = add_to_database(img_des);
             id2imgdes[new_added_image] = img_des;
+            new_added_image = add_to_database(img_des);
         } else {
             ROS_INFO("This image is prevent to adding to DB");
         }
@@ -148,6 +148,11 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
 #ifdef USE_DEEPNET
     float distances[SEARCH_NEAREST_NUM] = {0};
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
+    
+    for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
+        labels[i] = -1;
+    }
+
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
     
     double thres = INNER_PRODUCT_THRES;
@@ -157,6 +162,10 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
     }
 
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
+        if (labels[i] < 0) {
+            continue;
+        }
+
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
         if (labels[i] < database_size() - max_index && distances[i] > thres) {
             if (img_desc.drone_id == self_id || return_drone_id == self_id) {
