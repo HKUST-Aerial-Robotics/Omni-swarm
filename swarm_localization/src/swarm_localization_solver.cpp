@@ -1438,7 +1438,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
                         );
                         sprintf(edgename, "VIO:DP [%3.2f,%3.2f,%3.2f] DY %4.3f", dp.pos().x(), dp.pos().y(), dp.pos().z(),
                             dp.yaw()*57.3);
-                        // agset(edge, "label", "VIO");
+                        agset(edge, "label", edgename);
 
                         // printf("Adding edge...\n");
                         node1 = node2;
