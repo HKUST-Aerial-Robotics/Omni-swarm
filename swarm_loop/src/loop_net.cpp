@@ -40,7 +40,7 @@ void LoopNet::on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
         return;
     }
     
-    ROS_INFO("Received image desc from LCM!!!");
+    ROS_INFO("Received drone %d image from LCM!!!", msg->drone_id);
     this->img_desc_callback(*msg);
 }
 
@@ -53,6 +53,6 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
         // ROS_INFO("Receive self sent Loop message");
         return;
     }
-    ROS_INFO("Received Loop Connection from LCM!!!");    
+    ROS_INFO("Received Loop %d->%d from LCM!!!", msg->id_a, msg->id_b);    
     loopconn_callback(*msg);
 }

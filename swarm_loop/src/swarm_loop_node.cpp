@@ -77,7 +77,7 @@ public:
         auto ret = loop_cam->on_keyframe_message(viokf);
         ret.prevent_adding_db = !adding;
 
-        std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
+        // ROS_DEBUG("Cam Cost %fms", DT_MS(start));
         if (ret.landmark_num != 0)
             loop_net->broadcast_img_desc(ret);
     }
@@ -178,10 +178,10 @@ public:
             on_loop_connection(loc, false);
         };
 
-        camera_sub = nh.subscribe("left_camera", 1000, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
-        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1000, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
-        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1000, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
-        loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 1);
+        camera_sub = nh.subscribe("left_camera", 10, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
+        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 5, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 5, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
+        loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
     }
 };
 
