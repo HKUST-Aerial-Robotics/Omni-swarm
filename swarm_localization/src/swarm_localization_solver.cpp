@@ -1433,8 +1433,8 @@ void SwarmLocalizationSolver::generate_cgraph() {
                         auto edge = agedge(g, node1, node2, "VIO",1);
                         agattrsym (edge, "label");
                         Swarm::Pose dp = Swarm::Pose::DeltaPose(
-                            Swarm::Pose(pose_win[pose_win.size()-2]), 
-                            Swarm::Pose(pose_win.back())
+                            Swarm::Pose(pose_win[pose_win.size()-2], true), 
+                            Swarm::Pose(pose_win.back(), true)
                         );
                         sprintf(edgename, "VIO:DP [%3.2f,%3.2f,%3.2f] DY %4.3f", dp.pos().x(), dp.pos().y(), dp.pos().z(),
                             dp.yaw()*57.3);

@@ -59,3 +59,5 @@ extern int MIN_LOOP_NUM;
 
 #define GFTT_PTS 1000
 #define GFTT_MIN_DIS 10
+
+#define USE_MATCH_MODE 
