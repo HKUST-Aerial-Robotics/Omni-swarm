@@ -111,13 +111,13 @@ public:
         recived_image = true;
         last_keyframe_position = drone_pos;
 
-        std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
+        // std::cout << "Cam Cost " << DT_MS(start) << "ms" << std::endl;
         
         loop_net->broadcast_img_desc(ret);
 
         loop_detector->on_image_recv(ret);
 
-        std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
+        // std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
     }
 
     ros::Subscriber camera_sub;

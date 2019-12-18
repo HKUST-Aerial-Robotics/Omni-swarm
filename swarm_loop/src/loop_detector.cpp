@@ -35,7 +35,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
 
         if (database_size() > MATCH_INDEX_DIST || init_mode) {
 
-            ROS_INFO("Querying image from database size %d....", database_size());
+            // ROS_INFO("Querying image from database size %d....", database_size());
             int _old_id = -1;
             if (init_mode) {
                 _old_id = query_from_database(img_des, 1, init_mode);
@@ -46,7 +46,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
             auto stop = high_resolution_clock::now(); 
 
             if (_old_id >= 0 ) {
-                std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << _old_id << std::endl;                
+                // std::cout << "Time Cost " << duration_cast<microseconds>(stop - start).count()/1000.0 <<"ms RES: " << _old_id << std::endl;                
                 LoopConnection ret;
 
                 if (id2imgdes[_old_id].drone_id == self_id) {

@@ -64,7 +64,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
 
     ides.landmark_num = 0;
     if (img.empty()) {
-        ROS_INFO("No Image; Exiting;");
+        ROS_WARN("No Image; Exiting;");
         return ides;
     }
 
@@ -89,6 +89,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
 #ifdef USE_DEEPNET
     ides = extractor_img_desc_deepnet(msg.header.stamp);
     if (ides.image_desc_size == 0) {
+        ROS_WARN("Failed on deepnet;");
         cv::Mat _img;
         return ides;
     }
@@ -98,13 +99,13 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
         return ides;
     }
 #endif
-    std::cout << "FeatureDetect Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
+    // std::cout << "FeatureDetect Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
 
     start = high_resolution_clock::now();  
     cv::Mat img_small;
     cv::resize(img, img_small, img.size()/LOOP_IMAGE_DOWNSAMPLE);
     encode_image(img_small, ides);
-    std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+    // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     ides.timestamp = toLCMTime(msg.header.stamp);
     ides.drone_id = self_id; // -1 is self drone;
@@ -189,19 +190,20 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp) {
     WholeImageDescriptorComputeTS img_desc_compute;
     img_desc_compute.request.stamp.data = stamp;
     img_desc_compute.request.a = 986;
-    std::cout << "Prepare Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
 
     if( deepnet_client.call( img_desc_compute ) ) {
         auto & desc = img_desc_compute.response.desc;
         if (desc.size() > 0) {
-            ROS_INFO("Received response from server desc.size %ld", desc.size());
+            // ROS_INFO("Received response from server desc.size %ld", desc.size());
             img_des.image_desc_size = desc.size();
             img_des.image_desc = desc;
+        } else {
+            ROS_WARN("Failed on deepnet; Please check deepnet queue");
         }
 
         return img_des;
     } else {
-        ROS_INFO("FAILED on deepnet!!");
+        ROS_INFO("FAILED on deepnet!!! Service error");
         return img_des;
     }
     return img_des;
@@ -225,9 +227,7 @@ cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
     }
 
     if (fabs(image_ts_queue[0] -  ts_sec ) < 0.001) {
-        ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
-        // image_queue.erase(image_queue.begin());
-        // image_ts_queue.erase(image_ts_queue.begin());
+        // ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
         return image_queue[0];
     }
 
