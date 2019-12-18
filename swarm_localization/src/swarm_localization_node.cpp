@@ -364,7 +364,7 @@ private:
 
     void predict_swarm(const swarm_frame &_sf) {
         double t_now = ros::Time::now().toSec();
-        if (t_last_predict_swarm - t_now > 1.0/predict_freq) {
+        if (t_now - t_last_predict_swarm > 1.0/predict_freq) {
             t_last_predict_swarm = t_now;
             high_resolution_clock::time_point t1 = high_resolution_clock::now();
             if (_sf.node_frames.size() >= 1) {

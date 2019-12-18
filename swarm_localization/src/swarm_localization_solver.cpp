@@ -1443,10 +1443,12 @@ void SwarmLocalizationSolver::generate_cgraph() {
 
     //
     for (auto & loop: good_loops) {
+        char edgename[10] = {0};
+        sprintf(edgename, "loop %d->%d dt %4.1fms", loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0);
         auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], "Loop", 1);
         agattrsym (edge, "label");
         agattrsym (edge, "color");
-        agset(edge, "label", "Loop");
+        agset(edge, "label", edgename);
         agset(edge, "color", "red");
     }
     std::string graph_output =  "/home/dji/swarm_log_lastest/graph.dot";
