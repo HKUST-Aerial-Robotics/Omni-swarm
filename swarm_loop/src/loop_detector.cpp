@@ -165,7 +165,10 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
         if (labels[i] < 0) {
             continue;
         }
-
+        if (id2imgdes.find(labels[i]) == id2imgdes.end()) {
+            ROS_WARN("Can't find image %d; skipping", labels[i]);
+        }
+        
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
         if (labels[i] < database_size() - max_index && distances[i] > thres) {
             if (img_desc.drone_id == self_id || return_drone_id == self_id) {
