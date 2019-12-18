@@ -14,14 +14,17 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
     } 
 
     success_loop_nodes.insert(self_id);
+    bool new_node = all_nodes.find(img_des.drone_id) == all_nodes.end();
+
     all_nodes.insert(img_des.drone_id);
+
 
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
         int new_added_image = -1;
-        if (!img_des.prevent_adding_db || init_mode) {
+        if (!img_des.prevent_adding_db || new_node) {
             new_added_image = add_to_database(img_des);
             id2imgdes[new_added_image] = img_des;
         } else {
