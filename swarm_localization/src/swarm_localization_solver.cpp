@@ -623,7 +623,7 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        // generate_cgraph();
+        generate_cgraph();
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
@@ -1375,6 +1375,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 void SwarmLocalizationSolver::generate_cgraph() {
     ROS_INFO("Gen cgraph");
+    auto start = high_resolution_clock::now();
     Agraph_t *g;
     g = agopen("G", Agdirected, NULL);
     char node_name[100] = {0};
@@ -1448,10 +1449,15 @@ void SwarmLocalizationSolver::generate_cgraph() {
         agset(edge, "label", "Loop");
         agset(edge, "color", "red");
     }
-    std::string graph_output =  "/home/xuhao/graph.dot";
+    std::string graph_output =  "/home/dji/swarm_log_lastest/graph.dot";
     FILE * f = fopen(graph_output.c_str(), "w");
     agwrite(g,f);
     agclose(g);
+
+    double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
+
+    printf("Generate cgraph cost %4.3fms", dt);
+
 }
 
 Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
