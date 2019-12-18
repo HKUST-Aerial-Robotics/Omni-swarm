@@ -17,6 +17,9 @@ LoopCam::LoopCam(const std::string & camera_config_path, const std::string & BRI
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
 #ifdef USE_DEEPNET
     deepnet_client = nh.serviceClient<WholeImageDescriptorComputeTS>("/whole_image_descriptor_compute_ts");
+    printf("Waiting for deepnet......");
+    deepnet_client.waitForExistence();
+    printf("Deepnet ready");
 #endif
 }
 
