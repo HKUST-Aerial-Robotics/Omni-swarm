@@ -77,7 +77,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des) {
             }      
         } 
 
-        std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
+        // std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
     } else {
         ROS_WARN("Frame contain too less landmark %d, give up", img_des.landmark_num);
     }
