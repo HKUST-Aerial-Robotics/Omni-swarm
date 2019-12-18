@@ -1379,6 +1379,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
     Agraph_t *g;
     g = agopen("G", Agdirected, NULL);
     char node_name[100] = {0};
+    char edgename[100] = {0};
 
     agattr(g,AGRAPH,"shape","box");
     agattr(g,AGRAPH,"style","filled");
@@ -1431,7 +1432,13 @@ void SwarmLocalizationSolver::generate_cgraph() {
                         auto node2 = AGNodes[ts][_id];
                         auto edge = agedge(g, node1, node2, "VIO",1);
                         agattrsym (edge, "label");
-                        agset(edge, "label", "VIO");
+                        Swarm::Pose dp = Swarm::Pose::DeltaPose(
+                            Swarm::Pose(pose_win[pose_win.size()-2]), 
+                            Swarm::Pose(pose_win.back())
+                        );
+                        sprintf(edgename, "VIO:DP [%3.2f,%3.2f,%3.2f] DY %4.3f", dp.pos().x(), dp.pos().y(), dp.pos().z(),
+                            dp.yaw()*57.3);
+                        // agset(edge, "label", "VIO");
 
                         // printf("Adding edge...\n");
                         node1 = node2;
@@ -1443,13 +1450,20 @@ void SwarmLocalizationSolver::generate_cgraph() {
 
     //
     for (auto & loop: good_loops) {
-        char edgename[10] = {0};
-        sprintf(edgename, "loop %d->%d dt %4.1fms", loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0);
+        
+        sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
+            loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
+            loop.relative_pose.pos().x(),
+            loop.relative_pose.pos().y(),
+            loop.relative_pose.pos().z(),
+            loop.relative_pose.yaw()*57.3
+        );
+
         auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], "Loop", 1);
         agattrsym (edge, "label");
         agattrsym (edge, "color");
         agset(edge, "label", edgename);
-        agset(edge, "color", "red");
+        agset(edge, "color", "orange");
     }
     std::string graph_output =  "/home/dji/swarm_log_lastest/graph.dot";
     FILE * f = fopen(graph_output.c_str(), "w");
