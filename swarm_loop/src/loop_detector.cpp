@@ -102,7 +102,7 @@ std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
 cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
     auto start = high_resolution_clock::now();
     auto ret = cv::imdecode(_img_desc.image, cv::IMREAD_GRAYSCALE);
-    std::cout << "IMDECODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+    // std::cout << "IMDECODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     return ret;
 }
@@ -431,7 +431,7 @@ inline std::vector<cv::KeyPoint> to_keypoints_with_max_height(const std::vector<
 
 
 void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts1, std::vector<cv::Point2f> &tracked, std::vector<unsigned char> & status, bool init_mode, bool visualize) {
-
+    auto start = high_resolution_clock::now();
     std::vector<cv::KeyPoint> kps1, kps2;
     std::vector<cv::DMatch> good_matches;
     std::map<int, int> real_id1;
@@ -508,7 +508,9 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         tracked[_id1] = kps2[_id2].pt;
         status[_id1] = 1;
     }
+    double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
+    ROS_INFO("Matches cost time %f", dt);
     if (visualize) {
         kps1.clear();
         for (auto pt: Pts1) {
@@ -787,6 +789,9 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     if (init_mode) {
         first_try_match_mode = true;
     }
+#ifdef USE_MATCH_MODE
+        first_try_match_mode = true;
+#endif
 
     ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
         new_img_desc.drone_id, 
