@@ -3,7 +3,7 @@
     <arg name="node_start_delay" default="30.0" />
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
         <rosparam>
-            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+            lcm_uri: udpm://224.0.0.251:7667?ttl=2
             loop_image_downsample: 1
             init_loop_min_feature_num: 10
             init_loop_min_feature_num: 10
