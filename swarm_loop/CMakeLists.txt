@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 
 SET("OpenCV_DIR"  "/usr/local/share/OpenCV/")
-find_package(OpenCV 3.4 REQUIRED) 
+find_package(OpenCV 3.4 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(lcm REQUIRED)
 find_package(Backward)
@@ -48,7 +48,7 @@ include_directories(
 )
 
 
-add_executable(${PROJECT_NAME}_node 
+add_executable(${PROJECT_NAME}_node
   src/swarm_loop_node.cpp
   src/loop_cam.cpp
   src/loop_detector.cpp
@@ -77,7 +77,7 @@ add_dependencies(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
-  #  ${DBoW3_LIBRARIES} 
+  #  ${DBoW3_LIBRARIES}
    lcm
    faiss
    dw
