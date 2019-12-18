@@ -48,8 +48,8 @@ void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
     params.push_back( JPG_QUALITY );
 
     cv::imencode(".jpg", _img, _img_desc.image, params);
-    std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
+    // std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+    // std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
 
     _img_desc.image_height = _img.size().height;
     _img_desc.image_width = _img.size().width;
