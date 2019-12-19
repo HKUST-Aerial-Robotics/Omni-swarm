@@ -171,6 +171,7 @@ inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & l
     loop_conn.dpos.x = loop_con.dpos.x;
     loop_conn.dpos.y = loop_con.dpos.y;
     loop_conn.dpos.z = loop_con.dpos.z;
+    loop_conn.dyaw = loop_con.dyaw;
 
 
     loop_conn.self_pose_a = fromROSPose(loop_con.self_pose_a);
