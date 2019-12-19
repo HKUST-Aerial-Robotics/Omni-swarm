@@ -122,10 +122,22 @@ public:
         // std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
     }
 
+    void on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc) {
+        this->on_remote_image(toLCMImageDescriptor(remote_img_desc));
+    }
+
+    void on_remote_image(const ImageDescriptor_t & img_desc) {
+        loop_detector->on_image_recv(img_desc);
+    }
+
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
+    ros::Subscriber remote_img_sub;
     ros::Subscriber viononkeyframe_sub;
     ros::Publisher loopconn_pub;
+    ros::Publisher remote_image_desc_pub;
+    bool enable_pub_remote_img;
+    bool enable_sub_remote_img;
 
 public:
     SwarmLoopNode(ros::NodeHandle& nh) {
@@ -146,6 +158,10 @@ public:
         nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
         nh.param<int>("jpg_quality", JPG_QUALITY, 50);
         nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
+        nh.param<bool>("enable_pub_remote_img", enable_pub_remote_img, true);
+        nh.param<bool>("enable_sub_remote_img", enable_sub_remote_img, false);
+        nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
+        nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
         
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
@@ -173,7 +189,11 @@ public:
         };
 
         loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
-            loop_detector->on_image_recv(img_desc);
+            if (enable_pub_remote_img) {
+                remote_image_desc_pub.publish(toROSImageDescriptor(img_desc));
+            }
+
+            this->on_remote_image(img_desc);
         };
 
         loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
@@ -185,6 +205,14 @@ public:
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 10, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
         viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 10, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
+        
+        if (enable_sub_remote_img) {
+            nh.subscribe("/swarm_loop/remote_image_desc", 10, &SwarmLoopNode::on_remote_image_ros, this, ros::TransportHints().tcpNoDelay());
+        }
+
+        if (enable_pub_remote_img) {
+            remote_image_desc_pub = nh.advertise<swarm_msgs::ImageDescriptor>("remote_image_desc", 10);
+        }
     }
 };
 

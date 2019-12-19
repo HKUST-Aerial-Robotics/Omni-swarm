@@ -9,6 +9,12 @@
             min_loop_feature_num: 10
             jpg_quality: 75
             enable_lk: true
+            
+            query_thres: 0.6
+            init_query_thres: 0.3
+
+            enable_pub_remote_img: true
+            enable_sub_remote_img: true
         </rosparam>
         <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
        <param name="debug_image" value="$(arg display)" type="bool" />
