@@ -117,7 +117,7 @@ public:
         
         loop_net->broadcast_img_desc(ret);
 
-        loop_detector->on_image_recv(ret);
+        loop_detector->on_image_recv(ret, img);
 
         // std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
     }
