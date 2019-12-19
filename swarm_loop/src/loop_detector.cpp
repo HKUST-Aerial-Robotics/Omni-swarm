@@ -654,7 +654,8 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             ROS_WARN("Solve pnp failed cost %fms: inliers %d; retry with iterative", dt, inliers.rows);
             std::cout << "Failed PnP solved DPose ";
             DP_old_to_new.print();
-
+    
+            PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
             inliers = cv::Mat();
             success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ LOOP_IMAGE_DOWNSAMPLE / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
             p_cam_old_in_new = PnPRestoCamPose(rvec, t);
