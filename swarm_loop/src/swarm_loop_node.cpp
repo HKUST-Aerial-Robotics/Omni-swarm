@@ -51,7 +51,7 @@ public:
         //If never received image or 15 sec not receiving kf, use this as KF, this is ensure we don't missing data
         //Note that for the second case, we will not add it to database, matching only
             
-        if (!recived_image) {
+        if (!recived_image && (viokf.header.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
             ROS_INFO("USE non vio kf as KF at first!");
             VIOKF_callback(viokf);
             return;

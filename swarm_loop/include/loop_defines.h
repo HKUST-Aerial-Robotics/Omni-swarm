@@ -35,6 +35,7 @@ extern int MIN_LOOP_NUM;
 #define SEARCH_NEAREST_NUM 5
 #define INNER_PRODUCT_THRES 0.75
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
+#define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 
 
 #define INIT_MODE_PRODUCT_THRES 0.5 //INIT mode we can accept this inner product as similar
