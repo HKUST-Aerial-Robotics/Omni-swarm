@@ -52,7 +52,7 @@ extern int MIN_LOOP_NUM;
 #define OUTLIER_XY_PRECENT_30 0.1 // This is given up match dx dy 
 #define OUTLIER_XY_PRECENT_40 0.1 // This is given up match dx dy 
 
-#define PNP_REPROJECT_ERROR 10
+#define PNP_REPROJECT_ERROR 10.0
 #define AVOID_GROUND_PRECENT 0.666 // This is for avoiding detect a lot feature on ground
 // #define DEBUG_SHOW_IMAGE
 
