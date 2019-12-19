@@ -591,7 +591,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
         double mid_dis = uv_dis[uv_dis.size()/2];
 
-        printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
+        // printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
         for (size_t i = 0; i < status.size(); i++) {
             if (status[i] && cv::norm(tracked[i] - nowPtsSmall[i]) > mid_dis*ORB_UV_DISTANCE) {
                 status[i] = 0;
@@ -796,9 +796,11 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     if (init_mode) {
         first_try_match_mode = true;
     }
-#ifdef USE_MATCH_MODE
+
+    if (!ENABLE_LK_LOOP_DETECTION) {
         first_try_match_mode = true;
-#endif
+    }
+
     //first_try_match_mode = false;
 
     ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 

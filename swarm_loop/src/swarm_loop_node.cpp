@@ -145,6 +145,7 @@ public:
         nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
         nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
         nh.param<int>("jpg_quality", JPG_QUALITY, 50);
+        nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
         
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
@@ -200,9 +201,9 @@ int main(int argc, char **argv) {
         }
     });
 
-    ros::spin();
-    // ros::MultiThreadedSpinner spinner(2); // Use 4 threads
-    // spinner.spin();
+    // ros::spin();
+    ros::MultiThreadedSpinner spinner(2); // Use 4 threads
+    spinner.spin();
 
     return 0;
 }
