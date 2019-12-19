@@ -56,10 +56,10 @@ void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
     _img_desc.image_size = _img_desc.image.size();
 }
 
-ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
+ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv::Mat & img){
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
-    cv::Mat img = pop_image_ts(msg.header.stamp);
+    img = pop_image_ts(msg.header.stamp);
     ImageDescriptor_t ides;
 
     ides.landmark_num = 0;
@@ -101,10 +101,9 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg) {
 #endif
     // std::cout << "FeatureDetect Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
 
-    start = high_resolution_clock::now();  
-    cv::Mat img_small;
-    cv::resize(img, img_small, img.size()/LOOP_IMAGE_DOWNSAMPLE);
-    encode_image(img_small, ides);
+    start = high_resolution_clock::now();
+    cv::resize(img, img, img.size()/LOOP_IMAGE_DOWNSAMPLE);
+    encode_image(img, ides);
     // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     ides.timestamp = toLCMTime(msg.header.stamp);

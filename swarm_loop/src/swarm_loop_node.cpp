@@ -74,7 +74,8 @@ public:
 
         recived_image = true;
         auto start = high_resolution_clock::now();
-        auto ret = loop_cam->on_keyframe_message(viokf);
+        cv::Mat img;
+        auto ret = loop_cam->on_keyframe_message(viokf, img);
         ret.prevent_adding_db = !adding;
 
         // ROS_DEBUG("Cam Cost %fms", DT_MS(start));
@@ -101,7 +102,8 @@ public:
         }
 
         auto start = high_resolution_clock::now();
-        auto ret = loop_cam->on_keyframe_message(viokf);
+        cv::Mat img;
+        auto ret = loop_cam->on_keyframe_message(viokf, img);
         ret.prevent_adding_db = false;
         if (ret.landmark_num == 0) {
             ROS_WARN("Null img desc, CNN no ready");
@@ -179,8 +181,8 @@ public:
         };
 
         camera_sub = nh.subscribe("left_camera", 10, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
-        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 5, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
-        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 5, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 10, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 10, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
     }
 };
@@ -193,13 +195,13 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh("swarm_loop");
     SwarmLoopNode loopnode(nh);
 
-    //ros::MultiThreadedSpinner spinner(4); // Use 4 threads
-    //spinner.spin();
     std::thread thread([&] {
         while(0 == loopnode.loop_net->lcm_handle()) {
         }
     });
-    ros::spin();
+
+    // ros::MultiThreadedSpinner spinner(2); // Use 4 threads
+    // spinner.spin();
 
     return 0;
 }
