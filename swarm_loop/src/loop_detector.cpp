@@ -23,16 +23,15 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
+        if (img.empty()) {
+            img = decode_image(img_des);
+        }
+
         int new_added_image = -1;
         if (!img_des.prevent_adding_db || new_node) {
             new_added_image = add_to_database(img_des);
             id2imgdes[new_added_image] = img_des;
-            if (!img.empty()) {
-                id2cvimg[new_added_image] = img;
-            } else {
-                img = decode_image(img_des);
-                id2cvimg[new_added_image] = img;
-            }
+            id2cvimg[new_added_image] = img;
         } else {
             ROS_INFO("This image is prevent to adding to DB");
         }
@@ -41,7 +40,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         if (database_size() > MATCH_INDEX_DIST || init_mode) {
 
-            // ROS_INFO("Querying image from database size %d....", database_size());
+            ROS_INFO("Querying image from database size %d init_mode %d....", database_size(), init_mode);
             int _old_id = -1;
             if (init_mode) {
                 _old_id = query_from_database(img_des, 1, init_mode);
@@ -56,11 +55,11 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
                 LoopConnection ret;
 
                 if (id2imgdes[_old_id].drone_id == self_id) {
-                    success = compute_loop(img_des, id2imgdes[_old_id], id2cvimg[new_added_image], id2cvimg[_old_id], ret, init_mode);
+                    success = compute_loop(img_des, id2imgdes[_old_id], img, id2cvimg[_old_id], ret, init_mode);
                 } else {
                     //We grab remote drone from database
                     if (img_des.drone_id == self_id) {
-                        success = compute_loop(id2imgdes[_old_id], img_des, id2cvimg[_old_id], id2cvimg[new_added_image], ret, init_mode);
+                        success = compute_loop(id2imgdes[_old_id], img_des, id2cvimg[_old_id], img, ret, init_mode);
                     } else {
                         ROS_WARN("Will not compute loop, drone id is %d(self %d), new_added_image id %d", img_des.drone_id, self_id, new_added_image);
                     }
@@ -178,9 +177,9 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
         }
 
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
+        ROS_INFO("Suitable Find %ld on drone %d, radius %f", labels[i], return_drone_id,  distances[i]);
         if (labels[i] < database_size() - max_index && distances[i] > thres) {
             if (img_desc.drone_id == self_id || return_drone_id == self_id) {
-                // ROS_INFO("Suitable Find %ld, radius %f", labels[i], distances[i]);
                 return labels[i];
             }
         }
@@ -534,7 +533,7 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         // cv::drawMatches(img1, kps1, img2, kps2, good_matches, _show);
         cv::resize(_show, _show, cv::Size(), VISUALIZE_SCALE, VISUALIZE_SCALE);
         cv::imshow("KNNMatch", _show);
-        cv::waitKey(10);
+        //cv::waitKey(10);
     }
 }
 
@@ -643,7 +642,9 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
         auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
         
-        DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+        DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+        std::cout << "PnP solved DPose ";
+        DP_old_to_new.print();
         
         success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
 
@@ -658,8 +659,10 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ LOOP_IMAGE_DOWNSAMPLE / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
             p_cam_old_in_new = PnPRestoCamPose(rvec, t);
             p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
-            DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+            DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
             success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
+            std::cout << "PnP solved DPose ";
+            DP_old_to_new.print();
             if (success) {
                 ROS_INFO("DLS Success\n");
             }
@@ -675,8 +678,6 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
         // std::cout << "Initial DPose    ";
         // Swarm::Pose::DeltaPose(initial_old_drone_pose, drone_pose_now, true).print();
-        std::cout << "PnP solved DPose ";
-        DP_old_to_new.print();
 
         printf("\n\n\n");
 
@@ -739,9 +740,9 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
             cv::imshow("Track Loop", _show);
             if (success) {
-                cv::waitKey(100);
+                cv::waitKey(-1);
             } else {
-                cv::waitKey(100);
+                cv::waitKey(-1);
             }
         }
 
@@ -765,6 +766,9 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     assert(old_img_desc.drone_id == self_id && "old img desc must from self drone!");
 
     ROS_INFO("Compute loop %d->%d", old_img_desc.drone_id, new_img_desc.drone_id);
+    //ROS_INFO("cols %d %d", img_new.cols, img_old.cols);
+    assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
+    assert(!img_old.empty() && "ERROR IMG old is emptry!");
 
     auto nowPts = toCV(new_img_desc.landmarks_2d);
     std::vector<cv::Point2f> nowPtsSmall;
@@ -794,6 +798,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
 #ifdef USE_MATCH_MODE
         first_try_match_mode = true;
 #endif
+    //first_try_match_mode = false;
 
     ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
         new_img_desc.drone_id, 
