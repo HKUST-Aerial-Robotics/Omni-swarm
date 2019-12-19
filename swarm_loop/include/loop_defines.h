@@ -33,12 +33,11 @@ extern int MIN_LOOP_NUM;
 #define DEEP_DESC_SIZE 1024
 
 #define SEARCH_NEAREST_NUM 5
-#define INNER_PRODUCT_THRES 0.75
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 #define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 
-
-#define INIT_MODE_PRODUCT_THRES 0.3 //INIT mode we can accept this inner product as similar
+extern double  INNER_PRODUCT_THRES;
+extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as similar
 
 #define ORB_HAMMING_DISTANCE 40 //Max hamming
 #define ORB_UV_DISTANCE 1.5 //UV distance bigger than mid*this will be removed

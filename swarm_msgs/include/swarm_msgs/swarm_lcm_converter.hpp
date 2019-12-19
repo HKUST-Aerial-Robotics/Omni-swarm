@@ -7,10 +7,7 @@
 #include "LoopConnection_t.hpp"
 #include <swarm_msgs/Pose.h>
 
-inline swarm_msgs::ImageDescriptor toROSMsg(const ImageDescriptor_t & _img) {
-    swarm_msgs::ImageDescriptor img_des;
-    return img_des;
-}
+
 
 
 inline Pose_t fromROSPose(const geometry_msgs::Pose & pose) {
@@ -49,6 +46,26 @@ inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::
         dst.push_back(pt2);
     }
 }
+
+inline void LCMPoints2ROS(const std::vector<Point2d_t> & src, std::vector<geometry_msgs::Point32> & dst) {
+    for (auto pt : src) {
+        geometry_msgs::Point32 pt2;
+        pt2.x = pt.x;
+        pt2.y = pt.y;
+        dst.push_back(pt2);
+    }
+}
+
+inline void LCMPoints2ROS(const std::vector<Point3d_t> & src, std::vector<geometry_msgs::Point32> & dst) {
+    for (auto pt : src) {
+        geometry_msgs::Point32 pt2;
+        pt2.x = pt.x;
+        pt2.y = pt.y;
+        pt2.z = pt.z;
+        dst.push_back(pt2);
+    }
+}
+
 
 inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::vector<Point3d_t> & dst) {
     for (auto pt : src) {
@@ -178,4 +195,54 @@ inline LoopConnection_t toLCMLoopConnection(const swarm_msgs::LoopConnection & l
     loop_conn.self_pose_b = fromROSPose(loop_con.self_pose_b);
 
     return loop_conn;
+}
+
+
+inline swarm_msgs::ImageDescriptor toROSImageDescriptor(const ImageDescriptor_t & _img) {
+    swarm_msgs::ImageDescriptor img_desc;
+    img_desc.header.stamp = toROSTime(_img.timestamp);
+    img_desc.drone_id = _img.drone_id;
+    img_desc.feature_descriptor = _img.feature_descriptor;
+    img_desc.pose_drone = toROSPose(_img.pose_drone);
+    img_desc.camera_extrinsic = toROSPose(_img.camera_extrinsic);
+    
+    LCMPoints2ROS(_img.landmarks_2d_norm, img_desc.landmarks_2d_norm);
+    LCMPoints2ROS(_img.landmarks_2d, img_desc.landmarks_2d);
+    LCMPoints2ROS(_img.landmarks_3d, img_desc.landmarks_3d);
+
+    // geometry_msgs/Point32[] all_features_2d
+    // LCMPoints2ROS(_img.keyfeature_point_2d_norm, img_desc.keyfeature_point_2d_norm);
+    // LCMPoints2ROS(_img.keyfeature_point_3d, img_desc.keyfeature_point_3d);
+   
+    img_desc.image_desc = _img.image_desc;
+    img_desc.image_width = _img.image_width;
+    img_desc.image_height = _img.image_height;
+    img_desc.image = _img.image;
+    img_desc.prevent_adding_db = _img.prevent_adding_db;
+    return img_desc;
+}
+
+inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor & img_desc) {
+    ImageDescriptor_t _img;
+    _img.timestamp = toLCMTime(img_desc.header.stamp);
+    _img.drone_id = img_desc.drone_id;
+    _img.feature_descriptor = img_desc.feature_descriptor;
+    _img.pose_drone = fromROSPose(img_desc.pose_drone);
+    _img.camera_extrinsic = fromROSPose(img_desc.camera_extrinsic);
+    
+    ROSPoints2LCM(img_desc.landmarks_2d_norm, _img.landmarks_2d_norm);
+    ROSPoints2LCM(img_desc.landmarks_2d, _img.landmarks_2d);
+    ROSPoints2LCM(img_desc.landmarks_3d, _img.landmarks_3d);
+
+    // geometry_msgs/Point32[] all_features_2d
+    // LCMPoints2ROS(_img.keyfeature_point_2d_norm, img_desc.keyfeature_point_2d_norm);
+    // LCMPoints2ROS(_img.keyfeature_point_3d, img_desc.keyfeature_point_3d);
+   
+    _img.image_desc = img_desc.image_desc;
+    _img.image_width = img_desc.image_width;
+    _img.image_height = img_desc.image_height;
+    _img.image = img_desc.image;
+    _img.prevent_adding_db = img_desc.prevent_adding_db;
+
+    return _img;
 }
