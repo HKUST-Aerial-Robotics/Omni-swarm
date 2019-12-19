@@ -200,6 +200,7 @@ int main(int argc, char **argv) {
         }
     });
 
+    ros::spin();
     // ros::MultiThreadedSpinner spinner(2); // Use 4 threads
     // spinner.spin();
 
