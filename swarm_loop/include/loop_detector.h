@@ -28,8 +28,9 @@ protected:
     DBoW3::Database db;
 #endif
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
+    std::map<unsigned int, cv::Mat> id2cvimg;
     std::vector<cv::Scalar> colors;
-    bool compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, LoopConnection & ret, bool init_mode=false);
+    bool compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, cv::Mat img_new, cv::Mat img_old, LoopConnection & ret, bool init_mode=false);
     bool compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
@@ -56,7 +57,7 @@ public:
 #else
     LoopDetector(const std::string & voc_path);
 #endif
-    void on_image_recv(const ImageDescriptor_t & img_des);
+    void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img = cv::Mat());
     void on_loop_connection(LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
     bool enable_visualize = true;
