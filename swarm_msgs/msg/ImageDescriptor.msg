@@ -17,4 +17,5 @@ uint8[] image
 geometry_msgs/Point32[] landmarks_2d_norm
 geometry_msgs/Point32[] landmarks_2d
 geometry_msgs/Point32[] landmarks_3d
+uint8[] landmarks_flag
 bool prevent_adding_db

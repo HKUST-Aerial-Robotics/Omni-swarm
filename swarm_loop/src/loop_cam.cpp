@@ -63,6 +63,10 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv
     ImageDescriptor_t ides;
 
     ides.landmark_num = 0;
+    ides.image_desc_size = 0;
+    ides.feature_descriptor_size = 0;
+    ides.image_size = 0;
+    
     if (img.empty()) {
         ROS_WARN("No Image; Exiting;");
         return ides;
@@ -115,6 +119,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv
     ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
     ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
     ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
+    ides.landmarks_flag = msg.feature_points_flag;
    
     return ides;
 }
