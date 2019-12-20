@@ -793,7 +793,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
     if (cost != nullptr) {
         problem.AddResidualBlock(cost, nullptr, pose_state);
         if (finish_init) {
-            printf("SF Evaluate ERROR ts %d", TSShort(ts));
+            // printf("SF Evaluate ERROR ts %d", TSShort(ts));
             double * res = new double[res_num];
             cost->Evaluate(pose_state.data(), res, nullptr);
             for (int i = 0; i < res_num; i++) {
@@ -1374,7 +1374,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 
 void SwarmLocalizationSolver::generate_cgraph() {
-    ROS_INFO("Gen cgraph");
+    // ROS_INFO("Gen cgraph");
     auto start = high_resolution_clock::now();
     Agraph_t *g;
     g = agopen("G", Agdirected, NULL);
@@ -1468,10 +1468,11 @@ void SwarmLocalizationSolver::generate_cgraph() {
     FILE * f = fopen(cgraph_path.c_str(), "w");
     agwrite(g,f);
     agclose(g);
+    fclose(f);
 
     double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
-    printf("Generate cgraph cost %4.3fms", dt);
+    ROS_INFO("Generate cgraph cost %4.3fms\n", dt);
 
 }
 
