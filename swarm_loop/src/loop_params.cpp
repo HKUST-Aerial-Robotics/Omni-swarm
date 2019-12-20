@@ -10,3 +10,4 @@ bool ENABLE_LK_LOOP_DETECTION;
 
 double INNER_PRODUCT_THRES;
 double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as similar
+double MIN_MOVEMENT_KEYFRAME;

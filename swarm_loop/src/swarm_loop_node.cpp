@@ -163,7 +163,7 @@ public:
         nh.param<bool>("enable_sub_remote_img", enable_sub_remote_img, false);
         nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
         nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
-        
+        nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");

@@ -219,6 +219,7 @@ inline swarm_msgs::ImageDescriptor toROSImageDescriptor(const ImageDescriptor_t 
     img_desc.image_height = _img.image_height;
     img_desc.image = _img.image;
     img_desc.prevent_adding_db = _img.prevent_adding_db;
+    img_desc.landmarks_flag = _img.landmarks_flag;
     return img_desc;
 }
 
@@ -248,6 +249,7 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
     _img.image = img_desc.image;
     _img.image_size = img_desc.image.size();
     _img.prevent_adding_db = img_desc.prevent_adding_db;
+    _img.landmarks_flag = img_desc.landmarks_flag;
 
     return _img;
 }
