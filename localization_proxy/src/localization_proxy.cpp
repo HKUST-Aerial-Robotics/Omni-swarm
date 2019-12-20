@@ -672,21 +672,17 @@ class LocalProxy {
             int32_t ts = ROSTIME2LPS(fused.header.stamp);
             for (int i = 0; i < fused.ids.size(); i++) {
                 uint8_t _id = fused.ids[i];
-                if (_id != self_id) {
-                    // printf("Send %d to %d rel\n", self_id, _id);
-
-                    mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
-                                                        (int)(fused.relative_drone_position[i].x * 1000),
-                                                        (int)(fused.relative_drone_position[i].y * 1000),
-                                                        (int)(fused.relative_drone_position[i].z * 1000),                                    
-                                                        (int)(fused.relative_drone_yaw[i] * 1000),
-                                                        (int)(fused.position_cov[i].x * 1000),
-                                                        (int)(fused.position_cov[i].y * 1000),
-                                                        (int)(fused.position_cov[i].z * 1000),
-                                                        (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
-                    
-                    send_mavlink_message(msg);
-                }
+                mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
+                                                    (int)(fused.relative_drone_position[i].x * 1000),
+                                                    (int)(fused.relative_drone_position[i].y * 1000),
+                                                    (int)(fused.relative_drone_position[i].z * 1000),                                    
+                                                    (int)(fused.relative_drone_yaw[i] * 1000),
+                                                    (int)(fused.position_cov[i].x * 1000),
+                                                    (int)(fused.position_cov[i].y * 1000),
+                                                    (int)(fused.position_cov[i].z * 1000),
+                                                    (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
+                
+                send_mavlink_message(msg);
             }
 
             last_send_rel_fused = ros::Time::now();

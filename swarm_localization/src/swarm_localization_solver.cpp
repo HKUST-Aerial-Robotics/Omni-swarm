@@ -178,6 +178,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
     auto _p = new double[4];
     if (_id != self_id || finish_init) {
+        //Self should also init this way
         Pose est_last;
         if (last_kf_ts > 0 && est_poses_idts.find(_id) != est_poses_idts.end()) {
             //Use last solve relative res, e.g init with last
@@ -793,13 +794,14 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
     if (cost != nullptr) {
         problem.AddResidualBlock(cost, nullptr, pose_state);
         if (finish_init) {
-            // printf("SF Evaluate ERROR ts %d", TSShort(ts));
+            /*
+            printf("SF Evaluate ERROR ts %d", TSShort(ts));
             double * res = new double[res_num];
             cost->Evaluate(pose_state.data(), res, nullptr);
             for (int i = 0; i < res_num; i++) {
                 printf(" %f ", res[i]);
             }
-            printf("\n");
+            printf("\n");*/
         }
     } else {
         for (unsigned int i = 0; i < pose_state.size(); i ++) {
@@ -1120,7 +1122,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
-        // ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts));
+        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d]", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts));
         return false;
     }
 
@@ -1146,15 +1148,15 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
-/*
-    printf("SELF POSE A");
-    _nf_a.self_pose.print();
-    printf("SELF POSE B");
-    _nf_b.self_pose.print();
-    printf("SELF POSE A1");
-    loc_ret.self_pose_a.print();
-    printf("SELF POSE B1");
-    loc_ret.self_pose_b.print();*/
+
+    // printf("SELF POSE A");
+    // _nf_a.self_pose.print();
+    // printf("SELF POSE B");
+    // _nf_b.self_pose.print();
+    // printf("SELF POSE A1");
+    // loc_ret.self_pose_a.print();
+    // printf("SELF POSE B1");
+    // loc_ret.self_pose_b.print();
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
@@ -1170,9 +1172,9 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     printf("DPOSE B");
     dpose_self_b.print();
 */
-/*
-    printf("ORIGINAL LOOP");
-    loc_ret.relative_pose.print();*/
+
+    // printf("ORIGINAL LOOP");
+    // loc_ret.relative_pose.print();
 #ifdef DEBUG_OUTPUT_LOOPS
     printf("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
         _idb, min_ts_err_a*1000, min_ts_err_b*1000);
@@ -1187,6 +1189,7 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
     loop_edges.clear();
     std::vector<LoopConnection> good_loops;
     std::map<int64_t, std::map<int64_t, double>> loop_errs;
+    ROS_INFO("All loops %d", all_loops.size());
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
@@ -1198,6 +1201,7 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
                 if (loop_errs[idxa].find(idxb)!= loop_errs[idxa].end()) {
                     // ROS_WARN("DUPLICATE EDGE from [%d]%d to [%d]%d!!!!", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b);
                     if (dt_err > loop_errs[idxa][idxb]) {
+                        ROS_WARN("Too big dt err; skipping");
                         continue;
                     }
                 }
