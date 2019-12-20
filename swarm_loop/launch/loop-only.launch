@@ -14,7 +14,7 @@
             init_query_thres: 0.3
 
             enable_pub_remote_img: true
-            enable_sub_remote_img: true
+            enable_sub_remote_img: false
         </rosparam>
         <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
        <param name="debug_image" value="$(arg display)" type="bool" />

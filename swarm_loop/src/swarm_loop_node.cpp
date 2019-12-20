@@ -123,6 +123,7 @@ public:
     }
 
     void on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc) {
+        ROS_INFO("Remote");
         this->on_remote_image(toLCMImageDescriptor(remote_img_desc));
     }
 
