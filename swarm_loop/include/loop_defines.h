@@ -1,7 +1,7 @@
 #pragma once
 
 #define LOOP_BOW_THRES 0.015
-#define MATCH_INDEX_DIST 5
+#define MATCH_INDEX_DIST 10
 // #define MATCH_INDEX_DIST 1
 #define FAST_THRES (20.0f)
 #define ORB_FEATURE_SIZE (32) // For ORB
@@ -32,7 +32,7 @@ extern int MIN_LOOP_NUM;
 
 #define DEEP_DESC_SIZE 1024
 
-#define SEARCH_NEAREST_NUM 5
+#define SEARCH_NEAREST_NUM 10
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 #define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 

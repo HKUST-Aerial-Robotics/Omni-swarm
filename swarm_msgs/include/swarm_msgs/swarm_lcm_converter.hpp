@@ -227,13 +227,17 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
     _img.timestamp = toLCMTime(img_desc.header.stamp);
     _img.drone_id = img_desc.drone_id;
     _img.feature_descriptor = img_desc.feature_descriptor;
+    _img.feature_descriptor_size = img_desc.feature_descriptor.size();
+
     _img.pose_drone = fromROSPose(img_desc.pose_drone);
     _img.camera_extrinsic = fromROSPose(img_desc.camera_extrinsic);
     
     ROSPoints2LCM(img_desc.landmarks_2d_norm, _img.landmarks_2d_norm);
     ROSPoints2LCM(img_desc.landmarks_2d, _img.landmarks_2d);
     ROSPoints2LCM(img_desc.landmarks_3d, _img.landmarks_3d);
+    _img.landmark_num = _img.landmarks_2d_norm.size();
 
+    _img.image_desc_size = 0;
     // geometry_msgs/Point32[] all_features_2d
     // LCMPoints2ROS(_img.keyfeature_point_2d_norm, img_desc.keyfeature_point_2d_norm);
     // LCMPoints2ROS(_img.keyfeature_point_3d, img_desc.keyfeature_point_3d);
@@ -242,6 +246,7 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
     _img.image_width = img_desc.image_width;
     _img.image_height = img_desc.image_height;
     _img.image = img_desc.image;
+    _img.image_size = img_desc.image.size();
     _img.prevent_adding_db = img_desc.prevent_adding_db;
 
     return _img;

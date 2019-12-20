@@ -38,10 +38,10 @@ protected:
         Swarm::Pose drone_pose_now,
         Swarm::Pose & DP_old_to_new,
         bool init_mode,
-        bool use_orb_matching);
+        bool use_orb_matching, int drone_id_new, int drone_id_old);
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
-    int query_from_database(const ImageDescriptor_t & new_img_desc, int max_index, bool init_mode=false);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode=false);
 
     void find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts, std::vector<cv::Point2f> &tracked, 
             std::vector<unsigned char> & status, bool init_mode, bool visualize = false);

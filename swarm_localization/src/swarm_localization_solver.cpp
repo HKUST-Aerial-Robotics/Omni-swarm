@@ -1465,8 +1465,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
         agset(edge, "label", edgename);
         agset(edge, "color", "orange");
     }
-    std::string graph_output =  "/home/dji/swarm_log_lastest/graph.dot";
-    FILE * f = fopen(graph_output.c_str(), "w");
+    FILE * f = fopen(cgraph_path.c_str(), "w");
     agwrite(g,f);
     agclose(g);
 

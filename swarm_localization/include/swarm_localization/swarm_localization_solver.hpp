@@ -159,6 +159,8 @@ public:
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
 
+    std::string cgraph_path = "";
+
     SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
                             int _thread_num = 4, double kf_movement = 0.2,
                             float _init_xy_movement = 2.0,

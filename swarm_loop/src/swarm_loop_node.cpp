@@ -203,12 +203,13 @@ public:
         };
 
         camera_sub = nh.subscribe("left_camera", 10, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
-        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 10, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
-        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 10, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
         if (enable_sub_remote_img) {
-            nh.subscribe("/swarm_loop/remote_image_desc", 10, &SwarmLoopNode::on_remote_image_ros, this, ros::TransportHints().tcpNoDelay());
+            ROS_INFO("Subscribing remote image from bag");
+            remote_img_sub = nh.subscribe("/swarm_loop/remote_image_desc", 1, &SwarmLoopNode::on_remote_image_ros, this, ros::TransportHints().tcpNoDelay());
         }
 
         if (enable_pub_remote_img) {
