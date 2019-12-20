@@ -6,15 +6,18 @@
             lcm_uri: udpm://224.0.0.251:7667?ttl=2
             loop_image_downsample: 1
             init_loop_min_feature_num: 10
+            init_loop_min_feature_num_l2: 10
             min_loop_feature_num: 10
             jpg_quality: 75
             enable_lk: true
             
-            query_thres: 0.6
+            query_thres: 0.8
             init_query_thres: 0.3
 
-            enable_pub_remote_img: true
-            enable_sub_remote_img: false
+            enable_pub_remote_img: false
+            enable_sub_remote_img: true
+            self_id: 4
+            min_movement_keyframe: 0.4
         </rosparam>
         <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
        <param name="debug_image" value="$(arg display)" type="bool" />
