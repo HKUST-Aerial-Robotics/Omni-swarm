@@ -3,8 +3,8 @@
     <arg name="viz" default="false" />
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="screen">
         <rosparam>
-            force_freq: 5
-            max_accept_cost: 10
+            force_freq: 1
+            max_accept_cost: 100
             max_keyframe_num: 100
             min_keyframe_num: 1
             thread_num: 1
