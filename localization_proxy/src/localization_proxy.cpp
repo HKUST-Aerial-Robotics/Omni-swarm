@@ -621,6 +621,7 @@ class LocalProxy {
                 uint8_t buf[1000] = {0};
                 send_fused_basecoor_count ++;
                 int _index = send_fused_basecoor_count % basecoor.ids.size();
+                /*
                 if (basecoor.ids[_index] == self_id) {
                     if (basecoor.ids.size() == 1) {
                         return;
@@ -628,7 +629,7 @@ class LocalProxy {
                         send_fused_basecoor_count ++;
                         _index = send_fused_basecoor_count % basecoor.ids.size();
                     }
-                }
+                }*/
 
                 mavlink_message_t msg;
                 // printf("Fused data recv\n");
