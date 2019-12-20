@@ -309,49 +309,46 @@ private:
         sdb.header.stamp = stamp;
         Pose self_pose = _sfs.node_poses.at(self_id);
         for (auto it : _sfs.node_poses) {
-            if (it.first != self_id) {
-                int id = it.first;
-                Pose _pose = it.second;
-                Pose DPose = Pose::DeltaPose(self_pose, _pose, true);
+            int id = it.first;
+            Pose _pose = it.second;
+            Pose DPose = Pose::DeltaPose(self_pose, _pose, true);
 
-                double dyaw = DPose.yaw();
-                sfr.ids.push_back(id);
-                sfr.relative_drone_position.push_back(DPose.to_ros_pose().position);
-                sfr.relative_drone_yaw.push_back(dyaw);
+            double dyaw = DPose.yaw();
+            sfr.ids.push_back(id);
+            sfr.relative_drone_position.push_back(DPose.to_ros_pose().position);
+            sfr.relative_drone_yaw.push_back(dyaw);
 
-                sf.ids.push_back(id);
-                sf.local_drone_position.push_back(_pose.to_ros_pose().position);
-                sf.local_drone_yaw.push_back(_pose.yaw());
-                geometry_msgs::Vector3 pcov;
-                pcov.x = _sfs.node_covs.at(id)(0, 0);
-                pcov.y = _sfs.node_covs.at(id)(1, 1);
-                pcov.z = _sfs.node_covs.at(id)(2, 2);
-                sf.position_cov.push_back(pcov);
-                sf.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
+            sf.ids.push_back(id);
+            sf.local_drone_position.push_back(_pose.to_ros_pose().position);
+            sf.local_drone_yaw.push_back(_pose.yaw());
+            geometry_msgs::Vector3 pcov;
+            pcov.x = _sfs.node_covs.at(id)(0, 0);
+            pcov.y = _sfs.node_covs.at(id)(1, 1);
+            pcov.z = _sfs.node_covs.at(id)(2, 2);
+            sf.position_cov.push_back(pcov);
+            sf.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
 
-                sfr.position_cov.push_back(pcov);
-                sfr.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
+            sfr.position_cov.push_back(pcov);
+            sfr.yaw_cov.push_back(_sfs.node_covs.at(id)(3,3));
 
-                //Temp disable veloctiy
-                geometry_msgs::Vector3 spd;
-                spd.x = 0;
-                spd.y = 0;
-                spd.z = 0;
-                sfr.relative_drone_velocity.push_back(spd);
-                sf.local_drone_velocity.push_back(spd);
+            //Temp disable veloctiy
+            geometry_msgs::Vector3 spd;
+            spd.x = 0;
+            spd.y = 0;
+            spd.z = 0;
+            sfr.relative_drone_velocity.push_back(spd);
+            sf.local_drone_velocity.push_back(spd);
 
-                sdb.ids.push_back(id);
-                Pose _coor = _sfs.base_coor_poses.at(id);
-                sdb.drone_basecoor.push_back(_coor.to_ros_pose().position);
-                sdb.drone_baseyaw.push_back(_coor.yaw());
-                geometry_msgs::Vector3 pcov2;
-                pcov2.x = _sfs.base_coor_covs.at(id)(0, 0);
-                pcov2.y = _sfs.base_coor_covs.at(id)(1, 1);
-                pcov2.z = _sfs.base_coor_covs.at(id)(2, 2);
-                sdb.position_cov.push_back(pcov2);
-                sdb.yaw_cov.push_back(_sfs.base_coor_covs.at(id)(3,3));
-
-            }
+            sdb.ids.push_back(id);
+            Pose _coor = _sfs.base_coor_poses.at(id);
+            sdb.drone_basecoor.push_back(_coor.to_ros_pose().position);
+            sdb.drone_baseyaw.push_back(_coor.yaw());
+            geometry_msgs::Vector3 pcov2;
+            pcov2.x = _sfs.base_coor_covs.at(id)(0, 0);
+            pcov2.y = _sfs.base_coor_covs.at(id)(1, 1);
+            pcov2.z = _sfs.base_coor_covs.at(id)(2, 2);
+            sdb.position_cov.push_back(pcov2);
+            sdb.yaw_cov.push_back(_sfs.base_coor_covs.at(id)(3,3));
         }
 
         fused_drone_rel_data_pub.publish(sfr);
@@ -412,6 +409,7 @@ public:
         float init_z_movement = 1.0;
 
         std::string swarm_node_config;
+        std::string cgraph_path;
 
 
         nh.param<int>("max_keyframe_num", frame_num, 20);
@@ -424,13 +422,14 @@ public:
         nh.param<float>("init_z_movement", init_z_movement, 1.0f);
         nh.param<int>("thread_num", thread_num, 4);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
+        nh.param<std::string>("cgraph_path", cgraph_path, "/home/dji/cgraph.dot");
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
         load_nodes_from_file(swarm_node_config);
 
         swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num, kf_movement, init_xy_movement, init_z_movement);
-
+        swarm_localization_solver->cgraph_path = cgraph_path;
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
         fused_drone_basecoor_pub = nh.advertise<swarm_msgs::swarm_drone_basecoor>("/swarm_drones/swarm_drone_basecoor", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(

@@ -38,14 +38,14 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         bool success = false;
 
-        if (database_size() > MATCH_INDEX_DIST || init_mode) {
+        if (database_size() > MATCH_INDEX_DIST || init_mode || img_des.drone_id != self_id) {
 
             ROS_INFO("Querying image from database size %d init_mode %d....", database_size(), init_mode);
             int _old_id = -1;
             if (init_mode) {
-                _old_id = query_from_database(img_des, 1, init_mode);
+                _old_id = query_from_database(img_des, init_mode);
             } else {
-                _old_id = query_from_database(img_des, MATCH_INDEX_DIST);
+                _old_id = query_from_database(img_des);
             }
 
             auto stop = high_resolution_clock::now(); 
@@ -150,7 +150,7 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 
 }
 
-int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int max_index, bool init_mode) {
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode) {
 #ifdef USE_DEEPNET
     float distances[SEARCH_NEAREST_NUM] = {0};
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
@@ -162,7 +162,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
     
     double thres = INNER_PRODUCT_THRES;
-    
+    int max_index = MATCH_INDEX_DIST;
     if (init_mode) {
         thres = INIT_MODE_PRODUCT_THRES;
     }
@@ -177,12 +177,23 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, int ma
         }
 
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
-        ROS_INFO("Suitable Find %ld on drone %d, radius %f", labels[i], return_drone_id,  distances[i]);
-        if (labels[i] < database_size() - max_index && distances[i] > thres) {
-            if (img_desc.drone_id == self_id || return_drone_id == self_id) {
+
+        if (img_desc.drone_id == self_id || return_drone_id == self_id) {
+            if (img_desc.drone_id != return_drone_id) {
+                //Not same drone id, we don't care about the max index
+                if (labels[i] < database_size() - 1 && distances[i] > thres) {
+                    ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
+                    return labels[i];
+                }
+            }
+
+            if (labels[i] < database_size() - max_index && distances[i] > thres) {
+                //Is same id, max index make sense
+                ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
                 return labels[i];
             }
         }
+
     }
 
     return -1;
@@ -517,6 +528,7 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
     double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
     ROS_INFO("Matches cost time %f", dt);
+    /*
     if (visualize) {
         kps1.clear();
         for (auto pt: Pts1) {
@@ -533,8 +545,7 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
         // cv::drawMatches(img1, kps1, img2, kps2, good_matches, _show);
         cv::resize(_show, _show, cv::Size(), VISUALIZE_SCALE, VISUALIZE_SCALE);
         cv::imshow("KNNMatch", _show);
-        //cv::waitKey(10);
-    }
+    }*/
 }
 
 bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, const Swarm::Pose & DP_old_to_new) {
@@ -565,7 +576,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         Swarm::Pose drone_pose_now,
         Swarm::Pose & DP_old_to_new,
         bool init_mode,
-        bool use_orb_matching) {
+        bool use_orb_matching,  int drone_id_new, int drone_id_old) {
         //Preform Optical Flow
     std::vector<cv::Point2f> tracked;// = nowPts;
     std::vector<float> err;
@@ -732,18 +743,18 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 
             char title[100] = {0};
             if (success) {
-                sprintf(title, "SUCCESS LOOP inliers %d", inliers.rows);
+                sprintf(title, "SUCCESS LOOP %d->%d inliers %d", drone_id_old, drone_id_new, inliers.rows);
 	            cv::putText(_show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
             } else {
-                sprintf(title, "FAILED LOOP inliers %d", inliers.rows);
+                sprintf(title, "FAILED LOOP %d->%d inliers %d", drone_id_old, drone_id_new, inliers.rows);
 	            cv::putText(_show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
             }
 
             cv::imshow("Track Loop", _show);
             if (success) {
-                cv::waitKey(-1);
+                cv::waitKey(30);
             } else {
-                cv::waitKey(-1);
+                cv::waitKey(30);
             }
         }
 
@@ -813,7 +824,9 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
             Swarm::Pose(new_img_desc.pose_drone),
             DP_old_to_new,
             init_mode,
-            first_try_match_mode
+            first_try_match_mode,
+            new_img_desc.drone_id,
+            old_img_desc.drone_id
     );
 
 #ifdef ENABLE_OPTICAL_SEC_TRY_INIT

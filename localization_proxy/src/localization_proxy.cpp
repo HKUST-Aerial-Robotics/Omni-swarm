@@ -203,10 +203,10 @@ class LocalProxy {
 
 
         if (dt < 100) {
-            ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_RECV", "ID %d NR RECV %d now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
-            _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
+            // ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_RECV", "ID %d NR RECV %d now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
+            // _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
         } else {
-            ROS_WARN_THROTTLE_NAMED(0.1, "PROXY_RECV", "ID %d NodeRealtime RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
+            // ROS_WARN_THROTTLE_NAMED(0.1, "PROXY_RECV", "ID %d NodeRealtime RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
         }
 
 
@@ -640,8 +640,7 @@ class LocalProxy {
 
                 int32_t ts = ROSTIME2LPS(basecoor.header.stamp);
 
-                if (_id != self_id) {
-                    mavlink_msg_node_based_fused_pack(self_id, 0, &msg, ts, _id,
+                mavlink_msg_node_based_fused_pack(self_id, 0, &msg, ts, _id,
                                                         (int)(basecoor.drone_basecoor[_index].x * 1000),
                                                         (int)(basecoor.drone_basecoor[_index].y * 1000),
                                                         (int)(basecoor.drone_basecoor[_index].z * 1000),
@@ -650,8 +649,7 @@ class LocalProxy {
                                                         (int)(basecoor.position_cov[_index].y * 1000),
                                                         (int)(basecoor.position_cov[_index].z * 1000),
                                                         (int)(float_constrain(basecoor.yaw_cov[_index], 0, M_PI*M_PI) * 1000));
-                    send_mavlink_message(msg);
-                }
+                send_mavlink_message(msg);
                 
                 last_send_fused_base = ros::Time::now();
         }
