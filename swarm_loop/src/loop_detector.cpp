@@ -161,13 +161,11 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
 
     index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
     
-    double thres = INNER_PRODUCT_THRES;
     int max_index = MATCH_INDEX_DIST;
-    if (init_mode) {
-        thres = INIT_MODE_PRODUCT_THRES;
-    }
-
+    
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
+        double thres = INNER_PRODUCT_THRES;
+
         if (labels[i] < 0) {
             continue;
         }
@@ -177,10 +175,14 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
         }
 
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
+        if (init_mode) {
+            thres = INIT_MODE_PRODUCT_THRES;
+        }
 
         if (img_desc.drone_id == self_id || return_drone_id == self_id) {
             if (img_desc.drone_id != return_drone_id) {
                 //Not same drone id, we don't care about the max index
+                thres = INIT_MODE_PRODUCT_THRES;
                 if (labels[i] < database_size() - 1 && distances[i] > thres) {
                     ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
                     return labels[i];
