@@ -1149,14 +1149,6 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
 
-    // printf("SELF POSE A");
-    // _nf_a.self_pose.print();
-    // printf("SELF POSE B");
-    // _nf_b.self_pose.print();
-    // printf("SELF POSE A1");
-    // loc_ret.self_pose_a.print();
-    // printf("SELF POSE B1");
-    // loc_ret.self_pose_b.print();
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
@@ -1166,16 +1158,27 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     loc_ret.ts_a = _nf_a.ts;
     loc_ret.ts_b = _nf_b.ts;
 
-/*
+
+
+
+#ifdef DEBUG_OUTPUT_LOOPS
+
+    printf("SELF POSE A");
+    _nf_a.self_pose.print();
+    printf("SELF POSE B");
+    _nf_b.self_pose.print();
+    printf("SELF POSE A1");
+    loc_ret.self_pose_a.print();
+    printf("SELF POSE B1");
+    loc_ret.self_pose_b.print();
+
     printf("DPOSE A");
     dpose_self_a.print();
     printf("DPOSE B");
     dpose_self_b.print();
-*/
 
-    // printf("ORIGINAL LOOP");
-    // loc_ret.relative_pose.print();
-#ifdef DEBUG_OUTPUT_LOOPS
+    printf("ORIGINAL LOOP");
+    loc_ret.relative_pose.print();
     printf("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
         _idb, min_ts_err_a*1000, min_ts_err_b*1000);
     new_loop.print();

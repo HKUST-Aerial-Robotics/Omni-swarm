@@ -550,9 +550,14 @@ void LoopDetector::find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector
     }*/
 }
 
-bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, const Swarm::Pose & DP_old_to_new) {
+bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rperr, const Swarm::Pose & DP_old_to_new) {
     bool success = pnp_success;
     if (!pnp_success) {
+        return false;
+    }
+
+    if (rperr > RPERR_THRES) {
+        ROS_INFO("Check failed on RP error %f", rperr*57.3);
         return false;
     }
 
@@ -570,12 +575,29 @@ bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, const Swar
 }
 
 
+double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone_pose_old, const Swarm::Pose & drone_pose_now) {
+    Swarm::Pose DP_old_to_new_6d =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+    Swarm::Pose Prediect_new_in_old_Pose = drone_pose_old * DP_old_to_new_6d;
+    auto AttNew_in_old = Prediect_new_in_old_Pose.att().normalized();
+    auto AttNew_in_new = drone_pose_now.att().normalized();
+    auto dyaw = quat2eulers(AttNew_in_new).z() - quat2eulers(AttNew_in_old).z();
+    AttNew_in_old = Eigen::AngleAxisd(dyaw, Eigen::Vector3d::UnitZ())*AttNew_in_old;
+    auto RPerr = (quat2eulers(AttNew_in_old) - quat2eulers(AttNew_in_new)).norm();
+    // std::cout << "New In Old" << quat2eulers(AttNew_in_old) << std::endl;
+    // std::cout << "New In New"  << quat2eulers(AttNew_in_new);
+    // std::cout << "Estimate RP error" <<  (quat2eulers(AttNew_in_old) - quat2eulers(AttNew_in_new))*57.3 << std::endl;
+    // std::cout << "Estimate RP error2" <<  quat2eulers( (AttNew_in_old.inverse()*AttNew_in_new).normalized())*57.3 << std::endl;
+    return RPerr;
+}
+
+
 //img_old_small image must from local drone
 bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
         Swarm::Pose old_extrinsic,
         Swarm::Pose drone_pose_now,
+        Swarm::Pose drone_pose_old,
         Swarm::Pose & DP_old_to_new,
         bool init_mode,
         bool use_orb_matching,  int drone_id_new, int drone_id_old) {
@@ -653,15 +675,19 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         }
         bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/LOOP_IMAGE_DOWNSAMPLE/ img_new_small.rows,     0.995,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
-        auto p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
+        auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
         
+
+        Swarm::Pose DP_old_to_new_6d =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
         //As our pose graph uses 4D pose, here we must solve 4D pose
         //6D pose could use to verify the result but not give to swarm_localization
-        DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
-        std::cout << "PnP solved DPose ";
+        std::cout << "PnP solved DPose 4d";
         DP_old_to_new.print();
         
-        success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
+        auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
+
+        success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
+        
 
 
         if (!success && init_mode) {
@@ -675,8 +701,11 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
             success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/ LOOP_IMAGE_DOWNSAMPLE / img_new_small.rows,     0.995,  inliers,  cv::SOLVEPNP_ITERATIVE);
             p_cam_old_in_new = PnPRestoCamPose(rvec, t);
             p_drone_old_in_new = p_cam_old_in_new*old_extrinsic.to_isometry().inverse();
-            DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
-            success = pnp_result_verify(success, init_mode, inliers.rows, DP_old_to_new);
+            DP_old_to_new = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+
+            RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
+
+            success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
             std::cout << "PnP solved DPose ";
             DP_old_to_new.print();
             if (success) {
@@ -826,6 +855,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
             toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
             Swarm::Pose(old_img_desc.camera_extrinsic),
             Swarm::Pose(new_img_desc.pose_drone),
+            Swarm::Pose(old_img_desc.pose_drone),
             DP_old_to_new,
             init_mode,
             first_try_match_mode,

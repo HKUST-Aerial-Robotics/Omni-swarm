@@ -8,9 +8,9 @@
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=2
             loop_image_downsample: 1
-            init_loop_min_feature_num: 10
-            init_loop_min_feature_num_l2: 10
-            min_loop_feature_num: 10
+            init_loop_min_feature_num: 6
+            init_loop_min_feature_num_l2: 6
+            min_loop_feature_num: 6
             jpg_quality: 75
             enable_lk: true
             

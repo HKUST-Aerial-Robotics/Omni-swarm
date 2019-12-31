@@ -36,6 +36,7 @@ protected:
         const std::vector<cv::Point3f> now_3d,
         Swarm::Pose old_extrinsic,
         Swarm::Pose drone_pose_now,
+        Swarm::Pose drone_pose_old,
         Swarm::Pose & DP_old_to_new,
         bool init_mode,
         bool use_orb_matching, int drone_id_new, int drone_id_old);
