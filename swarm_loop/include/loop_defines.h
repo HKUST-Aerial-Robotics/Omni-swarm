@@ -59,4 +59,6 @@ extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner produ
 #define GFTT_PTS 1000
 #define GFTT_MIN_DIS 10
 
+#define RPERR_THRES 3*DEG2RAD
+
 extern bool ENABLE_LK_LOOP_DETECTION; 
