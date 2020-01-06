@@ -23,7 +23,7 @@ find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
 # list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
 
-find_package(Backward)
+# find_package(Backward)
 
 catkin_package(
  INCLUDE_DIRS include
@@ -48,7 +48,7 @@ add_executable(${PROJECT_NAME}_node
 
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-add_backward(${PROJECT_NAME}_node)
+# add_backward(${PROJECT_NAME}_node)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
