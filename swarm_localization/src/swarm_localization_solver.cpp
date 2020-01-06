@@ -1260,6 +1260,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     setup_problem_with_loops(est_poses_idts, problem);
 
     ROS_INFO("Loop residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
+    num_res_sf = problem.NumResiduals();
 
 
     ceres::Solver::Options options;
@@ -1285,8 +1286,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     double equv_cost = summary.final_cost / sliding_window_size();
 
-    if (drone_num > 1) {
-        equv_cost = equv_cost / (double) (drone_num * (drone_num - 1));
+    if (num_res_sf > 1) {
+        equv_cost = equv_cost / num_res_sf;
     }
 
     equv_cost = sqrt(equv_cost)/ERROR_NORMLIZED;
