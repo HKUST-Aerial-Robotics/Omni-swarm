@@ -47,6 +47,20 @@ typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
 typedef std::vector<std::pair<int64_t, int>> TSIDArray;
 typedef std::map<int, std::map<int64_t, int>>  IDTSIndex;
 
+
+struct swarm_localization_solver_params{
+    int max_frame_number = 100;
+    int min_frame_number = 5;
+    int dense_frame_number = 20;
+    float acpt_cost = 10;
+    int thread_num = 1;
+    float kf_movement = 0.2;
+    float init_xy_movement = 2.0;
+    float init_z_movement = 1.0;
+    int self_id = -1;
+    std::string cgraph_path;
+};
+
 class SwarmLocalizationSolver {
 
     std::mutex solve_lock;
@@ -67,8 +81,9 @@ class SwarmLocalizationSolver {
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
     EstimateCOV est_cov_tsid;
 
-    unsigned int max_frame_number = 20;
-    unsigned int min_frame_number = 10;
+    unsigned int max_frame_number = 100;
+    unsigned int min_frame_number = 5;
+    unsigned int dense_frame_number = 20;
 
     std::set<int> all_nodes;
 
@@ -161,13 +176,11 @@ public:
 
     std::string cgraph_path = "";
 
-    SwarmLocalizationSolver(int _max_frame_number, int _min_frame_number, double _acpt_cost = 0.4,
-                            int _thread_num = 4, double kf_movement = 0.2,
-                            float _init_xy_movement = 2.0,
-                            float _init_z_movement = 1.0) :
-            max_frame_number(_max_frame_number), min_frame_number(_min_frame_number),
-            thread_num(_thread_num), acpt_cost(_acpt_cost),min_accept_keyframe_movement(kf_movement),
-            init_xy_movement(_init_xy_movement),init_z_movement(_init_z_movement)
+    SwarmLocalizationSolver(const swarm_localization_solver_params & params) :
+            max_frame_number(params.max_frame_number), min_frame_number(params.min_frame_number),
+            thread_num(params.thread_num), acpt_cost(params.acpt_cost),min_accept_keyframe_movement(params.kf_movement),
+            init_xy_movement(params.init_xy_movement),init_z_movement(params.init_z_movement),dense_frame_number(params.dense_frame_number),
+            cgraph_path(params.cgraph_path)
     {
     }
 

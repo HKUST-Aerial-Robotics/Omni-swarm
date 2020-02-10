@@ -373,8 +373,6 @@ private:
                             this->pub_posevel_id(it.first, it.second, _sfs.node_covs[it.first], _sfs.node_vels[it.first], sf.stamp);
                         }
                     }
-
-
                     pub_fused_relative(_sfs, sf.stamp);
                 } else {
                     ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
@@ -403,33 +401,27 @@ public:
                                     &SwarmLocalizationNode::on_loop_connection_received, this, 
                                     ros::TransportHints().tcpNoDelay());
         
-        int frame_num = 0, thread_num, min_frame_num;
-        float acpt_cost = 0.4, kf_movement = 0.2;
-        float init_xy_movement = 2.0;
-        float init_z_movement = 1.0;
-
         std::string swarm_node_config;
-        std::string cgraph_path;
 
+        swarm_localization_solver_params solver_params;
 
-        nh.param<int>("max_keyframe_num", frame_num, 20);
-        nh.param<int>("min_keyframe_num", min_frame_num, 3);
+        nh.param<int>("max_keyframe_num", solver_params.max_frame_number, 50);
+        nh.param<int>("dense_keyframe_num", solver_params.dense_frame_number, 20);
+        nh.param<int>("min_keyframe_num", solver_params.min_frame_number, 3);
         nh.param<float>("force_freq", force_freq, 1.0f);
         nh.param<float>("predict_freq", predict_freq, 10.0f);
-        nh.param<float>("max_accept_cost", acpt_cost, 10.0f);
-        nh.param<float>("min_kf_movement", kf_movement, 0.4f);
-        nh.param<float>("init_xy_movement", init_xy_movement, 2.0f);
-        nh.param<float>("init_z_movement", init_z_movement, 1.0f);
-        nh.param<int>("thread_num", thread_num, 4);
+        nh.param<float>("max_accept_cost", solver_params.acpt_cost, 10.0f);
+        nh.param<float>("min_kf_movement", solver_params.kf_movement, 0.4f);
+        nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
+        nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
+        nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
-        nh.param<std::string>("cgraph_path", cgraph_path, "/home/dji/cgraph.dot");
+        nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
         load_nodes_from_file(swarm_node_config);
-
-        swarm_localization_solver = new SwarmLocalizationSolver(frame_num, min_frame_num, acpt_cost, thread_num, kf_movement, init_xy_movement, init_z_movement);
-        swarm_localization_solver->cgraph_path = cgraph_path;
+        swarm_localization_solver = new SwarmLocalizationSolver(solver_params);
         fused_drone_data_pub = nh.advertise<swarm_msgs::swarm_fused>("/swarm_drones/swarm_drone_fused", 10);
         fused_drone_basecoor_pub = nh.advertise<swarm_msgs::swarm_drone_basecoor>("/swarm_drones/swarm_drone_basecoor", 10);
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(
@@ -437,7 +429,7 @@ public:
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
 
 
-        ROS_INFO("Will use %d number of keyframe\n", frame_num);
+        ROS_INFO("Will use %d number of keyframe\n", solver_params.max_frame_number);
     }
 };
 
