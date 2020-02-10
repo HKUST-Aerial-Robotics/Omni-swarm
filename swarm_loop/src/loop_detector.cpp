@@ -679,6 +679,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         
 
         Swarm::Pose DP_old_to_new_6d =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+        DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
         //As our pose graph uses 4D pose, here we must solve 4D pose
         //6D pose could use to verify the result but not give to swarm_localization
         std::cout << "PnP solved DPose 4d";
