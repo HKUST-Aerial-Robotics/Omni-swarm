@@ -64,13 +64,16 @@ inline void position_error(const T *posea, const T *poseb, T *error,
 
 //TODO: Add direction to this
 template<typename T>
-inline void unit_position_error(const T *posea, const T *poseb, T *error,
+inline void unit_position_error(const T *posea, const T *poseb, const T * tangent_base, T *error,
                        Eigen::Vector3d pos_cov = Eigen::Vector3d(0.002, 0.002, 0.002)) {
     //For this residual; we assume poseb a unit vector
     const T scalea = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    error[0] = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]) / pos_cov.x();
-    error[1] = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]) / pos_cov.y();
-    error[2] = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]) / pos_cov.z();
+    const T err0 = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]) / pos_cov.x();
+    const T err1 = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]) / pos_cov.y();
+    const T err2 = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]) / pos_cov.z();
+
+    error[0] = tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2;
+    error[1] = tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2;
 }
 
 template<typename T>
@@ -108,6 +111,17 @@ inline void EigenVec2T(const Eigen::Vector3d & _p, T *p) {
     p[1] = T(_p.y());
     p[2] = T(_p.z());
 }
+
+template<typename T>
+inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan_base) {
+    tan_base[0] = T(_tan_base(0, 0));
+    tan_base[1] = T(_tan_base(0, 1));
+    tan_base[2] = T(_tan_base(0, 2));
+    tan_base[3] = T(_tan_base(1, 0));
+    tan_base[4] = T(_tan_base(1, 1));
+    tan_base[5] = T(_tan_base(1, 2));
+}
+
 
 struct SwarmLoopError {
     std::vector<Swarm::LoopConnection> locs;
@@ -268,15 +282,19 @@ struct SwarmFrameError {
 
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
-
+                
                 if(detection_no_scale) {
-                    unit_position_error(relpose_est, rel_pose, _residual + res_count);
+                    T tan_base[6];
+                    auto _tan_base = _nf.detect_tan_base[_id];
+                    EigenTanbase2T(_tan_base, tan_base);
+                    unit_position_error(relpose_est, rel_pose, tan_base, _residual + res_count);
+                    res_count = res_count + 2;
                 } else {
                     Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
                     position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
+                    res_count = res_count + 3;
                 }
             
-                res_count = res_count + 3;
             }
         }
         // ROS_INFO("Work with detected node");
@@ -302,7 +320,11 @@ struct SwarmFrameError {
                 if (_nf.has_detect_relpose) {
                     for (const auto & it: _nf.detected_nodes) {
                         if (has_id(it.first) && _nf.enabled_detection.at(it.first)) {
-                            res_count = res_count + 3;
+                            if(detection_no_scale) {
+                                res_count = res_count + 2;
+                            } else{
+                                res_count = res_count + 3;
+                            }
                         }
                     }
                 }

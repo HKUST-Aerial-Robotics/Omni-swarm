@@ -168,6 +168,7 @@ class NodeFrame {
         std::map<int, Pose> detected_nodes;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
+        std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
 
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;
         std::map<int, Eigen::Vector3d> detected_nodes_angvar;
