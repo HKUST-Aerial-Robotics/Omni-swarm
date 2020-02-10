@@ -91,7 +91,7 @@ class SwarmLocalizationNode {
             nf.is_valid = true;
 
         } else {
-            if (nf.node->HasVO()) {
+            if (nf.node->has_odometry()) {
                 // ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
                 // ROS_WARN("Node %d invalid: No vo now", _nf.id);
             }
@@ -276,12 +276,11 @@ private:
                     Node *new_node = new Node(node_id, _node_config);
                     all_node_defs[node_id] = new_node;
                     auto ann_pos = new_node->get_anntena_pos();
-                    ROS_INFO("NODE %d static:%d vo %d uwb %d armarker %d ann %5.4f %5.4f %5.4f",
+                    ROS_INFO("NODE %d static:%d vo %d uwb %d ann %5.4f %5.4f %5.4f",
                              new_node->id,
-                             new_node->IsStatic(),
-                             new_node->HasVO(),
-                             new_node->HasUWB(),
-                             new_node->HasArmarker(),
+                             new_node->is_static_node(),
+                             new_node->has_odometry(),
+                             new_node->has_uwb(),
                              ann_pos.x(),
                              ann_pos.y(),
                              ann_pos.z()
