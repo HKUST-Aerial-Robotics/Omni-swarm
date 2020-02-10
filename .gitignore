@@ -14,3 +14,4 @@ swarm_loop/.vscode/
 .vscode/
 support_files/ORBvoc.txt
 swarm_localization/build/
+*/build/

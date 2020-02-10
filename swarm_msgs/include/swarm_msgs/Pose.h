@@ -246,6 +246,10 @@ public:
         return position;
     }
 
+    inline Eigen::Vector3d & pos() {
+        return position;
+    }
+
     inline Eigen::Quaterniond att_yaw_only() const {
         return attitude_yaw_only;
     }

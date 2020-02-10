@@ -43,6 +43,23 @@ using namespace nav_msgs;
 using namespace swarm_msgs;
 using namespace std::chrono;
 
+
+
+Eigen::Matrix<double, 2, 3> tangent_base_for_unit_detect(const Eigen::Vector3d & pts_j) {
+    Eigen::Matrix<double, 2, 3> tangent_base;
+    Eigen::Vector3d b1, b2;
+    Eigen::Vector3d a = pts_j.normalized();
+    Eigen::Vector3d tmp(0, 0, 1);
+    if(a == tmp)
+        tmp << 1, 0, 0;
+    b1 = (tmp - a * (a.transpose() * tmp)).normalized();
+    b2 = a.cross(b1);
+    tangent_base.block<1, 3>(0, 0) = b1.transpose();
+    tangent_base.block<1, 3>(1, 0) = b2.transpose();
+
+    return tangent_base;
+}
+
 class SwarmLocalizationNode {
 
     void add_drone_id(int _id) {
@@ -101,17 +118,12 @@ class SwarmLocalizationNode {
         for (auto nd: _nf.detected) {
             if (nodedef_has_id(nd.remote_drone_id)) {
                 nf.detected_nodes[nd.remote_drone_id] = Pose(nd.dpos, nd.dyaw);
+                if(nd.is_2d_detect) {
+                    nf.detected_nodes[nd.remote_drone_id].pos() = nf.detected_nodes[nd.remote_drone_id].pos().normalized();
+                    nf.detect_tan_base[nd.remote_drone_id] = tangent_base_for_unit_detect(nf.detected_nodes[nd.remote_drone_id].pos());
+                }
                 nf.detected_nodes_posvar[nd.remote_drone_id] = 
                     Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
-
-                if (!nd.is_yaw_valid) {
-                    nf.detected_nodes_angvar[nd.remote_drone_id] = 
-                        Eigen::Vector3d(1000000, 1000000, 1000000);
-
-                } else {
-                    nf.detected_nodes_angvar[nd.remote_drone_id] = 
-                        Eigen::Vector3d(nd.dyaw_cov, nd.dyaw_cov, nd.dyaw_cov);
-                }
                 nf.has_detect_relpose = true;
             }
         }
