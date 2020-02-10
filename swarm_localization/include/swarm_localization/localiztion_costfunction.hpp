@@ -27,15 +27,7 @@ typedef std::vector<Quaterniond> quat_array;
 #define NO_ANNETAPOS
 
 
-#define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
-#define VO_DRIFT_METER_Z 0.005
-#define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
-#define DISTANCE_MEASURE_ERROR 0.1
-#define LOOP_COV 0.05
-#define LOOP_YAWCOV 0.01
 
-#define ERROR_NORMLIZED 0.01
-//#define DETECTION_COV_POS 10
 #define DETECTION_COV_POS 1
 
 #define DETECTION_COV_ANG 1
@@ -67,6 +59,18 @@ inline void position_error(const T *posea, const T *poseb, T *error,
     error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_cov.x();
     error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
     error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
+}
+
+
+//TODO: Add direction to this
+template<typename T>
+inline void unit_position_error(const T *posea, const T *poseb, T *error,
+                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.002, 0.002, 0.002)) {
+    //For this residual; we assume poseb a unit vector
+    const T scalea = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
+    error[0] = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]) / pos_cov.x();
+    error[1] = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]) / pos_cov.y();
+    error[2] = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]) / pos_cov.z();
 }
 
 template<typename T>
@@ -185,6 +189,7 @@ struct SwarmFrameError {
     std::map<int, int> id2poseindex;
     std::map<int, bool> yaw_observability;
     std::map<int, double> yaw_init;
+    bool detection_no_scale = false;
 
     template<typename T>
     inline void get_pose(int _id, T const *const *_poses, T * t_pose) const {
@@ -264,9 +269,13 @@ struct SwarmFrameError {
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
 
-                Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
-
-                position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
+                if(detection_no_scale) {
+                    unit_position_error(relpose_est, rel_pose, _residual + res_count);
+                } else {
+                    Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
+                    position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
+                }
+            
                 res_count = res_count + 3;
             }
         }
@@ -336,11 +345,13 @@ struct SwarmFrameError {
     SwarmFrameError(const SwarmFrame &_sf, 
                     const std::map<int, int> &_id2poseindex, 
                     const std::map<int, bool> & _yaw_observability, 
-                    const std::map<int, double> & _yaw_init = std::map<int, double> ()) :
+                    const std::map<int, double> & _yaw_init = std::map<int, double> (),
+                    bool _detection_no_scale = false) :
             sf(_sf),
             id2poseindex(_id2poseindex),
             yaw_observability(_yaw_observability),
-            yaw_init(_yaw_init){
+            yaw_init(_yaw_init),
+            detection_no_scale(_detection_no_scale){
     }
 };
 
@@ -353,6 +364,8 @@ struct SwarmHorizonError {
     std::vector<double> yaw_init;
 
     std::vector<Pose> delta_poses;
+    std::vector<Eigen::Vector3d> delta_pose_covs;
+    std::vector<double> delta_ang_covs;
     int _id = -1;
 
     SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
@@ -364,6 +377,8 @@ struct SwarmHorizonError {
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
+            delta_pose_covs.push_back(_nf_win[i].position_cov_to_last);
+            delta_ang_covs.push_back(_nf_win[i].yaw_cov_to_last);
             ts2nfindex[_nf.ts] = i;
         }
 
@@ -392,8 +407,8 @@ struct SwarmHorizonError {
         return (nf_windows.size()-1)*4;
     }
 
-    Eigen::Vector3d pos_cov = Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z);
-    Eigen::Vector3d ang_cov = Eigen::Vector3d(1, 1, 1) * VO_ERROR_ANGLE;
+    Eigen::Vector3d pos_cov = Eigen::Vector3d::Ones() * VO_DRIFT_METER;
+    double ang_cov = VO_ERROR_ANGLE;
 
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
@@ -416,7 +431,7 @@ struct SwarmHorizonError {
             DeltaPose(est_posea, est_poseb, est_dpose);
 
 
-            pose_error(est_dpose, mea_dpose, _residual + res_count, pos_cov, ang_cov.z());
+            pose_error(est_dpose, mea_dpose, _residual + res_count, delta_pose_covs[i], delta_ang_covs[i]);
 
 
             /*
