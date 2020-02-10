@@ -18,14 +18,14 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         ROS_ERROR("WRONG SIZE!!!");
         exit(-1);
     }
-    img_des.msg_id = rand() + img_des.timestamp.nsec*RAND_MAX;
+    img_des.msg_id = rand() + img_des.timestamp.nsec;
     sent_message.insert(img_des.msg_id);
     lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {
     auto _loop_conn = toLCMLoopConnection(loop_conn);
-    _loop_conn.msg_id = rand() + loop_conn.ts_a.nsec*RAND_MAX;
+    _loop_conn.msg_id = rand() + loop_conn.ts_a.nsec;
 
     sent_message.insert(_loop_conn.msg_id);
     lcm.publish("SWARM_LOOP_CONN", &_loop_conn);
