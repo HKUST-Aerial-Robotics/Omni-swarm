@@ -431,64 +431,63 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 }
 
 
-std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::PredictNode(const NodeFrame & nf) const {
+bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
-    if (last_saved_est_kf_ts > 0 && finish_init && est_poses_tsid_saved.find(last_saved_est_kf_ts) != est_poses_tsid_saved.end() &&
-        est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
+    int _id = nf.id;
+    if (last_saved_est_kf_ts.size() > 0 && finish_init) {
+        for (auto it = last_saved_est_kf_ts.rbegin(); it != last_saved_est_kf_ts.rend(); ++it ) { 
+            int64_t _ts = *it;
+            if(est_poses_tsid_saved.at(_ts).find(_id)!=est_poses_tsid_saved.at(_ts).end() ) {
 
-        //Use last solve relative res, e.g init with last
-        int _id = nf.id;
-        Pose est_last = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
+                //Use last solve relative res, e.g init with last
+                int _id = nf.id;
+                Pose est_last = Pose(est_poses_tsid_saved.at(_ts).at(_id), true);
+                Pose last_vo = all_sf.at(_ts).id2nodeframe.at(_id).pose();
+                Pose now_vo = nf.pose();
 
-        Pose last_vo = all_sf.at(last_saved_est_kf_ts).id2nodeframe.at(_id).pose();
-        Pose now_vo = nf.pose();
 
-
-        Pose predict_now = est_last * Pose::DeltaPose(last_vo, now_vo, true);
-        ret.first = predict_now;
-        ret.second = Eigen::Matrix4d::Zero();
-
-    } else {
-        ROS_ERROR("Can't Predict Node Pose: Not inited");
-        exit(-1);
-        return ret;
+                _pose = est_last * Pose::DeltaPose(last_vo, now_vo, true);
+                cov = Eigen::Matrix4d::Zero();
+                return true;
+            }
+        }
     }
-    return ret;
+    return false;
 }
 
 
-std::pair<Pose, Eigen::Matrix4d> SwarmLocalizationSolver::NodeCooridnateOffset(int _id) const {
-    std::pair<Pose, Eigen::Matrix4d> ret; 
-    if (last_saved_est_kf_ts > 0 && finish_init &&
-        est_poses_tsid_saved.at(last_saved_est_kf_ts).find(_id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end() ) {
+bool SwarmLocalizationSolver::NodeCooridnateOffset(int _id, Pose & _pose, Eigen::Matrix4d & cov) const {
+    bool find_node = false;
+    if (last_saved_est_kf_ts.size() > 0 && finish_init) {
+        for (auto it = last_saved_est_kf_ts.rbegin(); it != last_saved_est_kf_ts.rend(); ++it ) { 
+            int64_t _ts = *it;
+            if(est_poses_tsid_saved.at(_ts).find(_id)!=est_poses_tsid_saved.at(_ts).end() ) {
+                find_node = true;
+                Pose PBA = Pose(est_poses_tsid_saved.at(_ts).at(_id), true);
 
-        Pose PBA = Pose(est_poses_tsid_saved.at(last_saved_est_kf_ts).at(_id), true);
-
-        Pose PBB = all_sf.at(last_saved_est_kf_ts).id2nodeframe.at(_id).pose();
-        
-        PBA.set_yaw_only();
-        PBB.set_yaw_only();
-        
-        ret.first = Pose(PBA.to_isometry() * PBB.to_isometry().inverse());
-        // ROS_INFO("Request cov %ld %d", last_saved_est_kf_ts, nf.id);
+                Pose PBB = all_sf.at(_ts).id2nodeframe.at(_id).pose();
+                
+                PBA.set_yaw_only();
+                PBB.set_yaw_only();
+                
+                _pose = Pose(PBA.to_isometry() * PBB.to_isometry().inverse());
+                
 #ifdef COMPUTE_COV
-        if (_id != self_id){
-            auto cov = est_cov_tsid.at(last_saved_est_kf_ts).at(_id);
-            cov.block<3,3>(0,0) = PBA.to_isometry().rotation()*cov.block<3,3>(0,0);
-            ret.second = cov;
-        } else {
-            ret.second = Eigen::Matrix4d::Zero();
-        }
+                if (_id != self_id){
+                    auto cov = est_cov_tsid.at(last_saved_est_kf_ts).at(_id);
+                    cov.block<3,3>(0,0) = PBA.to_isometry().rotation()*cov.block<3,3>(0,0);
+                    ret.second = cov;
+                } else {
+                    ret.second = Eigen::Matrix4d::Zero();
+                }
 #else
-    ret.second = Eigen::Matrix4d::Zero();
+                cov = Eigen::Matrix4d::Zero();
 #endif
-
-    } else {
-        ROS_ERROR("Can't Predict Node Pose: Not inited");
-        exit(-1);
-        return ret;
+                return true;
+            }
+        }
     }
-    return ret;
+    return false;
 }
 
 
@@ -503,20 +502,20 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
         int _id = it.first;
 
         NodeFrame & nf = it.second;
-        if (est_poses_tsid_saved.find(last_saved_est_kf_ts) != est_poses_tsid_saved.end()) {
-            if(est_poses_tsid_saved.at(last_saved_est_kf_ts).find(nf.id)!=est_poses_tsid_saved.at(last_saved_est_kf_ts).end()) {
-                auto ret = this->PredictNode(nf);
-                sfs.node_poses[_id] = ret.first;
-                sfs.node_covs[_id] = ret.second;
-                //Give node velocity predict here
-                sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
-                auto ret2 = this->NodeCooridnateOffset(nf.id);
-                sfs.base_coor_poses[_id] = ret2.first;
-                sfs.base_coor_covs[_id] = ret2.second;
-            } else {
-                // Maybe use previous results
-                // ROS_WARN("No id %d found in last kf", nf.id);
-            }
+        Pose pose, pose1;
+        Eigen::Matrix4d cov, cov1;
+        auto ret = this->PredictNode(nf, pose, cov);
+        if (ret) {
+            sfs.node_poses[_id] = pose;
+            sfs.node_covs[_id] = cov;
+        }
+        //Give node velocity predict here
+        sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
+        ret = this->NodeCooridnateOffset(nf.id, pose1, cov1);
+        if (ret) {
+            sfs.base_coor_poses[_id] = pose1;
+            sfs.base_coor_covs[_id] = cov1;
+
         }
     }
 
@@ -683,7 +682,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
         }
     }
 
-    last_saved_est_kf_ts = last_ts;
+    last_saved_est_kf_ts.push_back(last_ts);
 }
 
 unsigned int SwarmLocalizationSolver::sliding_window_size() const {

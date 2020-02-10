@@ -68,7 +68,7 @@ class SwarmLocalizationSolver {
     std::vector<SwarmFrame> sf_sld_win;
     std::map<int64_t, SwarmFrame> all_sf;
     int64_t last_kf_ts = 0;
-    int64_t last_saved_est_kf_ts = 0;
+    std::vector<int64_t> last_saved_est_kf_ts;
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
@@ -190,8 +190,8 @@ public:
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
-    std::pair<Pose, Eigen::Matrix4d> PredictNode(const NodeFrame & nf) const;
-    std::pair<Pose, Eigen::Matrix4d> NodeCooridnateOffset(int _id) const;
+    bool PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const;
+    bool NodeCooridnateOffset(int _id, Pose & _pose, Eigen::Matrix4d & cov) const;
 
     bool CanPredictSwarm() {
         return finish_init;
