@@ -193,6 +193,10 @@ class NodeFrame {
         bool has_detected_node(int _id) const {
             return detected_nodes.find(_id) != detected_nodes.end();
         }
+        
+        bool has_odometry() const {
+            return vo_available;
+        }
 
         Pose pose() const {
             //If has vo, return vo position
