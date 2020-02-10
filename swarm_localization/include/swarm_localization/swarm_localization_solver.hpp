@@ -69,7 +69,6 @@ class SwarmLocalizationSolver {
     std::map<int64_t, SwarmFrame> all_sf;
     int64_t last_kf_ts = 0;
     int64_t last_saved_est_kf_ts = 0;
-    std::map<int, int64_t> last_lost_ts_of_node;
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;

@@ -11,6 +11,16 @@
 #include <set>
 #include <swarm_msgs/LoopConnection.h>
 
+#define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
+#define VO_DRIFT_METER_Z 0.005
+#define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
+#define DISTANCE_MEASURE_ERROR 0.1
+#define LOOP_COV 0.05
+#define LOOP_YAWCOV 0.01
+#define ERROR_NORMLIZED 0.01
+//#define DETECTION_COV_POS 10
+
+#define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)
 using namespace Swarm;
 
 typedef std::map<int, double> DisMap;
@@ -165,6 +175,8 @@ class NodeFrame {
         Pose self_pose;
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
+        Eigen::Vector3d position_cov_to_last = VO_DRIFT_XYZ;
+        double yaw_cov_to_last = VO_ERROR_ANGLE;
         std::map<int, Pose> detected_nodes;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;

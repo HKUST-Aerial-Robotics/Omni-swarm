@@ -125,7 +125,21 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
 }
 
 void SwarmLocalizationSolver::delete_frame_i(int i) {
+    auto delete_sf = sf_sld_win[i];
     sf_sld_win.erase(sf_sld_win.begin() + i);
+    if (i < sf_sld_win.size()) {
+        auto & next_sf = sf_sld_win[i];
+        for (auto it: next_sf.id2nodeframe) {
+            auto &_id = it.first;
+            auto &_node = it.second;
+            if(delete_sf.HasID(_id) && delete_sf.has_odometry(_id)) {
+                //Than make this cov bigger
+                _node.position_cov_to_last = _node.position_cov_to_last + VO_DRIFT_XYZ;
+                _node.yaw_cov_to_last = _node.yaw_cov_to_last + VO_ERROR_ANGLE;
+            }
+        }
+
+    }
 }
 
 bool SwarmLocalizationSolver::is_frame_useful(unsigned int i) const {
@@ -142,20 +156,17 @@ void SwarmLocalizationSolver::process_frame_clear() {
     int _index = 0;
 
 #ifdef RANDOM_DELETE_KF
-    _index = rand()%(max_frame_number-1);
-#endif
     while (sf_sld_win.size() > max_frame_number) {
-        ROS_INFO("Start clear frames");
-        SwarmFrame & sf = sf_sld_win[_index];
-        for (auto it : sf.id2nodeframe) {
-            if (est_cov_tsid.find(sf.ts) != est_cov_tsid.end() && sf.has_odometry(it.first)) {
-                last_lost_ts_of_node[it.first] = sf.ts;
-            }
-        }
-
+        _index = rand()%(max_frame_number-1);
         delete_frame_i(_index);
         ROS_INFO("Clear first frame from sld win, now size %ld", sf_sld_win.size());
     }
+#else
+    while (sf_sld_win.size() > max_frame_number) {
+        delete_frame_i(_index);
+        ROS_INFO("Clear first frame from sld win, now size %ld", sf_sld_win.size());
+    }
+#endif
 }
 
 void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts) {
@@ -1483,23 +1494,3 @@ void SwarmLocalizationSolver::generate_cgraph() {
     ROS_INFO("Generate cgraph cost %4.3fms\n", dt);
 
 }
-
-Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix);
-
-Eigen::MatrixXd CRSMatrixToEigenMatrix(const ceres::CRSMatrix &crs_matrix) {
-    Eigen::MatrixXd eigen_matrix;
-    eigen_matrix.resize(crs_matrix.num_rows, crs_matrix.num_cols);
-    eigen_matrix.setZero();
-    for (int row = 0; row < crs_matrix.num_rows; ++row) {
-        int start = crs_matrix.rows[row];
-        int end = crs_matrix.rows[row + 1] - 1;
-        
-        for (int i = start; i <= end; i++) {
-            int col = crs_matrix.cols[i];
-            double value = crs_matrix.values[i];
-            (eigen_matrix)(row, col) = value;
-        }
-    }
-    return eigen_matrix;
-}
-
