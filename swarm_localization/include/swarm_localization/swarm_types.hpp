@@ -38,13 +38,11 @@ using namespace Eigen;
 namespace Swarm {
     class Node {
     protected:
-        bool has_vo = false;
-        bool has_uwb = false;
-        bool has_global_pose = false;
-        bool has_armarkers = false;
-        bool has_global_velocity = false;
-        bool is_static = false;
-        bool has_camera = false;
+        bool _has_vo = false;
+        bool _has_uwb = false;
+        bool _has_global_pose = false;
+        bool _has_global_velocity = false;
+        bool _is_static = false;
 
         Pose global_pose;
         Eigen::Vector3d global_velocity = Vector3d(0, 0, 0);
@@ -56,28 +54,20 @@ namespace Swarm {
 
         int id = -1;
 
-        bool HasCamera() const {
-            return has_camera;
+        bool has_odometry() const {
+            return _has_vo;
         }
 
-        bool HasVO() const {
-            return has_vo;
+        bool has_uwb() const {
+            return _has_uwb;
         }
 
-        bool HasUWB() const {
-            return has_uwb;
+        bool has_global_pose() const {
+            return _has_global_pose;
         }
 
-        bool HasGlobalPose() const {
-            return has_global_pose;
-        }
-
-        bool IsStatic() const {
-            return is_static;
-        }
-
-        bool HasArmarker() const {
-            return has_armarkers;
+        bool is_static_node() const {
+            return _is_static;
         }
 
         double to_real_distance(const double mea, int _id) const {
@@ -95,13 +85,11 @@ namespace Swarm {
             id(_id){
             try {
 //                ROS_INFO("Is parsing node %d", _id);
-                has_uwb = config["has_uwb"].as<bool>();
-                has_vo = config["has_vo"].as<bool>();
-                has_camera = config["has_camera"].as<bool>();
-                has_global_pose = config["has_global_pose"].as<bool>();
-                has_armarkers = config["has_armarkers"].as<bool>();
-                is_static = config["is_static"].as<bool>();
-                if (has_uwb) {
+                _has_uwb = config["has_uwb"].as<bool>();
+                _has_vo = config["has_vo"].as<bool>();
+                _has_global_pose = config["has_global_pose"].as<bool>();
+                _is_static = config["is_static"].as<bool>();
+                if (_has_uwb) {
                     this->anntena_pos = Vector3d( config["anntena_pos"][0].as<double>(),
                             config["anntena_pos"][1].as<double>(),
                             config["anntena_pos"][2].as<double>());
@@ -190,7 +178,7 @@ class NodeFrame {
 
         NodeFrame(Node *_node) :
                 node(_node) {
-            is_static = _node->IsStatic();
+            is_static = _node->is_static_node();
         }
 
         double to_real_distance(const double & measure, int _id) const {
@@ -208,14 +196,14 @@ class NodeFrame {
         Pose pose() const {
             //If has vo, return vo position
             if (!is_static) {
-                assert((node->HasVO() && vo_available) && "Try get position non non-static via VO failed node");
+                assert((node->has_odometry() && vo_available) && "Try get position non non-static via VO failed node");
             }
             
 
             if (vo_available) {
                 return self_pose;
             } else if(is_static){
-                if (node->HasGlobalPose()) {
+                if (node->has_global_pose()) {
                     return node->get_global_pose();
                 } else {
                     //Is unknown static node, using 0, 0, 0 position
@@ -248,11 +236,11 @@ class NodeFrame {
         }
 
         Eigen::Vector3d velocity() const {
-            assert(!(node->HasVO() && !vo_available) && "Try get velocity on VO failed node");
+            assert(!(node->has_odometry() && !vo_available) && "Try get velocity on VO failed node");
             if (vo_available) {
                 return self_vel;
             } else {
-                if (node->HasGlobalPose()) {
+                if (node->has_global_pose()) {
                     return node->get_global_velocity();
                 } else {
                     //Is unknown static node, using 0, 0, 0 position
@@ -288,25 +276,25 @@ class SwarmFrame {
             return id2nodeframe.size();
         }
 
-        bool HasUWB(const int id) const {
+        bool has_distance_measurement(const int id) const {
             if (id2nodeframe.find(id) == id2nodeframe.end()) {
                 return 0;
             }
-            return id2nodeframe.at(id).node->HasUWB();
+            return id2nodeframe.at(id).node->has_uwb();
         }
 
-        bool HasDis(const int idj, const int idi) const {
+        bool has_distance_measurement(const int idj, const int idi) const {
             if (dis_mat.find(idj) == dis_mat.end()) {
                 return false;
             }
             return dis_mat.at(idj).find(idi) != dis_mat.at(idj).end();
         }
 
-        bool HasID(const int _id) const{
+        bool has_node(const int _id) const{
             return (id2nodeframe.find(_id) != id2nodeframe.end());
         }
 
-        bool HasDetect(const int _id) const {
+        bool has_detection_measurement(const int _id) const {
             if (id2nodeframe.find(_id) == id2nodeframe.end()) {
                 return false;
             }
@@ -316,7 +304,7 @@ class SwarmFrame {
             return false;
         }
 
-        bool HasDetect(const int _idi, const int _idj) const {
+        bool has_detection_measurement(const int _idi, const int _idj) const {
             if (id2nodeframe.find(_idi) == id2nodeframe.end()) {
                 return false;
             }
@@ -331,7 +319,7 @@ class SwarmFrame {
             return false;
         }
 
-        int has_detect() const {
+        int has_detection_measurement() const {
             int total_detect = 0;
             for (auto it : id2nodeframe) {
                 total_detect += it.second.detected_nodes.size();
@@ -340,7 +328,7 @@ class SwarmFrame {
             return total_detect;
         }
 
-        int detected_num(const int _id) const {
+        int detected_number(const int _id) const {
             if (id2nodeframe.find(_id) == id2nodeframe.end()) {
                 return 0;
             }
@@ -348,13 +336,13 @@ class SwarmFrame {
         }
 
         double distance(const int idj, const int idi) const {
-            assert(HasDis(idj, idi) && "Require distance not have");
+            assert(has_distance_measurement(idj, idi) && "Require distance not have");
 
             return dis_mat.at(idj).at(idi);
         }
 
         bool has_odometry(const int id) const {
-            if (this->HasID(id)) {
+            if (this->has_node(id)) {
                 return (id2nodeframe.at(id).vo_available);
             }
             return false;
