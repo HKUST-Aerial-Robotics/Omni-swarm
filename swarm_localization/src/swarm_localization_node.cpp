@@ -319,6 +319,12 @@ private:
         sfr.header.stamp = stamp;
         sdb.header.stamp = stamp;
         Pose self_pose = _sfs.node_poses.at(self_id);
+
+        sf.self_yaw = self_pose.yaw();
+        sf.self_pos = self_pose.to_ros_pose().position;
+        sfr.self_yaw = self_pose.yaw();
+        sfr.self_pos = self_pose.to_ros_pose().position;
+
         for (auto it : _sfs.node_poses) {
             int id = it.first;
             Pose _pose = it.second;
@@ -332,6 +338,7 @@ private:
             sf.ids.push_back(id);
             sf.local_drone_position.push_back(_pose.to_ros_pose().position);
             sf.local_drone_yaw.push_back(_pose.yaw());
+
             geometry_msgs::Vector3 pcov;
             pcov.x = _sfs.node_covs.at(id)(0, 0);
             pcov.y = _sfs.node_covs.at(id)(1, 1);
