@@ -128,12 +128,21 @@ public:
         update_yaw();
     }
 
-    Pose(Eigen::Matrix3d R, Eigen::Vector3d T) {
+    Pose(const Eigen::Matrix3d & R, const Eigen::Vector3d & T) {
         attitude = R;
         attitude.normalize();
         position = T;
         update_yaw();
     }
+
+
+    Pose(const Eigen::Quaterniond & Q, const Eigen::Vector3d &T) {
+        attitude = Q;
+        attitude.normalize();
+        position = T;
+        update_yaw();
+    }
+
 
     Pose(double v[], bool xyzyaw = false) {
         if (xyzyaw) {
@@ -193,6 +202,10 @@ public:
         //        printf("Res eigen");
         //        p.print();
         return p;
+    }
+
+    friend Eigen::Vector3d operator*(Pose a, Eigen::Vector3d point) {
+        return a.attitude * point + a.position;
     }
 
     //A^-1B
