@@ -329,11 +329,11 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
             printf("DETETCTIONS ");
             for (auto itj : _nf.detected_nodes) {
                 int _idj = itj.first;
-                Pose det = itj.second;
+                Eigen::Vector3d det = itj.second.p;
                 if (sf.has_node(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
                     Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
                     Pose DposeEST = Pose::DeltaPose(posj_est, _nf.pose(), true);
-                    printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f\n",_idj, det.pos().x(), det.pos().y(), det.pos().z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
+                    printf("ID %d DXYZ %4.2f %4.2f %4.2f ESTDXYZ %4.2f %4.2f %4.2f\n",_idj, det.x(), det.y(), det.z(), DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z());
                 }
 
             }
