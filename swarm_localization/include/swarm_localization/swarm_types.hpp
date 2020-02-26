@@ -148,6 +148,19 @@ public:
     }
 };
 
+struct DetectedObject {
+    //TYPE 1: Drone
+    int obj_type = 1;
+    Eigen::Vector3d p = Eigen::Vector3d::Zero();
+    double inv_dep = 0;
+    bool detect_type = 0;
+    bool enable_scale = false;
+
+    DetectedObject() {}
+    DetectedObject(Eigen::Vector3d _p, double _inv_dep, bool _enable_scale):
+        p(_p), inv_dep(_inv_dep),enable_scale(_enable_scale) {}
+};
+
 class NodeFrame {
     public:
         bool frame_available = false;
@@ -165,7 +178,7 @@ class NodeFrame {
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d position_cov_to_last = VO_DRIFT_XYZ;
         double yaw_cov_to_last = VO_ERROR_ANGLE;
-        std::map<int, Pose> detected_nodes;
+        std::map<int, DetectedObject> detected_nodes;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;

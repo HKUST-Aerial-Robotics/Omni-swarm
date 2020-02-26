@@ -64,7 +64,7 @@ inline void position_error(const T *posea, const T *poseb, T *error,
 
 //TODO: Add direction to this
 template<typename T>
-inline void unit_position_error(const T *posea, const T *poseb, const T * tangent_base, T *error,
+inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error,
                        Eigen::Vector3d pos_cov = Eigen::Vector3d(0.002, 0.002, 0.002)) {
     //For this residual; we assume poseb a unit vector
     const T scalea = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
@@ -276,25 +276,30 @@ struct SwarmFrameError {
 //            Detected pose error
             int _id = it.first;
             if (has_id(_id) && _nf.enabled_detection.at(it.first)) {
-                Pose _rel_pose = it.second;
-                T rel_pose[4];
-                _rel_pose.to_vector_xyzyaw(rel_pose);
+                Eigen::Vector3d _rel_p = it.second.p;
+                T inv_dep = (T)it.second.inv_dep;
+                T rel_p[3];
+                rel_p[0] = T(_rel_p.x());
+                rel_p[1] = T(_rel_p.y());
+                rel_p[2] = T(_rel_p.z());
 
                 T relpose_est[4];
                 estimate_relpose(_nf.id, _id, _poses, relpose_est);
+                //Use inv distance as inv dep
+                T est_inv_dep = 1.0/sqrt(relpose_est[0]*relpose_est[0] + relpose_est[1]*relpose_est[1] + relpose_est[2]*relpose_est[2]);
                 
-                if(detection_no_scale) {
-                    T tan_base[6];
-                    auto _tan_base = _nf.detect_tan_base[_id];
-                    EigenTanbase2T(_tan_base, tan_base);
-                    unit_position_error(relpose_est, rel_pose, tan_base, _residual + res_count);
-                    res_count = res_count + 2;
-                } else {
-                    Eigen::Vector3d pos_cov = _nf.detected_nodes_posvar[_id] * DETECTION_COV_POS;
-                    position_error(relpose_est, rel_pose, _residual + res_count, pos_cov);
-                    res_count = res_count + 3;
+                // T tan_base[6];
+                // auto _tan_base = _nf.detect_tan_base[_id];
+                // EigenTanbase2T(_tan_base, tan_base);
+                const double * tan_base = _nf.detect_tan_base[_id].data();
+
+                unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
+                res_count = res_count + 2;
+
+                if(!detection_no_scale) {
+                    _residual[res_count] = est_inv_dep - inv_dep;
+                    res_count = res_count + 1;
                 }
-            
             }
         }
         // ROS_INFO("Work with detected node");

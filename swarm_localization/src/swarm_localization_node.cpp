@@ -117,11 +117,7 @@ class SwarmLocalizationNode {
 
         for (auto nd: _nf.detected) {
             if (nodedef_has_id(nd.remote_drone_id)) {
-                nf.detected_nodes[nd.remote_drone_id] = Pose(nd.dpos, nd.dyaw);
-                if(nd.is_2d_detect) {
-                    nf.detected_nodes[nd.remote_drone_id].pos() = nf.detected_nodes[nd.remote_drone_id].pos().normalized();
-                    nf.detect_tan_base[nd.remote_drone_id] = tangent_base_for_unit_detect(nf.detected_nodes[nd.remote_drone_id].pos());
-                }
+                DetectedObject dobj(Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z), nd.inv_dep, nd.enable_scale);
                 nf.detected_nodes_posvar[nd.remote_drone_id] = 
                     Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
                 nf.has_detect_relpose = true;
