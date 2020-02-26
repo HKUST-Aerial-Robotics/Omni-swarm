@@ -392,6 +392,8 @@ class LocalProxy {
 
 
         std::vector<node_detected_xyzyaw> node_xyzyaws = convert_sd_to_nd_xyzyaw(sd);
+        node_xyzyaws.insert(node_xyzyaws.end(), sd.detected_nodes_xyz_yaw.begin(), sd.detected_nodes_xyz_yaw.end());
+
         swarm_frame &_sf = sf_queue[i];
         
         for (node_detected_xyzyaw nd : node_xyzyaws) {
