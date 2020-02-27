@@ -780,7 +780,9 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     }
 
     CostFunction * cost = _setup_cost_function_by_loop(good_loops, _id_ts_poseindex);
-    problem.AddResidualBlock(cost, nullptr, pose_state);
+    ceres::LossFunction *loss_function;
+    loss_function = new ceres::HuberLoss(0.1);
+    problem.AddResidualBlock(cost, loss_function, pose_state);
 }
     
 
@@ -800,9 +802,11 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
     }
     int res_num = 0;
+    auto loss_function = new ceres::HuberLoss(0.1);
     CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
+
     if (cost != nullptr) {
-        problem.AddResidualBlock(cost, nullptr, pose_state);
+        problem.AddResidualBlock(cost, loss_function, pose_state);
         if (finish_init) {
             /*
             printf("SF Evaluate ERROR ts %d", TSShort(ts));
