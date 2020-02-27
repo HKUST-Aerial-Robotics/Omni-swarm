@@ -35,6 +35,11 @@ typedef std::vector<Quaterniond> quat_array;
 // #define INIT_FXIED_YAW
 #define ENABLE_LOOP
 
+// pixel error/focal length
+#define COV_SPHERE_ERROR 0.02
+//percent of width error
+#define COV_WIDTH_PERCENT 0.1
+
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -64,16 +69,15 @@ inline void position_error(const T *posea, const T *poseb, T *error,
 
 //TODO: Add direction to this
 template<typename T>
-inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error,
-                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.002, 0.002, 0.002)) {
+inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
     const T scalea = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    const T err0 = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]) / pos_cov.x();
-    const T err1 = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]) / pos_cov.y();
-    const T err2 = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]) / pos_cov.z();
+    const T err0 = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]);
+    const T err1 = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]);
+    const T err2 = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]);
 
-    error[0] = tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2;
-    error[1] = tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2;
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / COV_SPHERE_ERROR;
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / COV_SPHERE_ERROR;
 }
 
 template<typename T>
@@ -297,7 +301,7 @@ struct SwarmFrameError {
                 res_count = res_count + 2;
 
                 if(!detection_no_scale) {
-                    _residual[res_count] = est_inv_dep - inv_dep;
+                    _residual[res_count] = (est_inv_dep - inv_dep)/COV_WIDTH_PERCENT;
                     res_count = res_count + 1;
                 }
             }
