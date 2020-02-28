@@ -1,7 +1,8 @@
 <launch>
+    <arg name="output" default="screen" />
     <include file="$(find inf_uwb_ros)/launch/uwb_node.launch">
     </include>
-    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="screen">
+    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="$(arg output)">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <rosparam>
             send_fused_freq: 0.0
