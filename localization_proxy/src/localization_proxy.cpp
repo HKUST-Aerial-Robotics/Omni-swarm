@@ -375,7 +375,7 @@ class LocalProxy {
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        // ROS_INFO("SD");
+        ROS_INFO("SD size %ld", sd.detected_nodes.size());
         if (sd.detected_nodes.size() == 0) {
             return;
         }
@@ -404,7 +404,7 @@ class LocalProxy {
             // ROS_INFO("NF id %d", _sf.node_frames[j].id);
             if (_sf.node_frames[j].id == sd_self_id) {
                 _sf.node_frames[j].detected = node_xyzyaws;
-                // ROS_INFO("SF got detection");
+                ROS_INFO("SF BUF %d got detection", j);
                 break;
             }
         }
