@@ -45,16 +45,16 @@ extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner produ
 
 #define CROP_WIDTH_THRES 0.05 //If movement bigger than this, crop some matches down
 
-#define OUTLIER_XY_PRECENT_0 0.05 // This is given up match dx dy 
-#define OUTLIER_XY_PRECENT_20 0.1 // This is given up match dx dy 
-#define OUTLIER_XY_PRECENT_30 0.1 // This is given up match dx dy 
-#define OUTLIER_XY_PRECENT_40 0.1 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_0 0.03 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_20 0.03 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_30 0.03 // This is given up match dx dy 
+#define OUTLIER_XY_PRECENT_40 0.03 // This is given up match dx dy 
 
 #define PNP_REPROJECT_ERROR 10.0
 #define AVOID_GROUND_PRECENT 0.666 // This is for avoiding detect a lot feature on ground
 // #define DEBUG_SHOW_IMAGE
 
-// #define ENABLE_OPTICAL_SEC_TRY_INIT 
+#define ENABLE_OPTICAL_SEC_TRY_INIT 
 
 #define GFTT_PTS 1000
 #define GFTT_MIN_DIS 10
