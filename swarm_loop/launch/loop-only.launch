@@ -1,13 +1,14 @@
 <launch>
     <arg name="display" default="false" />
     <arg name="node_start_delay" default="30.0" />
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+    <arg name="output" default="screen" />
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="$(arg output)">
         <rosparam>
-            lcm_uri: udpm://224.0.0.251:7667?ttl=2
-            loop_image_downsample: 1
-            init_loop_min_feature_num: 10
-            init_loop_min_feature_num_l2: 10
-            min_loop_feature_num: 10
+            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+            loop_image_downsample: 1.0
+            init_loop_min_feature_num: 8
+            init_loop_min_feature_num_l2: 8
+            min_loop_feature_num: 8
             jpg_quality: 75
             enable_lk: true
             

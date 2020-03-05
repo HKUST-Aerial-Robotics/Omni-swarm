@@ -868,13 +868,16 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     if (!success && init_mode) {
         ROS_WARN("First init try failed, try second time");
 
-        success = compute_relative_pose(img_new_small, img_old_small, nowPtsSmall, 
+        success = compute_relative_pose(img_new, img_old, nowPtsSmall, 
             toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
             Swarm::Pose(old_img_desc.camera_extrinsic),
             Swarm::Pose(new_img_desc.pose_drone),
+            Swarm::Pose(old_img_desc.pose_drone),
             DP_old_to_new,
             init_mode,
-            false
+            false,
+            new_img_desc.drone_id,
+            old_img_desc.drone_id
         );
 
         if (!success) {
