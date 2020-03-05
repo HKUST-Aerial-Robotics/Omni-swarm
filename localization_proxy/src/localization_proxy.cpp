@@ -164,7 +164,8 @@ class LocalProxy {
         // ROS_INFO("ODOM OK");
     }
 
-    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, int _id, ros::Time & ts, Point & pos, double &yaw, Point & vel, std::map<int, float> &_dis) {
+    //EUL is roll pitch yaw
+    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, int _id, ros::Time & ts, Point & pos, Eigen::Vector3d & eul, Point & vel, std::map<int, float> &_dis) {
         mavlink_node_realtime_info_t node_realtime_info;
         mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
 
@@ -188,7 +189,9 @@ class LocalProxy {
         vel.y = node_realtime_info.vy / 100.0;
         vel.z = node_realtime_info.vz / 100.0;
 
-        yaw = node_realtime_info.yaw / 1000.0;
+        eul.z() = node_realtime_info.yaw / 1000.0;
+        eul.y() = node_realtime_info.pitch / 1000.0;
+        eul.x() = node_realtime_info.roll / 1000.0;
 
         for (int i = 0; i < MAX_DRONE_SIZE; i++) {
             if (node_realtime_info.remote_distance[i] > 0) {
@@ -411,13 +414,16 @@ class LocalProxy {
 
     }
 
-    void add_odom_dis_to_sf(swarm_frame & sf, int _id, geometry_msgs::Point pos, double yaw, geometry_msgs::Point vel, ros::Time _time, std::map<int, float> & _dis) {
+    //Eul is roll pitch yaw
+    void add_odom_dis_to_sf(swarm_frame & sf, int _id, geometry_msgs::Point pos, Eigen::Vector3d eul, geometry_msgs::Point vel, ros::Time _time, std::map<int, float> & _dis) {
         for (node_frame & nf : sf.node_frames) {
             if (nf.id == _id && !nf.vo_available) {
                 //Easy to deal with this, add only first time
                 nf.position = pos;
                 nf.velocity = vel;
-                nf.yaw = yaw;
+                nf.yaw = eul.z();
+                nf.pitch = eul.y();
+                nf.roll = eul.x();
                 nf.vo_available = true;
                 nf.header.stamp = _time;
                 
@@ -445,13 +451,13 @@ class LocalProxy {
         std::map<int, float> _dis;
         ros::Time ts;
         geometry_msgs::Point pos, vel;
-        double yaw;
-        bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, yaw, vel, _dis);
+        Eigen::Vector3d eul;
+        bool ret = on_node_realtime_info_mavlink_msg_recv(msg, _id, ts, pos, eul, vel, _dis);
         if (ret) {
             int s_index = find_sf_swarm_detected(ts);
             if (s_index >= 0) {
                 ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
-                add_odom_dis_to_sf(sf_queue[s_index], _id, pos, yaw, vel, ts, _dis);
+                add_odom_dis_to_sf(sf_queue[s_index], _id, pos, eul, vel, ts, _dis);
             }
         }
     }
@@ -539,7 +545,7 @@ class LocalProxy {
         Eigen::Vector3d eulers = quat2eulers(_q);
 
         mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, 
-            int(vel.x*100), int(vel.y*100), int(vel.z*100),  int(eulers.z()*1000), dis_int);
+            int(vel.x*100), int(vel.y*100), int(vel.z*100), int(eulers.x()*1000), int(eulers.y()*1000), int(eulers.z()*1000), dis_int);
 
         send_mavlink_message(msg);
     }

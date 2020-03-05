@@ -12,18 +12,20 @@ typedef struct __mavlink_node_realtime_info_t {
  int16_t vx; /*< [cm/s] X velocity*/
  int16_t vy; /*< [cm/s] Y Velocity*/
  int16_t vz; /*< [cm/x] Z Velocity*/
+ int16_t roll; /*< [rad] rol angle rad*1000*/
+ int16_t pitch; /*< [rad] pitch angle rad*1000*/
  int16_t yaw; /*< [rad] Yaw angle rad*1000*/
  uint16_t remote_distance[10]; /*< [m] Distance to Remote Drone*1000*/
  uint8_t odom_vaild; /*<  If odometry is vaild*/
 }) mavlink_node_realtime_info_t;
 
-#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN 45
-#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN 45
-#define MAVLINK_MSG_ID_200_LEN 45
-#define MAVLINK_MSG_ID_200_MIN_LEN 45
+#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN 49
+#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN 49
+#define MAVLINK_MSG_ID_200_LEN 49
+#define MAVLINK_MSG_ID_200_MIN_LEN 49
 
-#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC 61
-#define MAVLINK_MSG_ID_200_CRC 61
+#define MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC 161
+#define MAVLINK_MSG_ID_200_CRC 161
 
 #define MAVLINK_MSG_NODE_REALTIME_INFO_FIELD_REMOTE_DISTANCE_LEN 10
 
@@ -31,33 +33,37 @@ typedef struct __mavlink_node_realtime_info_t {
 #define MAVLINK_MESSAGE_INFO_NODE_REALTIME_INFO { \
     200, \
     "NODE_REALTIME_INFO", \
-    10, \
+    12, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_node_realtime_info_t, lps_time) }, \
-         { "odom_vaild", NULL, MAVLINK_TYPE_UINT8_T, 0, 44, offsetof(mavlink_node_realtime_info_t, odom_vaild) }, \
+         { "odom_vaild", NULL, MAVLINK_TYPE_UINT8_T, 0, 48, offsetof(mavlink_node_realtime_info_t, odom_vaild) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 4, offsetof(mavlink_node_realtime_info_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_node_realtime_info_t, y) }, \
          { "z", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_node_realtime_info_t, z) }, \
          { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_node_realtime_info_t, vx) }, \
          { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_node_realtime_info_t, vy) }, \
          { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 20, offsetof(mavlink_node_realtime_info_t, vz) }, \
-         { "yaw", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_node_realtime_info_t, yaw) }, \
-         { "remote_distance", NULL, MAVLINK_TYPE_UINT16_T, 10, 24, offsetof(mavlink_node_realtime_info_t, remote_distance) }, \
+         { "roll", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_node_realtime_info_t, roll) }, \
+         { "pitch", NULL, MAVLINK_TYPE_INT16_T, 0, 24, offsetof(mavlink_node_realtime_info_t, pitch) }, \
+         { "yaw", NULL, MAVLINK_TYPE_INT16_T, 0, 26, offsetof(mavlink_node_realtime_info_t, yaw) }, \
+         { "remote_distance", NULL, MAVLINK_TYPE_UINT16_T, 10, 28, offsetof(mavlink_node_realtime_info_t, remote_distance) }, \
          } \
 }
 #else
 #define MAVLINK_MESSAGE_INFO_NODE_REALTIME_INFO { \
     "NODE_REALTIME_INFO", \
-    10, \
+    12, \
     {  { "lps_time", NULL, MAVLINK_TYPE_INT32_T, 0, 0, offsetof(mavlink_node_realtime_info_t, lps_time) }, \
-         { "odom_vaild", NULL, MAVLINK_TYPE_UINT8_T, 0, 44, offsetof(mavlink_node_realtime_info_t, odom_vaild) }, \
+         { "odom_vaild", NULL, MAVLINK_TYPE_UINT8_T, 0, 48, offsetof(mavlink_node_realtime_info_t, odom_vaild) }, \
          { "x", NULL, MAVLINK_TYPE_FLOAT, 0, 4, offsetof(mavlink_node_realtime_info_t, x) }, \
          { "y", NULL, MAVLINK_TYPE_FLOAT, 0, 8, offsetof(mavlink_node_realtime_info_t, y) }, \
          { "z", NULL, MAVLINK_TYPE_FLOAT, 0, 12, offsetof(mavlink_node_realtime_info_t, z) }, \
          { "vx", NULL, MAVLINK_TYPE_INT16_T, 0, 16, offsetof(mavlink_node_realtime_info_t, vx) }, \
          { "vy", NULL, MAVLINK_TYPE_INT16_T, 0, 18, offsetof(mavlink_node_realtime_info_t, vy) }, \
          { "vz", NULL, MAVLINK_TYPE_INT16_T, 0, 20, offsetof(mavlink_node_realtime_info_t, vz) }, \
-         { "yaw", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_node_realtime_info_t, yaw) }, \
-         { "remote_distance", NULL, MAVLINK_TYPE_UINT16_T, 10, 24, offsetof(mavlink_node_realtime_info_t, remote_distance) }, \
+         { "roll", NULL, MAVLINK_TYPE_INT16_T, 0, 22, offsetof(mavlink_node_realtime_info_t, roll) }, \
+         { "pitch", NULL, MAVLINK_TYPE_INT16_T, 0, 24, offsetof(mavlink_node_realtime_info_t, pitch) }, \
+         { "yaw", NULL, MAVLINK_TYPE_INT16_T, 0, 26, offsetof(mavlink_node_realtime_info_t, yaw) }, \
+         { "remote_distance", NULL, MAVLINK_TYPE_UINT16_T, 10, 28, offsetof(mavlink_node_realtime_info_t, remote_distance) }, \
          } \
 }
 #endif
@@ -76,12 +82,14 @@ typedef struct __mavlink_node_realtime_info_t {
  * @param vx [cm/s] X velocity
  * @param vy [cm/s] Y Velocity
  * @param vz [cm/x] Z Velocity
+ * @param roll [rad] rol angle rad*1000
+ * @param pitch [rad] pitch angle rad*1000
  * @param yaw [rad] Yaw angle rad*1000
  * @param remote_distance [m] Distance to Remote Drone*1000
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_node_realtime_info_pack(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg,
-                               int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t yaw, const uint16_t *remote_distance)
+                               int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t roll, int16_t pitch, int16_t yaw, const uint16_t *remote_distance)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN];
@@ -92,9 +100,11 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack(uint8_t system_id, ui
     _mav_put_int16_t(buf, 16, vx);
     _mav_put_int16_t(buf, 18, vy);
     _mav_put_int16_t(buf, 20, vz);
-    _mav_put_int16_t(buf, 22, yaw);
-    _mav_put_uint8_t(buf, 44, odom_vaild);
-    _mav_put_uint16_t_array(buf, 24, remote_distance, 10);
+    _mav_put_int16_t(buf, 22, roll);
+    _mav_put_int16_t(buf, 24, pitch);
+    _mav_put_int16_t(buf, 26, yaw);
+    _mav_put_uint8_t(buf, 48, odom_vaild);
+    _mav_put_uint16_t_array(buf, 28, remote_distance, 10);
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN);
 #else
     mavlink_node_realtime_info_t packet;
@@ -105,6 +115,8 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack(uint8_t system_id, ui
     packet.vx = vx;
     packet.vy = vy;
     packet.vz = vz;
+    packet.roll = roll;
+    packet.pitch = pitch;
     packet.yaw = yaw;
     packet.odom_vaild = odom_vaild;
     mav_array_memcpy(packet.remote_distance, remote_distance, sizeof(uint16_t)*10);
@@ -129,13 +141,15 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack(uint8_t system_id, ui
  * @param vx [cm/s] X velocity
  * @param vy [cm/s] Y Velocity
  * @param vz [cm/x] Z Velocity
+ * @param roll [rad] rol angle rad*1000
+ * @param pitch [rad] pitch angle rad*1000
  * @param yaw [rad] Yaw angle rad*1000
  * @param remote_distance [m] Distance to Remote Drone*1000
  * @return length of the message in bytes (excluding serial stream start sign)
  */
 static inline uint16_t mavlink_msg_node_realtime_info_pack_chan(uint8_t system_id, uint8_t component_id, uint8_t chan,
                                mavlink_message_t* msg,
-                                   int32_t lps_time,uint8_t odom_vaild,float x,float y,float z,int16_t vx,int16_t vy,int16_t vz,int16_t yaw,const uint16_t *remote_distance)
+                                   int32_t lps_time,uint8_t odom_vaild,float x,float y,float z,int16_t vx,int16_t vy,int16_t vz,int16_t roll,int16_t pitch,int16_t yaw,const uint16_t *remote_distance)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN];
@@ -146,9 +160,11 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack_chan(uint8_t system_i
     _mav_put_int16_t(buf, 16, vx);
     _mav_put_int16_t(buf, 18, vy);
     _mav_put_int16_t(buf, 20, vz);
-    _mav_put_int16_t(buf, 22, yaw);
-    _mav_put_uint8_t(buf, 44, odom_vaild);
-    _mav_put_uint16_t_array(buf, 24, remote_distance, 10);
+    _mav_put_int16_t(buf, 22, roll);
+    _mav_put_int16_t(buf, 24, pitch);
+    _mav_put_int16_t(buf, 26, yaw);
+    _mav_put_uint8_t(buf, 48, odom_vaild);
+    _mav_put_uint16_t_array(buf, 28, remote_distance, 10);
         memcpy(_MAV_PAYLOAD_NON_CONST(msg), buf, MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN);
 #else
     mavlink_node_realtime_info_t packet;
@@ -159,6 +175,8 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack_chan(uint8_t system_i
     packet.vx = vx;
     packet.vy = vy;
     packet.vz = vz;
+    packet.roll = roll;
+    packet.pitch = pitch;
     packet.yaw = yaw;
     packet.odom_vaild = odom_vaild;
     mav_array_memcpy(packet.remote_distance, remote_distance, sizeof(uint16_t)*10);
@@ -179,7 +197,7 @@ static inline uint16_t mavlink_msg_node_realtime_info_pack_chan(uint8_t system_i
  */
 static inline uint16_t mavlink_msg_node_realtime_info_encode(uint8_t system_id, uint8_t component_id, mavlink_message_t* msg, const mavlink_node_realtime_info_t* node_realtime_info)
 {
-    return mavlink_msg_node_realtime_info_pack(system_id, component_id, msg, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->yaw, node_realtime_info->remote_distance);
+    return mavlink_msg_node_realtime_info_pack(system_id, component_id, msg, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->roll, node_realtime_info->pitch, node_realtime_info->yaw, node_realtime_info->remote_distance);
 }
 
 /**
@@ -193,7 +211,7 @@ static inline uint16_t mavlink_msg_node_realtime_info_encode(uint8_t system_id, 
  */
 static inline uint16_t mavlink_msg_node_realtime_info_encode_chan(uint8_t system_id, uint8_t component_id, uint8_t chan, mavlink_message_t* msg, const mavlink_node_realtime_info_t* node_realtime_info)
 {
-    return mavlink_msg_node_realtime_info_pack_chan(system_id, component_id, chan, msg, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->yaw, node_realtime_info->remote_distance);
+    return mavlink_msg_node_realtime_info_pack_chan(system_id, component_id, chan, msg, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->roll, node_realtime_info->pitch, node_realtime_info->yaw, node_realtime_info->remote_distance);
 }
 
 /**
@@ -208,12 +226,14 @@ static inline uint16_t mavlink_msg_node_realtime_info_encode_chan(uint8_t system
  * @param vx [cm/s] X velocity
  * @param vy [cm/s] Y Velocity
  * @param vz [cm/x] Z Velocity
+ * @param roll [rad] rol angle rad*1000
+ * @param pitch [rad] pitch angle rad*1000
  * @param yaw [rad] Yaw angle rad*1000
  * @param remote_distance [m] Distance to Remote Drone*1000
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
 
-static inline void mavlink_msg_node_realtime_info_send(mavlink_channel_t chan, int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t yaw, const uint16_t *remote_distance)
+static inline void mavlink_msg_node_realtime_info_send(mavlink_channel_t chan, int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t roll, int16_t pitch, int16_t yaw, const uint16_t *remote_distance)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char buf[MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN];
@@ -224,9 +244,11 @@ static inline void mavlink_msg_node_realtime_info_send(mavlink_channel_t chan, i
     _mav_put_int16_t(buf, 16, vx);
     _mav_put_int16_t(buf, 18, vy);
     _mav_put_int16_t(buf, 20, vz);
-    _mav_put_int16_t(buf, 22, yaw);
-    _mav_put_uint8_t(buf, 44, odom_vaild);
-    _mav_put_uint16_t_array(buf, 24, remote_distance, 10);
+    _mav_put_int16_t(buf, 22, roll);
+    _mav_put_int16_t(buf, 24, pitch);
+    _mav_put_int16_t(buf, 26, yaw);
+    _mav_put_uint8_t(buf, 48, odom_vaild);
+    _mav_put_uint16_t_array(buf, 28, remote_distance, 10);
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_NODE_REALTIME_INFO, buf, MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC);
 #else
     mavlink_node_realtime_info_t packet;
@@ -237,6 +259,8 @@ static inline void mavlink_msg_node_realtime_info_send(mavlink_channel_t chan, i
     packet.vx = vx;
     packet.vy = vy;
     packet.vz = vz;
+    packet.roll = roll;
+    packet.pitch = pitch;
     packet.yaw = yaw;
     packet.odom_vaild = odom_vaild;
     mav_array_memcpy(packet.remote_distance, remote_distance, sizeof(uint16_t)*10);
@@ -252,7 +276,7 @@ static inline void mavlink_msg_node_realtime_info_send(mavlink_channel_t chan, i
 static inline void mavlink_msg_node_realtime_info_send_struct(mavlink_channel_t chan, const mavlink_node_realtime_info_t* node_realtime_info)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
-    mavlink_msg_node_realtime_info_send(chan, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->yaw, node_realtime_info->remote_distance);
+    mavlink_msg_node_realtime_info_send(chan, node_realtime_info->lps_time, node_realtime_info->odom_vaild, node_realtime_info->x, node_realtime_info->y, node_realtime_info->z, node_realtime_info->vx, node_realtime_info->vy, node_realtime_info->vz, node_realtime_info->roll, node_realtime_info->pitch, node_realtime_info->yaw, node_realtime_info->remote_distance);
 #else
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_NODE_REALTIME_INFO, (const char *)node_realtime_info, MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC);
 #endif
@@ -266,7 +290,7 @@ static inline void mavlink_msg_node_realtime_info_send_struct(mavlink_channel_t 
   is usually the receive buffer for the channel, and allows a reply to an
   incoming message with minimum stack space usage.
  */
-static inline void mavlink_msg_node_realtime_info_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t yaw, const uint16_t *remote_distance)
+static inline void mavlink_msg_node_realtime_info_send_buf(mavlink_message_t *msgbuf, mavlink_channel_t chan,  int32_t lps_time, uint8_t odom_vaild, float x, float y, float z, int16_t vx, int16_t vy, int16_t vz, int16_t roll, int16_t pitch, int16_t yaw, const uint16_t *remote_distance)
 {
 #if MAVLINK_NEED_BYTE_SWAP || !MAVLINK_ALIGNED_FIELDS
     char *buf = (char *)msgbuf;
@@ -277,9 +301,11 @@ static inline void mavlink_msg_node_realtime_info_send_buf(mavlink_message_t *ms
     _mav_put_int16_t(buf, 16, vx);
     _mav_put_int16_t(buf, 18, vy);
     _mav_put_int16_t(buf, 20, vz);
-    _mav_put_int16_t(buf, 22, yaw);
-    _mav_put_uint8_t(buf, 44, odom_vaild);
-    _mav_put_uint16_t_array(buf, 24, remote_distance, 10);
+    _mav_put_int16_t(buf, 22, roll);
+    _mav_put_int16_t(buf, 24, pitch);
+    _mav_put_int16_t(buf, 26, yaw);
+    _mav_put_uint8_t(buf, 48, odom_vaild);
+    _mav_put_uint16_t_array(buf, 28, remote_distance, 10);
     _mav_finalize_message_chan_send(chan, MAVLINK_MSG_ID_NODE_REALTIME_INFO, buf, MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN, MAVLINK_MSG_ID_NODE_REALTIME_INFO_CRC);
 #else
     mavlink_node_realtime_info_t *packet = (mavlink_node_realtime_info_t *)msgbuf;
@@ -290,6 +316,8 @@ static inline void mavlink_msg_node_realtime_info_send_buf(mavlink_message_t *ms
     packet->vx = vx;
     packet->vy = vy;
     packet->vz = vz;
+    packet->roll = roll;
+    packet->pitch = pitch;
     packet->yaw = yaw;
     packet->odom_vaild = odom_vaild;
     mav_array_memcpy(packet->remote_distance, remote_distance, sizeof(uint16_t)*10);
@@ -320,7 +348,7 @@ static inline int32_t mavlink_msg_node_realtime_info_get_lps_time(const mavlink_
  */
 static inline uint8_t mavlink_msg_node_realtime_info_get_odom_vaild(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_uint8_t(msg,  44);
+    return _MAV_RETURN_uint8_t(msg,  48);
 }
 
 /**
@@ -384,13 +412,33 @@ static inline int16_t mavlink_msg_node_realtime_info_get_vz(const mavlink_messag
 }
 
 /**
+ * @brief Get field roll from node_realtime_info message
+ *
+ * @return [rad] rol angle rad*1000
+ */
+static inline int16_t mavlink_msg_node_realtime_info_get_roll(const mavlink_message_t* msg)
+{
+    return _MAV_RETURN_int16_t(msg,  22);
+}
+
+/**
+ * @brief Get field pitch from node_realtime_info message
+ *
+ * @return [rad] pitch angle rad*1000
+ */
+static inline int16_t mavlink_msg_node_realtime_info_get_pitch(const mavlink_message_t* msg)
+{
+    return _MAV_RETURN_int16_t(msg,  24);
+}
+
+/**
  * @brief Get field yaw from node_realtime_info message
  *
  * @return [rad] Yaw angle rad*1000
  */
 static inline int16_t mavlink_msg_node_realtime_info_get_yaw(const mavlink_message_t* msg)
 {
-    return _MAV_RETURN_int16_t(msg,  22);
+    return _MAV_RETURN_int16_t(msg,  26);
 }
 
 /**
@@ -400,7 +448,7 @@ static inline int16_t mavlink_msg_node_realtime_info_get_yaw(const mavlink_messa
  */
 static inline uint16_t mavlink_msg_node_realtime_info_get_remote_distance(const mavlink_message_t* msg, uint16_t *remote_distance)
 {
-    return _MAV_RETURN_uint16_t_array(msg, remote_distance, 10,  24);
+    return _MAV_RETURN_uint16_t_array(msg, remote_distance, 10,  28);
 }
 
 /**
@@ -419,6 +467,8 @@ static inline void mavlink_msg_node_realtime_info_decode(const mavlink_message_t
     node_realtime_info->vx = mavlink_msg_node_realtime_info_get_vx(msg);
     node_realtime_info->vy = mavlink_msg_node_realtime_info_get_vy(msg);
     node_realtime_info->vz = mavlink_msg_node_realtime_info_get_vz(msg);
+    node_realtime_info->roll = mavlink_msg_node_realtime_info_get_roll(msg);
+    node_realtime_info->pitch = mavlink_msg_node_realtime_info_get_pitch(msg);
     node_realtime_info->yaw = mavlink_msg_node_realtime_info_get_yaw(msg);
     mavlink_msg_node_realtime_info_get_remote_distance(msg, node_realtime_info->remote_distance);
     node_realtime_info->odom_vaild = mavlink_msg_node_realtime_info_get_odom_vaild(msg);

@@ -37,7 +37,7 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
         uint16_t i;
     mavlink_node_realtime_info_t packet_in = {
-        963497464,45.0,73.0,101.0,18067,18171,18275,18379,{ 18483, 18484, 18485, 18486, 18487, 18488, 18489, 18490, 18491, 18492 },137
+        963497464,45.0,73.0,101.0,18067,18171,18275,18379,18483,18587,{ 18691, 18692, 18693, 18694, 18695, 18696, 18697, 18698, 18699, 18700 },149
     };
     mavlink_node_realtime_info_t packet1, packet2;
         memset(&packet1, 0, sizeof(packet1));
@@ -48,6 +48,8 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         packet1.vx = packet_in.vx;
         packet1.vy = packet_in.vy;
         packet1.vz = packet_in.vz;
+        packet1.roll = packet_in.roll;
+        packet1.pitch = packet_in.pitch;
         packet1.yaw = packet_in.yaw;
         packet1.odom_vaild = packet_in.odom_vaild;
         
@@ -65,12 +67,12 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_realtime_info_pack(system_id, component_id, &msg , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.yaw , packet1.remote_distance );
+    mavlink_msg_node_realtime_info_pack(system_id, component_id, &msg , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.roll , packet1.pitch , packet1.yaw , packet1.remote_distance );
     mavlink_msg_node_realtime_info_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_realtime_info_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.yaw , packet1.remote_distance );
+    mavlink_msg_node_realtime_info_pack_chan(system_id, component_id, MAVLINK_COMM_0, &msg , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.roll , packet1.pitch , packet1.yaw , packet1.remote_distance );
     mavlink_msg_node_realtime_info_decode(&msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 
@@ -83,7 +85,7 @@ static void mavlink_test_node_realtime_info(uint8_t system_id, uint8_t component
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
         
         memset(&packet2, 0, sizeof(packet2));
-    mavlink_msg_node_realtime_info_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.yaw , packet1.remote_distance );
+    mavlink_msg_node_realtime_info_send(MAVLINK_COMM_1 , packet1.lps_time , packet1.odom_vaild , packet1.x , packet1.y , packet1.z , packet1.vx , packet1.vy , packet1.vz , packet1.roll , packet1.pitch , packet1.yaw , packet1.remote_distance );
     mavlink_msg_node_realtime_info_decode(last_msg, &packet2);
         MAVLINK_ASSERT(memcmp(&packet1, &packet2, sizeof(packet1)) == 0);
 }
