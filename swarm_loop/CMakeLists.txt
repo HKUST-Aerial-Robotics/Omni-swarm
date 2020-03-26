@@ -13,8 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   swarm_msgs
+  message_generation
   camera_models
-  loop_fusion
   vins
 )
 
@@ -24,10 +24,18 @@ find_package(OpenCV 3.4 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(lcm REQUIRED)
 find_package(Backward)
-# find_package(DBoW3 REQUIRED)
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+
+add_service_files(
+  FILES
+  HFNetSrv.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  sensor_msgs
+)
 
 
 catkin_package(
@@ -46,7 +54,6 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
   # ${DBoW3_INCLUDE_DIRS}
 )
-
 
 add_executable(${PROJECT_NAME}_node
   src/swarm_loop_node.cpp
