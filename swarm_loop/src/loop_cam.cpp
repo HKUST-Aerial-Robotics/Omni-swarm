@@ -6,28 +6,16 @@
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <chrono>
 
-#ifndef USE_DEEPNET
-#include "opencv2/xfeatures2d.hpp"
-#endif
 
 using namespace std::chrono; 
 
 LoopCam::LoopCam(const std::string & camera_config_path, const std::string & BRIEF_PATTERN_FILE, int _self_id, ros::NodeHandle & nh): self_id(_self_id) {
     camodocal::CameraFactory cam_factory;
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
-#ifdef USE_DEEPNET
-    deepnet_client = nh.serviceClient<WholeImageDescriptorComputeTS>("/whole_image_descriptor_compute_ts");
+    deepnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     printf("Waiting for deepnet......\n");
     deepnet_client.waitForExistence();
     printf("Deepnet ready\n");
-#endif
-}
-
-void LoopCam::on_camera_message(const sensor_msgs::ImageConstPtr& msg) {
-    cv_bridge::CvImageConstPtr ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
-    image_queue.push_back(ptr->image);
-    image_ts_queue.push_back(msg->header.stamp.toSec());
-    cam_count ++;
 }
 
 cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p) {
@@ -56,6 +44,8 @@ void LoopCam::encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc) {
     _img_desc.image_size = _img_desc.image.size();
 }
 
+
+/*
 ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv::Mat & img){
     ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
     
@@ -91,7 +81,7 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv
 #endif
 
 #ifdef USE_DEEPNET
-    ides = extractor_img_desc_deepnet(msg.header.stamp);
+    // ides = extractor_img_desc_deepnet(msg.header.stamp);
     if (ides.image_desc_size == 0) {
         ROS_WARN("Failed on deepnet;");
         cv::Mat _img;
@@ -123,6 +113,29 @@ ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv
    
     return ides;
 }
+*/
+
+ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages& msg) {
+    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[0]);
+    if (ides.image_desc_size == 0) {
+        ROS_WARN("Failed on deepnet;");
+        cv::Mat _img;
+        return ides;
+    }
+
+    auto start = high_resolution_clock::now();
+    // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
+
+    ides.timestamp = toLCMTime(msg.header.stamp);
+    ides.drone_id = self_id; // -1 is self drone;
+    ides.camera_extrinsic = fromROSPose(msg.pose_up_cams[0]);
+    ides.pose_drone = fromROSPose(msg.pose_drone);
+    // ides.landmark_num = msg.feature_points_2d_uv.size();
+    // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
+   
+    //Need to triangulate 2 3d position here
+    return ides;
+}
 
 
 cv::Mat LoopCam::landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv) {
@@ -144,46 +157,7 @@ cv::Mat LoopCam::landmark_desc_compute(const cv::Mat & _img, const std::vector<g
 }
 
 
-ImageDescriptor_t LoopCam::extractor_img_desc(const cv::Mat & _img) {
-    ImageDescriptor_t img_des;
-    std::vector<cv::KeyPoint> keypoints;
-	cv::Mat descriptors;
-    img_des.image_desc_size = 0;
-    img_des.feature_descriptor_size  = 0;
-    img_des.image_size  = 0;
-    img_des.landmark_num = 0;
-    // cv::FAST(_img, keypoints, FAST_THRES, true);
-
-#ifdef USE_CUDA
-    cv::cuda::GpuMat cuda_img(_img);
-    cv::cuda::GpuMat mask;
-    auto _des = cv::cuda::ORB::create(LOOP_FEATURE_NUM);
-    _des->detectAndCompute(cuda_img, mask, keypoints, descriptors);
-
-#else
-    //TODO:Mask drones
-    cv::Mat mask;
-    auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
-    _des->detectAndCompute(_img, mask, keypoints, descriptors);
-    std::cout << "ORB Keypoints";
-#endif
-/*
-    for (int i = 0; i < (int)keypoints.size(); i++) {
-		Eigen::Vector3d tmp_p;
-		cam->liftProjective(Eigen::Vector2d(keypoints[i].pt.x, keypoints[i].pt.y), tmp_p);
-        Point2d_t point_2d_norm;
-        point_2d_norm.x = tmp_p.x()/tmp_p.z();
-        point_2d_norm.y = tmp_p.y()/tmp_p.z();
-        img_des.all_features_2d_norm[i] = point_2d_norm;
-	}*/
-    // memset(img_des.feature_descriptor, 0, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
-    // memcpy(img_des.feature_descriptor, descriptors.data, ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
-    img_des.feature_descriptor = std::vector<unsigned char>(descriptors.data, descriptors.data + ORB_FEATURE_SIZE*LOOP_FEATURE_NUM);
-    img_des.feature_descriptor_size = ORB_FEATURE_SIZE*LOOP_FEATURE_NUM;
-    return img_des;
-}
- 
-ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp) {
+ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg) {
     auto start = high_resolution_clock::now();
 
     ImageDescriptor_t img_des;
@@ -191,16 +165,19 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp) {
     img_des.feature_descriptor_size  = 0;
     img_des.image_size  = 0;
     img_des.landmark_num = 0;
-    WholeImageDescriptorComputeTS img_desc_compute;
-    img_desc_compute.request.stamp.data = stamp;
-    img_desc_compute.request.a = 986;
 
-    if( deepnet_client.call( img_desc_compute ) ) {
-        auto & desc = img_desc_compute.response.desc;
+    HFNetSrv hfnet_srv;
+    hfnet_srv.request.image = msg;
+
+    if( deepnet_client.call( hfnet_srv ) ) {
+        auto & desc = hfnet_srv.response.global_desc;
+        auto & local_kpts = hfnet_srv.response.keypoints;
+        auto & local_descriptors = hfnet_srv.response.local_descriptors;
         if (desc.size() > 0) {
             // ROS_INFO("Received response from server desc.size %ld", desc.size());
             img_des.image_desc_size = desc.size();
             img_des.image_desc = desc;
+            img_des.feature_descriptor = local_descriptors;
         } else {
             ROS_WARN("Failed on deepnet; Please check deepnet queue");
         }
@@ -211,33 +188,6 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp) {
         return img_des;
     }
     return img_des;
-}
-
-
-cv::Mat LoopCam::pop_image_ts(ros::Time ts) {
-    // ROS_INFO("Pop image... queue len %d", image_queue.size());
-    double ts_sec = ts.toSec();
-    if (image_queue.size() == 0) {
-        ROS_WARN("Pop image with NOTHING");
-        cv::Mat ret;
-        return ret;
-    }
-    // We assume here the timestamp of KF message is latter than image
-    // TS <= all in image queue
-    while (image_queue.size() > 0 && image_ts_queue[0] <  ts_sec - 0.001) {
-        //Pop head
-        image_queue.erase(image_queue.begin());
-        image_ts_queue.erase(image_ts_queue.begin());
-    }
-
-    if (fabs(image_ts_queue[0] -  ts_sec ) < 0.001) {
-        // ROS_INFO("Pop image with dt %3.2fms", fabs(image_ts_queue[0] -  ts_sec )*1000);
-        return image_queue[0];
-    }
-
-    // ROS_ERROR("Can't found image!!!");
-    cv::Mat ret;
-    return ret;
 }
 
 

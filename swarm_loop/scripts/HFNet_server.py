@@ -68,6 +68,7 @@ class HFNetServer:
         ret.keypoints = kpts
         ret.local_descriptors = kp_descs.flatten()
         return ret
+        
 
 if __name__ == "__main__":
     print("Initializing HFNet...")
@@ -77,5 +78,5 @@ if __name__ == "__main__":
     model_path = rospy.get_param('~model_path')
 
     hfserver = HFNetServer(model_path, num_keypoints, nms_radius)
-    s = rospy.Service( 'whole_image_descriptor_compute_ts', HFNetSrv, hfserver.handle_req)
+    s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
     rospy.spin()

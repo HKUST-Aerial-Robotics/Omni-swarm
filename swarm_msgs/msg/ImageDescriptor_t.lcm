@@ -24,7 +24,7 @@ struct ImageDescriptor_t {
     int32_t drone_id;
 
     int32_t feature_descriptor_size;
-    byte feature_descriptor[feature_descriptor_size];
+    float feature_descriptor[feature_descriptor_size];
 
     int32_t image_desc_size;
     float image_desc[image_desc_size];
