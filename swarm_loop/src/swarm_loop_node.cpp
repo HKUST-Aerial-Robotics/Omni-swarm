@@ -86,7 +86,7 @@ public:
         
         loop_net->broadcast_img_desc(ret);
 
-        loop_detector->on_image_recv(ret, img);
+        //loop_detector->on_image_recv(ret, img);
 
         // std::cout << "Cam+LD Cost " << DT_MS(start) << "ms" <<  std::endl;
     }
@@ -97,7 +97,7 @@ public:
     }
 
     void on_remote_image(const ImageDescriptor_t & img_desc) {
-        loop_detector->on_image_recv(img_desc);
+        //loop_detector->on_image_recv(img_desc);
     }
 
     ros::Subscriber camera_sub;
@@ -171,7 +171,7 @@ public:
             on_loop_connection(loc, false);
         };
 
-        viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        viokeyframe_sub = nh.subscribe("/vins_estimator/flatten_images", 1, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
         if (enable_sub_remote_img) {

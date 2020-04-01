@@ -10,6 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from swarm_loop.srv import HFNetSrv, HFNetSrvResponse
+from geometry_msgs.msg import Point32
 
 def imgmsg_to_cv2( msg ):
     assert msg.encoding == "8UC3" or msg.encoding == "8UC1" or msg.encoding == "bgr8" or msg.encoding == "mono8", \
@@ -65,10 +66,28 @@ class HFNetServer:
         global_desc, kpts, kp_descs = self.inference_network_on_image(cv_image)
         ret = HFNetSrvResponse()
         ret.global_desc = global_desc
-        ret.keypoints = kpts
+        _kpts = []
+        for pt in kpts:
+            kp = Point32(pt[0], pt[1], 0)
+            _kpts.append(kp)
+        ret.keypoints = _kpts
         ret.local_descriptors = kp_descs.flatten()
         return ret
-        
+
+def solve_cudnn_error():   
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
+
+
 
 if __name__ == "__main__":
     print("Initializing HFNet...")
@@ -76,7 +95,9 @@ if __name__ == "__main__":
     nms_radius = rospy.get_param('~nms_radius')
     num_keypoints = rospy.get_param('~num_keypoints')
     model_path = rospy.get_param('~model_path')
-
+    
+    solve_cudnn_error()
+    
     hfserver = HFNetServer(model_path, num_keypoints, nms_radius)
     s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
     rospy.spin()
