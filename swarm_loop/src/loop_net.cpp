@@ -20,7 +20,8 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     }
     img_des.msg_id = rand() + img_des.timestamp.nsec;
     sent_message.insert(img_des.msg_id);
-    lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+    //lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+    ROS_INFO("Sent Message");
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {

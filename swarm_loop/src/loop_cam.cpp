@@ -130,8 +130,6 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages& msg) {
     ides.drone_id = self_id; // -1 is self drone;
     ides.camera_extrinsic = fromROSPose(msg.pose_up_cams[0]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
-    // ides.landmark_num = msg.feature_points_2d_uv.size();
-    // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
    
     //Need to triangulate 2 3d position here
     return ides;
@@ -177,7 +175,11 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
             // ROS_INFO("Received response from server desc.size %ld", desc.size());
             img_des.image_desc_size = desc.size();
             img_des.image_desc = desc;
+            ROSPoints2LCM(local_kpts,  img_des.landmarks_2d);
+            img_des.landmark_num = local_kpts.size();
             img_des.feature_descriptor = local_descriptors;
+            img_des.feature_descriptor_size = local_descriptors.size();
+            img_des.image_size = 0;
         } else {
             ROS_WARN("Failed on deepnet; Please check deepnet queue");
         }
