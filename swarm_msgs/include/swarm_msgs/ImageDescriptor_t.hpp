@@ -27,7 +27,7 @@ class ImageDescriptor_t
 
         int32_t    feature_descriptor_size;
 
-        std::vector< uint8_t > feature_descriptor;
+        std::vector< float > feature_descriptor;
 
         int32_t    image_desc_size;
 
@@ -165,7 +165,7 @@ int ImageDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) const
     if(tlen < 0) return tlen; else pos += tlen;
 
     if(this->feature_descriptor_size > 0) {
-        tlen = __byte_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
+        tlen = __float_encode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
@@ -244,7 +244,7 @@ int ImageDescriptor_t::_decodeNoHash(const void *buf, int offset, int maxlen)
 
     if(this->feature_descriptor_size) {
         this->feature_descriptor.resize(this->feature_descriptor_size);
-        tlen = __byte_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
+        tlen = __float_decode_array(buf, offset + pos, maxlen - pos, &this->feature_descriptor[0], this->feature_descriptor_size);
         if(tlen < 0) return tlen; else pos += tlen;
     }
 
@@ -332,7 +332,7 @@ int ImageDescriptor_t::_getEncodedSizeNoHash() const
     enc_size += this->timestamp._getEncodedSizeNoHash();
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
-    enc_size += __byte_encoded_array_size(NULL, this->feature_descriptor_size);
+    enc_size += __float_encoded_array_size(NULL, this->feature_descriptor_size);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __float_encoded_array_size(NULL, this->image_desc_size);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
@@ -365,7 +365,7 @@ uint64_t ImageDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptor_t::getHash };
 
-    uint64_t hash = 0x6956dc7ee70760fcLL +
+    uint64_t hash = 0x23abd422508f4e1bLL +
          Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +

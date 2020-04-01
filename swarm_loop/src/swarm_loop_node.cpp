@@ -33,10 +33,6 @@ public:
     ros::Time last_kftime;
     Eigen::Vector3d last_keyframe_position = Eigen::Vector3d(10000, 10000, 10000);
 
-    void image_callback(const sensor_msgs::ImageConstPtr& msg) {
-        loop_cam->on_camera_message(msg);
-    }
-    
 
     void on_loop_connection (LoopConnection & loop_con, bool is_local = false) {
         if(is_local) {
@@ -52,58 +48,31 @@ public:
         //Note that for the second case, we will not add it to database, matching only
             
         if (!recived_image && (viokf.header.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
+            //
             ROS_INFO("USE non vio kf as KF at first!");
-            VIOKF_callback(viokf);
             return;
         }
 
         if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
-            VIOnonKF_process_callback(viokf);
+            //
         }
     }
     
-    void VIOnonKF_process_callback(const vins::VIOKeyframe & viokf) {
-        last_kftime = viokf.header.stamp;
-        int keyframe_size = viokf.feature_points_2d_norm.size();
-        bool adding = false;
-
-        if (keyframe_size < MIN_LOOP_NUM) {
-            ROS_INFO("VIOnonKF no enough feature, giveup");
-            return;
-        }
-
-        recived_image = true;
-        auto start = high_resolution_clock::now();
-        cv::Mat img;
-        auto ret = loop_cam->on_keyframe_message(viokf, img);
-        ret.prevent_adding_db = !adding;
-
-        // ROS_DEBUG("Cam Cost %fms", DT_MS(start));
-        if (ret.landmark_num != 0)
-            loop_net->broadcast_img_desc(ret);
-    }
-    
-    void VIOKF_callback(const vins::VIOKeyframe & viokf) {
+    void VIOKF_callback(const vins::FlattenImages & viokf) {
         last_kftime = viokf.header.stamp;
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
-        int keyframe_size = viokf.feature_points_2d_norm.size();
-
-        if (keyframe_size < MIN_LOOP_NUM) {
-            ROS_INFO("VIOKF no enough feature, giveup");
-            return;
-        }
 
         if (dpos < min_movement_keyframe) {
             ROS_WARN("VIOKF no enough movement, will giveup");
             return;
         } else {
-            ROS_INFO("ADD VIOKeyframe MOVE %3.2fm LANDMARK %d ", dpos, keyframe_size);
+            ROS_INFO("ADD VIOKeyframe MOVE %3.2fm", dpos);
         }
 
         auto start = high_resolution_clock::now();
         cv::Mat img;
-        auto ret = loop_cam->on_keyframe_message(viokf, img);
+        auto ret = loop_cam->on_flattened_images(viokf);
         ret.prevent_adding_db = false;
         if (ret.landmark_num == 0) {
             ROS_WARN("Null img desc, CNN no ready");
@@ -202,9 +171,7 @@ public:
             on_loop_connection(loc, false);
         };
 
-        camera_sub = nh.subscribe("left_camera", 10, &SwarmLoopNode::image_callback, this, ros::TransportHints().tcpNoDelay());
         viokeyframe_sub = nh.subscribe("/vins_estimator/viokeyframe", 1, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
-        viononkeyframe_sub = nh.subscribe("/vins_estimator/viononkeyframe", 1, &SwarmLoopNode::VIOnonKF_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
         if (enable_sub_remote_img) {
