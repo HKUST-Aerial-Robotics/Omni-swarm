@@ -72,7 +72,7 @@ public:
 
         auto start = high_resolution_clock::now();
         cv::Mat img;
-        auto ret = loop_cam->on_flattened_images(viokf);
+        auto ret = loop_cam->on_flattened_images(viokf, img);
         ret.prevent_adding_db = false;
         if (ret.landmark_num == 0) {
             ROS_WARN("Null img desc, CNN no ready");
