@@ -185,7 +185,7 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
     reduceVector(pts_up, status);
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg)
+ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img)
 {
     auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[0]);
     if (ides.image_desc_size == 0)
@@ -209,12 +209,17 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg)
 
     auto cv_ptr = cv_bridge::toCvCopy(msg.up_cams[0], sensor_msgs::image_encodings::BGR8);
     cv::Mat img_up = cv_ptr->image;
+    img_up.copyTo(img);
 
     auto cv_ptr2 = cv_bridge::toCvCopy(msg.down_cams[0], sensor_msgs::image_encodings::BGR8);
     cv::Mat img_down = cv_ptr2->image;
 
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
+
+    ides.landmarks_2d.clear();
+    ides.landmarks_2d_norm.clear();
+    ides.landmarks_3d.clear();
 
     track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down);
     ROS_INFO("tracked points %ld", pts_down.size());
@@ -243,12 +248,33 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg)
         pts_3d.push_back(point_3d);
 
 
+        Point2d_t pt2d;
+        pt2d.x = pt_up.x;
+        pt2d.y = pt_up.y;
+
+        Point2d_t pt2d_norm;
+        pt2d_norm.x = pt_up_norm.x();
+        pt2d_norm.y = pt_up_norm.y();
+
+        Point3d_t pt3d;
+        pt3d.x = point_3d.x();
+        pt3d.y = point_3d.y();
+        pt3d.z = point_3d.z();
+
+        ides.landmarks_2d.push_back(pt2d);
+        ides.landmarks_2d_norm.push_back(pt2d_norm);
+        ides.landmarks_3d.push_back(pt3d);
+
         // std::cout << "PT UP" << pt_up << "PT DOWN" << pt_down << std::endl;
 
         // std::cout << "PT UP NORM" << pt_up_norm.transpose() << "PT DOWN NORM" << pt_down_norm.transpose() << std::endl;
 
         // std::cout << "P3d:" << point_3d.transpose() << std::endl;
     }
+
+    ides.landmark_num = ides.landmarks_2d.size();
+
+    
 
     cv::Mat show;
 
@@ -266,20 +292,20 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg)
 
     char text[100] = {0};
 
-    cv::resize(show, show, cv::Size(0, 0), 2, 2);
+    // cv::resize(show, show, cv::Size(0, 0), 2, 2);
 
     for (unsigned int i = 0; i < pts_up.size(); i++) {
-        cv::arrowedLine(show, pts_up[i]*2, pts_down[i]*2, cv::Scalar(255, 255, 0), 1);
+        cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
     }
 
-    for (unsigned int i = 0; i < pts_up.size(); i++) {
-        sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
-	    cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-    }
+    // for (unsigned int i = 0; i < pts_up.size(); i++) {
+    //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
+	//     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
+    // }
 
     ROS_INFO("Try show image");
     cv::imshow("DEBUG", show);
-    cv::waitKey(-1);
+    cv::waitKey(10);
 
     return ides;
 }
@@ -331,6 +357,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
             img_des.landmark_num = local_kpts.size();
             img_des.feature_descriptor = local_descriptors;
             img_des.feature_descriptor_size = local_descriptors.size();
+            img_des.image_size = 0;
         }
         else
         {

@@ -29,7 +29,7 @@ public:
 
     LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, ros::NodeHandle & nh);
 
-    ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg);
+    ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img);
 
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg);
 
