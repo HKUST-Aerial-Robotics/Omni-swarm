@@ -6,12 +6,24 @@
 
 using namespace std::chrono; 
 
+
+void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
+    auto pts = toCV(img_des.landmarks_2d);
+    for (auto pt : pts) {
+        cv::circle(img, pt, 1, cv::Scalar(255, 0, 0), -1);
+    }
+    cv::resize(img, img, cv::Size(), 2.0, 2.0);
+    cv::imshow("DEBUG", img);
+    cv::waitKey(10);
+}
+
 void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto start = high_resolution_clock::now(); 
     if (img_des.drone_id!= this->self_id && database_size() == 0) {
         ROS_INFO("Empty local database, where giveup remote image");
         return;
     } 
+
 
     success_loop_nodes.insert(self_id);
     bool new_node = all_nodes.find(img_des.drone_id) == all_nodes.end();
@@ -25,6 +37,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         if (img.empty()) {
             img = decode_image(img_des);
+            //debug_draw_kpts(img_des, img);
         }
 
         int new_added_image = -1;
@@ -107,7 +120,8 @@ std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
 cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
     
     auto start = high_resolution_clock::now();
-    auto ret = cv::imdecode(_img_desc.image, cv::IMREAD_GRAYSCALE);
+    // auto ret = cv::imdecode(_img_desc.image, cv::IMREAD_GRAYSCALE);
+    auto ret = cv::imdecode(_img_desc.image, cv::IMREAD_COLOR);
     // std::cout << "IMDECODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
     return ret;
