@@ -46,76 +46,6 @@ void LoopCam::encode_image(cv::Mat &_img, ImageDescriptor_t &_img_desc)
     _img_desc.image_size = _img_desc.image.size();
 }
 
-/*
-ImageDescriptor_t  LoopCam::on_keyframe_message(const vins::VIOKeyframe& msg, cv::Mat & img){
-    ROS_INFO("Received new keyframe. with %ld landmarks...", msg.feature_points_2d_uv.size());
-    
-    img = pop_image_ts(msg.header.stamp);
-    ImageDescriptor_t ides;
-
-    ides.landmark_num = 0;
-    ides.image_desc_size = 0;
-    ides.feature_descriptor_size = 0;
-    ides.image_size = 0;
-    
-    if (img.empty()) {
-        ROS_WARN("No Image; Exiting;");
-        return ides;
-    }
-
-    auto start = high_resolution_clock::now();
-
-#ifdef DEBUG_SHOW_IMAGE
-    ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
-    auto nowPts = toCV(ides.landmarks_2d);
-    cv::Mat img_color;
-    cv::cvtColor(img, img_color, cv::COLOR_GRAY2BGR);
-
-    for (auto pt: nowPts) {
-            // std::cout << pt << std::endl;
-        cv::circle(img_color, pt, 2, cv::Scalar(0,0, 255), -1);
-    }
-
-    cv::resize(img_color, img_color, cv::Size(), 2, 2);
-    cv::imshow("img", img_color);
-    cv::waitKey(30);
-#endif
-
-#ifdef USE_DEEPNET
-    // ides = extractor_img_desc_deepnet(msg.header.stamp);
-    if (ides.image_desc_size == 0) {
-        ROS_WARN("Failed on deepnet;");
-        cv::Mat _img;
-        return ides;
-    }
-#else
-    ides = extractor_img_desc(img);
-    if (ides.feature_descriptor_size == 0) {
-        return ides;
-    }
-#endif
-    // std::cout << "FeatureDetect Cost " << duration_cast<milliseconds>(high_resolution_clock::now() - start).count() << "ms" << std::endl;
-
-    start = high_resolution_clock::now();
-    cv::resize(img, img, img.size()/LOOP_IMAGE_DOWNSAMPLE);
-    encode_image(img, ides);
-    // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-
-    ides.timestamp = toLCMTime(msg.header.stamp);
-    ides.drone_id = self_id; // -1 is self drone;
-    ides.camera_extrinsic = fromROSPose(msg.camera_extrisinc);
-    ides.pose_drone = fromROSPose(msg.pose_drone);
-    ides.landmark_num = msg.feature_points_2d_uv.size();
-    // ides.landmark_descriptor_length = ides.landmark_num*ORB_FEATURE_SIZE;
-    ROSPoints2LCM(msg.feature_points_2d_norm, ides.landmarks_2d_norm);
-    ROSPoints2LCM(msg.feature_points_2d_uv, ides.landmarks_2d);
-    ROSPoints2LCM(msg.feature_points_3d, ides.landmarks_3d);
-    ides.landmarks_flag = msg.feature_points_flag;
-   
-    return ides;
-}
-*/
-
 void triangulatePoint(Eigen::Quaterniond q0, Eigen::Vector3d t0, Eigen::Quaterniond q1, Eigen::Vector3d t1,
                       Eigen::Vector2d point0, Eigen::Vector2d point1, Eigen::Vector3d &point_3d)
 {
@@ -146,7 +76,8 @@ void triangulatePoint(Eigen::Quaterniond q0, Eigen::Vector3d t0, Eigen::Quaterni
     point_3d(2) = triangulated_point(2) / triangulated_point(3);
 }
 
-void reduceVector(std::vector<cv::Point2f> &v, std::vector<uchar> status)
+template <typename T>
+void reduceVector(std::vector<T> &v, std::vector<uchar> status)
 {
     int j = 0;
     for (int i = 0; i < int(v.size()); i++)
@@ -155,8 +86,13 @@ void reduceVector(std::vector<cv::Point2f> &v, std::vector<uchar> status)
     v.resize(j);
 }
 
-void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down)
+void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
 {
+
+    for (size_t i = 0; i < pts_up.size(); i++) {
+        ids.push_back(i);
+    }
+
     std::vector<float> err;
     std::vector<uchar> status;
     std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
@@ -183,6 +119,7 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
 
     reduceVector(pts_down, status);
     reduceVector(pts_up, status);
+    reduceVector(ids, status);
 }
 
 ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img)
@@ -211,6 +148,8 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     cv::Mat img_up = cv_ptr->image;
     img_up.copyTo(img);
 
+    encode_image(img_up, ides);
+
     auto cv_ptr2 = cv_bridge::toCvCopy(msg.down_cams[0], sensor_msgs::image_encodings::BGR8);
     cv::Mat img_down = cv_ptr2->image;
 
@@ -220,14 +159,19 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.landmarks_2d.clear();
     ides.landmarks_2d_norm.clear();
     ides.landmarks_3d.clear();
+    std::vector<int> ids;
 
-    track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down);
+
+    ROS_INFO("try track %d pts", pts_up.size());
+    track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
     ROS_INFO("tracked points %ld", pts_down.size());
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
     Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[0]);
     Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[0]);
+
+    std::vector<float> desc_new;
 
     for (unsigned int i = 0; i < pts_up.size(); i++)
     {
@@ -265,6 +209,10 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         ides.landmarks_2d_norm.push_back(pt2d_norm);
         ides.landmarks_3d.push_back(pt3d);
 
+        //std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
+
+        desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
+
         // std::cout << "PT UP" << pt_up << "PT DOWN" << pt_down << std::endl;
 
         // std::cout << "PT UP NORM" << pt_up_norm.transpose() << "PT DOWN NORM" << pt_down_norm.transpose() << std::endl;
@@ -272,9 +220,11 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         // std::cout << "P3d:" << point_3d.transpose() << std::endl;
     }
 
+    ides.feature_descriptor = desc_new;
+
     ides.landmark_num = ides.landmarks_2d.size();
 
-    
+    ides.landmark_num = ides.landmarks_2d.size();
 
     cv::Mat show;
 
