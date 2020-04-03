@@ -41,6 +41,23 @@ protected:
         bool init_mode,
         bool use_orb_matching, int drone_id_new, int drone_id_old);
 
+    bool compute_relative_pose(
+        const std::vector<cv::Point2f> now_norm_2d,
+        const std::vector<cv::Point3f> now_3d,
+        const cv::Mat desc_now,
+
+        const std::vector<cv::Point2f> old_norm_2d,
+        const std::vector<cv::Point3f> old_3d,
+        const cv::Mat desc_old,
+
+        Swarm::Pose old_extrinsic,
+        Swarm::Pose drone_pose_now,
+        Swarm::Pose drone_pose_old,
+        Swarm::Pose & DP_old_to_new,
+        std::vector<cv::DMatch> &matches,
+        int drone_id_new, int drone_id_old);
+
+
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode=false);
 

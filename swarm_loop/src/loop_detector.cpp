@@ -605,6 +605,7 @@ double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone
 }
 
 
+
 //img_old_small image must from local drone
 bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
         const std::vector<cv::Point2f> now_norm_2d,
@@ -816,6 +817,27 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 }
 
 
+bool LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_2d,
+        const std::vector<cv::Point3f> now_3d,
+        const cv::Mat desc_now,
+
+        const std::vector<cv::Point2f> old_norm_2d,
+        const std::vector<cv::Point3f> old_3d,
+        const cv::Mat desc_old,
+
+        Swarm::Pose old_extrinsic,
+        Swarm::Pose drone_pose_now,
+        Swarm::Pose drone_pose_old,
+        Swarm::Pose & DP_old_to_new,
+        std::vector<cv::DMatch> &matches,
+        int drone_id_new, int drone_id_old) {
+    
+    cv::BFMatcher bfmatcher(cv::NORM_L2, true);
+    bfmatcher.match(desc_now, desc_old, matches);
+
+}
+
+
 bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, cv::Mat img_new, cv::Mat img_old, LoopConnection & ret, bool init_mode) {
 
     if (new_img_desc.landmark_num < MIN_LOOP_NUM) {
@@ -830,78 +852,51 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
     assert(!img_old.empty() && "ERROR IMG old is emptry!");
 
-    auto nowPts = toCV(new_img_desc.landmarks_2d);
-    std::vector<cv::Point2f> nowPtsSmall;
-
-    for (auto pt : nowPts) {
-        pt.x = pt.x/LOOP_IMAGE_DOWNSAMPLE;
-        pt.y = pt.y/LOOP_IMAGE_DOWNSAMPLE;
-        // std::cout << "now pts" << pt;
-        nowPtsSmall.push_back(pt);
-    }
-
     bool success = false;
     Swarm::Pose  DP_old_to_new;
 
     bool first_try_match_mode = false;
-    /*(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
-        const std::vector<cv::Point2f> now_norm_2d,
-        const std::vector<cv::Point3f> now_3d,
-        Swarm::Pose old_extrinics,
-        Swarm::Pose drone_pose_now,
-        Swarm::Pose & DP_old_to_new,
-        bool init_mode,
-        bool use_orb_matching) */
-    if (init_mode) {
-        first_try_match_mode = true;
-    }
-
-    if (!ENABLE_LK_LOOP_DETECTION) {
-        first_try_match_mode = true;
-    }
-
-    //first_try_match_mode = false;
 
     ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
         new_img_desc.drone_id, 
         new_img_desc.landmark_num,
         first_try_match_mode, init_mode);
-        success = compute_relative_pose(img_new, img_old, nowPtsSmall, 
-            toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
+
+    auto now_2d = toCV(new_img_desc.landmarks_2d);
+    auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
+    auto now_3d = toCV(new_img_desc.landmarks_3d);
+    ROS_INFO("New desc %d/%d", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
+
+    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
+
+    auto old_2d = toCV(old_img_desc.landmarks_2d);
+    auto old_norm_2d = toCV(old_img_desc.landmarks_2d_norm);
+    auto old_3d = toCV(old_img_desc.landmarks_3d);
+    cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
+
+    std::vector<cv::DMatch> matches;
+
+    ROS_INFO("Will compute relative pose");
+
+    success = compute_relative_pose(
+            now_norm_2d, now_3d, desc_now,
+            old_norm_2d, old_3d, desc_old,
             Swarm::Pose(old_img_desc.camera_extrinsic),
             Swarm::Pose(new_img_desc.pose_drone),
             Swarm::Pose(old_img_desc.pose_drone),
             DP_old_to_new,
-            init_mode,
-            first_try_match_mode,
+            matches,
             new_img_desc.drone_id,
             old_img_desc.drone_id
     );
 
-#ifdef ENABLE_OPTICAL_SEC_TRY_INIT
-    if (!success && init_mode) {
-        ROS_WARN("First init try failed, try second time");
-
-        success = compute_relative_pose(img_new, img_old, nowPtsSmall, 
-            toCV(new_img_desc.landmarks_2d_norm), toCV(new_img_desc.landmarks_3d), 
-            Swarm::Pose(old_img_desc.camera_extrinsic),
-            Swarm::Pose(new_img_desc.pose_drone),
-            Swarm::Pose(old_img_desc.pose_drone),
-            DP_old_to_new,
-            init_mode,
-            false,
-            new_img_desc.drone_id,
-            old_img_desc.drone_id
-        );
-
-        if (!success) {
-            ROS_WARN("Second try with match mode %d failed", !first_try_match_mode);
-        } else {
-            ROS_INFO("Init mode second trye with optical flow success");
-        }
-    }
-#endif
-
+    cv::Mat show;
+    cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
+    cv::resize(show, show, cv::Size(), 2, 2);
+    cv::imshow("Matches", show);
+    cv::waitKey(-1);
 
     if (success) {
         /*

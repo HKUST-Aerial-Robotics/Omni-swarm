@@ -1,7 +1,7 @@
 #pragma once
 
 #define LOOP_BOW_THRES 0.015
-#define MATCH_INDEX_DIST 10
+#define MATCH_INDEX_DIST 3
 // #define MATCH_INDEX_DIST 1
 #define FAST_THRES (20.0f)
 #define ORB_FEATURE_SIZE (32) // For ORB
@@ -60,5 +60,6 @@ extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner produ
 #define GFTT_MIN_DIS 10
 
 #define RPERR_THRES 3*DEG2RAD
+#define LOCAL_DESC_LEN 256
 
 extern bool ENABLE_LK_LOOP_DETECTION; 
