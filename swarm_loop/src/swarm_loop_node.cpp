@@ -125,6 +125,7 @@ public:
         nh.param<int>("loop_image_downsample", LOOP_IMAGE_DOWNSAMPLE, 1);
         nh.param<int>("init_loop_min_feature_num", INIT_MODE_MIN_LOOP_NUM, 10);
         nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
+        nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
         nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
         nh.param<int>("jpg_quality", JPG_QUALITY, 50);
         nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
