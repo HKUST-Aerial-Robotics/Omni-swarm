@@ -1,7 +1,6 @@
 #pragma once
 
 #define LOOP_BOW_THRES 0.015
-#define MATCH_INDEX_DIST 3
 // #define MATCH_INDEX_DIST 1
 #define FAST_THRES (20.0f)
 #define ORB_FEATURE_SIZE (32) // For ORB
@@ -37,6 +36,7 @@ extern int MIN_LOOP_NUM;
 
 extern double  INNER_PRODUCT_THRES;
 extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as similar
+extern int MATCH_INDEX_DIST;
 
 #define ORB_HAMMING_DISTANCE 40 //Max hamming
 #define ORB_UV_DISTANCE 1.5 //UV distance bigger than mid*this will be removed

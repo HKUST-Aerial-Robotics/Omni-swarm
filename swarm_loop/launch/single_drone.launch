@@ -1,22 +1,35 @@
 <launch>
     <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
-    <arg name="detection" default="true" />
+    <arg name="output" default="screen" />
+    <arg name="display" default="false" />
     
     <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
-        args="/home/xuhao/bags/swarm_loop/single_drone_loop_bag/realsense/realsense_n3_unsync.yaml" />
+        args="/media/xuhao/Swarm/swarm_bags/fisheye_loop/fisheye_ptgrey_n3/fisheye.yaml" />
     
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen">
+    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="$(arg output)">
         <rosparam>
-            camera_config_path: /home/xuhao/bags/swarm_loop/single_drone_loop_bag/realsense/left.yaml
-            debug_image : true
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
-            #lcm_uri: udpm://239.255.76.67:7667?ttl=1
-            self_id: 0
+            loop_image_downsample: 1.0
+            init_loop_min_feature_num: 8
+            init_loop_min_feature_num_l2: 8
+            min_loop_feature_num: 8
+            jpg_quality: 75
+            enable_lk: true
+            
+            query_thres: 0.3
+            init_query_thres: 0.3
+
+            min_movement_keyframe: 0.1
+            enable_pub_remote_img: true
+            enable_sub_remote_img: false
+            self_id: 4
+            match_index_dist: 10
         </rosparam>
-        <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+       <param name="debug_image" value="$(arg display)" type="bool" />
+       <param name="camera_config_path" value="/home/xuhao/bags/fisheye_ptgrey_n3/front.yaml" type="string" />
     </node>
-    <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
+    <!-- <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <rosparam>
             send_fused_freq: 0.0
@@ -39,12 +52,5 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-    </node>
-    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="screen">
-        <param name="frozen_protobuf_file" type="string" value="$(find tx2_whole_image_desc_server)/tx2_py3_tfserver/models.keras/June2019/centeredinput-m1to1-240x320x1__mobilenetv2-block_9_add__K16__allpairloss/modelarch_and_weights.2000.480x640x1.pb" />
-        <param name="nrows" type="string" value="480" />
-        <param name="ncols" type="string" value="640" />
-        <param name="nchnls" type="string" value="1" />
-        <remap from="left_camera" to="/camera/infra1/image_rect_raw"/>
-    </node>
+    </node> -->
 </launch>

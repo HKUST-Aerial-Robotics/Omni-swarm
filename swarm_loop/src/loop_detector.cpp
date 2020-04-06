@@ -893,10 +893,13 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     );
 
     cv::Mat show;
-    cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
-    cv::resize(show, show, cv::Size(), 2, 2);
-    cv::imshow("Matches", show);
-    cv::waitKey(-1);
+
+    if (enable_visualize) {
+        cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
+        cv::resize(show, show, cv::Size(), 2, 2);
+        cv::imshow("Matches", show);
+        cv::waitKey(10);
+    }
 
     if (success) {
         /*
