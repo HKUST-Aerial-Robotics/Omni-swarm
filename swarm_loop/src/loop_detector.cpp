@@ -703,8 +703,6 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
         auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
 
         success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
-        
-
 
         if (!success && init_mode) {
             double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
@@ -817,7 +815,7 @@ bool LoopDetector::compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_
 }
 
 
-bool LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_2d,
+int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
         const cv::Mat desc_now,
 
@@ -829,12 +827,77 @@ bool LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm
         Swarm::Pose drone_pose_now,
         Swarm::Pose drone_pose_old,
         Swarm::Pose & DP_old_to_new,
+        bool init_mode,
+        int drone_id_new, int drone_id_old,
         std::vector<cv::DMatch> &matches,
-        int drone_id_new, int drone_id_old) {
+        int &inlier_num) {
     
     cv::BFMatcher bfmatcher(cv::NORM_L2, true);
-    bfmatcher.match(desc_now, desc_old, matches);
+    //query train
 
+    std::vector<cv::DMatch> _matches;
+    bfmatcher.match(desc_now, desc_old, _matches);
+
+    std::vector<cv::Point3f> matched_3d_now;
+    std::vector<cv::Point2f> matched_2d_norm_old;
+
+    for (auto match : _matches) {
+        int now_id = match.queryIdx;
+        int old_id = match.trainIdx;
+        matched_3d_now.push_back(now_3d[now_id]);
+        matched_2d_norm_old.push_back(old_norm_2d[old_id]);
+    }
+ 
+    if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
+        //Compute PNP
+
+        cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
+
+        cv::Mat r, rvec, t, D, tmp_r;
+        cv::Mat inliers;
+
+        //TODO: Prepare initial pose for swarm
+
+        Swarm::Pose initial_old_drone_pose = drone_pose_now;
+        // }
+
+        Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
+
+        PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
+        
+        int iteratives = 100;
+
+        if (init_mode) {
+            iteratives = 1000;
+        }
+
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/200,     0.995,  inliers, cv::SOLVEPNP_DLS);
+        auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
+        auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
+        
+
+        Swarm::Pose DP_old_to_new_6d =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+        DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+        //As our pose graph uses 4D pose, here we must solve 4D pose
+        //6D pose could use to verify the result but not give to swarm_localization
+        std::cout << "PnP solved DPose 4d";
+        DP_old_to_new.print();
+        
+        auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
+
+        success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
+
+        ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm());
+        inlier_num = inliers.rows;
+
+        for (int i = 0; i < inlier_num; i++) {
+            int idx = inliers.at<int>(i);
+            matches.push_back(_matches[idx]);
+        }
+        return success;
+    }
+
+    return 0;
 }
 
 
@@ -865,7 +928,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     auto now_2d = toCV(new_img_desc.landmarks_2d);
     auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
     auto now_3d = toCV(new_img_desc.landmarks_3d);
-    ROS_INFO("New desc %d/%d", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
+    ROS_INFO("New desc %ld/%ld", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
 
     cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
@@ -880,6 +943,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
 
     ROS_INFO("Will compute relative pose");
 
+    int inlier_num = 0;
     success = compute_relative_pose(
             now_norm_2d, now_3d, desc_now,
             old_norm_2d, old_3d, desc_old,
@@ -887,16 +951,27 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
             Swarm::Pose(new_img_desc.pose_drone),
             Swarm::Pose(old_img_desc.pose_drone),
             DP_old_to_new,
-            matches,
+            init_mode,
             new_img_desc.drone_id,
-            old_img_desc.drone_id
+            old_img_desc.drone_id,
+            matches,
+            inlier_num
     );
 
     cv::Mat show;
 
     if (enable_visualize) {
+        static char title[256] = {0};
         cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
         cv::resize(show, show, cv::Size(), 2, 2);
+         if (success) {
+            sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
+            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
+        } else {
+            sprintf(title, "FAILED LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
+            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
+        }
+
         cv::imshow("Matches", show);
         cv::waitKey(10);
     }
