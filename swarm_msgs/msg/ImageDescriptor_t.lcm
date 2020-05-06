@@ -19,6 +19,35 @@ struct Time_t {
     int32_t nsec;
 }
 
+struct ImageDescriptorHeader_t {
+    Time_t  timestamp;
+    int32_t drone_id;
+    int32_t image_desc_size;
+    float image_desc[image_desc_size];
+    Pose_t pose_drone;
+    Pose_t camera_extrinsic;
+    byte landmarks_flag[landmark_num];
+    boolean prevent_adding_db;
+    int64_t msg_id;
+}
+
+struct LandmarkDescriptor_t {
+    //MTU is 2304, better make it lower than 2000 byte
+    int32_t landmark_id;
+    int32_t feature_descriptor_size;
+    float feature_descriptor[feature_descriptor_size];
+    Point2d_t landmarks_2d_norm;
+    Point2d_t landmarks_2d;
+    Point3d_t landmarks_3d;
+    byte landmarks_flag[landmark_num];
+}
+
+struct LandmarkDescriptorPacket_t {
+    //MTU is 2304, better make it lower than 2000 byte
+    int32_t landmark_num;
+    LandmarkDescriptor_t landmarks[landmark_num];
+}
+
 struct ImageDescriptor_t {
     Time_t  timestamp;
     int32_t drone_id;
