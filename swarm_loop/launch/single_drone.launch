@@ -4,8 +4,8 @@
     <arg name="output" default="screen" />
     <arg name="display" default="false" />
     
-    <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
-        args="/media/xuhao/Swarm/swarm_bags/fisheye_loop/fisheye_ptgrey_n3/fisheye.yaml" />
+    <!-- <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
+        args="/media/xuhao/Swarm/swarm_bags/fisheye_loop/fisheye_ptgrey_n3/fisheye.yaml" /> -->
     
     <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="$(arg output)">
         <rosparam>
