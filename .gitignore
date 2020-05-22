@@ -15,3 +15,6 @@ swarm_loop/.vscode/
 support_files/ORBvoc.txt
 swarm_localization/build/
 */build/
+swarm_loop/config/hfnet/saved_model.pb
+swarm_loop/config/hfnet/variables/variables.data-00000-of-00001
+swarm_loop/config/hfnet/variables/variables.index

@@ -34,12 +34,14 @@ struct ImageDescriptorHeader_t {
 struct LandmarkDescriptor_t {
     //MTU is 2304, better make it lower than 2000 byte
     int32_t landmark_id;
-    int32_t feature_descriptor_size;
-    float feature_descriptor[feature_descriptor_size];
-    Point2d_t landmarks_2d_norm;
-    Point2d_t landmarks_2d;
-    Point3d_t landmarks_3d;
-    byte landmarks_flag;
+    float feature_descriptor[256];
+    Point2d_t landmark_2d_norm;
+    Point2d_t landmark_2d;
+    Point3d_t landmark_3d;
+    byte landmark_flag;
+
+    int32_t msg_id;
+    int32_t header_id;
 }
 
 struct LandmarkDescriptorPacket_t {
