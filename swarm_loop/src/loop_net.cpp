@@ -1,6 +1,7 @@
 #include "loop_net.h"
 #include <time.h> 
 #include <swarm_msgs/ImageDescriptorHeader_t.hpp>
+#include <swarm_msgs/LandmarkDescriptor_t.hpp>
 
 void LoopNet::setup_network(std::string _lcm_uri) {
     if (!lcm.good()) {
@@ -21,9 +22,9 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         exit(-1);
     }
     */
-
-    sent_message.insert(img_des.msg_id);
     int msg_id = rand() + img_des.timestamp.nsec;
+    img_des.msg_id = msg_id;
+    sent_message.insert(img_des.msg_id);
 
     ImageDescriptorHeader_t img_desc_header;
     img_desc_header.timestamp = img_des.timestamp;
@@ -34,10 +35,29 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.prevent_adding_db = img_des.prevent_adding_db;
     img_desc_header.msg_id = img_des.msg_id;
 
-    lcm.publish("SWARM_LOOP_HEADER", &img_desc_header);
-    lcm.publish("SWARM_LOOP_LANDMARKS", &img_desc_header);
 
-    ROS_INFO("Sent Message");
+    lcm.publish("VIOKF_HEADER", &img_desc_header);
+
+    for (size_t i = 0; i < img_des.landmark_num; i++ ) {
+        LandmarkDescriptor_t lm;
+        lm.landmark_id = i;
+        lm.landmark_2d_norm = img_des.landmarks_2d_norm[i];
+        lm.landmark_2d = img_des.landmarks_2d[i];
+        lm.landmark_3d = img_des.landmarks_3d[i];
+        lm.landmark_flag = img_des.landmarks_flag[i];
+        memcpy(lm.feature_descriptor, img_des.feature_descriptor.data() + i *256, 256*sizeof(float));
+        
+        int msg_id = rand() + img_des.timestamp.nsec;
+        sent_message.insert(img_des.msg_id);
+
+        lm.msg_id = msg_id;
+        lm.header_id = img_des.msg_id;
+
+        lcm.publish("VIOKF_LANDMARKS", &lm);
+    }
+
+
+    ROS_INFO("Sent Message KEYFRAME with %d landmarks", img_des.landmark_num);
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {
