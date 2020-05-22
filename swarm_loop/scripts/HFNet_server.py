@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 from swarm_loop.srv import HFNetSrv, HFNetSrvResponse
 from geometry_msgs.msg import Point32
+import time
 
 def imgmsg_to_cv2( msg ):
     assert msg.encoding == "8UC3" or msg.encoding == "8UC1" or msg.encoding == "bgr8" or msg.encoding == "mono8", \
@@ -38,6 +39,8 @@ class HFNet:
         self.outputs = {n: graph.get_tensor_by_name(n+':0')[0] for n in outputs}
         self.nms_radius_op = graph.get_tensor_by_name('pred/simple_nms/radius:0')
         self.num_keypoints_op = graph.get_tensor_by_name('pred/top_k_keypoints/k:0')
+
+    
         
     def inference(self, image, nms_radius=4, num_keypoints=1000):
         inputs = {
@@ -55,6 +58,8 @@ class HFNetServer:
         self.num_kpts = num_kpts
         self.nms_radius = nms_radius
 
+        tmp_zer = np.random.randn(400, 208, 3)
+        self.inference_network_on_image(tmp_zer)
         print("NFNet ready")
     
     def inference_network_on_image(self, img):
@@ -62,6 +67,8 @@ class HFNetServer:
         return ret["global_descriptor"], ret["keypoints"], ret["local_descriptors"]
     
     def handle_req(self, req):
+        start_time = time.time()
+
         cv_image = imgmsg_to_cv2( req.image )
         global_desc, kpts, kp_descs = self.inference_network_on_image(cv_image)
         ret = HFNetSrvResponse()
@@ -71,12 +78,15 @@ class HFNetServer:
             kp = Point32(pt[0], pt[1], 0)
             _kpts.append(kp)
         ret.keypoints = _kpts
+        print(kp_descs.shape)
         ret.local_descriptors = kp_descs.flatten()
+
+        print( 'HFNet return req in %4.4fms' %( 1000. *(time.time() - start_time) ) )
         return ret
 
 def solve_cudnn_error():   
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    config.gpu_options.per_process_gpu_memory_fraction = 0.3
     config.gpu_options.allow_growth = True
     return
     try:

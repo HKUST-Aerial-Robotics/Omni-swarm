@@ -1,5 +1,6 @@
 #include "loop_net.h"
 #include <time.h> 
+#include <swarm_msgs/ImageDescriptorHeader_t.hpp>
 
 void LoopNet::setup_network(std::string _lcm_uri) {
     if (!lcm.good()) {
@@ -13,14 +14,29 @@ void LoopNet::setup_network(std::string _lcm_uri) {
 }
 
 void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
+    /*
     ROS_INFO("Broadcast Loop Image: size %d", img_des.getEncodedSize());
     if (img_des.getEncodedSize() < 0) {
         ROS_ERROR("WRONG SIZE!!!");
         exit(-1);
     }
-    img_des.msg_id = rand() + img_des.timestamp.nsec;
+    */
+
     sent_message.insert(img_des.msg_id);
-    //lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+    int msg_id = rand() + img_des.timestamp.nsec;
+
+    ImageDescriptorHeader_t img_desc_header;
+    img_desc_header.timestamp = img_des.timestamp;
+    img_desc_header.drone_id = img_des.drone_id;
+    img_desc_header.image_desc = img_des.image_desc;
+    img_desc_header.pose_drone = img_des.pose_drone;
+    img_desc_header.camera_extrinsic = img_des.camera_extrinsic;
+    img_desc_header.prevent_adding_db = img_des.prevent_adding_db;
+    img_desc_header.msg_id = img_des.msg_id;
+
+    lcm.publish("SWARM_LOOP_HEADER", &img_desc_header);
+    lcm.publish("SWARM_LOOP_LANDMARKS", &img_desc_header);
+
     ROS_INFO("Sent Message");
 }
 

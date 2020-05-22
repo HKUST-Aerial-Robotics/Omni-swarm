@@ -2,7 +2,7 @@
     <arg name="rand" default="10.0" />
     <arg name="num" default="5" />
     <arg name="output" default="screen" />
-    <arg name="display" default="false" />
+    <arg name="show" default="false" />
     
     <!-- <node name="vins_estimator" pkg="vins" type="vins_node" output="log" 
         args="/media/xuhao/Swarm/swarm_bags/fisheye_loop/fisheye_ptgrey_n3/fisheye.yaml" /> -->
@@ -26,8 +26,8 @@
             self_id: 4
             match_index_dist: 10
         </rosparam>
-       <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/home/xuhao/bags/fisheye_ptgrey_n3/front.yaml" type="string" />
+       <param name="debug_image" value="$(arg show)" type="bool" />
+       <param name="camera_config_path" value="/home/xuhao/bags/fisheye_loop/fisheye_ptgrey_n3/front.yaml" type="string" />
     </node>
     <!-- <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="log">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />

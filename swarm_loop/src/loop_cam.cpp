@@ -253,9 +253,9 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
 	//     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
     // }
 
-    ROS_INFO("Try show image");
-    cv::imshow("DEBUG", show);
-    cv::waitKey(10);
+    // ROS_INFO("Try show image");
+    // cv::imshow("DEBUG", show);
+    // cv::waitKey(10);
 
     return ides;
 }
