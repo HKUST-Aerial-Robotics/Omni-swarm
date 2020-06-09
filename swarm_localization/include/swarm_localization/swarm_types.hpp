@@ -18,6 +18,7 @@
 #define LOOP_COV 0.05
 #define LOOP_YAWCOV 0.01
 #define ERROR_NORMLIZED 0.01
+#define UNIDENTIFIED_MIN_ID 1000
 //#define DETECTION_COV_POS 10
 
 #define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)

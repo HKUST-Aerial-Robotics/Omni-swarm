@@ -18,6 +18,6 @@ public:
     bool try_data_association(const std::vector<SwarmFrame> & sf_sld_win, 
         std::map<int, int> & mapper);
 
-    bool DFS();
+    bool DFS(const std::vector<SwarmFrame> & sf_sld_win, std::map<int, int> & guess, std::map<int> & unidentified);
 
 };
