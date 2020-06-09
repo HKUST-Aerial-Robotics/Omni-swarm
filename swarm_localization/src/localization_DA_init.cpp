@@ -1,7 +1,7 @@
 #include "swarm_localization/localization_DA_init.hpp"
 #include <ros/ros.h>
 
-bool LocalizationDAInit::try_data_association(const std::vector<SwarmFrame> &sf_sld_win, std::map<int, int> &mapper) {
+bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //First we try to summarized all the UNIDENTIFIED detections
     std::set<int> unidentified;
     for (auto sf : sf_sld_win) {
@@ -20,7 +20,21 @@ bool LocalizationDAInit::try_data_association(const std::vector<SwarmFrame> &sf_
     //Secondly, we start give guess
 
     std::map<int, int> guess;
-    if (DFS(sf_sld_win, guess, unidentified)) {
+    std::map<int, DroneTraj> est_pathes;
+    if (DFS(est_pathes, guess, unidentified)) {
         ROS_INFO("Initial guess is OK");
     }
+}
+
+bool LocalizationDAInit::verify(std::map<int, int> & guess) {
+    //First we assume all static
+
+}
+
+
+int LocalizationDAInit::estimate_path(DroneTraj & traj, int id, const std::map<int, DroneTraj> est_pathes) {
+    //Assume static here
+
+    
+
 }
