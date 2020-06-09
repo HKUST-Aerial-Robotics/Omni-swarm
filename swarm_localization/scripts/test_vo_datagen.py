@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
-from swarm_msgs.msg import swarm_frame, node_frame, node_detected, swarm_detected
+from swarm_msgs.msg import swarm_frame, node_frame, node_detected_xyzyaw, swarm_detected
 from tf.transformations import quaternion_from_euler
 
 def parse_csv_data(csv_path, lt=0, rt=1000000):
@@ -54,7 +54,7 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
 class SimulateDronesEnv(object):
     def __init__(self, drone_num = 10, self_id = 0, enable_detection = True):
         self.drone_vel = np.zeros((drone_num, 3))
-        self.data_path = "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/data/"
+        self.data_path = "/home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/data/"
         self.data_paths = [
             ("log_2019-10-15-2-17-circle.csv", 102), #0
             ("2019-3-6-sweep-hover-y.csv", 48), #1
@@ -185,7 +185,7 @@ class SimulateDronesEnv(object):
         pose.position.x = px + np.random.randn(1) * noisex
         pose.position.y = py + np.random.randn(1) * noisey
         pose.position.z = pz + np.random.randn(1) * noisez
-
+        
         return pose, is_in_range
 
     def generate_node_frame(self, i, Xii, Vii, ts, tick):
@@ -195,33 +195,21 @@ class SimulateDronesEnv(object):
         roll = self.data[i]["rpy"][tick][0]
         pitch = self.data[i]["rpy"][tick][1]
         yaw = self.data[i]["rpy"][tick][2]
-        qx, qy, qz, qw = quaternion_from_euler(roll, pitch, yaw)
-        pose.orientation.w = qw
-        pose.orientation.x = qx
-        pose.orientation.y = qy
-        pose.orientation.z = qz
-        pose.position.x = Xii[i][0]
-        pose.position.y = Xii[i][1]
-        pose.position.z = Xii[i][2]
 
-
-        odom = Odometry()
-        odom.header.stamp = ts
-        odom.header.frame_id = "world"
-        odom.pose.pose = pose
+        _nf.position.x = Xii[i][0]
+        _nf.position.y = Xii[i][1]
+        _nf.position.z = Xii[i][2]
+        
+        _nf.yaw = yaw
 
         # odom.header.frame_id = "my_frame"
-        odom.twist.twist.linear.x = Vii[i][0]
-        odom.twist.twist.linear.y = Vii[i][1]
-        odom.twist.twist.linear.z = Vii[i][2]
-
-
-
+        _nf.velocity.x = Vii[i][0]
+        _nf.velocity.y = Vii[i][1]
+        _nf.velocity.z = Vii[i][2]
 
         _nf.header.stamp = ts
         if not self.static[i]:
             _nf.vo_available = True
-            _nf.odometry = odom
         else:
             _nf.vo_available = False
         _nf.id = i
@@ -251,9 +239,7 @@ class SimulateDronesEnv(object):
         self.odom_pubs[i].publish(odomw)
 
 
-        sd = swarm_detected()
-        sd.header.stamp = ts
-        sd.self_drone_id = i
+        sd = []
 
         for j in range(drone_num):
             if i!=j:
@@ -261,20 +247,16 @@ class SimulateDronesEnv(object):
                 _nf.dismap_dists.append(self.drone_dis[i][j])
                 dpose, in_range = self.generate_relpose(j, i, tick)
                 if in_range:
-                    nd = node_detected()
-                    nd.relpose.pose = dpose
-                    nd.self_drone_id = i
+                    nd = node_detected_xyzyaw()
+                    nd.dpos = dpose.position
+                    nd.dyaw = 0
                     nd.remote_drone_id = j
                     nd.header.stamp = ts
-                    cov = nd.relpose.covariance
-                    cov[0] = 0.1
-                    cov[6+1] = cov[2*6+2] = 0.02
-                    cov[3*6+3] = cov[4*6+4] = cov[5*6+5] = 10/57.3
-                    sd.detected_nodes.append(nd)
+                    sd.append(nd)
                         # print("In range add detected node")
         if self.enable_detection:
             # print("dete")
-            if len(sd.detected_nodes) > 0:
+            if len(sd) > 0:
                 _nf.detected = sd
         return _nf
 
