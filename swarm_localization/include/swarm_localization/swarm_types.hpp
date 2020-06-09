@@ -149,6 +149,8 @@ public:
     }
 };
 
+typedef std::vector<std::pair<ros::Time, Pose>> DroneTraj;
+
 struct DetectedObject {
     //TYPE 1: Drone
     int obj_type = 1;
