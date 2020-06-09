@@ -254,8 +254,8 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     // }
 
     // ROS_INFO("Try show image");
-    // cv::imshow("DEBUG", show);
-    // cv::waitKey(10);
+     cv::imshow("DEBUG", show);
+     cv::waitKey(10);
 
     return ides;
 }

@@ -18,3 +18,4 @@ swarm_localization/build/
 swarm_loop/config/hfnet/saved_model.pb
 swarm_loop/config/hfnet/variables/variables.data-00000-of-00001
 swarm_loop/config/hfnet/variables/variables.index
+build/

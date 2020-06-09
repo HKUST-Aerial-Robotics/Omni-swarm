@@ -59,7 +59,7 @@ class HFNetServer:
         self.nms_radius = nms_radius
 
         tmp_zer = np.random.randn(400, 208, 3)
-        self.inference_network_on_image(tmp_zer)
+        # self.inference_network_on_image(tmp_zer)
         print("NFNet ready")
     
     def inference_network_on_image(self, img):
@@ -86,9 +86,8 @@ class HFNetServer:
 
 def solve_cudnn_error():   
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.3
     config.gpu_options.allow_growth = True
-    return
+    # return
     try:
         gpus = tf.config.experimental.list_physical_devices('GPU')
         if gpus:
@@ -103,6 +102,8 @@ def solve_cudnn_error():
                 print(e)
     except RuntimeError as e:
         print(e)
+
+    config.gpu_options.per_process_gpu_memory_fraction = 0.3
 
 
 if __name__ == "__main__":

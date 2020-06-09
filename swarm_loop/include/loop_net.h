@@ -10,6 +10,8 @@
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <functional>
 #include <set>
+#include <swarm_msgs/ImageDescriptorHeader_t.hpp>
+#include <swarm_msgs/LandmarkDescriptor_t.hpp>
 
 using namespace swarm_msgs;
 
@@ -38,6 +40,14 @@ public:
     void on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 
                 const ImageDescriptor_t* msg);
+
+    void on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
+                const std::string& chan, 
+                const ImageDescriptorHeader_t* msg);
+
+    void on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
+                const std::string& chan, 
+                const LandmarkDescriptor_t* msg);
 
     int lcm_handle() {
         return lcm.handle();
