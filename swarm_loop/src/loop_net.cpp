@@ -1,7 +1,5 @@
 #include "loop_net.h"
 #include <time.h> 
-#include <swarm_msgs/ImageDescriptorHeader_t.hpp>
-#include <swarm_msgs/LandmarkDescriptor_t.hpp>
 
 void LoopNet::setup_network(std::string _lcm_uri) {
     if (!lcm.good()) {
@@ -10,19 +8,20 @@ void LoopNet::setup_network(std::string _lcm_uri) {
     }
     lcm.subscribe("SWARM_LOOP_IMG_DES", &LoopNet::on_img_desc_recevied, this);
     lcm.subscribe("SWARM_LOOP_CONN", &LoopNet::on_loop_connection_recevied, this);
+    lcm.subscribe("VIOKF_HEADER", &LoopNet::on_img_desc_header_recevied, this);
+    lcm.subscribe("VIOKF_LANDMARKS", &LoopNet::on_landmark_recevied, this);
 
     srand((unsigned)time(NULL)); 
 }
 
 void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     /*
-    ROS_INFO("Broadcast Loop Image: size %d", img_des.getEncodedSize());
     if (img_des.getEncodedSize() < 0) {
         ROS_ERROR("WRONG SIZE!!!");
         exit(-1);
     }
     */
-    int msg_id = rand() + img_des.timestamp.nsec;
+    int64_t msg_id = rand() + img_des.timestamp.nsec;
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
 
@@ -34,30 +33,36 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.camera_extrinsic = img_des.camera_extrinsic;
     img_desc_header.prevent_adding_db = img_des.prevent_adding_db;
     img_desc_header.msg_id = img_des.msg_id;
+    img_desc_header.image_desc_size = img_des.image_desc_size;
+    img_desc_header.image_desc = img_des.image_desc;
+    ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
 
 
     lcm.publish("VIOKF_HEADER", &img_desc_header);
 
+    // ROS_INFO("Sending landmarks num: %d, local desc size %d", img_des.landmark_num, img_des.local_descriptors_size);
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         LandmarkDescriptor_t lm;
         lm.landmark_id = i;
         lm.landmark_2d_norm = img_des.landmarks_2d_norm[i];
         lm.landmark_2d = img_des.landmarks_2d[i];
         lm.landmark_3d = img_des.landmarks_3d[i];
-        lm.landmark_flag = img_des.landmarks_flag[i];
+        lm.landmark_flag = 1;
+        lm.drone_id = img_des.drone_id;
         memcpy(lm.feature_descriptor, img_des.feature_descriptor.data() + i *256, 256*sizeof(float));
         
-        int msg_id = rand() + img_des.timestamp.nsec;
+        int64_t msg_id = rand() + img_des.timestamp.nsec;
         sent_message.insert(img_des.msg_id);
 
         lm.msg_id = msg_id;
         lm.header_id = img_des.msg_id;
 
+        // ROS_INFO("Sending landmark %d, size %d", i, lm.getEncodedSize());
         lcm.publish("VIOKF_LANDMARKS", &lm);
     }
 
 
-    ROS_INFO("Sent Message KEYFRAME with %d landmarks", img_des.landmark_num);
+    ROS_INFO("Sent Message KEYFRAME %ld with %d landmarks", msg_id, img_des.landmark_num);
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {
@@ -92,4 +97,17 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
     }
     ROS_INFO("Received Loop %d->%d from LCM!!!", msg->id_a, msg->id_b);    
     loopconn_callback(*msg);
+}
+
+
+void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
+    const std::string& chan, 
+    const ImageDescriptorHeader_t* msg) {
+    ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
+}
+
+void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
+    const std::string& chan, 
+    const LandmarkDescriptor_t* msg) {
+    ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
 }
