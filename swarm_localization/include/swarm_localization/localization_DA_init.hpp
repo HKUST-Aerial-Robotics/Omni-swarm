@@ -2,7 +2,6 @@
 #include <swarm_msgs/swarm_frame.h>
 #include <swarm_localization/swarm_types.hpp>
 
-
 struct DAHypothesis{
     int self_id = -1;
     int deteted_id = -1;
@@ -30,5 +29,5 @@ public:
     //return 0: not observable
     //return 1: good
     //return -1: estimate failed
-    int estimate_path(DroneTraj & traj, int id, const std::map<int, DroneTraj> est_pathes);
+    int estimate_path(DroneTraj & traj, int idj, std::map<int, int> & guess, const std::map<int, DroneTraj> est_pathes);
 };
