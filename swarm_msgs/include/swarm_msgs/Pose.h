@@ -116,6 +116,15 @@ public:
         update_yaw();
     }
 
+
+    Pose(Eigen::Vector3d pos, double yaw) {
+        this->attitude = AngleAxisd(yaw, Vector3d::UnitZ());
+        position = pos;
+        attitude.normalize();
+
+        update_yaw();
+    }
+
     Pose(const geometry_msgs::Pose &p) {
         attitude.w() = p.orientation.w;
         attitude.x() = p.orientation.x;

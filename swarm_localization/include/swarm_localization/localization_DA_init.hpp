@@ -22,12 +22,16 @@ public:
 
     bool try_data_association(std::map<int, int> & mapper);
 
-    bool DFS(const std::map<int, DroneTraj> est_pathes, std::map<int, int> & guess, std::set<int> & unidentified);
+    bool DFS(const std::map<int, DroneTraj> est_pathes, 
+        std::map<int, int> & guess, std::set<int> & unidentified) {
+
+    }
 
     bool verify(std::map<int, int> & guess);
 
     //return 0: not observable
     //return 1: good
     //return -1: estimate failed
-    int estimate_path(DroneTraj & traj, int idj, std::map<int, int> & guess, const std::map<int, DroneTraj> est_pathes);
+    int estimate_path(DroneTraj & traj, int idj, std::map<int, int> & guess, 
+        const std::map<int, DroneTraj> est_pathes);
 };

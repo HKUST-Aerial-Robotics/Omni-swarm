@@ -4,6 +4,8 @@
 using namespace std;
 using namespace Eigen;
 
+#define MIN_DET_THRES 0.5
+
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //First we try to summarized all the UNIDENTIFIED detections
     std::set<int> unidentified;
@@ -36,7 +38,8 @@ bool LocalizationDAInit::verify(std::map<int, int> & guess) {
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
-int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, const map<int, DroneTraj> est_pathes) {
+int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, 
+    const map<int, DroneTraj> est_pathes) {
     //Assume static now
     //Summarize Known constrains
     //Constrain may have 2 type: distance relative to position and unit vector relative to position
@@ -64,8 +67,9 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                 
                 for (auto it : nf.detected_nodes) {
                     auto unidentify_id = it.first;
-                    if (guess.find(unidentify_id)!= guess.end() && guess[unidentify_id] == idj) { //If this detection can be map to idj
-                        // detection_constrain.push_back();
+                    if (guess.find(unidentify_id)!= guess.end() && guess[unidentify_id] == idj) {
+                        //If this detection can be map to idj
+                        //detection_constrain.push_back();
                         auto dir = pose.att() * it.second.p;
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
@@ -82,12 +86,55 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         detection_constrain.size(), (max_bbx_det - min_bbx_det).norm()
     );
 
-    //We ignore distances first
+    //We ignore distances first; use only triangulate to init
 
-    
+    if((max_bbx_det - min_bbx_det).norm() < MIN_DET_THRES || detection_constrain.size() == 0) {
+        return 0;
+    }
+
+    //Else processing triangulate or estimate with single detection
+
+    if (detection_constrain.size() == 1) {
+        Vector3d estimated = detection_constrain[0].first + detection_constrain[0].second;
+        for (auto & _sf : sf_sld_win) {
+            if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
+                Pose p(estimated, _sf.id2nodeframe[idj].yaw());
+                traj.push_back(make_pair(_sf.ts, p));
+            }
+        }
+        return 1;
+    }
+
+
+    return 1;
 }
 
+double triangulatePoint3DPts(vector<Eigen::Matrix<double, 3, 4>> &poses, vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d)
+{
+    //TODO:Rewrite this for 3d point
+    Eigen::MatrixXd design_matrix(poses.size()*2, 4);
+    assert(poses.size() > 0 && poses.size() == points.size() && "We at least have 2 poses and number of pts and poses must equal");
+    for (unsigned int i = 0; i < poses.size(); i ++) {
+        double p0x = points[i][0];
+        double p0y = points[i][1];
+        double p0z = points[i][2];
+        design_matrix.row(i*2) = p0x * poses[i].row(2) - p0z*poses[i].row(0);
+        design_matrix.row(i*2+1) = p0y * poses[i].row(2) - p0z*poses[i].row(1);
 
+    }
+    Eigen::Vector4d triangulated_point;
+    triangulated_point =
+              design_matrix.jacobiSvd(Eigen::ComputeFullV).matrixV().rightCols<1>();
+    point_3d(0) = triangulated_point(0) / triangulated_point(3);
+    point_3d(1) = triangulated_point(1) / triangulated_point(3);
+    point_3d(2) = triangulated_point(2) / triangulated_point(3);
+
+    Eigen::MatrixXd pts(4, 1);
+    pts << point_3d.x(), point_3d.y(), point_3d.z(), 1;
+    Eigen::MatrixXd errs = design_matrix*pts;
+    // std::cout << "ERR" << errs.sum() << std::endl;
+    return errs.norm()/ errs.rows(); 
+}
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max) {
     if (v.x() > max.x()) {
