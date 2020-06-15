@@ -15,6 +15,13 @@ class LocalizationDAInit {
 
     std::map<int, DroneTraj> ego_motions;
 
+    std::set<int> available_nodes;
+
+    std::map<int, std::set<int>> detected_set;
+    
+    //The detector of the unidentified id
+    std::map<int, int> uniden_detector;
+
 public:
     LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win):
         sf_sld_win(_sf_sld_win)
@@ -22,10 +29,7 @@ public:
 
     bool try_data_association(std::map<int, int> & mapper);
 
-    bool DFS(const std::map<int, DroneTraj> est_pathes, 
-        std::map<int, int> & guess, std::set<int> & unidentified) {
-
-    }
+    bool DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified);
 
     bool verify(std::map<int, int> & guess);
 
