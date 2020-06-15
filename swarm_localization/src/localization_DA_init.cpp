@@ -36,6 +36,49 @@ bool LocalizationDAInit::verify(std::map<int, int> & guess) {
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
+
+bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
+    if (unidentified.size() == 0) {
+        return true;
+    }
+
+    for (auto _uniden : unidentified) {
+        //Search _uniden
+        if (guess.find(_uniden) == guess.end()) {
+            for (auto new_id : available_nodes) {
+                //This new id must not be the detector drone itself
+                if (uniden_detector[_uniden] == new_id) {
+                    //Than the unidentified is detected by this new id
+                    continue;
+                }
+
+                //Here we start search this guess
+                std::map<int, int> this_guess(guess);
+                this_guess[_uniden] = new_id;
+                std::set<int> this_unidentified(unidentified);
+                this_unidentified.erase(_uniden);
+                
+                //We will try to estimate this position and verify it.
+                DroneTraj this_path;
+                estimate_path(this_path, new_id, this_guess, est_pathes);
+                
+                bool result = DFS(est_pathes, this_guess, this_unidentified);
+
+                if (result) {
+                    //Here we assume only one result
+                    guess.insert(this_guess.begin(), this_guess.end());
+                    unidentified.insert(this_unidentified.begin(), this_unidentified.end());
+
+                    return true;
+                }
+            }
+        }
+    }
+
+    //No good result, return false
+    return false;
+}
+
 int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, const map<int, DroneTraj> est_pathes) {
     //Assume static now
     //Summarize Known constrains
