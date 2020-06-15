@@ -45,7 +45,8 @@ add_executable(${PROJECT_NAME}_node
         include/swarm_localization/swarm_localization_solver.hpp
         src/swarm_localization_node.cpp
         src/localization_DA_init.cpp
-        src/swarm_localization_solver.cpp)
+        src/swarm_localization_solver.cpp
+)
 
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
