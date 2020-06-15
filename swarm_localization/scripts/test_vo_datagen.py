@@ -10,6 +10,7 @@ from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
 from swarm_msgs.msg import swarm_frame, node_frame, node_detected_xyzyaw, swarm_detected
 from tf.transformations import quaternion_from_euler
+import random
 
 def parse_csv_data(csv_path, lt=0, rt=1000000):
     data =  np.genfromtxt(csv_path, delimiter=',')
@@ -76,6 +77,12 @@ class SimulateDronesEnv(object):
         self.count = 0
         self.self_id = self_id
         self.enable_detection = enable_detection
+        self.use_unidentify_id = True
+
+        self.unidentify_ids = {}
+        for i in range(drone_num):
+            self.use_unidentify_ids[i] = 1000 + random.randrange(10000)
+
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
         self.base_coor = np.array([
