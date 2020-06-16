@@ -5,6 +5,8 @@ using namespace std;
 using namespace Eigen;
 
 #define MIN_DET_THRES 0.5
+double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
+double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d);
 
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //First we try to summarized all the UNIDENTIFIED detections
@@ -129,7 +131,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     //Summarize Known constrains
     //Constrain may have 2 type: distance relative to position and unit vector relative to position
     vector<pair<Vector3d, double>> distance_constrain;
-    vector<pair<Vector3d, Vector3d>> detection_constrain;
+    vector<pair<Pose, Vector3d>> detection_constrain;
 
     Eigen::Vector3d max_bbx_dis(-100000,-100000,-100000);
     Eigen::Vector3d min_bbx_dis(1000000,100000,100000);
@@ -158,7 +160,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                         auto dir = pose.att() * it.second.p;
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
-                        detection_constrain.push_back(make_pair(nf.position(), det_mea));
+                        detection_constrain.push_back(make_pair(pose, det_mea));
                         boundingbox(nf.position(), min_bbx_det, max_bbx_det);
                     }
                 }
@@ -180,7 +182,8 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     //Else processing triangulate or estimate with single detection
 
     if (detection_constrain.size() == 1) {
-        Vector3d estimated = detection_constrain[0].first + detection_constrain[0].second;
+        Vector3d estimated;
+        // Vector3d estimated = detection_constrain[0].first + detection_constrain[0].second;
         for (auto & _sf : sf_sld_win) {
             if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
                 Pose p(estimated, _sf.id2nodeframe[idj].yaw());
@@ -190,13 +193,41 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         return 1;
     }
 
+    if (detection_constrain.size() > 1) {
+        //Now we can detect it with triangulate
+        Vector3d position;
+        double error = triangulatePoint3DPts(detection_constrain, position);
+        //Set trajectory here
+        
+        if (error > triangulate_accept_thres) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
 
     return 1;
 }
 
-double triangulatePoint3DPts(vector<Eigen::Matrix<double, 3, 4>> &poses, vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d)
+
+double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d) {
+    vector<Pose> _poses; 
+    vector<Eigen::Vector3d> pts;
+    for (auto it: dets) {
+        _poses.push_back(it.first);
+        pts.push_back(it.second);
+    }
+
+    return triangulatePoint3DPts(_poses, pts, point_3d);
+}
+
+double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d)
 {
-    //TODO:Rewrite this for 3d point
+    vector<Eigen::Matrix<double, 3, 4>> poses;
+    for (auto p : _poses) {
+        poses.push_back(p.to_isometry().affine());
+    }
+
     Eigen::MatrixXd design_matrix(poses.size()*2, 4);
     assert(poses.size() > 0 && poses.size() == points.size() && "We at least have 2 poses and number of pts and poses must equal");
     for (unsigned int i = 0; i < poses.size(); i ++) {
