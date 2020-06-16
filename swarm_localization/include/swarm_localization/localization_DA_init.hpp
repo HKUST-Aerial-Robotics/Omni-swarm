@@ -22,9 +22,11 @@ class LocalizationDAInit {
     //The detector of the unidentified id
     std::map<int, int> uniden_detector;
 
+    double triangulate_accept_thres = 0.1;
+
 public:
-    LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win):
-        sf_sld_win(_sf_sld_win)
+    LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win, double _triangulate_accept_thres):
+        sf_sld_win(_sf_sld_win), triangulate_accept_thres(_triangulate_accept_thres)
     { }
 
     bool try_data_association(std::map<int, int> & mapper);
