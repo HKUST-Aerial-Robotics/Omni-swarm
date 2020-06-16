@@ -39,40 +39,80 @@ bool LocalizationDAInit::verify(std::map<int, int> & guess) {
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
 
+int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
+    int count = 0;
+    for (auto _id : available_nodes) {
+        if (est_pathes.find(_id) == est_pathes.end()) {
+            DroneTraj _path;
+            int success = estimate_path(_path, _id, guess, est_pathes);
+            if (success < 0) {
+                return -1;
+            } else {
+                count += success;
+            }
+        }
+    }
+    return count;
+}
+
 bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
+
+    printf("DFS Unidentified num %ld guess \n", unidentified.size());
+    
+    for (auto it : guess) {
+        printf("%d:%d\n");
+    }
+
+    printf("\n");
+
     if (unidentified.size() == 0) {
+        if (est_pathes.size() < available_nodes.size()) {
+            //Pose of some node can't be estimated
+            return false;
+        }
         return true;
     }
 
-    for (auto _uniden : unidentified) {
-        //Search _uniden
-        if (guess.find(_uniden) == guess.end()) {
-            for (auto new_id : available_nodes) {
-                //This new id must not be the detector drone itself
-                if (uniden_detector[_uniden] == new_id) {
-                    //Than the unidentified is detected by this new id
-                    continue;
-                }
+    //Search _uniden
+    int _uniden = *unidentified.begin();
+    printf("Search unidentified %d", _uniden);
+    if (guess.find(_uniden) == guess.end()) {
+        for (auto new_id : available_nodes) {
+            //This new id must not be the detector drone itself
+            if (uniden_detector[_uniden] == new_id) {
+                //Than the unidentified is detected by this new id
+                continue;
+            }
 
-                //Here we start search this guess
-                std::map<int, int> this_guess(guess);
-                this_guess[_uniden] = new_id;
-                std::set<int> this_unidentified(unidentified);
-                this_unidentified.erase(_uniden);
-                
-                //We will try to estimate this position and verify it.
-                DroneTraj this_path;
-                estimate_path(this_path, new_id, this_guess, est_pathes);
-                
-                bool result = DFS(est_pathes, this_guess, this_unidentified);
+            printf("Try to give %d as %d\n", _uniden, new_id);
 
-                if (result) {
-                    //Here we assume only one result
-                    guess.insert(this_guess.begin(), this_guess.end());
-                    unidentified.insert(this_unidentified.begin(), this_unidentified.end());
+            //Here we start search this guess
+            std::map<int, int> this_guess(guess);
+            this_guess[_uniden] = new_id;
+            std::set<int> this_unidentified(unidentified);
+            this_unidentified.erase(_uniden);
 
-                    return true;
-                }
+            std::map<int, DroneTraj> this_pathes(est_pathes);
+            
+            //We will try to estimate this position and verify it.
+            //Here we should estimate all unknow nodes
+            int success = estimate_pathes(this_pathes, this_guess);
+            if (success < 0) {
+                return false;
+            }
+
+            bool _succ = verify(this_guess);
+            if (!_succ) {
+                continue;
+            }
+            bool result = DFS(this_pathes, this_guess, this_unidentified);
+
+            if (result) {
+                //Here we assume only one result
+                guess.insert(this_guess.begin(), this_guess.end());
+                unidentified.insert(this_unidentified.begin(), this_unidentified.end());
+
+                return true;
             }
         }
     }
@@ -81,6 +121,9 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
     return false;
 }
 
+//return 0: not observable
+//return 1: good
+//return -1: estimate failed
 int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, const map<int, DroneTraj> est_pathes) {
     //Assume static now
     //Summarize Known constrains

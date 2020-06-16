@@ -33,6 +33,8 @@ public:
 
     bool verify(std::map<int, int> & guess);
 
+    int estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess);
+
     //return 0: not observable
     //return 1: good
     //return -1: estimate failed
