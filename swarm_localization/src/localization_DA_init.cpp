@@ -11,7 +11,12 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //First we try to summarized all the UNIDENTIFIED detections
     std::set<int> unidentified;
+    DroneTraj traj;
     for (auto sf : sf_sld_win) {
+        if (sf.has_node(self_id)) {
+            traj.push_back(make_pair(sf.ts, sf.id2nodeframe[self_id].pose()));
+        }
+
         for (auto it: sf.id2nodeframe) {
             auto & _nf = it.second;
             for (auto it: _nf.detected_nodes) {
@@ -28,6 +33,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
 
     std::map<int, int> guess;
     std::map<int, DroneTraj> est_pathes;
+    est_pathes[self_id] = traj;
     if (DFS(est_pathes, guess, unidentified)) {
         ROS_INFO("Initial guess is OK");
     }
@@ -40,7 +46,6 @@ bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, con
 }
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
-
 
 int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
     int count = 0;
