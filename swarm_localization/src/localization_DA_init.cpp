@@ -33,7 +33,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     }
 }
 
-bool LocalizationDAInit::verify(std::map<int, int> & guess) {
+bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess) {
     //First we assume all static
 
 }
@@ -69,10 +69,13 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
 
     if (unidentified.size() == 0) {
         if (est_pathes.size() < available_nodes.size()) {
-            //Pose of some node can't be estimated
+            //Now we should to estimate all known pathes
             return false;
         }
-        return true;
+
+        if (verify(est_pathes, guess)) {
+            return true;
+        }
     }
 
     //Search _uniden
@@ -103,7 +106,7 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
                 return false;
             }
 
-            bool _succ = verify(this_guess);
+            bool _succ = verify(this_pathes, this_guess);
             if (!_succ) {
                 continue;
             }
@@ -144,7 +147,9 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
             if (est_pathes.find(it.first) != est_pathes.end()) {
                 //Then the traj of this node is known, can use to estimate others
                 auto & nf = it.second;
-                auto pose = nf.pose();
+                int _id = it.first;
+                //Assmue static now
+                auto pose = est_pathes.at(_id)[0].second;
 
                 if (nf.dis_map.find(idj) != nf.dis_map.end()) {
                     //Node idj can be observer distance to id
@@ -157,7 +162,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                     if (guess.find(unidentify_id)!= guess.end() && guess[unidentify_id] == idj) {
                         //If this detection can be map to idj
                         //detection_constrain.push_back();
-                        auto dir = pose.att() * it.second.p;
+                        auto dir = it.second.p;
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
                         detection_constrain.push_back(make_pair(pose, det_mea));
@@ -182,8 +187,10 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     //Else processing triangulate or estimate with single detection
 
     if (detection_constrain.size() == 1) {
-        Vector3d estimated;
-        // Vector3d estimated = detection_constrain[0].first + detection_constrain[0].second;
+        Pose pose = detection_constrain[0].first;
+        Vector3d dir = detection_constrain[0].second;
+        Vector3d estimated = pose * dir;
+        
         for (auto & _sf : sf_sld_win) {
             if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
                 Pose p(estimated, _sf.id2nodeframe[idj].yaw());
