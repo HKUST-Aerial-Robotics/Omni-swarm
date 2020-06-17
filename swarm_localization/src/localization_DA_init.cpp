@@ -45,13 +45,16 @@ void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max
 int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
     int count = 0;
     for (auto _id : available_nodes) {
-        if (est_pathes.find(_id) == est_pathes.end()) {
-            DroneTraj _path;
-            int success = estimate_path(_path, _id, guess, est_pathes);
-            if (success < 0) {
-                return -1;
-            } else {
-                count += success;
+        // Recalculate every time
+        DroneTraj _path;
+        int success = estimate_path(_path, _id, guess, est_pathes);
+        if (success < 0) {
+            return -1;
+        } else {
+            count += success;
+
+            if(success) {
+                est_pathes[_id] = _path;
             }
         }
     }
@@ -206,6 +209,12 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         Vector3d position;
         double error = triangulatePoint3DPts(detection_constrain, position);
         //Set trajectory here
+        for (auto & _sf : sf_sld_win) {
+            if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
+                auto att =  _sf.id2nodeframe[idj].pose().att();
+                traj.push_back(make_pair(_sf.ts, Pose(position, att)));
+            }
+        }
         
         if (error > triangulate_accept_thres) {
             return -1;
