@@ -35,7 +35,8 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
 
 bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess) {
     //First we assume all static
-
+    //Ignore verify now
+    return true;
 }
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);

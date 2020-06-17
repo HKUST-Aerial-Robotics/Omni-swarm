@@ -31,6 +31,7 @@ public:
 
     bool try_data_association(std::map<int, int> & mapper);
 
+private:
     bool DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified);
 
     bool verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess);
