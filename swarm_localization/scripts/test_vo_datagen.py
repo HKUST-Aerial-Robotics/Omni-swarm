@@ -53,7 +53,7 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True):
+    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True, zero_yaw_offset = True):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/data/"
         self.data_paths = [
@@ -102,9 +102,12 @@ class SimulateDronesEnv(object):
 
         self.drone_pos = self.base_coor.copy()
 
-        self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
+        if zero_yaw_offset:
+            self.base_yaw = np.zeros(drone_num)
+        else:
+            self.base_yaw = (np.random.randn(drone_num) * 10 + np.pi) % (2*np.pi) - np.pi
+        
         self.base_yaw[self.self_id] = 0
-        # self.base_yaw = np.zeros(drone_num)
 
         self.est_err_norm = []
 
@@ -257,7 +260,7 @@ class SimulateDronesEnv(object):
                     nd = node_detected_xyzyaw()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    nd.remote_drone_id = j
+                    nd.remote_drone_id = j + 1000
                     nd.header.stamp = ts
                     sd.append(nd)
                         # print("In range add detected node")
