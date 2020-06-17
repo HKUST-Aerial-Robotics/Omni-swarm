@@ -33,7 +33,7 @@ public:
 
     bool DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified);
 
-    bool verify(std::map<int, int> & guess);
+    bool verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess);
 
     int estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess);
 
