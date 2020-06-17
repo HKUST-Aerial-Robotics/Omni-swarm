@@ -36,7 +36,10 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     est_pathes[self_id] = traj;
     if (DFS(est_pathes, guess, unidentified)) {
         ROS_INFO("Initial guess is OK");
+        return true;
     }
+
+    return false;
 }
 
 bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess) {
