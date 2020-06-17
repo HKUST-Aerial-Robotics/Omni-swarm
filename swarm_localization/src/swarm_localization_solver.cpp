@@ -634,6 +634,9 @@ double SwarmLocalizationSolver::solve() {
         bool success = DAIniter.try_data_association(mapper);
         if (success) {
             ROS_INFO("Success initial system with visual data association");
+            for (auto it : mapper) {
+                ROS_INFO("UNIDENTIFIED %d ASSOCIATION %d", it.first, it.second);
+            }
         } else {
             ROS_INFO("Could not initail system with visual data association");
         }
