@@ -260,7 +260,7 @@ class SimulateDronesEnv(object):
                     nd = node_detected_xyzyaw()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    nd.remote_drone_id = j + 1000
+                    nd.remote_drone_id = j + 10000
                     nd.header.stamp = ts
                     sd.append(nd)
                         # print("In range add detected node")

@@ -116,12 +116,13 @@ class SwarmLocalizationNode {
         }
 
         for (auto nd: _nf.detected) {
-            if (nodedef_has_id(nd.remote_drone_id)) {
-                DetectedObject dobj(Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z), nd.inv_dep, nd.enable_scale);
-                nf.detected_nodes_posvar[nd.remote_drone_id] = 
-                    Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
-                nf.has_detect_relpose = true;
-            }
+            DetectedObject dobj(Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z), nd.inv_dep, nd.enable_scale);
+            nf.detected_nodes_posvar[nd.remote_drone_id] = 
+                Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
+            nf.has_detect_relpose = true;
+            ROS_INFO("Det from %d to %d", nf.id, nd.remote_drone_id);
+
+            nf.detected_nodes[nd.remote_drone_id] = dobj;
         }
         return nf;
     }
