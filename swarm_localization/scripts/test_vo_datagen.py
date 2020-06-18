@@ -165,7 +165,7 @@ class SimulateDronesEnv(object):
 
             print("{} len {}".format(p, len(self.data[-1]['pos'])))
 
-    def generate_relpose(self, target, source, tick, noisex=0.1, noisey=0.02, noisez=0.02, noiseyaw=10/57.3):
+    def generate_relpose(self, target, source, tick, noisex=0., noisey=0.0, noisez=0.0, noiseyaw=0/57.3):
         """    
             double dyaw = b.yaw() - a.yaw();
             Eigen::Vector3d dp = b.position - a.position;
