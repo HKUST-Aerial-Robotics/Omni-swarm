@@ -262,6 +262,7 @@ class SimulateDronesEnv(object):
                     nd.dyaw = 0
                     nd.remote_drone_id = j + 10000
                     nd.header.stamp = ts
+                    nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
                     sd.append(nd)
                         # print("In range add detected node")
         if self.enable_detection:
@@ -316,6 +317,9 @@ class SimulateDronesEnv(object):
 
         Xii = self.drone_pos - self.base_coor[0:self.drone_num]
         Vii = self.drone_vel
+
+        for i in range(self.drone_num):
+            print("ID ", i, "P", Xii[i][0], Xii[i][1], Xii[i][2])
 
 
         for i in range(self.drone_num):
