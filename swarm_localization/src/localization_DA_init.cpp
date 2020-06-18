@@ -13,13 +13,17 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     std::set<int> unidentified;
     DroneTraj traj;
     for (auto sf : sf_sld_win) {
+        ROS_INFO("Scan sf %d", sf.ts);
         if (sf.has_node(self_id)) {
             traj.push_back(make_pair(sf.ts, sf.id2nodeframe[self_id].pose()));
         }
 
         for (auto it: sf.id2nodeframe) {
             auto & _nf = it.second;
+            ROS_INFO("Scanning nf %d det %d", _nf.id, _nf.detected_nodes.size());
+
             for (auto it: _nf.detected_nodes) {
+                ROS_INFO("nf %d detect %d", _nf.id, it.first);
                 if (it.first >= UNIDENTIFIED_MIN_ID) {
                     unidentified.insert(it.first);
                 }
@@ -28,6 +32,10 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     }
 
     ROS_INFO("The sliding window contain %d unidentified drones", unidentified.size());
+
+    if (unidentified.size() == 0) {
+        return false;
+    }
 
     //Secondly, we start give guess
 

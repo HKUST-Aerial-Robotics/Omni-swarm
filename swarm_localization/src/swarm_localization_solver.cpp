@@ -640,6 +640,8 @@ double SwarmLocalizationSolver::solve() {
         } else {
             ROS_INFO("Could not initail system with visual data association");
         }
+
+        exit(-1);
     }
 
 
