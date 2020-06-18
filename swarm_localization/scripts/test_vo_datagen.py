@@ -12,7 +12,7 @@ from swarm_msgs.msg import swarm_frame, node_frame, node_detected_xyzyaw, swarm_
 from tf.transformations import quaternion_from_euler
 import random
 
-def parse_csv_data(csv_path, lt=0, rt=1000000):
+def parse_csv_data(csv_path, lt=0, rt=1000000, zero_yaw= True):
     data =  np.genfromtxt(csv_path, delimiter=',')
     l = 0
     r = len(data[:,0]) - 1
@@ -43,6 +43,8 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
     ans['pos'] = data[l:r,2:5]
     ans['vel'] = data[l:r,5:8]
     ans['rpy'] = data[l:r,8:11]
+    if zero_yaw:
+        ans["rpy"][:,2] = 0
     ans['pos_sp'] = data[l:r,11:14]
     ans['vel_sp'] = data[l:r,14:17]
     ans['acc_sp'] = data[l:r,17:20]
@@ -53,22 +55,20 @@ def parse_csv_data(csv_path, lt=0, rt=1000000):
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True, zero_yaw_offset = True):
+    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True, zero_yaw_offset = True, is_static = False):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/data/"
         self.data_paths = [
             ("log_2019-10-15-2-17-circle.csv", 102), #0
             ("2019-3-6-sweep-hover-y.csv", 48), #1
             ("realsense_2019_5_15_loop.csv", 20), #2
-            ("circle-3s-no-gc-fix.csv", 18), #4
-            ("2019-3-6-sweep-hover-y.csv", 38),#5
-            (None, None),#5            
-            ("realsense_2019_5_15_loop.csv", 15), #6
-            ("circle-3s-no-gc-fix.csv", 18),# 7
-
-            ("2019-3-6-sweep-hover-y.csv", 43), # 8
-            ("realsense_2019_5_15_loop.csv", 10), #9
-            ("circle-3s-no-gc-fix.csv", 25)#10
+            ("circle-3s-no-gc-fix.csv", 18), #3
+            ("2019-3-6-sweep-hover-y.csv", 38),#4
+            ("realsense_2019_5_15_loop.csv", 15), #5
+            ("circle-3s-no-gc-fix.csv", 18),# 6
+            ("2019-3-6-sweep-hover-y.csv", 43), # 7
+            ("realsense_2019_5_15_loop.csv", 10), #8
+            ("circle-3s-no-gc-fix.csv", 25)#9
         ]
 
         self.drone_num = drone_num
@@ -79,9 +79,7 @@ class SimulateDronesEnv(object):
         self.enable_detection = enable_detection
         self.use_unidentify_id = True
 
-        self.unidentify_ids = {}
-        for i in range(drone_num):
-            self.use_unidentify_ids[i] = 1000 + random.randrange(10000)
+        self.is_static = is_static
 
         # self.base_coor = self.drone_pos + np.random.randn(drone_num, 3)*0.2
         # print(self.base_coor)
@@ -117,6 +115,8 @@ class SimulateDronesEnv(object):
         self.distance_noise = 0.05
         self.static = []
 
+        self.zero_yaw_offset = zero_yaw_offset
+
 
         self.sf_pub = rospy.Publisher("/swarm_drones/swarm_frame", swarm_frame, queue_size=1)
         self.sf_pre_pub = rospy.Publisher("/swarm_drones/swarm_frame_predict", swarm_frame, queue_size=1)
@@ -138,7 +138,6 @@ class SimulateDronesEnv(object):
         self.load_datas()
 
         self.tstart = rospy.get_rostime()
-        self.tm = rospy.Timer(rospy.Duration(0.02), self.update)
 
         self.sf_sld_win = []
 
@@ -158,6 +157,7 @@ class SimulateDronesEnv(object):
                 self.static.append(True)
             self.static.append(False)
             self.data.append(parse_csv_data(self.data_path + p, l))
+
             print("{} len {}".format(p, len(self.data[-1]['pos'])))
 
     def generate_relpose(self, target, source, tick, noisex=0.1, noisey=0.02, noisez=0.02, noiseyaw=10/57.3):
@@ -280,15 +280,19 @@ class SimulateDronesEnv(object):
         z = self.drone_pos[i][2] + ann[2]
         return x, y, z
 
-    def update(self, e, show=False):
-        if e.last_real is not None:
-            self.tick = int((rospy.get_rostime() - self.tstart).to_sec()*50)
-            # print(dt)
+    def update(self, dt, show=False):
+        self.tick = int((rospy.get_rostime() - self.tstart).to_sec()*50)
+        print("Tick", self.tick)
+
+        if self.is_static:
+            self.tick = 0
         for i in range(self.drone_num):
             # print(self.data[i])
             self.drone_pos[i] = self.data[i]["pos"][self.tick] + self.base_coor[i]
-            self.drone_vel[i] = self.data[i]["vel"][self.tick]
-            # print(self.tick, self.drone_pos[i], self.data[i]["pos"][self.tick])
+            if not self.is_static:
+                self.drone_vel[i] = self.data[i]["vel"][self.tick]
+            else:
+                self.drone_vel[i] = np.zeros(3)
 
             for j in range(self.drone_num):
                 if  i!=j:
@@ -347,9 +351,18 @@ if __name__ == "__main__":
     # plt.ion()
     print("Starting vo data generation")
     rospy.init_node("test_vo_datagen")
-    drone_num = rospy.get_param('~drone_num', 4)
+    drone_num = rospy.get_param('~drone_num', 5)
     self_id = rospy.get_param("~self_id", 0)
     enable_detection = rospy.get_param("~detection", True)
+    is_static = rospy.get_param("~is_static", True)
     print("ENABLE DETECTION", enable_detection)
-    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_detection=enable_detection)
-    rospy.spin()
+    env = SimulateDronesEnv(drone_num=drone_num, self_id=self_id, enable_detection=enable_detection, is_static=True)
+    rate = rospy.Rate(50) # 10hz
+
+    try:
+        while not rospy.is_shutdown():
+            env.update(0.02)
+            rate.sleep()
+    except rospy.ROSInterruptException:
+        pass
+    

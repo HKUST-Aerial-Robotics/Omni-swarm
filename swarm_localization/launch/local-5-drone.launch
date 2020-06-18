@@ -11,7 +11,7 @@
             max_keyframe_num: 100
             min_keyframe_num: 2
             thread_num: 2
-            min_kf_movement : 0.5
+            min_kf_movement : -0.5
             init_xy_movement : 0
             init_z_movement : 0
         </rosparam>
