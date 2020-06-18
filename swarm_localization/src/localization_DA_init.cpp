@@ -5,25 +5,45 @@ using namespace std;
 using namespace Eigen;
 
 #define MIN_DET_THRES 0.5
+#define DET_BASELINE_THRES 0.3
+
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
 double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d);
+
+
+LocalizationDAInit::LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win, double _triangulate_accept_thres):
+    sf_sld_win(_sf_sld_win), triangulate_accept_thres(_triangulate_accept_thres) {
+    for (auto & sf : sf_sld_win) { 
+        available_nodes.insert(sf.node_id_list.begin(), sf.node_id_list.end());
+    }
+
+    
+}
 
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //First we try to summarized all the UNIDENTIFIED detections
     std::set<int> unidentified;
+    
     DroneTraj traj;
-    for (auto sf : sf_sld_win) {
-        ROS_INFO("Scan sf %d", sf.ts);
-        if (sf.has_node(self_id)) {
-            traj.push_back(make_pair(sf.ts, sf.id2nodeframe[self_id].pose()));
-        }
+    if(sf_sld_win.size() > 0) {
+        self_id = sf_sld_win[0].self_id;
+        for (auto & sf : sf_sld_win) {
+            if (sf.has_node(self_id)) {
+                traj.push_back(make_pair(sf.ts, sf.id2nodeframe[self_id].pose()));
+            }
+        }    
+    }
+
+    for (auto & sf : sf_sld_win) {
+        // ROS_INFO("Scan sf %d", sf.ts);
+
 
         for (auto it: sf.id2nodeframe) {
             auto & _nf = it.second;
-            ROS_INFO("Scanning nf %d det %d", _nf.id, _nf.detected_nodes.size());
+            // ROS_INFO("Scanning nf %d det %d", _nf.id, _nf.detected_nodes.size());
 
             for (auto it: _nf.detected_nodes) {
-                ROS_INFO("nf %d detect %d", _nf.id, it.first);
+                // ROS_INFO("nf %d detect %d", _nf.id, it.first);
                 if (it.first >= UNIDENTIFIED_MIN_ID) {
                     unidentified.insert(it.first);
                 }
@@ -59,6 +79,12 @@ bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, con
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
 int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
+    printf("Estimate pathes with guess");
+    for (auto it : guess) {
+        printf("%d:%d ", it.first, it.second);
+    }
+    printf("\n");
+
     int count = 0;
     for (auto _id : available_nodes) {
         // Recalculate every time
@@ -100,16 +126,17 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
 
     //Search _uniden
     int _uniden = *unidentified.begin();
-    printf("Search unidentified %d", _uniden);
+    ROS_INFO("Search unidentified %d", _uniden);
     if (guess.find(_uniden) == guess.end()) {
         for (auto new_id : available_nodes) {
+            // ROS_INFO();
             //This new id must not be the detector drone itself
             if (uniden_detector[_uniden] == new_id) {
                 //Than the unidentified is detected by this new id
                 continue;
             }
 
-            printf("Try to give %d as %d\n", _uniden, new_id);
+            ROS_INFO("Try to use %d as %d\n", _uniden, new_id);
 
             //Here we start search this guess
             std::map<int, int> this_guess(guess);
@@ -122,6 +149,7 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
             //We will try to estimate this position and verify it.
             //Here we should estimate all unknow nodes
             int success = estimate_pathes(this_pathes, this_guess);
+            exit(-1);
             if (success < 0) {
                 return false;
             }
@@ -165,6 +193,8 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     for (auto & _sf : sf_sld_win) {
         for (auto it: _sf.id2nodeframe) {
             if (est_pathes.find(it.first) != est_pathes.end()) {
+                ROS_INFO("Known object %d", it.first);
+
                 //Then the traj of this node is known, can use to estimate others
                 auto & nf = it.second;
                 int _id = it.first;
@@ -173,7 +203,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
 
                 if (nf.dis_map.find(idj) != nf.dis_map.end()) {
                     //Node idj can be observer distance to id
-                    distance_constrain.push_back(make_pair(nf.position(), nf.dis_map[idj]));
+                    distance_constrain.push_back(make_pair(pose.pos(), nf.dis_map[idj]));
                     boundingbox(nf.position(), min_bbx_dis, max_bbx_dis);
                 }
                 
@@ -198,18 +228,25 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         detection_constrain.size(), (max_bbx_det - min_bbx_det).norm()
     );
 
+    double det_baseline = (max_bbx_det - min_bbx_det).norm();
+
     //We ignore distances first; use only triangulate to init
 
-    if((max_bbx_det - min_bbx_det).norm() < MIN_DET_THRES || detection_constrain.size() == 0) {
+    if(detection_constrain.size() == 0) {
         return 0;
     }
 
     //Else processing triangulate or estimate with single detection
 
-    if (detection_constrain.size() == 1) {
+    if (detection_constrain.size() == 1 || (max_bbx_det - min_bbx_det).norm() < DET_BASELINE_THRES) {
         Pose pose = detection_constrain[0].first;
         Vector3d dir = detection_constrain[0].second;
         Vector3d estimated = pose * dir;
+
+        ROS_INFO("Pose");
+        pose.print();
+
+        printf("dir %f %f %f\n", dir.x(), dir.y(), dir.z());
         
         for (auto & _sf : sf_sld_win) {
             if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
@@ -217,6 +254,8 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                 traj.push_back(make_pair(_sf.ts, p));
             }
         }
+
+        ROS_INFO("Estimate %d pos %f %f %f with one detection ", idj, estimated.x(), estimated.y(), estimated.z());
         return 1;
     }
 
