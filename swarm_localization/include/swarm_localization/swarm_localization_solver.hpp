@@ -181,12 +181,8 @@ public:
 
     std::string cgraph_path = "";
 
-    SwarmLocalizationSolver(const swarm_localization_solver_params & params) :
-            max_frame_number(params.max_frame_number), min_frame_number(params.min_frame_number),
-            thread_num(params.thread_num), acpt_cost(params.acpt_cost),min_accept_keyframe_movement(params.kf_movement),
-            init_xy_movement(params.init_xy_movement),init_z_movement(params.init_z_movement),dense_frame_number(params.dense_frame_number),
-            cgraph_path(params.cgraph_path);
-   
+    SwarmLocalizationSolver(const swarm_localization_solver_params & params);
+    
     void add_new_swarm_frame(const SwarmFrame &sf);
 
     void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
