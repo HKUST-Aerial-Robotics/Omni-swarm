@@ -12,7 +12,7 @@ from swarm_msgs.msg import swarm_frame, node_frame, node_detected_xyzyaw, swarm_
 from tf.transformations import quaternion_from_euler
 import random
 
-def parse_csv_data(csv_path, lt=0, rt=1000000, zero_yaw= True):
+def parse_csv_data(csv_path, lt=0, rt=1000000, zero_yaw= True, yaw_only=True):
     data =  np.genfromtxt(csv_path, delimiter=',')
     l = 0
     r = len(data[:,0]) - 1
@@ -45,6 +45,10 @@ def parse_csv_data(csv_path, lt=0, rt=1000000, zero_yaw= True):
     ans['rpy'] = data[l:r,8:11]
     if zero_yaw:
         ans["rpy"][:,2] = 0
+    if yaw_only:
+        ans["rpy"][:,0] = 0
+        ans["rpy"][:,1] = 0
+
     ans['pos_sp'] = data[l:r,11:14]
     ans['vel_sp'] = data[l:r,14:17]
     ans['acc_sp'] = data[l:r,17:20]
@@ -55,7 +59,7 @@ def parse_csv_data(csv_path, lt=0, rt=1000000, zero_yaw= True):
 
 
 class SimulateDronesEnv(object):
-    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True, zero_yaw_offset = True, is_static = False):
+    def __init__(self, drone_num = 10, self_id = 0, enable_detection = True, zero_yaw_offset = True, is_static = False, yaw_only=True):
         self.drone_vel = np.zeros((drone_num, 3))
         self.data_path = "/home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/data/"
         self.data_paths = [
@@ -78,6 +82,7 @@ class SimulateDronesEnv(object):
         self.self_id = self_id
         self.enable_detection = enable_detection
         self.use_unidentify_id = True
+        self.yaw_only = yaw_only
 
         self.is_static = is_static
 
@@ -170,6 +175,7 @@ class SimulateDronesEnv(object):
             p.position.y() = sin(-a.yaw()) * dp.x() + cos(-a.yaw()) * dp.y();
             p.position.z() = dp.z();
         """
+
          
         pos_target = self.drone_pos[target]
         pos_source = self.drone_pos[source]
@@ -195,6 +201,8 @@ class SimulateDronesEnv(object):
         pose.position.x = px + np.random.randn(1) * noisex
         pose.position.y = py + np.random.randn(1) * noisey
         pose.position.z = pz + np.random.randn(1) * noisez
+
+        # print("S ", source, "T ", target, "DP", px, py, pz, "dp", dp, "P0")
         
         return pose, is_in_range
 
@@ -319,7 +327,7 @@ class SimulateDronesEnv(object):
         Vii = self.drone_vel
 
         for i in range(self.drone_num):
-            print("ID ", i, "P", Xii[i][0], Xii[i][1], Xii[i][2])
+            print("ID ", i, "P", self.drone_pos[i][0], self.drone_pos[i][1], self.drone_pos[i][2])
 
 
         for i in range(self.drone_num):

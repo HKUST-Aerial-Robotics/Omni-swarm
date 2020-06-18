@@ -88,6 +88,10 @@ int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, s
     int count = 0;
     for (auto _id : available_nodes) {
         // Recalculate every time
+        if (_id == self_id) {
+            continue;
+        }
+
         DroneTraj _path;
         int success = estimate_path(_path, _id, guess, est_pathes);
         if (success < 0) {
@@ -105,10 +109,10 @@ int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, s
 
 bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
 
-    printf("DFS Unidentified num %ld guess \n", unidentified.size());
+    ROS_INFO("DFS Unidentified num %ld guess ", unidentified.size());
     
     for (auto it : guess) {
-        printf("%d:%d\n");
+        printf("%d:%d\n", it.first, it.second);
     }
 
     printf("\n");
@@ -116,10 +120,15 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
     if (unidentified.size() == 0) {
         if (est_pathes.size() < available_nodes.size()) {
             //Now we should to estimate all known pathes
+            printf("guess failed return\n");
             return false;
-        }
-
-        if (verify(est_pathes, guess)) {
+        } else if (verify(est_pathes, guess)) {
+            for (auto it:est_pathes) {
+                auto pos = it.second[0].second.pos();
+                printf("id %d pos %f %f %f", it.first, pos.x(), pos.y(), pos.z());
+            }
+            
+            printf("guess verified, this is final result, return\n");
             return true;
         }
     }
@@ -149,7 +158,6 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
             //We will try to estimate this position and verify it.
             //Here we should estimate all unknow nodes
             int success = estimate_pathes(this_pathes, this_guess);
-            exit(-1);
             if (success < 0) {
                 return false;
             }
@@ -193,7 +201,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     for (auto & _sf : sf_sld_win) {
         for (auto it: _sf.id2nodeframe) {
             if (est_pathes.find(it.first) != est_pathes.end()) {
-                ROS_INFO("Known object %d", it.first);
+                // ROS_INFO("Known object %d", it.first);
 
                 //Then the traj of this node is known, can use to estimate others
                 auto & nf = it.second;
@@ -212,7 +220,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                     if (guess.find(unidentify_id)!= guess.end() && guess[unidentify_id] == idj) {
                         //If this detection can be map to idj
                         //detection_constrain.push_back();
-                        auto dir = it.second.p;
+                        auto dir = it.second.p.normalized();
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
                         detection_constrain.push_back(make_pair(pose, det_mea));
@@ -270,6 +278,8 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
                 traj.push_back(make_pair(_sf.ts, Pose(position, att)));
             }
         }
+
+        ROS_INFO("Estimate %d pos %f %f %f with multiple detection error %f", idj, position.x(), position.y(), position.z(), error);
         
         if (error > triangulate_accept_thres) {
             return -1;

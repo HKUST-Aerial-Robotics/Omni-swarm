@@ -121,7 +121,7 @@ class SwarmLocalizationNode {
             nf.detected_nodes_posvar[nd.remote_drone_id] = 
                 Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
             nf.has_detect_relpose = true;
-            ROS_INFO("Det from %d to %d", nf.id, nd.remote_drone_id);
+            // ROS_INFO("Det from %d to %d dir %f %f %f", nf.id, nd.remote_drone_id, dir.x(), dir.y(), dir.z());
 
             nf.detected_nodes[nd.remote_drone_id] = dobj;
         }
