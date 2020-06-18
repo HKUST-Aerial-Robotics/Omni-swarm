@@ -247,6 +247,8 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     //Else processing triangulate or estimate with single detection
 
     if (detection_constrain.size() == 1 || (max_bbx_det - min_bbx_det).norm() < DET_BASELINE_THRES) {
+
+        //Need to deal with multiple target from one drone is identify as same
         Pose pose = detection_constrain[0].first;
         Vector3d dir = detection_constrain[0].second;
         Vector3d estimated = pose * dir;
@@ -298,6 +300,13 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
     for (auto it: dets) {
         _poses.push_back(it.first);
         pts.push_back(it.second.normalized());
+
+        printf("Pose");
+        it.first.print();
+        printf("Pts %f %f %f\n\n", 
+            it.second.normalized().x(),
+            it.second.normalized().y(),
+            it.second.normalized().z());
     }
 
     return triangulatePoint3DPts(_poses, pts, point_3d);
@@ -330,7 +339,7 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
     Eigen::MatrixXd pts(4, 1);
     pts << point_3d.x(), point_3d.y(), point_3d.z(), 1;
     Eigen::MatrixXd errs = design_matrix*pts;
-    // std::cout << "ERR" << errs.sum() << std::endl;
+    std::cout << "ERR" << errs.sum() << std::endl;
     return errs.norm()/ errs.rows(); 
 }
 

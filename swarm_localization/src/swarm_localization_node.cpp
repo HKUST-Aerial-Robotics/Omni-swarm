@@ -436,6 +436,7 @@ public:
         nh.param<float>("min_kf_movement", solver_params.kf_movement, 0.4f);
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
+        nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");

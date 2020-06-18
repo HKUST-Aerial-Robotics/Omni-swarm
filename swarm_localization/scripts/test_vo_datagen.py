@@ -189,7 +189,7 @@ class SimulateDronesEnv(object):
 
         is_in_range = False
 
-        if 2.5 > px > 0 and 2 > py > -2 and 1 > pz > -1:
+        if 4 > px > -3 and 4 > py > -4 and 3 > pz > -3:
             is_in_range = True
 
         pose = Pose()
@@ -268,7 +268,7 @@ class SimulateDronesEnv(object):
                     nd = node_detected_xyzyaw()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    nd.remote_drone_id = j + 10000
+                    nd.remote_drone_id = j + 10000 + i *100
                     nd.header.stamp = ts
                     nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
                     sd.append(nd)
