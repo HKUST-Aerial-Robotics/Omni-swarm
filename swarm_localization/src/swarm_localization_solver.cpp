@@ -627,7 +627,7 @@ double SwarmLocalizationSolver::solve() {
 
     estimate_observability();
 
-    if (!finish_init && !enable_to_init) {
+    if (!finish_init) {
         //Use da initer to initial the system
         LocalizationDAInit DAIniter(sf_sld_win, params.DA_TRI_accept_thres);
         std::map<int, int> mapper;
