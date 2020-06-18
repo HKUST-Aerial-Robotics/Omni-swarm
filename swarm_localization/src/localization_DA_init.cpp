@@ -297,7 +297,7 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
     vector<Eigen::Vector3d> pts;
     for (auto it: dets) {
         _poses.push_back(it.first);
-        pts.push_back(it.second);
+        pts.push_back(it.second.normalized());
     }
 
     return triangulatePoint3DPts(_poses, pts, point_3d);
