@@ -14,7 +14,7 @@
             min_kf_movement : -0.5
             init_xy_movement : 0
             init_z_movement : 0
-            triangulate_thres: 0.05
+            triangulate_thres: 2
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
