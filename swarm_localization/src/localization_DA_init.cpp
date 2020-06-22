@@ -40,12 +40,21 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
 
         for (auto it: sf.id2nodeframe) {
             auto & _nf = it.second;
+            if(detected_set.find(_nf.id) == detected_set.end()) {
+                detected_set[_nf.id] = std::set<int>();
+            }
             // ROS_INFO("Scanning nf %d det %d", _nf.id, _nf.detected_nodes.size());
 
             for (auto it: _nf.detected_nodes) {
                 // ROS_INFO("nf %d detect %d", _nf.id, it.first);
                 if (it.first >= UNIDENTIFIED_MIN_ID) {
-                    unidentified.insert(it.first);
+                    int unidentified_node = it.first;
+                    unidentified.insert(unidentified_node);
+                    if (detected_set[_nf.id].find(unidentified_node) == detected_set[_nf.id].end()) {
+                        detected_set[_nf.id].insert(unidentified_node);
+                        printf("Detector %d, unidentified %d\n", _nf.id, unidentified_node);
+                        uniden_detector[unidentified_node] = _nf.id;
+                    }
                 }
             }
         }
@@ -62,8 +71,9 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     std::map<int, int> guess;
     std::map<int, DroneTraj> est_pathes;
     est_pathes[self_id] = traj;
-    if (DFS(est_pathes, guess, unidentified)) {
-        ROS_INFO("Initial guess is OK");
+    double cost = DFS(est_pathes, guess, unidentified);
+    if (cost > 0) {
+        ROS_INFO("Initial guess is OK cost %f", cost);
         return true;
     }
 
@@ -78,14 +88,14 @@ bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, con
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
-int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
+double LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
     printf("Estimate pathes with guess");
     for (auto it : guess) {
         printf("%d:%d ", it.first, it.second);
     }
     printf("\n");
 
-    int count = 0;
+    double count = 0;
     for (auto _id : available_nodes) {
         // Recalculate every time
         if (_id == self_id) {
@@ -93,13 +103,12 @@ int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, s
         }
 
         DroneTraj _path;
-        int success = estimate_path(_path, _id, guess, est_pathes);
-        if (success < 0) {
+        auto ret = estimate_path(_path, _id, guess, est_pathes);
+        if (ret.first < 0) {
             return -1;
         } else {
-            count += success;
-
-            if(success) {
+            count += ret.second;
+            if(ret.first == 1) {
                 est_pathes[_id] = _path;
             }
         }
@@ -107,7 +116,19 @@ int LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, s
     return count;
 }
 
-bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
+bool LocalizationDAInit::check_guess_has_assign_id(std::map<int, int> & guess, int detector, int _new_id) {
+    // printf("The detector is %d\n, the new assigned id is %d", detector, _new_id);
+    std::set<int> detecteds = detected_set[detector];
+    for (int _un: detecteds) {
+        // printf("The unidentified %d is detected by the detector\n", _un);
+        if (guess.find(_un)!=guess.end() && guess[_un] == _new_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
 
     ROS_INFO("DFS Unidentified num %ld guess ", unidentified.size());
     
@@ -121,7 +142,7 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
         if (est_pathes.size() < available_nodes.size()) {
             //Now we should to estimate all known pathes
             printf("guess failed return\n");
-            return false;
+            return -1;
         } else if (verify(est_pathes, guess)) {
             for (auto it:est_pathes) {
                 auto pos = it.second[0].second.pos();
@@ -129,7 +150,7 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
             }
             
             printf("guess verified, this is final result, return\n");
-            return true;
+            return estimate_pathes(est_pathes, guess);
         }
     }
 
@@ -145,6 +166,13 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
                 continue;
             }
 
+            //We need to check if other drones detect by the detector has been guess with this new id
+            int detector = uniden_detector[_uniden];
+            if (check_guess_has_assign_id(guess, detector, new_id)) {
+                printf("New id %d has been assigned on same detector, jump\n", new_id);
+                continue;
+            }
+            
             ROS_INFO("Try to use %d as %d\n", _uniden, new_id);
 
             //Here we start search this guess
@@ -157,35 +185,37 @@ bool LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int
             
             //We will try to estimate this position and verify it.
             //Here we should estimate all unknow nodes
-            int success = estimate_pathes(this_pathes, this_guess);
+            double success = estimate_pathes(this_pathes, this_guess);
             if (success < 0) {
-                return false;
+                ROS_WARN("Estimate path failed; The guess result wrong result.");
+                continue;
             }
 
             bool _succ = verify(this_pathes, this_guess);
             if (!_succ) {
                 continue;
             }
-            bool result = DFS(this_pathes, this_guess, this_unidentified);
 
-            if (result) {
+            double result = DFS(this_pathes, this_guess, this_unidentified);
+
+            if (result > 0) {
                 //Here we assume only one result
                 guess.insert(this_guess.begin(), this_guess.end());
                 unidentified.insert(this_unidentified.begin(), this_unidentified.end());
 
-                return true;
+                return result;
             }
         }
     }
 
     //No good result, return false
-    return false;
+    return -1;
 }
 
 //return 0: not observable
 //return 1: good
 //return -1: estimate failed
-int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, const map<int, DroneTraj> est_pathes) {
+std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> & guess, const map<int, DroneTraj> est_pathes) {
     //Assume static now
     //Summarize Known constrains
     //Constrain may have 2 type: distance relative to position and unit vector relative to position
@@ -241,7 +271,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
     //We ignore distances first; use only triangulate to init
 
     if(detection_constrain.size() == 0) {
-        return 0;
+        return std::make_pair(0, 0);
     }
 
     //Else processing triangulate or estimate with single detection
@@ -266,7 +296,7 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         }
 
         ROS_INFO("Estimate %d pos %f %f %f with one detection ", idj, estimated.x(), estimated.y(), estimated.z());
-        return 1;
+        return std::make_pair(1, 1e-3);
     }
 
     if (detection_constrain.size() > 1) {
@@ -284,13 +314,13 @@ int LocalizationDAInit::estimate_path(DroneTraj & traj, int idj, map<int, int> &
         ROS_INFO("Estimate %d pos %f %f %f with multiple detection error %f", idj, position.x(), position.y(), position.z(), error);
         
         if (error > triangulate_accept_thres) {
-            return -1;
+            return std::make_pair(-1, 0);
         } else {
-            return 1;
+            return std::make_pair(1, error);
         }
     }
 
-    return 1;
+    return make_pair(-1, 0);
 }
 
 
@@ -338,8 +368,10 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
 
     Eigen::MatrixXd pts(4, 1);
     pts << point_3d.x(), point_3d.y(), point_3d.z(), 1;
+
+    point_3d = - point_3d;
     Eigen::MatrixXd errs = design_matrix*pts;
-    std::cout << "ERR" << errs.sum() << std::endl;
+    std::cout << "ERR" << errs.norm()/ errs.rows() << std::endl;
     return errs.norm()/ errs.rows(); 
 }
 
