@@ -152,13 +152,22 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
             printf("guess failed return\n");
             return make_pair(false, -1);
         } else if (verify(est_pathes, guess)) {
+            double cost = estimate_pathes(est_pathes, guess);
             for (auto it:est_pathes) {
                 auto pos = it.second[0].second.pos();
                 printf("id %d pos %f %f %f", it.first, pos.x(), pos.y(), pos.z());
             }
+
+            printf("\n");
+
+            if (cost < 0 ){
+                printf("guess failed return\n");
+                return make_pair(false, -1);
+            } else {
+                ROS_WARN("Guess verified, this is final result cost %f, return\n", cost);
+                return make_pair(true, cost);
+            }
             
-            printf("guess verified, this is final result, return\n");
-            return make_pair(true, estimate_pathes(est_pathes, guess));
         }
     }
 
