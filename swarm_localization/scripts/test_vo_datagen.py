@@ -268,8 +268,8 @@ class SimulateDronesEnv(object):
                     nd = node_detected_xyzyaw()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    # nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
-                    nd.remote_drone_id = j + 10000 + (i) *100
+                    nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
+                    # nd.remote_drone_id = j + 10000 + (i) *100
                     nd.header.stamp = ts
                     nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
                     sd.append(nd)
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     # plt.ion()
     print("Starting vo data generation")
     rospy.init_node("test_vo_datagen")
-    drone_num = rospy.get_param('~drone_num', 3)
+    drone_num = rospy.get_param('~drone_num', 5)
     self_id = rospy.get_param("~self_id", 0)
     enable_detection = rospy.get_param("~detection", True)
     is_static = rospy.get_param("~is_static", True)

@@ -423,9 +423,35 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
     pts << point_3d.x(), point_3d.y(), point_3d.z(), 1;
 
     point_3d = - point_3d;
-    Eigen::MatrixXd errs = design_matrix*pts;
-    std::cout << "ERR" << errs.norm()/ errs.rows() << std::endl;
-    return errs.norm()/ errs.rows(); 
+    // Eigen::MatrixXd errs = design_matrix*pts;
+    // std::cout << "ERR" << errs.norm()/ errs.rows() << std::endl;
+    // return errs.norm()/ errs.rows(); 
+
+    double error = 0;
+    for (int i = 0; i < _poses.size(); i++) {
+        //First we get the direction of the detected drones
+        auto dir1 = (_poses[i].att() * _points[i]).normalized();
+
+        //Second we get the direction of the point relative to this drone
+        auto dir2 = (point_3d - _poses[i].pos()).normalized();
+
+        //Then we try to get the angle
+        double tmp = dir1.dot(dir2) / dir1.norm()/dir2.norm();
+        double angle;
+        if (tmp > 0.999) {
+            angle = 0;
+        } else if (tmp < - 0.999) {
+            angle = M_PI;
+        } else {
+            angle = acos(tmp);
+        }
+
+        // std::cout << "Dir1" << dir1 << "\nDir2" << dir2 << std::endl;
+        // printf("acos %f\n angle %f", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
+        error = error + angle;
+    }
+
+    return error/(double)(_poses.size());
 }
 
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max) {
