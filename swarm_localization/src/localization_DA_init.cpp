@@ -75,9 +75,13 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     std::map<int, int> guess;
     std::map<int, DroneTraj> est_pathes;
     est_pathes[self_id] = traj;
-    double cost = DFS(est_pathes, guess, unidentified);
-    if (cost > 0) {
-        ROS_INFO("Initial guess is OK cost %f", cost);
+    auto ret = DFS(est_pathes, guess, unidentified);
+    if (ret.first) {
+        ROS_INFO("Initial guess is OK cost %f the assoication", ret.second);
+        for (auto it : guess) {
+            printf("%d:%d ", it.first, it.second);
+        }
+        printf("\n");
         return true;
     }
 
@@ -132,7 +136,7 @@ bool LocalizationDAInit::check_guess_has_assign_id(std::map<int, int> & guess, i
     return false;
 }
 
-double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, std::set<int> & unidentified) {
+std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, const std::set<int> & unidentified) {
 
     ROS_INFO("DFS Unidentified num %ld guess ", unidentified.size());
     
@@ -146,7 +150,7 @@ double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<i
         if (est_pathes.size() < available_nodes.size()) {
             //Now we should to estimate all known pathes
             printf("guess failed return\n");
-            return -1;
+            return make_pair(false, -1);
         } else if (verify(est_pathes, guess)) {
             for (auto it:est_pathes) {
                 auto pos = it.second[0].second.pos();
@@ -154,13 +158,18 @@ double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<i
             }
             
             printf("guess verified, this is final result, return\n");
-            return estimate_pathes(est_pathes, guess);
+            return make_pair(true, estimate_pathes(est_pathes, guess));
         }
     }
 
     //Search _uniden
     int _uniden = *unidentified.begin();
     ROS_INFO("Search unidentified %d", _uniden);
+
+    std::map<int, DroneTraj> best_pathes;
+    std::map<int, int> best_guess;
+    double best_cost = 1000000;
+
     if (guess.find(_uniden) == guess.end()) {
         for (auto new_id : available_nodes) {
             // ROS_INFO();
@@ -173,7 +182,7 @@ double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<i
             //We need to check if other drones detect by the detector has been guess with this new id
             int detector = uniden_detector[_uniden];
             if (check_guess_has_assign_id(guess, detector, new_id)) {
-                printf("New id %d has been assigned on same detector, jump\n", new_id);
+                // printf("New id %d has been assigned on same detector, jump\n", new_id);
                 continue;
             }
             
@@ -200,20 +209,25 @@ double LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<i
                 continue;
             }
 
-            double result = DFS(this_pathes, this_guess, this_unidentified);
+            auto result = DFS(this_pathes, this_guess, this_unidentified);
 
-            if (result > 0) {
+            if (result.first && result.second < best_cost) {
                 //Here we assume only one result
-                guess.insert(this_guess.begin(), this_guess.end());
-                unidentified.insert(this_unidentified.begin(), this_unidentified.end());
-
-                return result;
+                best_cost = result.second;
+                best_guess = this_guess;
+                best_pathes = this_pathes;
             }
         }
     }
 
+    if(best_cost < 100) {
+        guess = best_guess;
+        est_pathes = best_pathes;
+        return make_pair(true, best_cost);
+    }
+
     //No good result, return false
-    return -1;
+    return make_pair(false, -1);
 }
 
 //return 0: not observable
@@ -359,7 +373,7 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
     vector<Eigen::Matrix<double, 3, 4>> poses;
     vector<Vector3d> positions;
     vector<Eigen::Vector3d> points;
-    for (int i = 0; i < _poses.size(); i++) {
+    for (unsigned int i = 0; i < _poses.size(); i++) {
         auto p = _poses[i];
         auto pos = p.pos();
         bool is_near_to_previous = false;
