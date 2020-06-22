@@ -7,6 +7,10 @@ using namespace Eigen;
 #define MIN_DET_THRES 0.5
 #define DET_BASELINE_THRES 0.3
 
+//For visual initial, we limit all in 10 meter is OK
+#define POSITION_LIM 30
+
+
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
 double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d);
 
@@ -242,7 +246,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
                 if (nf.dis_map.find(idj) != nf.dis_map.end()) {
                     //Node idj can be observer distance to id
                     distance_constrain.push_back(make_pair(pose.pos(), nf.dis_map[idj]));
-                    boundingbox(nf.position(), min_bbx_dis, max_bbx_dis);
+                    boundingbox(pose.pos(), min_bbx_dis, max_bbx_dis);
                 }
                 
                 for (auto it : nf.detected_nodes) {
@@ -254,7 +258,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
                         detection_constrain.push_back(make_pair(pose, det_mea));
-                        boundingbox(nf.position(), min_bbx_det, max_bbx_det);
+                        boundingbox(pose.pos(), min_bbx_det, max_bbx_det);
                     }
                 }
             }
@@ -300,9 +304,17 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
     }
 
     if (detection_constrain.size() > 1) {
+        ROS_INFO("Will apply triangulation, baseline %f", (max_bbx_det - min_bbx_det).norm());
         //Now we can detect it with triangulate
         Vector3d position;
         double error = triangulatePoint3DPts(detection_constrain, position);
+        if (position.norm() > POSITION_LIM || isnan(error) || 
+            isnan(position.x()) || isnan(position.y()) || isnan(position.z())) {
+            ROS_WARN("Large initial position or nan detected %f %f %f, cost %f, give up", 
+                position.x(), position.y(), position.z(), error);
+            return make_pair(-1, 0);
+        }
+
         //Set trajectory here
         for (auto & _sf : sf_sld_win) {
             if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
@@ -331,7 +343,7 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
         _poses.push_back(it.first);
         pts.push_back(it.second.normalized());
 
-        printf("Pose");
+        printf("Pose ");
         it.first.print();
         printf("Pts %f %f %f\n\n", 
             it.second.normalized().x(),
@@ -342,11 +354,29 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
     return triangulatePoint3DPts(_poses, pts, point_3d);
 }
 
-double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d)
+double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &_points, Eigen::Vector3d &point_3d)
 {
     vector<Eigen::Matrix<double, 3, 4>> poses;
-    for (auto p : _poses) {
-        poses.push_back(p.to_isometry().affine());
+    vector<Vector3d> positions;
+    vector<Eigen::Vector3d> points;
+    for (int i = 0; i < _poses.size(); i++) {
+        auto p = _poses[i];
+        auto pos = p.pos();
+        bool is_near_to_previous = false;
+        for (auto p2 : positions) {
+            //Need to speed up here
+            if ((p2 - pos).norm() < DET_BASELINE_THRES / 2.0) {
+                is_near_to_previous = true;
+                ROS_INFO("Pos %f %f %f is near to %f %f %f", pos.x(), pos.y(), pos.z(), p2.x(), p2.y(), p2.z());
+                break;
+            }
+        }
+
+        if (!is_near_to_previous) {
+            poses.push_back(p.to_isometry().affine());
+            positions.push_back(pos);
+            points.push_back(_points[i]);
+        }
     }
 
     Eigen::MatrixXd design_matrix(poses.size()*2, 4);
