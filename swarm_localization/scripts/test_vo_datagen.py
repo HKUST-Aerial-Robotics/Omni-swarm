@@ -165,7 +165,7 @@ class SimulateDronesEnv(object):
 
             print("{} len {}".format(p, len(self.data[-1]['pos'])))
 
-    def generate_relpose(self, target, source, tick, noisex=0.1, noisey=0.1, noisez=0.1, noiseyaw=0/57.3):
+    def generate_relpose(self, target, source, tick, noise_dir = 0.05, noise_invdep=0.1):
         """    
             double dyaw = b.yaw() - a.yaw();
             Eigen::Vector3d dp = b.position - a.position;
@@ -193,14 +193,26 @@ class SimulateDronesEnv(object):
             is_in_range = True
 
         pose = Pose()
-        qx, qy, qz, qw = quaternion_from_euler(0, 0, dyaw + np.random.randn(1) * noiseyaw)
+        qx, qy, qz, qw = quaternion_from_euler(0, 0, dyaw)
         pose.orientation.w = qw
         pose.orientation.x = qx
         pose.orientation.y = qy
         pose.orientation.z = qz
-        pose.position.x = px + np.random.randn(1) * noisex
-        pose.position.y = py + np.random.randn(1) * noisey
-        pose.position.z = pz + np.random.randn(1) * noisez
+        
+        # Add noise individual on direction and distance
+
+        _dir = np.array([px, py, pz])
+        distance = np.linalg.norm(_dir)
+        inv_dep = 1 / distance
+        inv_dep = inv_dep + np.random.randn(1) * noise_invdep
+
+        _dir = _dir / np.linalg.norm(_dir)
+        _dir = _dir + np.random.randn(3)*noise_dir
+        _dir = _dir / np.linalg.norm(_dir)
+
+        pose.position.x = px + _dir[0]/inv_dep
+        pose.position.y = py + _dir[1]/inv_dep
+        pose.position.z = pz + _dir[2]/inv_dep
 
         # print("S ", source, "T ", target, "DP", px, py, pz, "dp", dp, "P0")
         
@@ -268,7 +280,7 @@ class SimulateDronesEnv(object):
                     nd = node_detected_xyzyaw()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    # nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
+                    nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
                     nd.remote_drone_id = j + 10000 + (i) *100
                     nd.header.stamp = ts
                     nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
@@ -292,7 +304,7 @@ class SimulateDronesEnv(object):
 
     def update(self, dt, show=False):
         self.tick = int((rospy.get_rostime() - self.tstart).to_sec()*50)
-        print("Tick", self.tick)
+        # print("Tick", self.tick)
 
         if self.is_static:
             self.tick = 0
@@ -317,7 +329,7 @@ class SimulateDronesEnv(object):
             # ax.set_title(f"Time: {self.count*dt:4.2f}")
             ax = plt.subplot(111)
             ax.clear()
-            ax.scatter(self.drone_pos[:,0], self.drone_pos[:,1], self.drone_pos[:,2],s=100, c=self.colors)
+            ax.scatter(self.drone_pos[:,0], self.drone_pos[:,1], self.drone_pos[:,2], c=self.colors)
             ax.quiver(self.drone_pos[:,0], self.drone_pos[:,1], self.drone_pos[:,2],
                 self.drone_vel[:,0], self.drone_vel[:,1], self.drone_vel[:,2])
             # fig.tight_layout(pad=0.1, w_pad=0.1, h_pad=0.1)
@@ -327,8 +339,8 @@ class SimulateDronesEnv(object):
         Xii = self.drone_pos - self.base_coor[0:self.drone_num]
         Vii = self.drone_vel
 
-        for i in range(self.drone_num):
-            print("ID ", i, "P", self.drone_pos[i][0], self.drone_pos[i][1], self.drone_pos[i][2])
+        # for i in range(self.drone_num):
+            # print("ID ", i, "P", self.drone_pos[i][0], self.drone_pos[i][1], self.drone_pos[i][2])
 
 
         for i in range(self.drone_num):
@@ -361,10 +373,15 @@ class SimulateDronesEnv(object):
 
 
 if __name__ == "__main__":
-    # plt.ion()
-    print("Starting vo data generation")
+
+    import numpy, time
+    seed = int(time.time())
+
+    numpy.random.seed(seed)
+
+    print("Starting vo data generation seed", seed)
     rospy.init_node("test_vo_datagen")
-    drone_num = rospy.get_param('~drone_num', 4)
+    drone_num = rospy.get_param('~drone_num', 5)
     self_id = rospy.get_param("~self_id", 0)
     enable_detection = rospy.get_param("~detection", True)
     is_static = rospy.get_param("~is_static", True)

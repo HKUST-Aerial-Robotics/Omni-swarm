@@ -10,6 +10,7 @@ using namespace Eigen;
 //For visual initial, we limit all in 10 meter is OK
 #define POSITION_LIM 30
 
+// #define DFS_BEBUG_OUTPUT
 
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
 double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d);
@@ -97,11 +98,14 @@ bool LocalizationDAInit::verify(const std::map<int, DroneTraj> & est_pathes, con
 void boundingbox(Eigen::Vector3d v, Eigen::Vector3d & min, Eigen::Vector3d & max);
 
 double LocalizationDAInit::estimate_pathes(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess) {
+
+#ifdef DFS_BEBUG_OUTPUT
     printf("Estimate pathes with guess");
     for (auto it : guess) {
         printf("%d:%d ", it.first, it.second);
     }
     printf("\n");
+#endif
 
     double count = 0;
     for (auto _id : available_nodes) {
@@ -137,7 +141,7 @@ bool LocalizationDAInit::check_guess_has_assign_id(std::map<int, int> & guess, i
 }
 
 std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, const std::set<int> & unidentified) {
-
+#ifdef DFS_BEBUG_OUTPUT
     ROS_INFO("DFS Unidentified num %ld guess ", unidentified.size());
     
     for (auto it : guess) {
@@ -145,26 +149,35 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
     }
 
     printf("\n");
+#endif
 
     if (unidentified.size() == 0) {
         if (est_pathes.size() < available_nodes.size()) {
             //Now we should to estimate all known pathes
+#ifdef DFS_BEBUG_OUTPUT
             printf("guess failed return\n");
+#endif
             return make_pair(false, -1);
         } else if (verify(est_pathes, guess)) {
             double cost = estimate_pathes(est_pathes, guess);
+
+#ifdef DFS_BEBUG_OUTPUT
             for (auto it:est_pathes) {
                 auto pos = it.second[0].second.pos();
                 printf("id %d pos %f %f %f", it.first, pos.x(), pos.y(), pos.z());
             }
 
             printf("\n");
-
+#endif
             if (cost < 0 ){
+#ifdef DFS_BEBUG_OUTPUT
                 printf("guess failed return\n");
+#endif
                 return make_pair(false, -1);
             } else {
+#ifdef DFS_BEBUG_OUTPUT
                 ROS_WARN("Guess verified, this is final result cost %f, return\n", cost);
+#endif
                 return make_pair(true, cost);
             }
             
@@ -173,7 +186,9 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
 
     //Search _uniden
     int _uniden = *unidentified.begin();
+#ifdef DFS_BEBUG_OUTPUT
     ROS_INFO("Search unidentified %d", _uniden);
+#endif
 
     std::map<int, DroneTraj> best_pathes;
     std::map<int, int> best_guess;
@@ -194,8 +209,9 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
                 // printf("New id %d has been assigned on same detector, jump\n", new_id);
                 continue;
             }
-            
+#ifdef DFS_BEBUG_OUTPUT
             ROS_INFO("Try to use %d as %d\n", _uniden, new_id);
+#endif
 
             //Here we start search this guess
             std::map<int, int> this_guess(guess);
@@ -209,7 +225,9 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
             //Here we should estimate all unknow nodes
             double success = estimate_pathes(this_pathes, this_guess);
             if (success < 0) {
+#ifdef DFS_BEBUG_OUTPUT
                 ROS_WARN("Estimate path failed; The guess result wrong result.");
+#endif
                 continue;
             }
 
@@ -288,10 +306,12 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
         }
     }
 
+#ifdef DFS_BEBUG_OUTPUT
     ROS_INFO("Node %d has %ld distance M baseline %f and %ld det M baseline %f", 
         idj, distance_constrain.size(), (max_bbx_dis - min_bbx_dis).norm(),
         detection_constrain.size(), (max_bbx_det - min_bbx_det).norm()
     );
+#endif
 
     double det_baseline = (max_bbx_det - min_bbx_det).norm();
 
@@ -310,11 +330,13 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
         Vector3d dir = detection_constrain[0].second;
         Vector3d estimated = pose * dir;
 
+#ifdef DFS_BEBUG_OUTPUT
         ROS_INFO("Pose");
         pose.print();
 
         printf("dir %f %f %f\n", dir.x(), dir.y(), dir.z());
-        
+#endif
+
         for (auto & _sf : sf_sld_win) {
             if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
                 Pose p(estimated, _sf.id2nodeframe[idj].yaw());
@@ -322,19 +344,25 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
             }
         }
 
+#ifdef DFS_BEBUG_OUTPUT
         ROS_INFO("Estimate %d pos %f %f %f with one detection ", idj, estimated.x(), estimated.y(), estimated.z());
+#endif
         return std::make_pair(1, 1e-3);
     }
 
     if (detection_constrain.size() > 1) {
+#ifdef DFS_BEBUG_OUTPUT
         ROS_INFO("Will apply triangulation, baseline %f", (max_bbx_det - min_bbx_det).norm());
+#endif
         //Now we can detect it with triangulate
         Vector3d position;
         double error = triangulatePoint3DPts(detection_constrain, position);
         if (position.norm() > POSITION_LIM || isnan(error) || 
             isnan(position.x()) || isnan(position.y()) || isnan(position.z())) {
+#ifdef DFS_BEBUG_OUTPUT
             ROS_WARN("Large initial position or nan detected %f %f %f, cost %f, give up", 
                 position.x(), position.y(), position.z(), error);
+#endif
             return make_pair(-1, 0);
         }
 
@@ -346,7 +374,9 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
             }
         }
 
+#ifdef DFS_BEBUG_OUTPUT
         ROS_INFO("Estimate %d pos %f %f %f with multiple detection error %f", idj, position.x(), position.y(), position.z(), error);
+#endif
         
         if (error > triangulate_accept_thres) {
             return std::make_pair(-1, 0);
@@ -366,12 +396,14 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
         _poses.push_back(it.first);
         pts.push_back(it.second.normalized());
 
+#ifdef DFS_BEBUG_OUTPUT
         printf("Pose ");
         it.first.print();
         printf("Pts %f %f %f\n\n", 
             it.second.normalized().x(),
             it.second.normalized().y(),
             it.second.normalized().z());
+#endif
     }
 
     return triangulatePoint3DPts(_poses, pts, point_3d);
@@ -382,6 +414,7 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
     vector<Eigen::Matrix<double, 3, 4>> poses;
     vector<Vector3d> positions;
     vector<Eigen::Vector3d> points;
+    
     for (unsigned int i = 0; i < _poses.size(); i++) {
         auto p = _poses[i];
         auto pos = p.pos();
@@ -390,7 +423,9 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
             //Need to speed up here
             if ((p2 - pos).norm() < DET_BASELINE_THRES / 2.0) {
                 is_near_to_previous = true;
+#ifdef DFS_BEBUG_OUTPUT
                 ROS_INFO("Pos %f %f %f is near to %f %f %f", pos.x(), pos.y(), pos.z(), p2.x(), p2.y(), p2.z());
+#endif
                 break;
             }
         }
