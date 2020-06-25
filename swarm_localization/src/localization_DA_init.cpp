@@ -266,6 +266,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
     //Constrain may have 2 type: distance relative to position and unit vector relative to position
     vector<pair<Vector3d, double>> distance_constrain;
     vector<pair<Pose, Vector3d>> detection_constrain;
+    vector<double> detection_correspond_distance;
 
     Eigen::Vector3d max_bbx_dis(-100000,-100000,-100000);
     Eigen::Vector3d min_bbx_dis(1000000,100000,100000);
@@ -284,9 +285,11 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
                 //Assmue static now
                 auto pose = est_pathes.at(_id)[0].second;
 
+                double distance = -1;
                 if (nf.dis_map.find(idj) != nf.dis_map.end()) {
                     //Node idj can be observer distance to id
                     distance_constrain.push_back(make_pair(pose.pos(), nf.dis_map[idj]));
+                    distance = nf.dis_map[idj];
                     boundingbox(pose.pos(), min_bbx_dis, max_bbx_dis);
                 }
                 
@@ -299,6 +302,8 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
                         auto d = 1 / it.second.inv_dep;
                         auto det_mea = dir * d;
                         detection_constrain.push_back(make_pair(pose, det_mea));
+
+                        detection_correspond_distance.push_back(distance);
                         boundingbox(pose.pos(), min_bbx_det, max_bbx_det);
                     }
                 }
@@ -327,7 +332,13 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
 
         //Need to deal with multiple target from one drone is identify as same
         Pose pose = detection_constrain[0].first;
+
         Vector3d dir = detection_constrain[0].second;
+
+        if (detection_correspond_distance[0] > 0) {
+            dir = dir.normalized() * detection_correspond_distance[0];
+        }
+
         Vector3d estimated = pose * dir;
 
 #ifdef DFS_BEBUG_OUTPUT
@@ -481,10 +492,15 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
             angle = acos(tmp);
         }
 
-        // std::cout << "Dir1" << dir1 << "\nDir2" << dir2 << std::endl;
-        // printf("acos %f\n angle %f", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
+        // std::cout << "Dir1" << dir1.transpose() << " Dir2" << dir2.transpose();
+        // printf("acos %f angle %f\n", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
         error = error + angle;
     }
+
+    // if(error/(double)(_poses.size()) > 0.5f ) {
+        // printf("Error %f %f", error, error/(double)(_poses.size() > 0.5));
+        // exit(-1);
+    // }
 
     return error/(double)(_poses.size());
 }

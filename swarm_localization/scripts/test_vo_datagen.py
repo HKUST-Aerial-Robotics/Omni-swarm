@@ -100,7 +100,8 @@ class SimulateDronesEnv(object):
             [  1.25038821, -2.35836745,   1.3823983 ],
             [  -1.73040171,  -5.20697205,  2.1825567 ],
             [ 1.51975686,   3.42533134,   1.74197347]])[0:drone_num]
-        # self.base_coor = np.random.rand(4, 3) * 0.1
+        self.base_coor = np.random.rand(drone_num, 3) * 1.0
+        self.base_coor[:, 2] = 0
         # self.base_coor = np.zeros((drone_num, 3))
 
         self.drone_pos = self.base_coor.copy()
@@ -281,7 +282,7 @@ class SimulateDronesEnv(object):
                     nd.dpos = dpose.position
                     nd.dyaw = 0
                     nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
-                    nd.remote_drone_id = j + 10000 + (i) *100
+                    # nd.remote_drone_id = j + 10000 + (i) *100
                     nd.header.stamp = ts
                     nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
                     sd.append(nd)
