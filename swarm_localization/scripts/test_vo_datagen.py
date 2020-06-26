@@ -190,8 +190,8 @@ class SimulateDronesEnv(object):
 
         is_in_range = False
 
-        if 4 > px > -3 and 4 > py > -4 and 3 > pz > -3:
-            is_in_range = True
+        # if 4 > px > -3 and 4 > py > -4 and 3 > pz > -3:
+        is_in_range = True
 
         pose = Pose()
         qx, qy, qz, qw = quaternion_from_euler(0, 0, dyaw)
@@ -382,7 +382,7 @@ if __name__ == "__main__":
 
     print("Starting vo data generation seed", seed)
     rospy.init_node("test_vo_datagen")
-    drone_num = rospy.get_param('~drone_num', 5)
+    drone_num = rospy.get_param('~drone_num', 4)
     self_id = rospy.get_param("~self_id", 0)
     enable_detection = rospy.get_param("~detection", True)
     is_static = rospy.get_param("~is_static", True)

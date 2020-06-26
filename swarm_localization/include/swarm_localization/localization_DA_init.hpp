@@ -25,12 +25,19 @@ class LocalizationDAInit {
 
     double triangulate_accept_thres = 0.1;
 
+    double accept_angular_thres = 0.3;
+    double accept_distance_thres = 0.5;
+
 public:
     LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win, double _triangulate_accept_thres);
 
     bool try_data_association(std::map<int, int> & mapper);
 
 private:
+
+    double verify_with_measurements(const std::vector<std::pair<Pose, Eigen::Vector3d>> & dets, 
+        const std::vector<std::pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d);
+    
     std::pair<bool, double> DFS(std::map<int, DroneTraj> & est_pathes, std::map<int, int> & guess, const std::set<int> & unidentified);
 
     bool verify(const std::map<int, DroneTraj> & est_pathes, const std::map<int, int> & guess);

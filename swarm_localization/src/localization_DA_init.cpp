@@ -10,9 +10,10 @@ using namespace Eigen;
 //For visual initial, we limit all in 10 meter is OK
 #define POSITION_LIM 30
 
-// #define DFS_BEBUG_OUTPUT
+#define DFS_BEBUG_OUTPUT
 
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
+
 double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::Vector3d &point_3d);
 
 
@@ -362,6 +363,32 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
     }
 
     if (detection_constrain.size() > 1) {
+        Pose pose = detection_constrain[0].first;
+
+        Vector3d dir = detection_constrain[0].second;
+
+        if (detection_correspond_distance[0] > 0) {
+            dir = dir.normalized() * detection_correspond_distance[0];
+        }
+
+        Vector3d estimated = pose * dir;
+
+        double success = verify_with_measurements(detection_constrain, distance_constrain, estimated);
+        if (success < 0) {
+            return std::make_pair(-1, 0);
+        } else {
+            for (auto & _sf : sf_sld_win) {
+                if (_sf.id2nodeframe.find(idj) != _sf.id2nodeframe.end()) {
+                    Pose p(estimated, _sf.id2nodeframe[idj].yaw());
+                    traj.push_back(make_pair(_sf.ts, p));
+                }
+            }
+            return std::make_pair(1, success);
+        }
+    }
+
+/*
+    if (detection_constrain.size() > 1) {
 #ifdef DFS_BEBUG_OUTPUT
         ROS_INFO("Will apply triangulation, baseline %f", (max_bbx_det - min_bbx_det).norm());
 #endif
@@ -394,7 +421,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
         } else {
             return std::make_pair(1, error);
         }
-    }
+    }*/
 
     return make_pair(-1, 0);
 }
@@ -418,6 +445,52 @@ double triangulatePoint3DPts(const vector<pair<Pose, Vector3d>> & dets, Eigen::V
     }
 
     return triangulatePoint3DPts(_poses, pts, point_3d);
+}
+
+double LocalizationDAInit::verify_with_measurements(const vector<pair<Pose, Vector3d>> & dets, 
+    const vector<pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d) {
+    double error = 0;
+    for (unsigned int i = 0; i < dets.size(); i++) {
+        //First we get the direction of the detected drones
+        auto dir1 = (dets[i].first.att() * dets[i].second).normalized();
+
+        //Second we get the direction of the point relative to this drone
+        auto dir2 = (point_3d - dets[i].first.pos()).normalized();
+
+        //Then we try to get the angle
+        double tmp = dir1.dot(dir2) / dir1.norm()/dir2.norm();
+        double angle;
+        if (tmp > 0.999) {
+            angle = 0;
+        } else if (tmp < - 0.999) {
+            angle = M_PI;
+        } else {
+            angle = acos(tmp);
+        }
+
+        std::cout << "Dir1" << dir1.transpose() << " Dir2" << dir2.transpose();
+        printf("acos %f angle %f\n", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
+        error = error + fabs(angle);
+        if (angle > accept_angular_thres) {
+            return -1;
+        }
+    }
+
+    //Also verify with distance
+    for (auto it : diss) {
+        auto distance1 = (point_3d - it.first).norm();
+        auto distance2 = it.second;
+
+        std::cout << "Distance " << distance1 << " Distance2 " << distance2 << std::endl;
+
+        if (abs(distance1 - distance2) > accept_distance_thres) {
+            return -1;
+        }
+
+        error = error + abs(distance1 - distance2);
+    }
+
+    return error;
 }
 
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &_points, Eigen::Vector3d &point_3d)
@@ -494,7 +567,7 @@ double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Ve
 
         // std::cout << "Dir1" << dir1.transpose() << " Dir2" << dir2.transpose();
         // printf("acos %f angle %f\n", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
-        error = error + angle;
+        error = error + fabs(angle);
     }
 
     // if(error/(double)(_poses.size()) > 0.5f ) {
