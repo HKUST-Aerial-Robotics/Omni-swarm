@@ -5,12 +5,12 @@ using namespace std;
 using namespace Eigen;
 
 #define MIN_DET_THRES 0.5
-#define DET_BASELINE_THRES 0.3
+#define DET_BASELINE_THRES 0.5
 
 //For visual initial, we limit all in 10 meter is OK
 #define POSITION_LIM 30
 
-#define DFS_BEBUG_OUTPUT
+// #define DFS_BEBUG_OUTPUT
 
 double triangulatePoint3DPts(const vector<Pose> & _poses, const vector<Eigen::Vector3d> &points, Eigen::Vector3d &point_3d);
 
@@ -248,7 +248,7 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, DroneTraj> & est_p
         }
     }
 
-    if(best_cost < 100) {
+    if(best_cost < 1000000) {
         guess = best_guess;
         est_pathes = best_pathes;
         return make_pair(true, best_cost);
@@ -468,8 +468,8 @@ double LocalizationDAInit::verify_with_measurements(const vector<pair<Pose, Vect
             angle = acos(tmp);
         }
 
-        std::cout << "Dir1" << dir1.transpose() << " Dir2" << dir2.transpose();
-        printf("acos %f angle %f\n", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
+        // std::cout << "Dir1" << dir1.transpose() << " Dir2" << dir2.transpose();
+        // printf("acos %f angle %f\n", dir1.dot(dir2) / dir1.norm()/dir2.norm(), angle);
         error = error + fabs(angle);
         if (angle > accept_angular_thres) {
             return -1;
@@ -481,7 +481,7 @@ double LocalizationDAInit::verify_with_measurements(const vector<pair<Pose, Vect
         auto distance1 = (point_3d - it.first).norm();
         auto distance2 = it.second;
 
-        std::cout << "Distance " << distance1 << " Distance2 " << distance2 << std::endl;
+        // std::cout << "Distance " << distance1 << " Distance2 " << distance2 << std::endl;
 
         if (abs(distance1 - distance2) > accept_distance_thres) {
             return -1;
