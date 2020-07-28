@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Tensorflow
 from __future__ import print_function
 
@@ -103,12 +103,12 @@ def solve_cudnn_error():
     except RuntimeError as e:
         print(e)
 
-    config.gpu_options.per_process_gpu_memory_fraction = 0.3
+    config.gpu_options.per_process_gpu_memory_fraction = 0.4
 
 
 if __name__ == "__main__":
     print("Initializing HFNet... with tensorflow {}".format(tf.__version__))
-    rospy.init_node( 'whole_image_descriptor_compute_server' )
+    rospy.init_node( 'hfnet_server' )
     nms_radius = rospy.get_param('~nms_radius')
     num_keypoints = rospy.get_param('~num_keypoints')
     model_path = rospy.get_param('~model_path')
