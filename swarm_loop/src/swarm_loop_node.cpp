@@ -8,6 +8,7 @@
 #include <nodelet/nodelet.h>
 #include <pluginlib/class_list_macros.h>
 #include <thread>
+#include <nav_msgs/Odometry.h>
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -60,7 +61,22 @@ public:
             //
         }
     }
-    
+
+    vins::FlattenImages viokf;
+    void flatten_raw_callback(const vins::FlattenImages & viokf) {
+        this->viokf = viokf;
+    }
+
+    void odometry_callback(const nav_msgs::Odometry & odometry) {
+        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3) {
+            return;
+        }
+
+        viokf.pose_drone = odometry.pose.pose;
+
+        VIOKF_callback(viokf);
+    }
+
     void VIOKF_callback(const vins::FlattenImages & viokf) {
         last_kftime = viokf.header.stamp;
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
@@ -105,6 +121,8 @@ public:
 
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
+    ros::Subscriber odometry_sub;
+    ros::Subscriber flatten_raw_sub;
     ros::Subscriber remote_img_sub;
     ros::Subscriber viononkeyframe_sub;
     ros::Publisher loopconn_pub;
@@ -179,7 +197,8 @@ private:
             on_loop_connection(loc, false);
         };
 
-        viokeyframe_sub = nh.subscribe("/vins_estimator/flatten_images", 1, &SwarmLoopNode::VIOKF_callback, this, ros::TransportHints().tcpNoDelay());
+        flatten_raw_sub = nh.subscribe("/vins_estimator/flatten_raw", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
+        odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoopNode::odometry_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
         if (enable_sub_remote_img) {
