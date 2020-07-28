@@ -5,6 +5,8 @@
 #include "loop_detector.h"
 #include <chrono> 
 #include <Eigen/Eigen>
+#include <nodelet/nodelet.h>
+#include <pluginlib/class_list_macros.h>
 #include <thread>
 
 #define BACKWARD_HAS_DW 1
@@ -20,7 +22,8 @@ double DT_MS(system_clock::time_point start) {
     return duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 }
 
-class SwarmLoopNode {
+namespace swarm_localization_pkg {
+class SwarmLoopNode  : public nodelet::Nodelet {
 public:
     LoopDetector * loop_detector = nullptr;
     LoopCam * loop_cam = nullptr;
@@ -108,10 +111,14 @@ public:
     ros::Publisher remote_image_desc_pub;
     bool enable_pub_remote_img;
     bool enable_sub_remote_img;
+    std::thread th;
 
 public:
-    SwarmLoopNode(ros::NodeHandle& nh) {
+    SwarmLoopNode () {}
+private:
+    virtual void onInit() {
         //Init Loop Net
+        auto nh = getMTNodeHandle();
         std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
@@ -183,25 +190,13 @@ public:
         if (enable_pub_remote_img) {
             remote_image_desc_pub = nh.advertise<swarm_msgs::ImageDescriptor>("remote_image_desc", 10);
         }
+
+        th = std::thread([&] {
+            while(0 == loop_net->lcm_handle()) {
+            }
+       });
     }
 };
 
-int main(int argc, char **argv) {
-    ROS_INFO("SWARM_LOOP INIT");
-    srand(time(NULL));
-
-    ros::init(argc, argv, "swarm_loop");
-    ros::NodeHandle nh("swarm_loop");
-    SwarmLoopNode loopnode(nh);
-
-    std::thread thread([&] {
-        while(0 == loopnode.loop_net->lcm_handle()) {
-        }
-    });
-
-    // ros::spin();
-    ros::MultiThreadedSpinner spinner(2); // Use 4 threads
-    spinner.spin();
-
-    return 0;
+PLUGINLIB_EXPORT_CLASS(swarm_localization_pkg::SwarmLoopNode, nodelet::Nodelet);
 }
