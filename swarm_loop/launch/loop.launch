@@ -1,20 +1,36 @@
 <launch>
     <arg name="display" default="false" />
     <arg name="node_start_delay" default="30.0" />
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " >
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
+
+    <node pkg="nodelet" type="nodelet" name="vins_fusion_nodelet" 
+        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" ns="swarm_loop">
         <rosparam>
-            lcm_uri: udpm://224.0.0.251:7667?ttl=2
+            lcm_uri: udpm://224.0.0.251:7667?ttl=1
+            loop_image_downsample: 1.0
+            init_loop_min_feature_num: 8
+            init_loop_min_feature_num_l2: 8
+            min_loop_feature_num: 8
+            jpg_quality: 75
+            enable_lk: true
+            
+            query_thres: 0.1
+            init_query_thres: 0.3
+
+            min_movement_keyframe: 0.1
+            enable_pub_remote_img: true
+            enable_sub_remote_img: false
+            self_id: 4
         </rosparam>
-        <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" />
+        <!-- <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" /> -->
        <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/home/dji/SwarmConfig/realsense/left.yaml" type="string" />
-    <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+       <param name="camera_config_path" value="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" type="string" />
     </node>
-    <node name="my_desc_server" pkg="tx2_whole_image_desc_server" type="py2_whole_image_desc_server_ts.py" output="log">
-        <param name="frozen_protobuf_file" type="string" value="$(find tx2_whole_image_desc_server)/tx2_py3_tfserver/models.keras/June2019/centeredinput-m1to1-240x320x1__mobilenetv2-block_9_add__K16__allpairloss/modelarch_and_weights.2000.pb" />
-        <param name="nrows" type="string" value="240" />
-        <param name="ncols" type="string" value="320" />
-        <param name="nchnls" type="string" value="1" />
-        <remap from="left_camera" to="/camera/infra1/image_rect_raw"/>
+    <node name="hfnet_server" pkg="swarm_loop" type="HFNet_server.py" output="$(arg output)">
+        <rosparam>
+            nms_radius: 4
+            num_keypoints: 200
+        </rosparam>
+        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet" />
     </node>
 </launch>

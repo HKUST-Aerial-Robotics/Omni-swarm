@@ -86,7 +86,7 @@ void reduceVector(std::vector<T> &v, std::vector<uchar> status)
     v.resize(j);
 }
 
-void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
+void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
 {
 
     for (size_t i = 0; i < pts_up.size(); i++) {
@@ -122,9 +122,9 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
     reduceVector(ids, status);
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img)
+ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img, const int & vcam_id)
 {
-    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[0]);
+    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id]);
     if (ides.image_desc_size == 0)
     {
         ROS_WARN("Failed on deepnet;");
@@ -141,16 +141,16 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
 
     ides.timestamp = toLCMTime(msg.header.stamp);
     ides.drone_id = self_id; // -1 is self drone;
-    ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[0]);
+    ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
 
-    auto cv_ptr = cv_bridge::toCvCopy(msg.up_cams[0], sensor_msgs::image_encodings::BGR8);
+    auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg), sensor_msgs::image_encodings::BGR8);
     cv::Mat img_up = cv_ptr->image;
     img_up.copyTo(img);
 
     encode_image(img_up, ides);
 
-    auto cv_ptr2 = cv_bridge::toCvCopy(msg.down_cams[0], sensor_msgs::image_encodings::BGR8);
+    auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg), sensor_msgs::image_encodings::BGR8);
     cv::Mat img_down = cv_ptr2->image;
 
     std::vector<cv::Point2f> pts_up, pts_down;
