@@ -1,8 +1,11 @@
 <launch>
     <arg name="display" default="false" />
-    <arg name="node_start_delay" default="30.0" />
     <arg name="output" default="screen" />
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="$(arg output)">
+    <arg name="manager"     default="manager"/>
+
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
+    <node pkg="nodelet" type="nodelet" name="vins_fusion_nodelet" 
+        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" ns="swarm_loop">
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
@@ -16,8 +19,6 @@
             init_query_thres: 0.3
 
             min_movement_keyframe: 0.1
-        </rosparam>
-        <rosparam>
             enable_pub_remote_img: true
             enable_sub_remote_img: false
         </rosparam>
@@ -26,7 +27,6 @@
             self_id: 4
         </rosparam>
        <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/home/xuhao/bags/fisheye_ptgrey_n3/front.yaml" type="string" />
-    <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+       <param name="camera_config_path" value="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" type="string" />
     </node>
 </launch>
