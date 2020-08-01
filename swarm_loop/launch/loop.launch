@@ -1,9 +1,11 @@
 <launch>
     <arg name="display" default="false" />
     <arg name="node_start_delay" default="30.0" />
-    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
+    <arg name="manager"     default="manager"/>
+    <arg name="output" default="screen" />
 
-    <node pkg="nodelet" type="nodelet" name="vins_fusion_nodelet" 
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
+    <node pkg="nodelet" type="nodelet" name="SwarmLoopNode" 
         args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" ns="swarm_loop">
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
