@@ -10,7 +10,8 @@ using namespace std::chrono;
 
 LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, ros::NodeHandle &nh) : self_id(_self_id)
 {
-    camodocal::CameraFactory cam_factory;
+    camodocal::CameraFactory cam_factory;\
+    ROS_INFO("Read camera from %s", camera_config_path.c_str());
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
     deepnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     printf("Waiting for deepnet......\n");
@@ -144,13 +145,13 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
 
-    auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg), sensor_msgs::image_encodings::BGR8);
+    auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
     cv::Mat img_up = cv_ptr->image;
     img_up.copyTo(img);
 
-    encode_image(img_up, ides);
+    // encode_image(img_up, ides);
 
-    auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg), sensor_msgs::image_encodings::BGR8);
+    auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
     cv::Mat img_down = cv_ptr2->image;
 
     std::vector<cv::Point2f> pts_up, pts_down;
@@ -226,37 +227,38 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
 
     ides.landmark_num = ides.landmarks_2d.size();
 
-    cv::Mat show;
+    if (show) {
+        cv::Mat show;
 
-    for (auto pt : pts_up)
-    {
-        cv::circle(img_up, pt, 1, cv::Scalar(255, 0, 0), -1);
+        for (auto pt : pts_up)
+        {
+            cv::circle(img_up, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        for (auto pt : pts_down)
+        {
+            cv::circle(img_down, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        cv::hconcat(img_up, img_down, show);
+
+        char text[100] = {0};
+
+        // cv::resize(show, show, cv::Size(0, 0), 2, 2);
+
+        for (unsigned int i = 0; i < pts_up.size(); i++) {
+            cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
+        }
+
+        // for (unsigned int i = 0; i < pts_up.size(); i++) {
+        //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
+        //     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
+        // }
+
+        // ROS_INFO("Try show image");
+        cv::imshow("DEBUG", show);
+        cv::waitKey(10);
     }
-
-    for (auto pt : pts_down)
-    {
-        cv::circle(img_down, pt, 1, cv::Scalar(255, 0, 0), -1);
-    }
-
-    cv::hconcat(img_up, img_down, show);
-
-    char text[100] = {0};
-
-    // cv::resize(show, show, cv::Size(0, 0), 2, 2);
-
-    for (unsigned int i = 0; i < pts_up.size(); i++) {
-        cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
-    }
-
-    // for (unsigned int i = 0; i < pts_up.size(); i++) {
-    //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
-	//     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-    // }
-
-    // ROS_INFO("Try show image");
-     cv::imshow("DEBUG", show);
-     cv::waitKey(10);
-
     return ides;
 }
 

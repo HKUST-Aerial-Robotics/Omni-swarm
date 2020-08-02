@@ -64,6 +64,7 @@ public:
 
     vins::FlattenImages viokf;
     void flatten_raw_callback(const vins::FlattenImages & viokf) {
+        ROS_INFO("On flatten raw");
         this->viokf = viokf;
     }
 
@@ -73,7 +74,7 @@ public:
         }
 
         viokf.pose_drone = odometry.pose.pose;
-
+        ROS_INFO("INVOKE");
         VIOKF_callback(viokf);
     }
 
@@ -197,7 +198,7 @@ private:
             on_loop_connection(loc, false);
         };
 
-        flatten_raw_sub = nh.subscribe("/vins_estimator/flatten_raw", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
+        flatten_raw_sub = nh.subscribe("/vins_estimator/flattened_raw", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
         odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoopNode::odometry_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
