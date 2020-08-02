@@ -27,9 +27,9 @@ def imgmsg_to_cv2( msg ):
 class HFNet:
     def __init__(self, model_path, outputs):
         self.session = tf.Session()
-        self.image_ph = tf.placeholder(tf.float32, shape=(None, None, 3))
+        self.image_ph = tf.placeholder(tf.float32, shape=(None, None, 1))
 
-        net_input = tf.image.rgb_to_grayscale(self.image_ph[None])
+        net_input = self.image_ph[None]
         tf.saved_model.loader.load(
             self.session, [tag_constants.SERVING], str(model_path),
             clear_devices=True,
@@ -58,12 +58,15 @@ class HFNetServer:
         self.num_kpts = num_kpts
         self.nms_radius = nms_radius
 
-        tmp_zer = np.random.randn(400, 208, 3)
-        # self.inference_network_on_image(tmp_zer)
+        tmp_zer = np.random.randn(208, 400)
+        self.inference_network_on_image(tmp_zer)
         print("NFNet ready")
     
     def inference_network_on_image(self, img):
+        img = np.expand_dims(img, axis=2)
+        print("Try inference hfnet", img.shape)
         ret = self.hfnet.inference(img, self.nms_radius, self.num_kpts)
+        print("Inference hfnet done")
         return ret["global_descriptor"], ret["keypoints"], ret["local_descriptors"]
     
     def handle_req(self, req):

@@ -21,6 +21,7 @@ class LoopCam {
     int cam_count = 0;
     int loop_duration = 10;
     int self_id = 0;
+    bool show = false;
 
     ros::ServiceClient deepnet_client;
 
