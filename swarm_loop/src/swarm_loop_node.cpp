@@ -64,15 +64,17 @@ public:
 
     vins::FlattenImages viokf;
     void flatten_raw_callback(const vins::FlattenImages & viokf) {
-        ROS_INFO("On flatten raw");
         this->viokf = viokf;
     }
 
+    double last_invoke = 0;
     void odometry_callback(const nav_msgs::Odometry & odometry) {
-        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3) {
+        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3 &&
+            odometry.header.stamp.toSec() - last_invoke < 1/max_freq) {
             return;
         }
 
+        last_invoke = odometry.header.stamp.toSec();
         viokf.pose_drone = odometry.pose.pose;
         ROS_INFO("INVOKE");
         VIOKF_callback(viokf);
@@ -132,12 +134,14 @@ public:
     bool enable_sub_remote_img;
     std::thread th;
 
+    double max_freq = 1.0;
+
 public:
     SwarmLoopNode () {}
 private:
     virtual void onInit() {
         //Init Loop Net
-        auto nh = getMTNodeHandle();
+        auto nh = getMTPrivateNodeHandle();
         std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
@@ -160,6 +164,7 @@ private:
         nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
         nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
         nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
+        nh.param<double>("max_freq", max_freq, 1.0);
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
