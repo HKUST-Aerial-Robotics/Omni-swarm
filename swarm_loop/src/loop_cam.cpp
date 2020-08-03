@@ -96,7 +96,7 @@ void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::P
 
     std::vector<float> err;
     std::vector<uchar> status;
-    std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
+    // std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
 
     cv::calcOpticalFlowPyrLK(img_up, img_down, pts_up, pts_down, status, err, cv::Size(21, 21), 3);
     // reduceVector(pts_down, status);
@@ -146,13 +146,10 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.pose_drone = fromROSPose(msg.pose_drone);
 
     auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
-    cv::Mat img_up = cv_ptr->image;
-    img_up.copyTo(img);
-
+    // img_up.copyTo(img);
     // encode_image(img_up, ides);
 
     auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
-    cv::Mat img_down = cv_ptr2->image;
 
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
@@ -228,6 +225,9 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.landmark_num = ides.landmarks_2d.size();
 
     if (show) {
+        cv::Mat img_up = cv_ptr->image;
+        cv::Mat img_down = cv_ptr2->image;
+        
         cv::Mat show;
 
         for (auto pt : pts_up)
