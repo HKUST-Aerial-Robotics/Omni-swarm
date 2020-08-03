@@ -21,16 +21,17 @@ class LoopCam {
     int cam_count = 0;
     int loop_duration = 10;
     int self_id = 0;
-    bool show = false;
-
     ros::ServiceClient deepnet_client;
 
 public:
+
+    bool show = false;
+
     // LoopDetector * loop_detector = nullptr;
 
     LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, ros::NodeHandle & nh);
 
-    ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img, const int & vcam_id = 1);
+    ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img, const int & vcam_id = 2);
 
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg);
 

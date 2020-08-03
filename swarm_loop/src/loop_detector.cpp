@@ -36,7 +36,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
         if (img.empty()) {
-            img = decode_image(img_des);
+            // img = decode_image(img_des);
             //debug_draw_kpts(img_des, img);
         }
 

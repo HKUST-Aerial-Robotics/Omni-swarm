@@ -177,6 +177,7 @@ private:
         
         loop_net = new LoopNet(_lcm_uri);
         loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, nh);
+        loop_cam->show = debug_image; 
 #ifdef USE_DEEPNET
         loop_detector = new LoopDetector();
 #else
