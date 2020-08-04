@@ -35,9 +35,9 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
-        if (img.empty()) {
-            // img = decode_image(img_des);
-            //debug_draw_kpts(img_des, img);
+        if (img.empty() && enable_visualize) {
+            img = decode_image(img_des);
+            debug_draw_kpts(img_des, img);
         }
 
         int new_added_image = -1;
@@ -911,9 +911,6 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     assert(old_img_desc.drone_id == self_id && "old img desc must from self drone!");
 
     ROS_INFO("Compute loop %d->%d", old_img_desc.drone_id, new_img_desc.drone_id);
-    //ROS_INFO("cols %d %d", img_new.cols, img_old.cols);
-    assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
-    assert(!img_old.empty() && "ERROR IMG old is emptry!");
 
     bool success = false;
     Swarm::Pose  DP_old_to_new;
@@ -961,6 +958,8 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     cv::Mat show;
 
     if (enable_visualize) {
+        assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
+        assert(!img_old.empty() && "ERROR IMG old is emptry!");
         static char title[256] = {0};
         cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
         cv::resize(show, show, cv::Size(), 2, 2);

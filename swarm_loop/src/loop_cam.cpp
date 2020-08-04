@@ -146,9 +146,6 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.pose_drone = fromROSPose(msg.pose_drone);
 
     auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
-    // img_up.copyTo(img);
-    // encode_image(img_up, ides);
-
     auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
 
     std::vector<cv::Point2f> pts_up, pts_down;
@@ -227,7 +224,10 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     if (show) {
         cv::Mat img_up = cv_ptr->image;
         cv::Mat img_down = cv_ptr2->image;
-        
+
+        img_up.copyTo(img);
+        encode_image(img_up, ides);
+
         cv::Mat show;
 
         for (auto pt : pts_up)
