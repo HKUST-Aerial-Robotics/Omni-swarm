@@ -3,7 +3,7 @@
     <arg name="output" default="screen" />
     <arg name="manager"     default="manager"/>
 
-    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
+    <!-- <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" /> -->
     <node pkg="nodelet" type="nodelet" name="SwarmLoopNode" 
         args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" ns="swarm_loop">
         <rosparam>
