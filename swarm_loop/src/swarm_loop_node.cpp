@@ -204,7 +204,7 @@ private:
             on_loop_connection(loc, false);
         };
 
-        flatten_raw_sub = nh.subscribe("/vins_estimator/flattened_raw", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
+        flatten_raw_sub = nh.subscribe("/vins_estimator/flattened_gray", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
         odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoopNode::odometry_callback, this, ros::TransportHints().tcpNoDelay());
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
