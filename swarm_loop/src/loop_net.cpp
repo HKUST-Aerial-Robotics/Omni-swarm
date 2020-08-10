@@ -35,6 +35,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.msg_id = img_des.msg_id;
     img_desc_header.image_desc_size = img_des.image_desc_size;
     img_desc_header.image_desc = img_des.image_desc;
+    img_desc_header.feature_num = img_des.landmark_num;
     ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
 
 
@@ -104,14 +105,44 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     const std::string& chan, 
     const ImageDescriptorHeader_t* msg) {
     ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
-    update_recv_img_desc_ts(msg->header_id);
+    update_recv_img_desc_ts(msg->msg_id);
+
+    if (receved_msgs.find(msg->msg_id) == receved_msgs.end()) {
+        ImageDescriptor_t tmp;
+        receved_msgs[msg->msg_id] = tmp; 
+    }
+
+    auto & tmp = receved_msgs[msg->msg_id];
+    tmp.timestamp = msg->timestamp;
+    tmp.drone_id = msg->drone_id;
+    tmp.image_desc_size = msg->image_desc_size;
+    tmp.image_desc = msg->image_desc;
+    tmp.pose_drone = msg->pose_drone;
+    tmp.camera_extrinsic = msg->camera_extrinsic;
+    tmp.landmark_num = msg->feature_num;
+    tmp.msg_id = msg->msg_id;
+    tmp.prevent_adding_db = msg->prevent_adding_db;
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     const std::string& chan, 
     const LandmarkDescriptor_t* msg) {
-    update_recv_img_desc_ts(msg->msg_id);
+    update_recv_img_desc_ts(msg->header_id);
     ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
+    if (receved_msgs.find(msg->header_id) == receved_msgs.end()) {
+        ImageDescriptor_t tmp;
+        receved_msgs[msg->header_id] = tmp; 
+    }
+
+    auto & tmp = receved_msgs[msg->header_id];
+    tmp.landmarks_2d_norm.push_back(msg->landmark_2d_norm);
+    tmp.landmarks_2d.push_back(msg->landmark_2d);
+    tmp.landmarks_3d.push_back(msg->landmark_3d);
+    tmp.landmarks_flag.push_back(msg->landmark_flag);
+    tmp.feature_descriptor.insert(tmp.feature_descriptor.begin(),
+        msg->feature_descriptor,
+        msg->feature_descriptor+256
+    );
 }
 
 
