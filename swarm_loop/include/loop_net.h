@@ -26,6 +26,10 @@ public:
         this->setup_network(_lcm_uri);
     }
 
+    std::map<int64_t, ImageDescriptor_t> receved_msgs;
+    std::map<int64_t, double> msg_recv_last_time;
+    std::map<int64_t, double> msg_header_recv_time;
+
     std::function<void(const ImageDescriptor_t &)> img_desc_callback;
     std::function<void(const LoopConnection_t &)> loopconn_callback;
 
@@ -52,4 +56,6 @@ public:
     int lcm_handle() {
         return lcm.handle();
     }
+
+    void update_recv_img_desc_ts(int64_t id, bool is_header=false);
 };

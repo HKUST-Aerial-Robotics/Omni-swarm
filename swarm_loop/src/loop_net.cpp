@@ -104,10 +104,21 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     const std::string& chan, 
     const ImageDescriptorHeader_t* msg) {
     ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
+    update_recv_img_desc_ts(msg->header_id);
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     const std::string& chan, 
     const LandmarkDescriptor_t* msg) {
+    update_recv_img_desc_ts(msg->msg_id);
     ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
+}
+
+
+void LoopNet::update_recv_img_desc_ts(int64_t id, bool is_header) {
+    if(is_header) {
+        msg_header_recv_time[id] = ros::Time::now().toSec();
+    }
+
+    msg_recv_last_time[id] = ros::Time::now().toSec();
 }
