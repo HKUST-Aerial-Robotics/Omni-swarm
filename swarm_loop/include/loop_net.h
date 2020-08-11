@@ -29,6 +29,8 @@ public:
     std::map<int64_t, ImageDescriptor_t> receved_msgs;
     std::map<int64_t, double> msg_recv_last_time;
     std::map<int64_t, double> msg_header_recv_time;
+    std::set<int64_t> active_recving_msg;
+    std::set<int64_t> blacklist;
 
     std::function<void(const ImageDescriptor_t &)> img_desc_callback;
     std::function<void(const LoopConnection_t &)> loopconn_callback;
@@ -58,4 +60,10 @@ public:
     }
 
     void update_recv_img_desc_ts(int64_t id, bool is_header=false);
+
+    void scan_recv_packets();
+
+    bool msg_blocked(int64_t _id) {
+        return blacklist.find(_id) != blacklist.end();
+    }
 };
