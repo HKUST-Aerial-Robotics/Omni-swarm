@@ -12,6 +12,7 @@
 #include <set>
 #include <swarm_msgs/ImageDescriptorHeader_t.hpp>
 #include <swarm_msgs/LandmarkDescriptor_t.hpp>
+#include <mutex>
 
 using namespace swarm_msgs;
 
@@ -20,9 +21,13 @@ class LoopNet {
 
     std::set<int64_t> sent_message;
 
+    double recv_period;
+
+    std::mutex recv_lock;
+
 public:
-    LoopNet(std::string _lcm_uri):
-        lcm(_lcm_uri) {
+    LoopNet(std::string _lcm_uri, double _recv_period = 0.5):
+        lcm(_lcm_uri), recv_period(_recv_period) {
         this->setup_network(_lcm_uri);
     }
 
