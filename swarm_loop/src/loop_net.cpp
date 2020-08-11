@@ -108,6 +108,9 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     if(msg_blocked(msg->msg_id)) {
         return;
     }
+
+    recv_lock.lock();
+
     ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
     update_recv_img_desc_ts(msg->msg_id);
 
@@ -126,12 +129,39 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.landmark_num = msg->feature_num;
     tmp.msg_id = msg->msg_id;
     tmp.prevent_adding_db = msg->prevent_adding_db;
+
+    recv_lock.unlock();
 }
 
 void LoopNet::scan_recv_packets() {
+    double tnow = ros::Time::now().toSec();
+    std::set<int64_t> finish_recv;
+    recv_lock.lock();
     for (auto msg_id : active_recving_msg) {
-        
+        if (tnow - msg_header_recv_time[msg_id] > recv_period ||
+            receved_msgs[msg_id].landmark_num == receved_msgs[msg_id].landmarks_2d.size()) {
+            ROS_INFO("Finish recv msg %ld, Feature %ld/%ld", receved_msgs[msg_id].landmarks_2d.size(), receved_msgs[msg_id].landmark_num);
+            finish_recv.insert(msg_id);
+        }
     }
+    for (auto msg_id : finish_recv) {
+        blacklist.insert(msg_id);
+        active_recving_msg.erase(msg_id);
+    }
+    recv_lock.unlock();
+
+
+    for (auto _id : finish_recv) {
+        auto & msg = receved_msgs[_id];
+        //Processed recevied message
+        if (msg.landmarks_2d.size() > 0) {
+            msg.landmark_num = msg.landmarks_2d.size();
+            this->img_desc_callback(msg);
+        }
+        receved_msgs.erase(_id);
+    }
+
+    //Now we could process there recevied frames
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
@@ -140,6 +170,7 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     if(msg_blocked(msg->header_id)) {
         return;
     }
+    recv_lock.lock();
     update_recv_img_desc_ts(msg->header_id);
     ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
     if (receved_msgs.find(msg->header_id) == receved_msgs.end()) {
@@ -156,6 +187,7 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
         msg->feature_descriptor,
         msg->feature_descriptor+256
     );
+    recv_lock.unlock();
 }
 
 
@@ -163,6 +195,5 @@ void LoopNet::update_recv_img_desc_ts(int64_t id, bool is_header) {
     if(is_header) {
         msg_header_recv_time[id] = ros::Time::now().toSec();
     }
-
     msg_recv_last_time[id] = ros::Time::now().toSec();
 }

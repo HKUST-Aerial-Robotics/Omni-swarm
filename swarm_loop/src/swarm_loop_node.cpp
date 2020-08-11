@@ -135,6 +135,7 @@ public:
     std::thread th;
 
     double max_freq = 1.0;
+    double recv_msg_duration = 0.5;
 
 public:
     SwarmLoopNode () {}
@@ -165,6 +166,7 @@ private:
         nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
         nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
         nh.param<double>("max_freq", max_freq, 1.0);
+        nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
@@ -175,7 +177,7 @@ private:
 
         nh.param<bool>("debug_image", debug_image, false);
         
-        loop_net = new LoopNet(_lcm_uri);
+        loop_net = new LoopNet(_lcm_uri, recv_msg_duration);
         loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, nh);
         loop_cam->show = debug_image; 
 #ifdef USE_DEEPNET
