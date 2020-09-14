@@ -514,12 +514,16 @@ class LocalProxy {
         }
     }
 
-    void send_mavlink_message(mavlink_message_t &msg) {
+    void send_mavlink_message(mavlink_message_t &msg, bool send_by_wifi=false) {
         int len = mavlink_msg_to_send_buffer(buf, &msg);
         data_buffer buffer;
         // ROS_INFO("Msg size %d", len);
 
         buffer.data = std::vector<uint8_t>(buf, buf + len);
+
+        if (send_by_wifi) {
+            buffer.send_method = 2;
+        }
         uwb_senddata_pub.publish(buffer);
     }
 
@@ -546,7 +550,7 @@ class LocalProxy {
         mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, 
             int(vel.x*100), int(vel.y*100), int(vel.z*100), int(eulers.x()*1000), int(eulers.y()*1000), int(eulers.z()*1000), dis_int);
 
-        send_mavlink_message(msg);
+        send_mavlink_message(msg, true);
     }
 
     std::map<int, float> past_self_dis;
