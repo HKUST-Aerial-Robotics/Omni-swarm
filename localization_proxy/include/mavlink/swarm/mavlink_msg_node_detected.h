@@ -10,7 +10,7 @@ typedef struct __mavlink_node_detected_t {
  int16_t x; /*< [m] Relative X Position*10000*/
  int16_t y; /*< [m] Relative Y Position*10000*/
  int16_t z; /*< [m] Relative Z Position*10000*/
- int16_t prob; /*< [1] Relative Z Position*10000*/
+ int16_t prob; /*< [1] Prob*10000*/
  uint16_t inv_dep; /*< [1/m] inverse depth*10000;0 then unavailable*/
 }) mavlink_node_detected_t;
 
@@ -64,7 +64,7 @@ typedef struct __mavlink_node_detected_t {
  * @param x [m] Relative X Position*10000
  * @param y [m] Relative Y Position*10000
  * @param z [m] Relative Z Position*10000
- * @param prob [1] Relative Z Position*10000
+ * @param prob [1] Prob*10000
  * @param inv_dep [1/m] inverse depth*10000;0 then unavailable
  * @return length of the message in bytes (excluding serial stream start sign)
  */
@@ -110,7 +110,7 @@ static inline uint16_t mavlink_msg_node_detected_pack(uint8_t system_id, uint8_t
  * @param x [m] Relative X Position*10000
  * @param y [m] Relative Y Position*10000
  * @param z [m] Relative Z Position*10000
- * @param prob [1] Relative Z Position*10000
+ * @param prob [1] Prob*10000
  * @param inv_dep [1/m] inverse depth*10000;0 then unavailable
  * @return length of the message in bytes (excluding serial stream start sign)
  */
@@ -182,7 +182,7 @@ static inline uint16_t mavlink_msg_node_detected_encode_chan(uint8_t system_id, 
  * @param x [m] Relative X Position*10000
  * @param y [m] Relative Y Position*10000
  * @param z [m] Relative Z Position*10000
- * @param prob [1] Relative Z Position*10000
+ * @param prob [1] Prob*10000
  * @param inv_dep [1/m] inverse depth*10000;0 then unavailable
  */
 #ifdef MAVLINK_USE_CONVENIENCE_FUNCTIONS
@@ -322,7 +322,7 @@ static inline int16_t mavlink_msg_node_detected_get_z(const mavlink_message_t* m
 /**
  * @brief Get field prob from node_detected message
  *
- * @return [1] Relative Z Position*10000
+ * @return [1] Prob*10000
  */
 static inline int16_t mavlink_msg_node_detected_get_prob(const mavlink_message_t* msg)
 {
