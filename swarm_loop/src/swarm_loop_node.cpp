@@ -76,21 +76,27 @@ public:
 
         last_invoke = odometry.header.stamp.toSec();
         viokf.pose_drone = odometry.pose.pose;
-        ROS_INFO("INVOKE");
-        VIOKF_callback(viokf);
+
+        if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
+            //
+            VIOKF_callback(viokf, true);
+        } else {
+            VIOKF_callback(viokf);
+        }
     }
 
-    void VIOKF_callback(const vins::FlattenImages & viokf) {
-        last_kftime = viokf.header.stamp;
+    void VIOKF_callback(const vins::FlattenImages & viokf, bool accept_non_movement = false) {
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
 
-        if (dpos < min_movement_keyframe) {
+        if (dpos < min_movement_keyframe && !accept_non_movement) {
             ROS_WARN("VIOKF no enough movement, will giveup");
             return;
         } else {
             ROS_INFO("ADD VIOKeyframe MOVE %3.2fm", dpos);
         }
+
+        last_kftime = viokf.header.stamp;
 
         auto start = high_resolution_clock::now();
         cv::Mat img;
@@ -132,6 +138,7 @@ public:
     ros::Publisher remote_image_desc_pub;
     bool enable_pub_remote_img;
     bool enable_sub_remote_img;
+    bool send_img;
     std::thread th;
 
     double max_freq = 1.0;
@@ -162,6 +169,7 @@ private:
         nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
         nh.param<bool>("enable_pub_remote_img", enable_pub_remote_img, true);
         nh.param<bool>("enable_sub_remote_img", enable_sub_remote_img, false);
+        nh.param<bool>("send_img", send_img, false);
         nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
         nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
         nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
@@ -177,8 +185,8 @@ private:
 
         nh.param<bool>("debug_image", debug_image, false);
         
-        loop_net = new LoopNet(_lcm_uri, recv_msg_duration);
-        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, nh);
+        loop_net = new LoopNet(_lcm_uri, send_img, recv_msg_duration);
+        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, send_img, nh);
         loop_cam->show = debug_image; 
 #ifdef USE_DEEPNET
         loop_detector = new LoopDetector();

@@ -21,10 +21,16 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         exit(-1);
     }
     */
+
+    
     int64_t msg_id = rand() + img_des.timestamp.nsec;
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
 
+    if (send_img) {
+        lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+    }
+    
     ImageDescriptorHeader_t img_desc_header;
     img_desc_header.timestamp = img_des.timestamp;
     img_desc_header.drone_id = img_des.drone_id;

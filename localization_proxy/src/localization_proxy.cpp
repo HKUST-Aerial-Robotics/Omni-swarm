@@ -270,6 +270,7 @@ class LocalProxy {
             (int)(nd.dpos.x*1000),
             (int)(nd.dpos.y*1000),
             (int)(nd.dpos.z*1000),
+            (int)(nd.probaility*10000),
             inv_dep);
         
         send_mavlink_message(msg);
