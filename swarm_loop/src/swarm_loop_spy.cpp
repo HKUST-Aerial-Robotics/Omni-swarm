@@ -52,20 +52,23 @@ public:
             auto & img_desc = it.second;
             char win_name[100] = {0};
             char frame_name[100] = {0};
-            sprintf(win_name, "Drone%d", img_desc.drone_id);
+            sprintf(win_name, "Drone%: d", img_desc.drone_id);
             auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);
-            cv::cvtColor(ret, ret, cv::COLOR_GRAY2BGR);
-            sprintf(frame_name, "Frame %ld", img_desc.msg_id);
-            cv::putText(ret, frame_name, cv::Point2f(10,10), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(255,0,255,255));
-
             auto nowPts = toCV(img_desc.landmarks_2d);
 
+            cv::cvtColor(ret, ret, cv::COLOR_GRAY2BGR);
             for (auto pt: nowPts) {
-                // std::cout << pt << std::endl;
-                cv::circle(ret, pt/LOOP_IMAGE_DOWNSAMPLE, 1, cv::Scalar(0,0, 255),1);
+                cv::circle(ret, pt, 1, cv::Scalar(255, 0, 0),1);
             }
 
             cv::resize(ret, ret, cv::Size(), VISUALIZE_SCALE, VISUALIZE_SCALE);
+            
+            sprintf(frame_name, "Frame %ld", img_desc.msg_id);
+            cv::putText(ret, frame_name, cv::Point2f(10,10), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(0,255,0));
+
+            sprintf(frame_name, "Landmark num %ld", img_desc.landmarks_2d.size());
+            cv::putText(ret, frame_name, cv::Point2f(10,20), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(0,255,0));
+
             cv::imshow(win_name, ret);
         }
         cv::waitKey(10);
