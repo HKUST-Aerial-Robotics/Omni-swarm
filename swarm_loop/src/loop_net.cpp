@@ -27,10 +27,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
 
-    if (send_img) {
-        lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
-    }
-    
+
     ImageDescriptorHeader_t img_desc_header;
     img_desc_header.timestamp = img_des.timestamp;
     img_desc_header.drone_id = img_des.drone_id;
@@ -68,6 +65,13 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         lcm.publish("VIOKF_LANDMARKS", &lm);
     }
 
+    if (send_img) {
+        img_des.feature_descriptor_size = 0;
+        img_des.feature_descriptor.clear();
+        ROS_INFO("IMG DES Size %d with %d landmarks %d", img_des.getEncodedSize(), img_des.landmark_num);
+        lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+    }
+    
 
     ROS_INFO("Sent Message KEYFRAME %ld with %d landmarks", msg_id, img_des.landmark_num);
 }
