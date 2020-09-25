@@ -106,7 +106,7 @@ def solve_cudnn_error():
     except RuntimeError as e:
         print(e)
 
-    config.gpu_options.per_process_gpu_memory_fraction = 0.4
+    config.gpu_options.per_process_gpu_memory_fraction = mem_usage
 
 
 if __name__ == "__main__":
@@ -115,8 +115,9 @@ if __name__ == "__main__":
     nms_radius = rospy.get_param('~nms_radius')
     num_keypoints = rospy.get_param('~num_keypoints')
     model_path = rospy.get_param('~model_path')
+    mem_usage = rospy.get_param('~mem_usage')
     
-    solve_cudnn_error()
+    solve_cudnn_error(mem_usage)
     
     hfserver = HFNetServer(model_path, num_keypoints, nms_radius)
     s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
