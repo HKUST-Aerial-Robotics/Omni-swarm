@@ -41,7 +41,7 @@ extern int MATCH_INDEX_DIST;
 #define ORB_HAMMING_DISTANCE 40 //Max hamming
 #define ORB_UV_DISTANCE 1.5 //UV distance bigger than mid*this will be removed
 
-#define VISUALIZE_SCALE 1 //Scale for visuallize
+#define VISUALIZE_SCALE 2 //Scale for visuallize
 
 #define CROP_WIDTH_THRES 0.05 //If movement bigger than this, crop some matches down
 
