@@ -25,9 +25,11 @@ class LoopNet {
 
     std::mutex recv_lock;
 
+    bool send_img;
+
 public:
-    LoopNet(std::string _lcm_uri, double _recv_period = 0.5):
-        lcm(_lcm_uri), recv_period(_recv_period) {
+    LoopNet(std::string _lcm_uri, bool _send_img, double _recv_period = 0.5):
+        lcm(_lcm_uri), send_img(_send_img), recv_period(_recv_period) {
         this->setup_network(_lcm_uri);
     }
 

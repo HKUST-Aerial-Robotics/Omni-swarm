@@ -30,7 +30,7 @@ public:
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
 
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
-        loop_net = new LoopNet(_lcm_uri);
+        loop_net = new LoopNet(_lcm_uri, false);
         loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
             ROS_INFO("Received Img Desc from %d", img_desc.drone_id);
             all_images[img_desc.drone_id] = img_desc;

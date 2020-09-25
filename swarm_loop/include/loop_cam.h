@@ -23,13 +23,14 @@ class LoopCam {
     int self_id = 0;
     ros::ServiceClient deepnet_client;
 
+    bool send_img;
 public:
 
     bool show = false;
 
     // LoopDetector * loop_detector = nullptr;
 
-    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, ros::NodeHandle & nh);
+    LoopCam(const std::string & _camera_config_path, const std::string & BRIEF_PATTERN_FILE, int self_id, bool _send_img, ros::NodeHandle & nh);
 
     ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img, const int & vcam_id = 2);
 
@@ -41,7 +42,7 @@ public:
 
     cv::Point2d project_to_norm2d(cv::Point2f p);
 
-    void encode_image(cv::Mat & _img, ImageDescriptor_t & _img_desc);
+    void encode_image(const cv::Mat & _img, ImageDescriptor_t & _img_desc);
 
 private:
     CameraPtr cam;

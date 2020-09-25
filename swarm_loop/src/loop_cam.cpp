@@ -8,7 +8,7 @@
 
 using namespace std::chrono;
 
-LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, ros::NodeHandle &nh) : self_id(_self_id)
+LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, bool _send_img, ros::NodeHandle &nh) : self_id(_self_id), send_img(_send_img)
 {
     camodocal::CameraFactory cam_factory;\
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
@@ -30,7 +30,7 @@ cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p)
     return ret;
 }
 
-void LoopCam::encode_image(cv::Mat &_img, ImageDescriptor_t &_img_desc)
+void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
 {
     auto start = high_resolution_clock::now();
 
@@ -220,6 +220,10 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.landmark_num = ides.landmarks_2d.size();
 
     ides.landmark_num = ides.landmarks_2d.size();
+
+    if (send_img) {
+        encode_image(cv_ptr->image, ides);
+    }
 
     if (show) {
         cv::Mat img_up = cv_ptr->image;
