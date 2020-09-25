@@ -40,7 +40,7 @@ void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
 
     cv::imencode(".jpg", _img, _img_desc.image, params);
     // std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    // std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
+    std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
 
     _img_desc.image_height = _img.size().height;
     _img_desc.image_width = _img.size().width;
@@ -125,6 +125,13 @@ void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::P
 
 ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img, const int & vcam_id)
 {
+    if (vcam_id > msg.up_cams.size()) {
+        ROS_WARN("Flatten images too few");
+        ImageDescriptor_t ides;
+        ides.landmark_num = 0;
+        return ides;
+    }
+    
     auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id]);
     if (ides.image_desc_size == 0)
     {
@@ -144,7 +151,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     ides.drone_id = self_id; // -1 is self drone;
     ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
-
+    ides.image_size = 0;
     auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
     auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
 
@@ -313,6 +320,8 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
             img_des.landmark_num = local_kpts.size();
             img_des.feature_descriptor = local_descriptors;
             img_des.feature_descriptor_size = local_descriptors.size();
+            img_des.landmarks_flag.resize(img_des.landmark_num);
+            std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
             img_des.image_size = 0;
         }
         else

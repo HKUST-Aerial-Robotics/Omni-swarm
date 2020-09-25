@@ -71,6 +71,6 @@ public:
     void scan_recv_packets();
 
     bool msg_blocked(int64_t _id) {
-        return blacklist.find(_id) != blacklist.end();
+        return blacklist.find(_id) != blacklist.end() || sent_message.find(_id) != sent_message.end();
     }
 };
