@@ -5,6 +5,6 @@
             nms_radius: 4
             num_keypoints: 200
         </rosparam>
-        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet" />
+        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet_trt" />
     </node>
 </launch>
