@@ -25,8 +25,12 @@ def imgmsg_to_cv2( msg ):
         return X
 
 class HFNet:
-    def __init__(self, model_path, outputs):
-        self.session = tf.Session()
+    def __init__(self, model_path, outputs, mem_per):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        config.gpu_options.per_process_gpu_memory_fraction = mem_per
+
+        self.session = tf.Session(config=config)
         self.image_ph = tf.placeholder(tf.float32, shape=(None, None, 1))
 
         net_input = self.image_ph[None]
@@ -52,9 +56,9 @@ class HFNet:
 
 
 class HFNetServer:
-    def __init__(self, model_path, num_kpts=200, nms_radius = 4 ):
+    def __init__(self, model_path, num_kpts=200, nms_radius = 4, mem_per =0.3 ):
         outputs = ['global_descriptor', 'keypoints', 'local_descriptors']
-        self.hfnet = HFNet(model_path, outputs)
+        self.hfnet = HFNet(model_path, outputs, mem_per)
         self.num_kpts = num_kpts
         self.nms_radius = nms_radius
 
@@ -88,8 +92,7 @@ class HFNetServer:
         return ret
 
 def solve_cudnn_error():   
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
+
     # return
     try:
         gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -106,7 +109,6 @@ def solve_cudnn_error():
     except RuntimeError as e:
         print(e)
 
-    config.gpu_options.per_process_gpu_memory_fraction = mem_usage
 
 
 if __name__ == "__main__":
@@ -117,8 +119,8 @@ if __name__ == "__main__":
     model_path = rospy.get_param('~model_path')
     mem_usage = rospy.get_param('~mem_usage')
     
-    solve_cudnn_error(mem_usage)
+    # solve_cudnn_error()
     
-    hfserver = HFNetServer(model_path, num_keypoints, nms_radius)
+    hfserver = HFNetServer(model_path, num_keypoints, nms_radius, mem_usage)
     s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
     rospy.spin()

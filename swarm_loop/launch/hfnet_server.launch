@@ -1,12 +1,11 @@
 <launch>
     <arg name="output" default="screen" />
-    <arg name="mem_usage" default="0.3" />
     <node name="hfnet_server" pkg="swarm_loop" type="HFNet_server.py" output="$(arg output)">
         <rosparam>
             nms_radius: 4
             num_keypoints: 200
         </rosparam>
         <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet" />
-        <param name="mem_usage" type="double" value="$(args mem_usage)" />
+        <param name="mem_usage" type="double" value="0.3" />
     </node>
 </launch>
