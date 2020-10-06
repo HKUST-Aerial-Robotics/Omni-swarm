@@ -69,7 +69,7 @@ public:
 
     double last_invoke = 0;
     void odometry_callback(const nav_msgs::Odometry & odometry) {
-        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3 &&
+        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3 ||
             odometry.header.stamp.toSec() - last_invoke < 1/max_freq) {
             return;
         }
