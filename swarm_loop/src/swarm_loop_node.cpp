@@ -74,6 +74,8 @@ public:
             return;
         }
 
+        ROS_INFO("New KF %fms", odometry.header.stamp.toSec() - last_invoke );
+
         last_invoke = odometry.header.stamp.toSec();
         viokf.pose_drone = odometry.pose.pose;
 
