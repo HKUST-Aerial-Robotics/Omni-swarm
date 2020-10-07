@@ -1,11 +1,12 @@
 <launch>
     <arg name="output" default="screen" />
-    <node name="hfnet_server" pkg="swarm_loop" type="HFNet_server.py" output="$(arg output)">
+    <arg name="memory_limit" default="768" />
+    <node name="hfnet_server" pkg="swarm_loop" type="HFNet_server_TF2.py" output="$(arg output)">
         <rosparam>
             nms_radius: 4
             num_keypoints: 200
         </rosparam>
-        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet" />
-        <param name="mem_usage" type="double" value="0.3" />
+        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet_v2" />
+        <param name="memory_limit" type="double" value="$(arg memory_limit)" />
     </node>
 </launch>
