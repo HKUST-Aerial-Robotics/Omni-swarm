@@ -25,17 +25,10 @@ def imgmsg_to_cv2( msg ):
         return X
 
 class HFNet:
-<<<<<<< HEAD
-    def __init__(self, model_path, outputs, mem_per):
-        config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
-        config.gpu_options.per_process_gpu_memory_fraction = mem_per
-=======
     def __init__(self, model_path, outputs, mem_usage):
         config = tf.ConfigProto()
         # config.gpu_options.allow_growth = True
         config.gpu_options.per_process_gpu_memory_fraction = mem_usage
->>>>>>> 68bf51f9535c9e8da1881f7c872a358606e21f0c
 
         self.session = tf.Session(config=config)
         self.image_ph = tf.placeholder(tf.float32, shape=(None, None, 1))
@@ -63,15 +56,9 @@ class HFNet:
 
 
 class HFNetServer:
-<<<<<<< HEAD
-    def __init__(self, model_path, num_kpts=200, nms_radius = 4, mem_per =0.3 ):
-        outputs = ['global_descriptor', 'keypoints', 'local_descriptors']
-        self.hfnet = HFNet(model_path, outputs, mem_per)
-=======
     def __init__(self, model_path, mem_usage, num_kpts=200, nms_radius = 4 ):
         outputs = ['global_descriptor', 'keypoints', 'local_descriptors']
         self.hfnet = HFNet(model_path, outputs, mem_usage)
->>>>>>> 68bf51f9535c9e8da1881f7c872a358606e21f0c
         self.num_kpts = num_kpts
         self.nms_radius = nms_radius
 
