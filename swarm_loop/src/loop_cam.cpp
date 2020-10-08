@@ -13,8 +13,14 @@ LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF
 {
     camodocal::CameraFactory cam_factory;
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
-    auto _cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
-    cam = (camodocal::PinholeCamera*)_cam.get();
+    cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
+    camodocal::PinholeCamera* _cam = (camodocal::PinholeCamera*)cam.get();
+
+    Eigen::Matrix3d _cameraMatrix;
+    _cameraMatrix << _cam->getParameters().fx(), 0, _cam->getParameters().cx(),
+                    0, _cam->getParameters().fy(), _cam->getParameters().cy(), 0, 0, 1;
+    cv::eigen2cv(_cameraMatrix, cameraMatrix);
+
     deepnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     printf("Waiting for deepnet......\n");
     deepnet_client.waitForExistence();
@@ -133,14 +139,12 @@ cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2
     for (auto pt : pts1) {
         cv::KeyPoint kp;
         kp.pt = pt;
-        std::cout << "Pt" << pt << std::endl;
         kps1.push_back(kp);
     }
 
     for (auto pt : pts2) {
         cv::KeyPoint kp;
         kp.pt = pt;
-        std::cout << "Pt" << pt << std::endl;
         kps2.push_back(kp);
     }
 
@@ -171,7 +175,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     for (auto match : _matches) {
         int now_id = match.queryIdx;
         int old_id = match.trainIdx;
-        std::cout<< "Query Idx" << now_id << "Train Idx" << old_id << std::endl;
+        // std::cout<< "Query Idx" << now_id << "Train Idx" << old_id << std::endl;
         _pts_up.push_back(pts_up[now_id]);
         _pts_down.push_back(pts_down[old_id]);
         ids.push_back(now_id);
@@ -179,23 +183,23 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
 
     ROS_INFO("%ld matches...", _matches.size());
 
-    cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
-    cv::resize(img, img, cv::Size(), 3, 3);
-
-    cv::imshow("Matches", img);
-    cv::waitKey(-1);
-
     Eigen::Matrix3d _cameraMatrix;
-    _cameraMatrix << this->cam->getParameters().fx(), 0, this->cam->getParameters().cx(),
-                    0, this->cam->getParameters().fy(), this->cam->getParameters().cy(), 0, 0, 1;
-    cv::Mat cameraMatrix;
-    cv::eigen2cv(_cameraMatrix, cameraMatrix);
+
     std::vector<uint8_t> status;
     findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
     // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
+
     reduceVector(_pts_up, status);
     reduceVector(_pts_down, status);
     reduceVector(ids, status);
+    reduceVector(_matches, status);
+
+
+    if (show) {
+        cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
+        cv::imshow("Matches", img);
+        cv::waitKey(30);
+    }
 
     ROS_INFO("[match_HFNet_local_features] Matched %d features", _pts_up.size());
     pts_up = std::vector<cv::Point2f>(_pts_up);
@@ -244,7 +248,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
 
     if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
-        ROS_INFO("Tring BF Match with HfNet instead");
+        ROS_INFO("Tring BF Match with HfNet instead, optical flow gives %d", pts_up.size());
         pts_up = toCV(ides.landmarks_2d);
         auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id]);
         pts_down = toCV(ides_down.landmarks_2d);
@@ -252,23 +256,10 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         cv::Mat _img = cv_ptr->image;
         cv::Mat _img2 = cv_ptr2->image;
 
-        // for (int i = 0; i < pts_up.size(); i++) {
-        //     cv::circle(_img, pts_up[i], 2, cv::Scalar(255, 0, 0), -1);
-        // }
-
-        // for (int i = 0; i < pts_down.size(); i++) {
-        //     cv::circle(_img2, pts_down[i], 2, cv::Scalar(255, 0, 0), -1);
-        // }
-
-        // cv::hconcat(_img, _img2, _img);
-
-        // cv::imshow("Features", _img);
-        // cv::waitKey(-1);
-
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
 
-    ROS_INFO("tracked points %ld", pts_down.size());
+    ROS_INFO("Tracked points %ld %ld", pts_up.size(), pts_down.size());
 
 
     ides.landmarks_2d.clear();
@@ -278,8 +269,8 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
-    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[0]);
-    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[0]);
+    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[vcam_id]);
+    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[vcam_id]);
 
     std::vector<float> desc_new;
 
@@ -319,7 +310,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         ides.landmarks_2d_norm.push_back(pt2d_norm);
         ides.landmarks_3d.push_back(pt3d);
 
-        //std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
+        // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
         desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
 
