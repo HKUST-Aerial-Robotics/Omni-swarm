@@ -49,5 +49,6 @@ private:
     std::vector<int> match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
         const cv::Mat & up, const cv::Mat & down);
 
-    PinholeCamera * cam;
+    CameraPtr cam;
+    cv::Mat cameraMatrix;
 };
