@@ -5,6 +5,7 @@
 #include <swarm_msgs/ImageDescriptor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <camodocal/camera_models/Camera.h>
+#include <camodocal/camera_models/PinholeCamera.h>
 #include <functional>
 #include <vins/VIOKeyframe.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
@@ -34,6 +35,7 @@ public:
 
     ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img, const int & vcam_id = 2);
 
+private:
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg);
 
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
@@ -43,7 +45,9 @@ public:
     cv::Point2d project_to_norm2d(cv::Point2f p);
 
     void encode_image(const cv::Mat & _img, ImageDescriptor_t & _img_desc);
+    
+    std::vector<int> match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
+        const cv::Mat & up, const cv::Mat & down);
 
-private:
-    CameraPtr cam;
+    PinholeCamera * cam;
 };
