@@ -31,15 +31,6 @@ protected:
     std::map<unsigned int, cv::Mat> id2cvimg;
     std::vector<cv::Scalar> colors;
     bool compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, cv::Mat img_new, cv::Mat img_old, LoopConnection & ret, bool init_mode=false);
-    bool compute_relative_pose(cv::Mat & img_new_small, cv::Mat & img_old_small, const std::vector<cv::Point2f> & nowPtsSmall, 
-        const std::vector<cv::Point2f> now_norm_2d,
-        const std::vector<cv::Point3f> now_3d,
-        Swarm::Pose old_extrinsic,
-        Swarm::Pose drone_pose_now,
-        Swarm::Pose drone_pose_old,
-        Swarm::Pose & DP_old_to_new,
-        bool init_mode,
-        bool use_orb_matching, int drone_id_new, int drone_id_old);
 
     int compute_relative_pose(
         const std::vector<cv::Point2f> now_norm_2d,
@@ -63,9 +54,6 @@ protected:
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode=false);
-
-    void find_correspoding_pts(cv::Mat img1, cv::Mat img2, std::vector<cv::Point2f> Pts, std::vector<cv::Point2f> &tracked, 
-            std::vector<unsigned char> & status, bool init_mode, bool visualize = false);
 
     std::set<int> success_loop_nodes;
     std::set<int> all_nodes;

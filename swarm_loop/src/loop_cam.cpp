@@ -5,14 +5,16 @@
 #include "opencv2/features2d.hpp"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <chrono>
+#include <opencv2/core/eigen.hpp>
 
 using namespace std::chrono;
 
 LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, bool _send_img, ros::NodeHandle &nh) : self_id(_self_id), send_img(_send_img)
 {
-    camodocal::CameraFactory cam_factory;\
+    camodocal::CameraFactory cam_factory;
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
-    cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
+    auto _cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
+    cam = (camodocal::PinholeCamera*)_cam.get();
     deepnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     printf("Waiting for deepnet......\n");
     deepnet_client.waitForExistence();
@@ -106,6 +108,7 @@ void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::P
     std::vector<uchar> reverse_status;
     cv::calcOpticalFlowPyrLK(img_down, img_up, pts_down, reverse_pts, reverse_status, err, cv::Size(21, 21), 3);
 
+
     for (size_t i = 0; i < status.size(); i++)
     {
         if (status[i] && reverse_status[i] && cv::norm(pts_up[i] - reverse_pts[i]) <= 0.5)
@@ -121,6 +124,83 @@ void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::P
     reduceVector(pts_down, status);
     reduceVector(pts_up, status);
     reduceVector(ids, status);
+}
+
+cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2, std::vector<cv::DMatch> _matches, const cv::Mat & up, const cv::Mat & down) {
+    std::vector<cv::KeyPoint> kps1;
+    std::vector<cv::KeyPoint> kps2;
+
+    for (auto pt : pts1) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        std::cout << "Pt" << pt << std::endl;
+        kps1.push_back(kp);
+    }
+
+    for (auto pt : pts2) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        std::cout << "Pt" << pt << std::endl;
+        kps2.push_back(kp);
+    }
+
+    cv::Mat _show;
+
+    cv::drawMatches(up, kps1, down, kps2, _matches, _show);
+
+    return _show;
+}
+
+std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
+        const cv::Mat & up, const cv::Mat & down) {
+    ROS_INFO("match_HFNet_local_features %ld %ld", pts_up.size(), pts_down.size());
+
+    cv::Mat desc_up( _desc_up.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_up.data, _desc_up.data(), _desc_up.size()*sizeof(float));
+    cv::Mat desc_down( _desc_down.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_down.data, _desc_down.data(), _desc_down.size()*sizeof(float));
+
+    ROS_INFO("Matching...");
+    cv::BFMatcher bfmatcher(cv::NORM_L2, true);
+
+    std::vector<cv::DMatch> _matches;
+    bfmatcher.match(desc_up, desc_down, _matches);
+
+    std::vector<cv::Point2f> _pts_up, _pts_down;
+    std::vector<int> ids;
+    for (auto match : _matches) {
+        int now_id = match.queryIdx;
+        int old_id = match.trainIdx;
+        std::cout<< "Query Idx" << now_id << "Train Idx" << old_id << std::endl;
+        _pts_up.push_back(pts_up[now_id]);
+        _pts_down.push_back(pts_down[old_id]);
+        ids.push_back(now_id);
+    }
+
+    ROS_INFO("%ld matches...", _matches.size());
+
+    cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
+    cv::resize(img, img, cv::Size(), 3, 3);
+
+    cv::imshow("Matches", img);
+    cv::waitKey(-1);
+
+    Eigen::Matrix3d _cameraMatrix;
+    _cameraMatrix << this->cam->getParameters().fx(), 0, this->cam->getParameters().cx(),
+                    0, this->cam->getParameters().fy(), this->cam->getParameters().cy(), 0, 0, 1;
+    cv::Mat cameraMatrix;
+    cv::eigen2cv(_cameraMatrix, cameraMatrix);
+    std::vector<uint8_t> status;
+    findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
+    // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
+    reduceVector(_pts_up, status);
+    reduceVector(_pts_down, status);
+    reduceVector(ids, status);
+
+    ROS_INFO("[match_HFNet_local_features] Matched %d features", _pts_up.size());
+    pts_up = std::vector<cv::Point2f>(_pts_up);
+    pts_down = std::vector<cv::Point2f>(_pts_down);
+    return ids;
 }
 
 ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img, const int & vcam_id)
@@ -158,15 +238,43 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
 
-    ides.landmarks_2d.clear();
-    ides.landmarks_2d_norm.clear();
-    ides.landmarks_3d.clear();
     std::vector<int> ids;
-
 
     ROS_INFO("try track %d pts", pts_up.size());
     track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
+
+    if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
+        ROS_INFO("Tring BF Match with HfNet instead");
+        pts_up = toCV(ides.landmarks_2d);
+        auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id]);
+        pts_down = toCV(ides_down.landmarks_2d);
+
+        cv::Mat _img = cv_ptr->image;
+        cv::Mat _img2 = cv_ptr2->image;
+
+        // for (int i = 0; i < pts_up.size(); i++) {
+        //     cv::circle(_img, pts_up[i], 2, cv::Scalar(255, 0, 0), -1);
+        // }
+
+        // for (int i = 0; i < pts_down.size(); i++) {
+        //     cv::circle(_img2, pts_down[i], 2, cv::Scalar(255, 0, 0), -1);
+        // }
+
+        // cv::hconcat(_img, _img2, _img);
+
+        // cv::imshow("Features", _img);
+        // cv::waitKey(-1);
+
+        ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
+    }
+
     ROS_INFO("tracked points %ld", pts_down.size());
+
+
+    ides.landmarks_2d.clear();
+    ides.landmarks_2d_norm.clear();
+    ides.landmarks_3d.clear();
+    
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
