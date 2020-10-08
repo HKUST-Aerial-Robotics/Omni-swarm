@@ -39,7 +39,7 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
             if (img.empty()) {
                 img = decode_image(img_des);
             }
-            debug_draw_kpts(img_des, img);
+            // debug_draw_kpts(img_des, img);
         }
 
         int new_added_image = -1;
@@ -593,7 +593,7 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
         assert(!img_old.empty() && "ERROR IMG old is emptry!");
         static char title[256] = {0};
         cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
-        cv::resize(show, show, cv::Size(), 2, 2);
+        // cv::resize(show, show, cv::Size(), 2, 2);
          if (success) {
             sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
