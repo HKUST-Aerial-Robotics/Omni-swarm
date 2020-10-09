@@ -188,8 +188,8 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     Eigen::Matrix3d _cameraMatrix;
 
     std::vector<uint8_t> status;
-    findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
-    // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
+    // findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
+    cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
 
     reduceVector(_pts_up, status);
     reduceVector(_pts_down, status);
@@ -199,7 +199,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
 
     if (show) {
         cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
-        cv::imshow("Matches", img);
+        cv::imshow("Stereo Matches", img);
         cv::waitKey(30);
     }
 

@@ -168,6 +168,7 @@ private:
         nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
         nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
         nh.param<int>("jpg_quality", JPG_QUALITY, 50);
+        nh.param<int>("accept_min_3d_pts", ACCEPT_MIN_3D_PTS, 50);
         nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
         nh.param<bool>("enable_pub_remote_img", enable_pub_remote_img, true);
         nh.param<bool>("enable_sub_remote_img", enable_sub_remote_img, false);

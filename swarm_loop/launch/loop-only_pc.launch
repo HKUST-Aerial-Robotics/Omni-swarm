@@ -1,8 +1,9 @@
 <launch>
-    <arg name="display" default="false" />
-    <arg name="node_start_delay" default="30.0" />
-    <arg name="manager"     default="manager"/>
+    <arg name="show" default="false" />
     <arg name="output" default="screen" />
+    <arg name="manager"     default="manager"/>
+    <arg name="send_img"     default="false"/>
+    <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
 
     <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
     <node pkg="nodelet" type="nodelet" name="SwarmLoopNode" 
@@ -23,16 +24,12 @@
             enable_pub_remote_img: true
             enable_sub_remote_img: false
             self_id: 4
+            accept_min_3d_pts: 20
+            max_freq: 5
+
         </rosparam>
-        <!-- <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" /> -->
-       <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" type="string" />
-    </node>
-    <node name="hfnet_server" pkg="swarm_loop" type="HFNet_server.py" output="$(arg output)">
-        <rosparam>
-            nms_radius: 4
-            num_keypoints: 200
-        </rosparam>
-        <param name="model_path" type="string" value="$(find swarm_loop)/config/hfnet" />
+       <param name="debug_image" value="$(arg show)" type="bool" />
+       <param name="send_img" value="$(arg send_img)" type="bool" />
+       <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
     </node>
 </launch>
