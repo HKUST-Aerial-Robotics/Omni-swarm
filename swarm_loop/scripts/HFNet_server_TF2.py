@@ -13,6 +13,7 @@ import numpy as np
 from swarm_loop.srv import HFNetSrv, HFNetSrvResponse
 from geometry_msgs.msg import Point32
 import time
+import sys
 
 tfa.register.register_all()
 
@@ -39,36 +40,56 @@ class HFNet:
         signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
         return frozen_func
     
-    def inference(self, img):
+    def inference(self, img, k, radius):
         _img = np.expand_dims(img, axis=2)
         _img = np.array([_img]).astype(np.float)
         _img = tf.convert_to_tensor(_img, dtype=tf.float32)
         start_time = time.time()
-        output = self.func(_img)
+        output = self.func(image=_img, 
+            k=tf.convert_to_tensor(k, dtype=tf.int32),
+            radius=tf.convert_to_tensor(radius, dtype=tf.int32))
+
         print( f'Inference hfnet {img.shape} in {( 1000. *(time.time() - start_time) ) }fms')
 
         return output
 
 
 class HFNetServer:
-    def __init__(self, model_path):
+    def __init__(self, model_path, k, radius, superpoint_mode = False):
         self.hfnet = HFNet(model_path)
 
         tmp_zer = np.random.randn(208, 400)
+        self.superpoint_mode = superpoint_mode
+        self.k = k
+        self.radius = radius
         self.inference_network_on_image(tmp_zer)
-        print("NFNet ready")
+
+        if superpoint_mode:
+            print("SuperPoint Ready")
+        else:
+            print("NFNet ready")
+        
     
     def inference_network_on_image(self, img):
-        ret = self.hfnet.inference(img)
-        return ret["global_descriptor"][0].numpy(), ret["keypoints"][0].numpy(), ret["local_descriptors"][0].numpy()
+        ret = self.hfnet.inference(img, self.k, self.radius)
+        if superpoint_mode:
+            return ret["keypoints"][0].numpy(), ret["local_descriptors"][0].numpy()
+        else:
+            return ret["global_descriptor"][0].numpy(), ret["keypoints"][0].numpy(), ret["local_descriptors"][0].numpy()
     
     def handle_req(self, req):
         start_time = time.time()
 
         cv_image = imgmsg_to_cv2( req.image )
-        global_desc, kpts, kp_descs = self.inference_network_on_image(cv_image)
+        if self.superpoint_mode:
+            kpts, kp_descs = self.inference_network_on_image(cv_image)
+        else:
+            global_desc, kpts, kp_descs = self.inference_network_on_image(cv_image)
+
         ret = HFNetSrvResponse()
-        ret.global_desc = global_desc
+
+        if not self.superpoint_mode:
+            ret.global_desc = global_desc
         _kpts = []
         for pt in kpts:
             kp = Point32(pt[0], pt[1], 0)
@@ -77,7 +98,7 @@ class HFNetServer:
         print(kp_descs.shape)
         ret.local_descriptors = kp_descs.flatten()
 
-        print( 'HFNet return req in %4.4fms' %( 1000. *(time.time() - start_time) ) )
+        print( 'HFNet return req in %4.4f ms' %( 1000. *(time.time() - start_time) ) )
         return ret
 
 def set_memory_limit(memory_limit):   
@@ -95,17 +116,32 @@ def set_memory_limit(memory_limit):
             print(e)
 
 
-
-
-
 if __name__ == "__main__":
-    print("Initializing HFNet... with tensorflow {}".format(tf.__version__))
-    rospy.init_node( 'hfnet_server' )
+
+    superpoint_mode = False
+    print(sys.argv)
+    if len(sys.argv) > 1 and sys.argv[1] == "superpoint":
+        superpoint_mode = True
+        print("Initializing SuperPoint with tensorflow {}".format(tf.__version__))
+    else:
+        print("Initializing HFNet with tensorflow {}".format(tf.__version__))
+
+
+    if superpoint_mode:
+        rospy.init_node( 'superpoint_server' )
+    else:
+        rospy.init_node( 'hfnet_server' )
+
     model_path = rospy.get_param('~model_path')
+    radius = rospy.get_param('~nms_radius')
+    k = rospy.get_param('~num_keypoints')
     memory_limit = rospy.get_param('~memory_limit')
     
     set_memory_limit(memory_limit)
     
-    hfserver = HFNetServer(model_path)
-    s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
+    hfserver = HFNetServer(model_path, k, radius, superpoint_mode=superpoint_mode)
+    if superpoint_mode:
+        s = rospy.Service( '/swarm_loop/superpoint', HFNetSrv, hfserver.handle_req)
+    else:
+        s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
     rospy.spin()
