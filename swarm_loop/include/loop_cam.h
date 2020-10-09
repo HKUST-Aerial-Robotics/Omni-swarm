@@ -5,6 +5,7 @@
 #include <swarm_msgs/ImageDescriptor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <camodocal/camera_models/Camera.h>
+#include <camodocal/camera_models/PinholeCamera.h>
 #include <functional>
 #include <vins/VIOKeyframe.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
@@ -44,7 +45,10 @@ public:
     cv::Point2d project_to_norm2d(cv::Point2f p);
 
     void encode_image(const cv::Mat & _img, ImageDescriptor_t & _img_desc);
+    
+    std::vector<int> match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
+        const cv::Mat & up, const cv::Mat & down);
 
-private:
     CameraPtr cam;
+    cv::Mat cameraMatrix;
 };

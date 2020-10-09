@@ -56,6 +56,8 @@ extern int MATCH_INDEX_DIST;
 
 #define ENABLE_OPTICAL_SEC_TRY_INIT 
 
+#define ACCEPT_MIN_3D_PTS 30
+
 #define GFTT_PTS 1000
 #define GFTT_MIN_DIS 10
 
