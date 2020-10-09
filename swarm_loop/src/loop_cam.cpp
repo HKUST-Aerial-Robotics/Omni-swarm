@@ -252,7 +252,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
     if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
         ROS_INFO("Tring BF Match with HfNet instead, optical flow gives %d", pts_up.size());
         pts_up = toCV(ides.landmarks_2d);
-        auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id]);
+        auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], true);
         pts_down = toCV(ides_down.landmarks_2d);
 
         cv::Mat _img = cv_ptr->image;
