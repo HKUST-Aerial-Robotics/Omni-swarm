@@ -25,6 +25,7 @@
             enable_sub_remote_img: false
             self_id: 4
             max_freq: 1.0
+            accept_min_3d_pts: 100
 
         </rosparam>
         <!-- <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" /> -->
