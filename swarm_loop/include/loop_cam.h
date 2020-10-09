@@ -21,7 +21,8 @@ class LoopCam {
     int cam_count = 0;
     int loop_duration = 10;
     int self_id = 0;
-    ros::ServiceClient deepnet_client;
+    ros::ServiceClient hfnet_client;
+    ros::ServiceClient superpoint_client;
 
     bool send_img;
 public:
@@ -34,7 +35,7 @@ public:
 
     ImageDescriptor_t on_flattened_images(const vins::FlattenImages& msg, cv::Mat & img, const int & vcam_id = 2);
 
-    ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg);
+    ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg, bool superpoint_mode=false);
 
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
