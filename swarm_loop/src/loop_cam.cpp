@@ -209,7 +209,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     return ids;
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(vins::FlattenImages msg, cv::Mat & img, const int & vcam_id)
+ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id)
 {
     if (vcam_id > msg.up_cams.size()) {
         ROS_WARN("Flatten images too few");

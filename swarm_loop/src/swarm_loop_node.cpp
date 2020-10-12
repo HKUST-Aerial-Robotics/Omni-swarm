@@ -9,6 +9,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <thread>
 #include <nav_msgs/Odometry.h>
+#include <mutex>
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -63,14 +64,19 @@ public:
     }
 
     vins::FlattenImages viokf;
+    std::mutex viokf_lock;
     void flatten_raw_callback(const vins::FlattenImages & viokf) {
+        viokf_lock.lock();
         this->viokf = viokf;
+        viokf_lock.unlock();
     }
 
     double last_invoke = 0;
     void odometry_callback(const nav_msgs::Odometry & odometry) {
+        viokf_lock.lock();
         if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3 ||
             odometry.header.stamp.toSec() - last_invoke < 1/max_freq) {
+            viokf_lock.unlock();
             return;
         }
 
@@ -78,12 +84,14 @@ public:
 
         last_invoke = odometry.header.stamp.toSec();
         viokf.pose_drone = odometry.pose.pose;
+        vins::FlattenImages _viokf = viokf;
+
+        viokf_lock.unlock();
 
         if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
-            //
-            VIOKF_callback(viokf, true);
+            VIOKF_callback(_viokf, true);
         } else {
-            VIOKF_callback(viokf);
+            VIOKF_callback(_viokf);
         }
     }
 
