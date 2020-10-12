@@ -6,6 +6,7 @@
 
 using namespace std::chrono; 
 
+#define ESTIMATE_AFFINE3D
 
 void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto pts = toCV(img_des.landmarks_2d);
@@ -152,6 +153,22 @@ Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
     T_w_c_old = R_w_c_old * (-T_pnp);
 
     return Swarm::Pose(R_w_c_old, T_w_c_old);
+}
+
+Swarm::Pose AffineRestoCamPose(Eigen::Matrix4d affine) {
+    Eigen::Matrix3d R;
+    Eigen::Vector3d T;
+
+    R = affine.block<3, 3>(0, 0);
+    T = affine.block<3, 1>(0, 3);
+    
+    R = (R.normalized()).transpose();
+    T = R *(-T);
+
+    std::cout << "R of affine\n" << R << std::endl;
+    std::cout << "T of affine\n" << T << std::endl;
+    std::cout << "RtR\n" << R.transpose()*R << std::endl;
+    return Swarm::Pose(R, T);
 }
 
 int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
@@ -446,6 +463,7 @@ double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone
 }
 
 
+
 int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
         const cv::Mat desc_now,
@@ -469,7 +487,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
 
-    std::vector<cv::Point3f> matched_3d_now;
+    std::vector<cv::Point3f> matched_3d_now, matched_3d_old;
     std::vector<cv::Point2f> matched_2d_norm_old;
 
     for (auto match : _matches) {
@@ -477,6 +495,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         int old_id = match.trainIdx;
         matched_3d_now.push_back(now_3d[now_id]);
         matched_2d_norm_old.push_back(old_norm_2d[old_id]);
+        matched_3d_old.push_back(old_3d[old_id]);
     }
  
     if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
@@ -489,10 +508,12 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
 
         //TODO: Prepare initial pose for swarm
 
-        Swarm::Pose initial_old_drone_pose = drone_pose_now;
+        Swarm::Pose initial_old_drone_pose = drone_pose_old;
         // }
 
         Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
+        Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
+        Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
 
         PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
         
@@ -504,13 +525,16 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
 
         bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/200,     0.995,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
+
         auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
         
         if (!success) {
             return 0;
         }
 
-        Swarm::Pose DP_old_to_new_6d =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+        Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+        std::cout << "Initial Old DPose";
+        old_drone_to_new_initial.print();
         std::cout << "PnP solved DPose 6D";
         DP_old_to_new_6d.print();
         DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
@@ -671,3 +695,32 @@ LoopDetector::LoopDetector(const std::string & voc_path):
 
 
 
+Swarm::Pose solve_affine_pts3d(std::vector<cv::Point3f> matched_3d_now, std::vector<cv::Point3f> matched_3d_old) {
+    cv::Mat affine;
+    std::vector<uchar> _inliners;
+    Eigen::Matrix<double, 3, Eigen::Dynamic> src (3, matched_3d_now.size ());
+    Eigen::Matrix<double, 3, Eigen::Dynamic> tgt (3, matched_3d_old.size ());
+    
+    for (std::size_t i = 0; i < matched_3d_now.size (); ++i)
+    {
+        src (0, i) = matched_3d_now[i].x;
+        src (1, i) = matched_3d_now[i].y;
+        src (2, i) = matched_3d_now[i].z;
+    
+        tgt (0, i) = matched_3d_old[i].x;
+        tgt (1, i) = matched_3d_old[i].y;
+        tgt (2, i) = matched_3d_old[i].z;
+    }
+    Eigen::Matrix4d transformation_matrix = Eigen::umeyama (src, tgt, false);
+
+    std::cout << transformation_matrix << std::endl;
+    Swarm::Pose p_cam_old_in_new_affine = AffineRestoCamPose(transformation_matrix);
+
+    int c = 0;
+    for (auto i : _inliners) {
+        c += i;
+    }
+
+    std::cout << "Affine gives" << c << " inliers" << std::endl;
+    return p_cam_old_in_new_affine;
+}

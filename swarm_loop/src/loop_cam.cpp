@@ -209,7 +209,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     return ids;
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img, const int & vcam_id)
+ImageDescriptor_t LoopCam::on_flattened_images(vins::FlattenImages msg, cv::Mat & img, const int & vcam_id)
 {
     if (vcam_id > msg.up_cams.size()) {
         ROS_WARN("Flatten images too few");
@@ -257,6 +257,14 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
 
         cv::Mat _img = cv_ptr->image;
         cv::Mat _img2 = cv_ptr2->image;
+
+        cv::Mat img_show;
+        cv::cvtColor(_img, img_show, cv::COLOR_GRAY2BGR);
+        for (auto pt : pts_up) {
+            cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        cv::imshow("Up SuperPoints", img_show);
 
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
