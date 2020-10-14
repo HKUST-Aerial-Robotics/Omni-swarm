@@ -98,10 +98,16 @@ public:
     void VIOKF_callback(const vins::FlattenImages & viokf, bool accept_non_movement = false) {
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
+        bool is_non_kf = false;
+        if (dpos < min_movement_keyframe) {
+            if(!accept_non_movement) {
+                ROS_WARN("VIOKF no enough movement, will giveup");
+                return;
+            } else {
+                // is_non_kf = true;
+                ROS_INFO("ADD VIONonKeyframe MOVE %3.2fm", dpos);
+            }
 
-        if (dpos < min_movement_keyframe && !accept_non_movement) {
-            ROS_WARN("VIOKF no enough movement, will giveup");
-            return;
         } else {
             ROS_INFO("ADD VIOKeyframe MOVE %3.2fm", dpos);
         }
@@ -110,8 +116,11 @@ public:
 
         auto start = high_resolution_clock::now();
         cv::Mat img;
+        
         auto ret = loop_cam->on_flattened_images(viokf, img);
-        ret.prevent_adding_db = false;
+        
+        ret.prevent_adding_db = is_non_kf;
+
         if (ret.landmark_num == 0) {
             ROS_WARN("Null img desc, CNN no ready");
             return;
