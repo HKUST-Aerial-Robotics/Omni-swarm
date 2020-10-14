@@ -264,7 +264,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
             cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
         }
 
-        cv::imshow("Up SuperPoints", img_show);
+        // cv::imshow("Up SuperPoints", img_show);
 
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
