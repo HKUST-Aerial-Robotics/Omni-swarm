@@ -246,8 +246,9 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
 
     std::vector<int> ids;
 
-    ROS_INFO("try track %d pts", pts_up.size());
-    track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
+    // ROS_INFO("try track %d pts", pts_up.size());
+    // track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
+    // Not use tracker now.
 
     if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
         ROS_INFO("Tring BF Match with HfNet instead, optical flow gives %d", pts_up.size());
@@ -331,9 +332,9 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         // std::cout << "P3d:" << point_3d.transpose() << std::endl;
     }
 
-    ides.feature_descriptor = desc_new;
-
-    ides.landmark_num = ides.landmarks_2d.size();
+    ides.feature_descriptor.clear();
+    ides.feature_descriptor = std::vector<float>(desc_new);
+    std::cout << "Desc Size" << ides.feature_descriptor.size() << std::endl;
 
     ides.landmark_num = ides.landmarks_2d.size();
 
