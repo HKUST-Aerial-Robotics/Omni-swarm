@@ -24,7 +24,8 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         ROS_INFO("Empty local database, where giveup remote image");
         return;
     } else {
-        ROS_INFO("Receive image from %d with %d features", img_des.drone_id, img_des.landmark_num);
+        ROS_INFO("Receive image from %d with %d features and local feature size %d %d", img_des.drone_id, img_des.landmark_num, 
+            img_des.feature_descriptor_size, img_des.feature_descriptor.size());
     }
 
 
@@ -576,22 +577,22 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
 
     assert(old_img_desc.drone_id == self_id && "old img desc must from self drone!");
 
-    ROS_INFO("Compute loop %d->%d", old_img_desc.drone_id, new_img_desc.drone_id);
-
     bool success = false;
     Swarm::Pose  DP_old_to_new;
 
     bool first_try_match_mode = false;
 
-    ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
-        new_img_desc.drone_id, 
+    ROS_INFO("Compute loop %d->%d LANDMARK from %d:%d. Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
+        old_img_desc.landmark_num,
         new_img_desc.landmark_num,
         first_try_match_mode, init_mode);
 
     auto now_2d = toCV(new_img_desc.landmarks_2d);
     auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
     auto now_3d = toCV(new_img_desc.landmarks_3d);
-    ROS_INFO("New desc %ld/%ld", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
+
+    assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
+    assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
     cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
