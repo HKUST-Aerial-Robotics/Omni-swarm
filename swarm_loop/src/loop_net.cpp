@@ -158,7 +158,8 @@ void LoopNet::scan_recv_packets() {
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             receved_msgs[msg_id].landmark_num == receved_msgs[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld, Feature %ld/%ld", receved_msgs[msg_id].landmarks_2d.size(), receved_msgs[msg_id].landmark_num);
+            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%ld", msg_id, receved_msgs[msg_id].drone_id, receved_msgs[msg_id].landmarks_2d.size(), receved_msgs[msg_id].landmark_num);
+            receved_msgs[msg_id].landmark_num = receved_msgs[msg_id].landmarks_2d.size();
             finish_recv.insert(msg_id);
         }
     }
@@ -174,15 +175,9 @@ void LoopNet::scan_recv_packets() {
         auto & msg = receved_msgs[_id];
         //Processed recevied message
         if (msg.landmarks_2d.size() > 0) {
-            msg.landmark_num = msg.landmarks_2d.size();
             this->img_desc_callback(msg);
         }
         receved_msgs.erase(_id);
-    }
-
-    //Now we could process there recevied frames
-    for (int msg_id: finish_recv) {
-        this->img_desc_callback(receved_msgs[msg_id]);
     }
 }
 
@@ -205,10 +200,11 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.landmarks_2d.push_back(msg->landmark_2d);
     tmp.landmarks_3d.push_back(msg->landmark_3d);
     tmp.landmarks_flag.push_back(msg->landmark_flag);
-    tmp.feature_descriptor.insert(tmp.feature_descriptor.begin(),
+    tmp.feature_descriptor.insert(tmp.feature_descriptor.end(),
         msg->feature_descriptor,
         msg->feature_descriptor+256
     );
+    tmp.feature_descriptor_size = tmp.feature_descriptor.size();
     recv_lock.unlock();
     
     scan_recv_packets();
