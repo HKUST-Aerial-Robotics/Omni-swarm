@@ -68,11 +68,15 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
 
     if (send_img || send_whole_img_desc) {
         if (!send_whole_img_desc) {
-            img_des.feature_descriptor_size = 0;
-            img_des.feature_descriptor.clear();
+            ImageDescriptor_t img_desc_new = img_des;
+            img_desc_new.feature_descriptor_size = 0;
+            img_desc_new.feature_descriptor.clear();
+            ROS_INFO("Sending IMG DES Size %d with %d landmarks.local feature size %d", img_desc_new.getEncodedSize(), img_desc_new.landmark_num, img_desc_new.feature_descriptor_size);
+            lcm.publish("SWARM_LOOP_IMG_DES", &img_desc_new);
+        } else {
+            ROS_INFO("Sending IMG DES Size %d with %d landmarks.local feature size %d", img_des.getEncodedSize(), img_des.landmark_num, img_des.feature_descriptor_size);
+            lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
         }
-        ROS_INFO("Sending IMG DES Size %d with %d landmarks %d and local feature size %d", img_des.getEncodedSize(), img_des.landmark_num, img_des.feature_descriptor_size);
-        lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
     }
     
 

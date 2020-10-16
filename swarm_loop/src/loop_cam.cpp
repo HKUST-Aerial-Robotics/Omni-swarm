@@ -335,6 +335,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
     ides.feature_descriptor.clear();
     ides.feature_descriptor = std::vector<float>(desc_new);
     std::cout << "Desc Size" << ides.feature_descriptor.size() << std::endl;
+    ides.feature_descriptor_size = ides.feature_descriptor.size();
 
     ides.landmark_num = ides.landmarks_2d.size();
 
