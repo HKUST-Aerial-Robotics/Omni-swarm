@@ -502,7 +502,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         matched_2d_norm_old.push_back(old_norm_2d[old_id]);
         matched_3d_old.push_back(old_3d[old_id]);
     }
- 
+
     if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
         ROS_INFO("Matched features %ld", _matches.size());
