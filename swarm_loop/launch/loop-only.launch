@@ -3,6 +3,7 @@
     <arg name="output" default="screen" />
     <arg name="manager"     default="manager"/>
     <arg name="send_img"     default="false"/>
+    <arg name="send_whole_img_desc"     default="false"/>
     <arg name="self_id"     default="1"/>
     <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
 
@@ -27,10 +28,12 @@
             max_freq: 0.5
             accept_min_3d_pts: 100
 
+            recv_msg_duration: 0.5
         </rosparam>
         <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />
        <param name="debug_image" value="$(arg show)" type="bool" />
        <param name="send_img" value="$(arg send_img)" type="bool" />
+       <param name="send_whole_img_desc" value="$(arg send_whole_img_desc)" type="bool" />
        <param name="self_id" value="$(arg self_id)" type="int" />
        <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
     </node>

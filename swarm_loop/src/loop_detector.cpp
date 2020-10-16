@@ -23,7 +23,9 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
     if (img_des.drone_id!= this->self_id && database_size() == 0) {
         ROS_INFO("Empty local database, where giveup remote image");
         return;
-    } 
+    } else {
+        ROS_INFO("Receive image from %d with %d features", img_des.drone_id, img_des.landmark_num);
+    }
 
 
     success_loop_nodes.insert(self_id);
@@ -37,8 +39,10 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
         if (enable_visualize) {
-            if (img.empty()) {
+            if (img.empty() && img_des.image.size() != 0) {
                 img = decode_image(img_des);
+            } else {
+                img = cv::Mat(208, 400, CV_8UC3, cv::Scalar(255, 255, 255));
             }
             // debug_draw_kpts(img_des, img);
         }
@@ -500,7 +504,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
  
     if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
-
+        ROS_INFO("Matched features %ld", _matches.size());
         cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
         cv::Mat r, rvec, t, D, tmp_r;
@@ -523,7 +527,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
             iteratives = 1000;
         }
 
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/200,     0.995,  inliers, cv::SOLVEPNP_DLS);
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, false,            iteratives,        PNP_REPROJECT_ERROR/200,     0.99,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
 
         auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
@@ -555,6 +559,8 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
             matches.push_back(_matches[idx]);
         }
         return success;
+    } else {
+        ROS_INFO("Matched features too less %ld", _matches.size());
     }
 
     return 0;
@@ -597,8 +603,6 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
 
     std::vector<cv::DMatch> matches;
-
-    ROS_INFO("Will compute relative pose");
 
     int inlier_num = 0;
     success = compute_relative_pose(
