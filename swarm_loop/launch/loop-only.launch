@@ -19,7 +19,7 @@
             jpg_quality: 75
             enable_lk: true
             
-            query_thres: 0.5
+            query_thres: 0.6
             init_query_thres: 0.8
 
             min_movement_keyframe: 0.1
