@@ -221,13 +221,13 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
             if (img_desc.drone_id != return_drone_id) {
                 //Not same drone id, we don't care about the max index
                 thres = INIT_MODE_PRODUCT_THRES;
-                if (labels[i] < database_size() - 1 && distances[i] > thres) {
+                if (labels[i] < database_size() - 1 && distances[i] < thres) {
                     ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
                     return labels[i];
                 }
             }
 
-            if (labels[i] < database_size() - max_index && distances[i] > thres) {
+            if (labels[i] < database_size() - max_index && distances[i] < thres) {
                 //Is same id, max index make sense
                 ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
                 return labels[i];

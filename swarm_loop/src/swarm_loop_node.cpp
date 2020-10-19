@@ -251,7 +251,7 @@ private:
             remote_image_desc_pub = nh.advertise<swarm_msgs::ImageDescriptor>("remote_image_desc", 10);
         }
 
-        timer = nh.createTimer(ros::Duration(0.01), [&](auto e) {
+        timer = nh.createTimer(ros::Duration(0.01), [&](const ros::TimerEvent & e) {
             loop_net->scan_recv_packets();
         });
 
