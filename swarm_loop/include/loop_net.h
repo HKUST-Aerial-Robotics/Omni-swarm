@@ -26,17 +26,18 @@ class LoopNet {
     std::mutex recv_lock;
 
     bool send_img;
+    bool send_whole_img_desc;
 
 public:
-    LoopNet(std::string _lcm_uri, bool _send_img, double _recv_period = 0.5):
-        lcm(_lcm_uri), send_img(_send_img), recv_period(_recv_period) {
+    LoopNet(std::string _lcm_uri, bool _send_img, bool _send_whole_img_desc, double _recv_period = 0.5):
+        lcm(_lcm_uri), send_img(_send_img), send_whole_img_desc(_send_whole_img_desc), recv_period(_recv_period) {
         this->setup_network(_lcm_uri);
     }
 
     std::map<int64_t, ImageDescriptor_t> receved_msgs;
     std::map<int64_t, double> msg_recv_last_time;
     std::map<int64_t, double> msg_header_recv_time;
-    std::set<int64_t> active_recving_msg;
+    std::set<int64_t> active_receving_msg;
     std::set<int64_t> blacklist;
 
     std::function<void(const ImageDescriptor_t &)> img_desc_callback;
