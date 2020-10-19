@@ -176,7 +176,7 @@ private:
         std::string camera_config_path = "";
         std::string BRIEF_PATTHER_FILE = "";
         std::string ORB_VOC = "";
-
+        cv::setNumThreads(1);
         nh.param<int>("self_id", self_id, -1);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
