@@ -38,6 +38,8 @@ public:
     ros::Time last_kftime;
     Eigen::Vector3d last_keyframe_position = Eigen::Vector3d(10000, 10000, 10000);
 
+    std::set<ros::Time> received_keyframe_stamps;
+
 
     void on_loop_connection (LoopConnection & loop_con, bool is_local = false) {
         if(is_local) {
@@ -48,69 +50,102 @@ public:
         loopconn_pub.publish(loop_con);
     }
 
-    void VIOnonKF_callback(const vins::VIOKeyframe & viokf) {
+
+
+    std::queue<vins::FlattenImages> viokfs;
+    std::mutex viokf_lock;
+
+    vins::FlattenImages find_viokf(const nav_msgs::Odometry & odometry) {
+        auto stamp = odometry.header.stamp;
+        vins::FlattenImages ret;
+        ret.header.stamp = ros::Time(0);
+        viokf_lock.lock();
+
+        while (viokfs.size() > 0 && fabs(stamp.toSec() - viokfs.front().header.stamp.toSec()) > 1e-3) {
+            // ROS_INFO("Removing d stamp %f", stamp.toSec() - viokfs.front().header.stamp.toSec());
+            viokfs.pop();
+        }
+
+        if (viokfs.size() > 0 && fabs(stamp.toSec() - viokfs.front().header.stamp.toSec() < 1e-3)) {
+            ret = viokfs.front();
+            ret.pose_drone = odometry.pose.pose;
+            viokfs.pop();
+            // ROS_INFO("VIO KF found, returning...");
+            viokf_lock.unlock();
+            return ret;
+        } 
+
+        viokf_lock.unlock();
+        return ret;
+    }
+
+    void flatten_raw_callback(const vins::FlattenImages & viokf) {
+        viokf_lock.lock();
+        // ROS_INFO("Received flatten_raw %f", viokf.header.stamp.toSec());
+        viokfs.push(viokf);
+        viokf_lock.unlock();
+    }
+
+    double last_invoke = 0;
+    
+    void odometry_callback(const nav_msgs::Odometry & odometry) {
+        if (odometry.header.stamp.toSec() - last_invoke < ACCEPT_NONKEYFRAME_WAITSEC) {
+            return;
+        }
+
+        auto _viokf = find_viokf(odometry);
+        if (_viokf.header.stamp.toSec() > 1000) {
+            // ROS_INFO("VIO Non Keyframe callback!!");
+            VIOnonKF_callback(_viokf);
+        } else {
+            ROS_WARN("Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
+        }
+    }
+
+    void odometry_keyframe_callback(const nav_msgs::Odometry & odometry) {
+        // ROS_INFO("VIO Keyframe received");
+        auto _viokf = find_viokf(odometry);
+        if (_viokf.header.stamp.toSec() > 1000) {
+            VIOKF_callback(_viokf);
+        } else {
+            ROS_WARN("Flattened images correspond to this Keyframe not found: %f", odometry.header.stamp.toSec());
+        }
+    }
+
+    void VIOnonKF_callback(const vins::FlattenImages & viokf) {
         //If never received image or 15 sec not receiving kf, use this as KF, this is ensure we don't missing data
         //Note that for the second case, we will not add it to database, matching only
             
         if (!recived_image && (viokf.header.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
             //
-            ROS_INFO("USE non vio kf as KF at first!");
+            ROS_INFO("USE non vio kf as KF at first keyframe!");
+            VIOKF_callback(viokf);
             return;
         }
 
         if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
             //
-        }
-    }
-
-    vins::FlattenImages viokf;
-    std::mutex viokf_lock;
-    void flatten_raw_callback(const vins::FlattenImages & viokf) {
-        viokf_lock.lock();
-        this->viokf = viokf;
-        viokf_lock.unlock();
-    }
-
-    double last_invoke = 0;
-    void odometry_callback(const nav_msgs::Odometry & odometry) {
-        viokf_lock.lock();
-        if (abs(odometry.header.stamp.toSec() - viokf.header.stamp.toSec()) > 1e-3 ||
-            odometry.header.stamp.toSec() - last_invoke < 1/max_freq) {
-            viokf_lock.unlock();
-            return;
-        }
-
-        ROS_INFO("New KF %fms", odometry.header.stamp.toSec() - last_invoke );
-
-        last_invoke = odometry.header.stamp.toSec();
-        viokf.pose_drone = odometry.pose.pose;
-        vins::FlattenImages _viokf = viokf;
-
-        viokf_lock.unlock();
-
-        if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
-            VIOKF_callback(_viokf, true);
-        } else {
-            VIOKF_callback(_viokf);
+            VIOKF_callback(viokf, true);
         }
     }
 
     void VIOKF_callback(const vins::FlattenImages & viokf, bool accept_non_movement = false) {
+        last_invoke = viokf.header.stamp.toSec();
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
         bool is_non_kf = false;
-        if (dpos < min_movement_keyframe) {
-            if(!accept_non_movement) {
-                ROS_WARN("VIOKF no enough movement, will giveup");
-                return;
-            } else {
-                // is_non_kf = true;
-                ROS_INFO("ADD VIONonKeyframe MOVE %3.2fm", dpos);
-            }
+        // if (dpos < min_movement_keyframe) {
+        //     if(!accept_non_movement) {
+        //         ROS_WARN("VIOKF no enough movement, will giveup");
+        //         return;
+        //     } else {
+        //         // is_non_kf = true;
+        //         ROS_INFO("ADD VIONonKeyframe MOVE %3.2fm", dpos);
+        //     }
 
-        } else {
-            ROS_INFO("ADD VIOKeyframe MOVE %3.2fm", dpos);
-        }
+        // } else {
+        //     ROS_INFO("ADD VIOKeyframe MOVE %3.2fm", dpos);
+        // }
 
         last_kftime = viokf.header.stamp;
 
@@ -150,6 +185,7 @@ public:
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
     ros::Subscriber odometry_sub;
+    ros::Subscriber keyframe_odometry_sub;
     ros::Subscriber flatten_raw_sub;
     ros::Subscriber remote_img_sub;
     ros::Subscriber viononkeyframe_sub;
@@ -240,6 +276,8 @@ private:
 
         flatten_raw_sub = nh.subscribe("/vins_estimator/flattened_gray", 1, &SwarmLoopNode::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
         odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoopNode::odometry_callback, this, ros::TransportHints().tcpNoDelay());
+        keyframe_odometry_sub  = nh.subscribe("/vins_estimator/keyframe_pose", 1, &SwarmLoopNode::odometry_keyframe_callback, this, ros::TransportHints().tcpNoDelay());
+
         loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
         
         if (enable_sub_remote_img) {
