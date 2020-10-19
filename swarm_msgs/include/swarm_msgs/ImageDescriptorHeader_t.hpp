@@ -34,6 +34,8 @@ class ImageDescriptorHeader_t
 
         int64_t    msg_id;
 
+        int32_t    feature_num;
+
     public:
         /**
          * Encode a message into binary form.
@@ -156,6 +158,9 @@ int ImageDescriptorHeader_t::_encodeNoHash(void *buf, int offset, int maxlen) co
     tlen = __int64_t_encode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = __int32_t_encode_array(buf, offset + pos, maxlen - pos, &this->feature_num, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     return pos;
 }
 
@@ -190,6 +195,9 @@ int ImageDescriptorHeader_t::_decodeNoHash(const void *buf, int offset, int maxl
     tlen = __int64_t_decode_array(buf, offset + pos, maxlen - pos, &this->msg_id, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = __int32_t_decode_array(buf, offset + pos, maxlen - pos, &this->feature_num, 1);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     return pos;
 }
 
@@ -204,6 +212,7 @@ int ImageDescriptorHeader_t::_getEncodedSizeNoHash() const
     enc_size += this->camera_extrinsic._getEncodedSizeNoHash();
     enc_size += __boolean_encoded_array_size(NULL, 1);
     enc_size += __int64_t_encoded_array_size(NULL, 1);
+    enc_size += __int32_t_encoded_array_size(NULL, 1);
     return enc_size;
 }
 
@@ -215,7 +224,7 @@ uint64_t ImageDescriptorHeader_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, ImageDescriptorHeader_t::getHash };
 
-    uint64_t hash = 0x47460e7886979241LL +
+    uint64_t hash = 0x22f74e591f811efbLL +
          Time_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp) +
          Pose_t::_computeHash(&cp);

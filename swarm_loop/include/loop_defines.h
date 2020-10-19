@@ -30,7 +30,7 @@ extern int MIN_LOOP_NUM;
 
 #define DEEP_DESC_SIZE 1024
 
-#define SEARCH_NEAREST_NUM 10
+#define SEARCH_NEAREST_NUM 5
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 #define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 
@@ -41,7 +41,7 @@ extern int MATCH_INDEX_DIST;
 #define ORB_HAMMING_DISTANCE 40 //Max hamming
 #define ORB_UV_DISTANCE 1.5 //UV distance bigger than mid*this will be removed
 
-#define VISUALIZE_SCALE 1 //Scale for visuallize
+#define VISUALIZE_SCALE 2 //Scale for visuallize
 
 #define CROP_WIDTH_THRES 0.05 //If movement bigger than this, crop some matches down
 
@@ -56,10 +56,12 @@ extern int MATCH_INDEX_DIST;
 
 #define ENABLE_OPTICAL_SEC_TRY_INIT 
 
+extern int ACCEPT_MIN_3D_PTS;
+
 #define GFTT_PTS 1000
 #define GFTT_MIN_DIS 10
 
-#define RPERR_THRES 3*DEG2RAD
+#define RPERR_THRES 10*DEG2RAD
 #define LOCAL_DESC_LEN 256
 
 extern bool ENABLE_LK_LOOP_DETECTION; 

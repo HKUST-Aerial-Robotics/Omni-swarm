@@ -125,6 +125,14 @@ public:
         update_yaw();
     }
 
+    Pose(Eigen::Vector3d pos, Eigen::Quaterniond att) {
+        this->attitude = att;
+        position = pos;
+        attitude.normalize();
+
+        update_yaw();
+    }
+
     Pose(const geometry_msgs::Pose &p) {
         attitude.w() = p.orientation.w;
         attitude.x() = p.orientation.x;

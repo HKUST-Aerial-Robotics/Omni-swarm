@@ -29,6 +29,7 @@ struct ImageDescriptorHeader_t {
     Pose_t camera_extrinsic;
     boolean prevent_adding_db;
     int64_t msg_id;
+    int32_t feature_num;
 }
 
 struct LandmarkDescriptor_t {
