@@ -39,13 +39,12 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
-        if (enable_visualize) {
-            if (img.empty() && img_des.image.size() != 0) {
+        if (enable_visualize && img.empty()) {
+            if (img_des.image.size() != 0) {
                 img = decode_image(img_des);
             } else {
                 img = cv::Mat(208, 400, CV_8UC3, cv::Scalar(255, 255, 255));
             }
-            // debug_draw_kpts(img_des, img);
         }
 
         int new_added_image = -1;
