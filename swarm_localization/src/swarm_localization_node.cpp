@@ -116,12 +116,14 @@ class SwarmLocalizationNode {
         }
 
         for (auto nd: _nf.detected) {
-            if (nodedef_has_id(nd.remote_drone_id)) {
-                DetectedObject dobj(Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z), nd.inv_dep, nd.enable_scale);
-                nf.detected_nodes_posvar[nd.remote_drone_id] = 
-                    Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
-                nf.has_detect_relpose = true;
-            }
+            Eigen::Vector3d dir(nd.dpos.x, nd.dpos.y, nd.dpos.z);
+            DetectedObject dobj(dir.normalized(), nd.inv_dep, nd.enable_scale);
+            nf.detected_nodes_posvar[nd.remote_drone_id] = 
+                Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
+            nf.has_detect_relpose = true;
+            // ROS_INFO("Det from %d to %d dir %f %f %f", nf.id, nd.remote_drone_id, dir.x(), dir.y(), dir.z());
+
+            nf.detected_nodes[nd.remote_drone_id] = dobj;
         }
         return nf;
     }
@@ -434,6 +436,7 @@ public:
         nh.param<float>("min_kf_movement", solver_params.kf_movement, 0.4f);
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
+        nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");

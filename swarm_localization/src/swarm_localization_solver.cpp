@@ -22,6 +22,7 @@
 #include <set>
 #include <chrono>
 #include <graphviz/cgraph.h>
+#include "swarm_localization/localization_DA_init.hpp"
 
 using namespace std::chrono;
 
@@ -55,6 +56,14 @@ using namespace std::chrono;
 
 #define RANDOM_DELETE_KF 
 
+
+SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
+            params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
+            thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
+            init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
+            cgraph_path(_params.cgraph_path)
+    {
+    }
 
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
@@ -617,6 +626,22 @@ double SwarmLocalizationSolver::solve() {
         return cost_now;
 
     estimate_observability();
+
+    if (!finish_init) {
+        //Use da initer to initial the system
+        LocalizationDAInit DAIniter(sf_sld_win, params.DA_TRI_accept_thres);
+        std::map<int, int> mapper;
+        bool success = DAIniter.try_data_association(mapper);
+        if (success) {
+            ROS_INFO("Success initial system with visual data association");
+            for (auto it : mapper) {
+                ROS_INFO("UNIDENTIFIED %d ASSOCIATION %d", it.first, it.second);
+            }
+        } else {
+            ROS_INFO("Could not initail system with visual data association");
+        }
+    }
+
 
     if (!finish_init) {
         //Init procedure

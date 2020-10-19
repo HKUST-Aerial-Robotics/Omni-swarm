@@ -257,7 +257,7 @@ class LocalProxy {
     void send_node_detected(const swarm_msgs::node_detected_xyzyaw & nd) {
         mavlink_message_t msg;
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
-        // ROS_INFO("ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
+        // ROS_INFO("SEND ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
         int inv_dep = 0;
         if (nd.enable_scale) {
             inv_dep = nd.inv_dep * 10000.0;
@@ -267,9 +267,10 @@ class LocalProxy {
         }
 
         mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
-            (int)(nd.dpos.x*10000),
-            (int)(nd.dpos.y*10000),
-            (int)(nd.dpos.z*10000),
+            (int)(nd.dpos.x*1000),
+            (int)(nd.dpos.y*1000),
+            (int)(nd.dpos.z*1000),
+            (int)(nd.probaility*10000),
             inv_dep);
         
         send_mavlink_message(msg);
@@ -378,9 +379,15 @@ class LocalProxy {
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        ROS_INFO("SD size %ld", sd.detected_nodes.size());
-        if (sd.detected_nodes.size() == 0) {
+        ROS_INFO("SD size %ld", sd.detected_nodes_xyz_yaw.size());
+        if (sd.detected_nodes_xyz_yaw.size() == 0) {
             return;
+        }
+
+        auto node_xyzyaws = sd.detected_nodes_xyz_yaw;
+        
+        for (node_detected_xyzyaw nd : node_xyzyaws) {
+            send_node_detected(nd);
         }
 
         int i = find_sf_swarm_detected(sd.header.stamp);
@@ -392,16 +399,9 @@ class LocalProxy {
             ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
             return;
         }
-
-
-        std::vector<node_detected_xyzyaw> node_xyzyaws = convert_sd_to_nd_xyzyaw(sd);
-        node_xyzyaws.insert(node_xyzyaws.end(), sd.detected_nodes_xyz_yaw.begin(), sd.detected_nodes_xyz_yaw.end());
-
         swarm_frame &_sf = sf_queue[i];
-        
-        for (node_detected_xyzyaw nd : node_xyzyaws) {
-            send_node_detected(nd);
-        }
+
+
         // ROS_INFO("SF node size %ld", _sf.node_frames.size());
         for (int j = 0; j < _sf.node_frames.size(); j++) {
             // ROS_INFO("NF id %d", _sf.node_frames[j].id);
@@ -515,12 +515,16 @@ class LocalProxy {
         }
     }
 
-    void send_mavlink_message(mavlink_message_t &msg) {
+    void send_mavlink_message(mavlink_message_t &msg, bool send_by_wifi=false) {
         int len = mavlink_msg_to_send_buffer(buf, &msg);
         data_buffer buffer;
         // ROS_INFO("Msg size %d", len);
 
         buffer.data = std::vector<uint8_t>(buf, buf + len);
+
+        if (send_by_wifi) {
+            buffer.send_method = 2;
+        }
         uwb_senddata_pub.publish(buffer);
     }
 
@@ -547,7 +551,7 @@ class LocalProxy {
         mavlink_msg_node_realtime_info_pack(self_id, 0, &msg, ts, odometry_available, pos.x, pos.y, pos.z, 
             int(vel.x*100), int(vel.y*100), int(vel.z*100), int(eulers.x()*1000), int(eulers.y()*1000), int(eulers.z()*1000), dis_int);
 
-        send_mavlink_message(msg);
+        send_mavlink_message(msg, true);
     }
 
     std::map<int, float> past_self_dis;

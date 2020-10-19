@@ -23,6 +23,8 @@ struct SwarmFrameError;
 struct SwarmHorizonError;
 struct SwarmLoopError;
 
+class LocalizationDAInit;
+
 inline float rand_FloatRange(float a, float b) {
     return ((b - a) * ((float) rand() / RAND_MAX)) + a;
 }
@@ -59,6 +61,7 @@ struct swarm_localization_solver_params{
     float init_z_movement = 1.0;
     int self_id = -1;
     std::string cgraph_path;
+    float DA_TRI_accept_thres = 0.1;
 };
 
 class SwarmLocalizationSolver {
@@ -72,6 +75,8 @@ class SwarmLocalizationSolver {
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
+
+    swarm_localization_solver_params params;
 
 
     std::vector<swarm_msgs::LoopConnection> all_loops;
@@ -157,6 +162,7 @@ class SwarmLocalizationSolver {
     std::set<int> loop_observable_set(const std::map<int, std::set<int>> & loop_edges) const;
 
     void generate_cgraph();
+
 public:
     int self_id = -1;
     unsigned int thread_num;
@@ -175,15 +181,8 @@ public:
 
     std::string cgraph_path = "";
 
-    SwarmLocalizationSolver(const swarm_localization_solver_params & params) :
-            max_frame_number(params.max_frame_number), min_frame_number(params.min_frame_number),
-            thread_num(params.thread_num), acpt_cost(params.acpt_cost),min_accept_keyframe_movement(params.kf_movement),
-            init_xy_movement(params.init_xy_movement),init_z_movement(params.init_z_movement),dense_frame_number(params.dense_frame_number),
-            cgraph_path(params.cgraph_path)
-    {
-    }
-
-   
+    SwarmLocalizationSolver(const swarm_localization_solver_params & params);
+    
     void add_new_swarm_frame(const SwarmFrame &sf);
 
     void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);

@@ -5,16 +5,27 @@
 #include "opencv2/features2d.hpp"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <chrono>
+#include <opencv2/core/eigen.hpp>
 
 using namespace std::chrono;
 
-LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, ros::NodeHandle &nh) : self_id(_self_id)
+LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, bool _send_img, ros::NodeHandle &nh) : self_id(_self_id), send_img(_send_img)
 {
     camodocal::CameraFactory cam_factory;
+    ROS_INFO("Read camera from %s", camera_config_path.c_str());
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
-    deepnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
+    hfnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
+    superpoint_client = nh.serviceClient<HFNetSrv>("/swarm_loop/superpoint");
+    camodocal::PinholeCamera* _cam = (camodocal::PinholeCamera*)cam.get();
+
+    Eigen::Matrix3d _cameraMatrix;
+    _cameraMatrix << _cam->getParameters().fx(), 0, _cam->getParameters().cx(),
+                    0, _cam->getParameters().fy(), _cam->getParameters().cy(), 0, 0, 1;
+    cv::eigen2cv(_cameraMatrix, cameraMatrix);
+
     printf("Waiting for deepnet......\n");
-    deepnet_client.waitForExistence();
+    hfnet_client.waitForExistence();
+    superpoint_client.waitForExistence();
     printf("Deepnet ready\n");
 }
 
@@ -29,7 +40,7 @@ cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p)
     return ret;
 }
 
-void LoopCam::encode_image(cv::Mat &_img, ImageDescriptor_t &_img_desc)
+void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
 {
     auto start = high_resolution_clock::now();
 
@@ -39,7 +50,7 @@ void LoopCam::encode_image(cv::Mat &_img, ImageDescriptor_t &_img_desc)
 
     cv::imencode(".jpg", _img, _img_desc.image, params);
     // std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    // std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
+    std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
 
     _img_desc.image_height = _img.size().height;
     _img_desc.image_width = _img.size().width;
@@ -86,7 +97,7 @@ void reduceVector(std::vector<T> &v, std::vector<uchar> status)
     v.resize(j);
 }
 
-void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
+void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
 {
 
     for (size_t i = 0; i < pts_up.size(); i++) {
@@ -95,7 +106,7 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
 
     std::vector<float> err;
     std::vector<uchar> status;
-    std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
+    // std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
 
     cv::calcOpticalFlowPyrLK(img_up, img_down, pts_up, pts_down, status, err, cv::Size(21, 21), 3);
     // reduceVector(pts_down, status);
@@ -104,6 +115,7 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
     std::vector<cv::Point2f> reverse_pts;
     std::vector<uchar> reverse_status;
     cv::calcOpticalFlowPyrLK(img_down, img_up, pts_down, reverse_pts, reverse_status, err, cv::Size(21, 21), 3);
+
 
     for (size_t i = 0; i < status.size(); i++)
     {
@@ -122,9 +134,91 @@ void track_pts(cv::Mat &img_up, cv::Mat &img_down, std::vector<cv::Point2f> &pts
     reduceVector(ids, status);
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, cv::Mat & img)
+cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2, std::vector<cv::DMatch> _matches, const cv::Mat & up, const cv::Mat & down) {
+    std::vector<cv::KeyPoint> kps1;
+    std::vector<cv::KeyPoint> kps2;
+
+    for (auto pt : pts1) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        kps1.push_back(kp);
+    }
+
+    for (auto pt : pts2) {
+        cv::KeyPoint kp;
+        kp.pt = pt;
+        kps2.push_back(kp);
+    }
+
+    cv::Mat _show;
+
+    cv::drawMatches(up, kps1, down, kps2, _matches, _show);
+
+    return _show;
+}
+
+std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
+        const cv::Mat & up, const cv::Mat & down) {
+    ROS_INFO("match_HFNet_local_features %ld %ld", pts_up.size(), pts_down.size());
+
+    cv::Mat desc_up( _desc_up.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_up.data, _desc_up.data(), _desc_up.size()*sizeof(float));
+    cv::Mat desc_down( _desc_down.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_down.data, _desc_down.data(), _desc_down.size()*sizeof(float));
+
+    ROS_INFO("Matching...");
+    cv::BFMatcher bfmatcher(cv::NORM_L2, true);
+
+    std::vector<cv::DMatch> _matches;
+    bfmatcher.match(desc_up, desc_down, _matches);
+
+    std::vector<cv::Point2f> _pts_up, _pts_down;
+    std::vector<int> ids;
+    for (auto match : _matches) {
+        int now_id = match.queryIdx;
+        int old_id = match.trainIdx;
+        // std::cout<< "Query Idx" << now_id << "Train Idx" << old_id << std::endl;
+        _pts_up.push_back(pts_up[now_id]);
+        _pts_down.push_back(pts_down[old_id]);
+        ids.push_back(now_id);
+    }
+
+    ROS_INFO("%ld matches...", _matches.size());
+
+    Eigen::Matrix3d _cameraMatrix;
+
+    std::vector<uint8_t> status;
+    // findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
+    cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
+
+    reduceVector(_pts_up, status);
+    reduceVector(_pts_down, status);
+    reduceVector(ids, status);
+    reduceVector(_matches, status);
+
+
+    if (show) {
+        cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
+        cv::imshow("Stereo Matches", img);
+        cv::waitKey(30);
+    }
+
+    ROS_INFO("[match_HFNet_local_features] Matched %d features", _pts_up.size());
+    pts_up = std::vector<cv::Point2f>(_pts_up);
+    pts_down = std::vector<cv::Point2f>(_pts_down);
+    return ids;
+}
+
+ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id)
 {
-    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[0]);
+    if (vcam_id > msg.up_cams.size()) {
+        ROS_WARN("Flatten images too few");
+        ImageDescriptor_t ides;
+        ides.landmark_num = 0;
+        return ides;
+    }
+    
+    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id]);
     if (ides.image_desc_size == 0)
     {
         ROS_WARN("Failed on deepnet;");
@@ -141,35 +235,53 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
 
     ides.timestamp = toLCMTime(msg.header.stamp);
     ides.drone_id = self_id; // -1 is self drone;
-    ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[0]);
+    ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
-
-    auto cv_ptr = cv_bridge::toCvCopy(msg.up_cams[0], sensor_msgs::image_encodings::BGR8);
-    cv::Mat img_up = cv_ptr->image;
-    img_up.copyTo(img);
-
-    encode_image(img_up, ides);
-
-    auto cv_ptr2 = cv_bridge::toCvCopy(msg.down_cams[0], sensor_msgs::image_encodings::BGR8);
-    cv::Mat img_down = cv_ptr2->image;
+    ides.image_size = 0;
+    auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
+    auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
 
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
 
+    std::vector<int> ids;
+
+    // ROS_INFO("try track %d pts", pts_up.size());
+    // track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
+    // Not use tracker now.
+
+    if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
+        ROS_INFO("Tring BF Match with HfNet instead, optical flow gives %d", pts_up.size());
+        pts_up = toCV(ides.landmarks_2d);
+        auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], true);
+        pts_down = toCV(ides_down.landmarks_2d);
+
+        cv::Mat _img = cv_ptr->image;
+        cv::Mat _img2 = cv_ptr2->image;
+
+        cv::Mat img_show;
+        cv::cvtColor(_img, img_show, cv::COLOR_GRAY2BGR);
+        for (auto pt : pts_up) {
+            cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        // cv::imshow("Up SuperPoints", img_show);
+
+        ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
+    }
+
+    ROS_INFO("Tracked points %ld %ld", pts_up.size(), pts_down.size());
+
+
     ides.landmarks_2d.clear();
     ides.landmarks_2d_norm.clear();
     ides.landmarks_3d.clear();
-    std::vector<int> ids;
-
-
-    ROS_INFO("try track %d pts", pts_up.size());
-    track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
-    ROS_INFO("tracked points %ld", pts_down.size());
+    
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
-    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[0]);
-    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[0]);
+    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[vcam_id]);
+    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[vcam_id]);
 
     std::vector<float> desc_new;
 
@@ -209,7 +321,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         ides.landmarks_2d_norm.push_back(pt2d_norm);
         ides.landmarks_3d.push_back(pt3d);
 
-        //std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
+        // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
         desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
 
@@ -220,43 +332,55 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages &msg, c
         // std::cout << "P3d:" << point_3d.transpose() << std::endl;
     }
 
-    ides.feature_descriptor = desc_new;
+    ides.feature_descriptor.clear();
+    ides.feature_descriptor = std::vector<float>(desc_new);
+    std::cout << "Desc Size" << ides.feature_descriptor.size() << std::endl;
+    ides.feature_descriptor_size = ides.feature_descriptor.size();
 
     ides.landmark_num = ides.landmarks_2d.size();
 
-    ides.landmark_num = ides.landmarks_2d.size();
-
-    cv::Mat show;
-
-    for (auto pt : pts_up)
-    {
-        cv::circle(img_up, pt, 1, cv::Scalar(255, 0, 0), -1);
+    if (send_img) {
+        encode_image(cv_ptr->image, ides);
     }
 
-    for (auto pt : pts_down)
-    {
-        cv::circle(img_down, pt, 1, cv::Scalar(255, 0, 0), -1);
+    if (show) {
+        cv::Mat img_up = cv_ptr->image;
+        cv::Mat img_down = cv_ptr2->image;
+
+        img_up.copyTo(img);
+        encode_image(img_up, ides);
+
+        cv::Mat show;
+
+        for (auto pt : pts_up)
+        {
+            cv::circle(img_up, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        for (auto pt : pts_down)
+        {
+            cv::circle(img_down, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        cv::hconcat(img_up, img_down, show);
+
+        char text[100] = {0};
+
+        // cv::resize(show, show, cv::Size(0, 0), 2, 2);
+
+        for (unsigned int i = 0; i < pts_up.size(); i++) {
+            cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
+        }
+
+        // for (unsigned int i = 0; i < pts_up.size(); i++) {
+        //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
+        //     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
+        // }
+
+        // ROS_INFO("Try show image");
+        cv::imshow("SHOW_FEATURES", show);
+        cv::waitKey(10);
     }
-
-    cv::hconcat(img_up, img_down, show);
-
-    char text[100] = {0};
-
-    // cv::resize(show, show, cv::Size(0, 0), 2, 2);
-
-    for (unsigned int i = 0; i < pts_up.size(); i++) {
-        cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
-    }
-
-    // for (unsigned int i = 0; i < pts_up.size(); i++) {
-    //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
-	//     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-    // }
-
-    // ROS_INFO("Try show image");
-     cv::imshow("DEBUG", show);
-     cv::waitKey(10);
-
     return ides;
 }
 
@@ -280,7 +404,7 @@ cv::Mat LoopCam::landmark_desc_compute(const cv::Mat &_img, const std::vector<ge
     return ret;
 }
 
-ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image &msg)
+ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image &msg, bool superpoint_mode)
 {
     auto start = high_resolution_clock::now();
 
@@ -293,34 +417,49 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     HFNetSrv hfnet_srv;
     hfnet_srv.request.image = msg;
 
-    if (deepnet_client.call(hfnet_srv))
-    {
-        auto &desc = hfnet_srv.response.global_desc;
-        auto &local_kpts = hfnet_srv.response.keypoints;
-        auto &local_descriptors = hfnet_srv.response.local_descriptors;
-        if (desc.size() > 0)
+    if (superpoint_mode) {
+        if (superpoint_client.call(hfnet_srv))
         {
-            // ROS_INFO("Received response from server desc.size %ld", desc.size());
-            img_des.image_desc_size = desc.size();
-            img_des.image_desc = desc;
-            ROSPoints2LCM(local_kpts, img_des.landmarks_2d);
-            img_des.landmark_num = local_kpts.size();
-            img_des.feature_descriptor = local_descriptors;
-            img_des.feature_descriptor_size = local_descriptors.size();
-            img_des.image_size = 0;
+            auto &local_kpts = hfnet_srv.response.keypoints;
+            auto &local_descriptors = hfnet_srv.response.local_descriptors;
+            if (local_kpts.size() > 0)
+            {
+                // ROS_INFO("Received response from server desc.size %ld", desc.size());
+                img_des.image_desc_size = 0;
+                img_des.image_desc.clear();
+                ROSPoints2LCM(local_kpts, img_des.landmarks_2d);
+                img_des.landmark_num = local_kpts.size();
+                img_des.feature_descriptor = local_descriptors;
+                img_des.feature_descriptor_size = local_descriptors.size();
+                img_des.landmarks_flag.resize(img_des.landmark_num);
+                std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
+                img_des.image_size = 0;
+                return img_des;
+            }
         }
-        else
+    } else {
+        if (hfnet_client.call(hfnet_srv))
         {
-            ROS_WARN("Failed on deepnet; Please check deepnet queue");
+            auto &desc = hfnet_srv.response.global_desc;
+            auto &local_kpts = hfnet_srv.response.keypoints;
+            auto &local_descriptors = hfnet_srv.response.local_descriptors;
+            if (desc.size() > 0)
+            {
+                // ROS_INFO("Received response from server desc.size %ld", desc.size());
+                img_des.image_desc_size = desc.size();
+                img_des.image_desc = desc;
+                ROSPoints2LCM(local_kpts, img_des.landmarks_2d);
+                img_des.landmark_num = local_kpts.size();
+                img_des.feature_descriptor = local_descriptors;
+                img_des.feature_descriptor_size = local_descriptors.size();
+                img_des.landmarks_flag.resize(img_des.landmark_num);
+                std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
+                img_des.image_size = 0;
+                return img_des;
+            }
         }
-
-        return img_des;
     }
-    else
-    {
-        ROS_INFO("FAILED on deepnet!!! Service error");
-        return img_des;
-    }
+    ROS_INFO("FAILED on deepnet!!! Service error");
     return img_des;
 }
 

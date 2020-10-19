@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(swarm_loop)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
 
@@ -55,7 +55,7 @@ include_directories(
   # ${DBoW3_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME}_node
+add_library(${PROJECT_NAME}_nodelet
   src/swarm_loop_node.cpp
   src/loop_cam.cpp
   src/loop_detector.cpp
@@ -75,16 +75,15 @@ add_executable(${PROJECT_NAME}_spy
 
 
 
-add_dependencies(${PROJECT_NAME}_node
+add_dependencies(${PROJECT_NAME}_nodelet
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-  add_dependencies(${PROJECT_NAME}_spy
+add_dependencies(${PROJECT_NAME}_spy
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(${PROJECT_NAME}_node
+target_link_libraries(${PROJECT_NAME}_nodelet
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
-  #  ${DBoW3_LIBRARIES}
    lcm
    faiss
    dw

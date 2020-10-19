@@ -1,8 +1,15 @@
 <launch>
-    <arg name="display" default="false" />
-    <arg name="node_start_delay" default="30.0" />
+    <arg name="show" default="false" />
     <arg name="output" default="screen" />
-    <node name="swarm_loop" pkg="swarm_loop" type="swarm_loop_node" output="$(arg output)">
+    <arg name="manager"     default="manager"/>
+    <arg name="send_img"     default="false"/>
+    <arg name="send_whole_img_desc"     default="false"/>
+    <arg name="self_id"     default="1"/>
+    <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
+
+    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager --no-bond"  output="screen" />
+    <node pkg="nodelet" type="nodelet" name="swarm_loop" 
+        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
@@ -12,21 +19,22 @@
             jpg_quality: 75
             enable_lk: true
             
-            query_thres: 0.1
-            init_query_thres: 0.3
+            query_thres: 0.6
+            init_query_thres: 0.8
 
             min_movement_keyframe: 0.1
-        </rosparam>
-        <rosparam>
             enable_pub_remote_img: true
             enable_sub_remote_img: false
+            max_freq: 0.5
+            accept_min_3d_pts: 100
+
+            recv_msg_duration: 0.5
         </rosparam>
-        <!-- <rosparam command="load" file="/home/dji/SwarmConfig/drone_define.yaml" /> -->
-        <rosparam>
-            self_id: 4
-        </rosparam>
-       <param name="debug_image" value="$(arg display)" type="bool" />
-       <param name="camera_config_path" value="/home/xuhao/bags/fisheye_ptgrey_n3/front.yaml" type="string" />
-    <remap from="~left_camera" to="/camera/infra1/image_rect_raw"/>
+        <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />
+       <param name="debug_image" value="$(arg show)" type="bool" />
+       <param name="send_img" value="$(arg send_img)" type="bool" />
+       <param name="send_whole_img_desc" value="$(arg send_whole_img_desc)" type="bool" />
+       <param name="self_id" value="$(arg self_id)" type="int" />
+       <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
     </node>
 </launch>
