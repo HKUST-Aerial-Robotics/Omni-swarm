@@ -52,7 +52,7 @@ public:
             auto & img_desc = it.second;
             char win_name[100] = {0};
             char frame_name[100] = {0};
-            sprintf(win_name, "Drone%: d", img_desc.drone_id);
+            sprintf(win_name, "Drone: %d", img_desc.drone_id);
             auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);
             auto nowPts = toCV(img_desc.landmarks_2d);
 
