@@ -23,7 +23,10 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
     if (img_des.drone_id!= this->self_id && database_size() == 0) {
         ROS_INFO("Empty local database, where giveup remote image");
         return;
-    } 
+    } else {
+        ROS_INFO("Receive image from %d with %d features and local feature size %d %d", img_des.drone_id, img_des.landmark_num, 
+            img_des.feature_descriptor_size, img_des.feature_descriptor.size());
+    }
 
 
     success_loop_nodes.insert(self_id);
@@ -37,8 +40,10 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
         bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
 
         if (enable_visualize) {
-            if (img.empty()) {
+            if (img.empty() && img_des.image.size() != 0) {
                 img = decode_image(img_des);
+            } else {
+                img = cv::Mat(208, 400, CV_8UC3, cv::Scalar(255, 255, 255));
             }
             // debug_draw_kpts(img_des, img);
         }
@@ -497,10 +502,10 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         matched_2d_norm_old.push_back(old_norm_2d[old_id]);
         matched_3d_old.push_back(old_3d[old_id]);
     }
- 
+
     if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
-
+        ROS_INFO("Matched features %ld", _matches.size());
         cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
         cv::Mat r, rvec, t, D, tmp_r;
@@ -523,7 +528,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
             iteratives = 1000;
         }
 
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,            iteratives,        PNP_REPROJECT_ERROR/200,     0.995,  inliers, cv::SOLVEPNP_DLS);
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, false,            iteratives,        PNP_REPROJECT_ERROR/200,     0.99,  inliers, cv::SOLVEPNP_DLS);
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
 
         auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
@@ -555,6 +560,8 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
             matches.push_back(_matches[idx]);
         }
         return success;
+    } else {
+        ROS_INFO("Matched features too less %ld", _matches.size());
     }
 
     return 0;
@@ -570,22 +577,22 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
 
     assert(old_img_desc.drone_id == self_id && "old img desc must from self drone!");
 
-    ROS_INFO("Compute loop %d->%d", old_img_desc.drone_id, new_img_desc.drone_id);
-
     bool success = false;
     Swarm::Pose  DP_old_to_new;
 
     bool first_try_match_mode = false;
 
-    ROS_INFO("Try solve %d->%d LANDMARK from %d, num %d, with Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
-        new_img_desc.drone_id, 
+    ROS_INFO("Compute loop %d->%d LANDMARK from %d:%d. Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
+        old_img_desc.landmark_num,
         new_img_desc.landmark_num,
         first_try_match_mode, init_mode);
 
     auto now_2d = toCV(new_img_desc.landmarks_2d);
     auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
     auto now_3d = toCV(new_img_desc.landmarks_3d);
-    ROS_INFO("New desc %ld/%ld", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
+
+    assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
+    assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
     cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
@@ -597,8 +604,6 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
 
     std::vector<cv::DMatch> matches;
-
-    ROS_INFO("Will compute relative pose");
 
     int inlier_num = 0;
     success = compute_relative_pose(
