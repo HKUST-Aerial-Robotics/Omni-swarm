@@ -28,16 +28,18 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
             img_des.feature_descriptor_size, img_des.feature_descriptor.size());
     }
 
-
     success_loop_nodes.insert(self_id);
     bool new_node = all_nodes.find(img_des.drone_id) == all_nodes.end();
 
     all_nodes.insert(img_des.drone_id);
 
-
     if (img_des.landmark_num >= MIN_LOOP_NUM) {
         // std::cout << "Add Time cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
-        bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
+        // bool init_mode = success_loop_nodes.find(img_des.drone_id) == success_loop_nodes.end();
+        bool init_mode = false;
+        if (img_des.drone_id != self_id) {
+            init_mode = true;
+        }
 
         if (enable_visualize && img.empty()) {
             if (img_des.image.size() != 0) {
@@ -176,19 +178,19 @@ Swarm::Pose AffineRestoCamPose(Eigen::Matrix4d affine) {
 }
 
 int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
-#ifdef USE_DEEPNET
-    index.add(1, new_img_desc.image_desc.data());
-    return index.ntotal - 1;
-#else
-    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_des.feature_descriptor.data, LOOP_FEATURE_NUM);
-    int _id = db.add(feature);
-    return _id;
-#endif
-
+    if (new_img_desc.drone_id == self_id) {
+        ROS_INFO("Add keyframe from %d to local keyframe database", new_img_desc.drone_id);
+        local_index.add(1, new_img_desc.image_desc.data());
+        return local_index.ntotal - 1;
+    } else {
+        ROS_INFO("Add keyframe from %d to remote keyframe database", new_img_desc.drone_id);
+        remote_index.add(1, new_img_desc.image_desc.data());
+        return remote_index.ntotal - 1 + REMOTE_MAGIN_NUMBER;
+    }
+    return -1;
 }
 
 int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode) {
-#ifdef USE_DEEPNET
     float distances[SEARCH_NEAREST_NUM] = {0};
     faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
     
@@ -202,7 +204,6 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
     
     for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
         double thres = INNER_PRODUCT_THRES;
-
         if (labels[i] < 0) {
             continue;
         }
@@ -212,6 +213,9 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
         }
 
         int return_drone_id = id2imgdes.at(labels[i]).drone_id;
+
+        ROS_INFO("Return Label %d from %d, distance %f", labels[i], return_drone_id, distances[i]);
+
         if (init_mode) {
             thres = INIT_MODE_PRODUCT_THRES;
         }
@@ -236,195 +240,11 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
     }
 
     return -1;
-#else
-    cv::Mat feature = cvfeatureFromByte((uint8_t*)img_desc.feature_descriptor.data, LOOP_FEATURE_NUM);
-    DBoW3::QueryResults ret;
-    db.query(feature, ret, 1, db.size() - max_index);
-
-    if (ret.size() > 0 && ret[0].Score > LOOP_BOW_THRES) {
-        return ret[0].Id;
-    }
-    return -1;
-
-#endif
 }
 
 int LoopDetector::database_size() const {
-#ifdef USE_DEEPNET
     return index.ntotal;
-#else
-    return db.size();
-#endif
 }
-
-std::vector<cv::DMatch> filter_by_duv(const std::vector<cv::DMatch> & matches, 
-    std::vector<cv::KeyPoint> query_pts, 
-    std::vector<cv::KeyPoint> train_pts) {
-    std::vector<cv::DMatch> good_matches;
-    std::vector<float> uv_dis;
-    for (auto gm : matches) {
-        if (gm.queryIdx >= query_pts.size() || gm.trainIdx >= train_pts.size()) {
-            ROS_ERROR("out of size");
-            exit(-1);
-        } 
-        uv_dis.push_back(cv::norm(query_pts[gm.queryIdx].pt - train_pts[gm.trainIdx].pt));
-    }
-
-    std::sort(uv_dis.begin(), uv_dis.end());
-    
-    // printf("MIN UV DIS %f, MID %f END %f\n", uv_dis[0], uv_dis[uv_dis.size()/2], uv_dis[uv_dis.size() - 1]);
-
-    double mid_dis = uv_dis[uv_dis.size()/2];
-
-    for (auto gm: matches) {
-        if (gm.distance < mid_dis*ORB_UV_DISTANCE) {
-            good_matches.push_back(gm);
-        }
-    }
-
-    return good_matches;
-}
-
-std::vector<cv::DMatch> filter_by_x(const std::vector<cv::DMatch> & matches, 
-    std::vector<cv::KeyPoint> query_pts, 
-    std::vector<cv::KeyPoint> train_pts, double OUTLIER_XY_PRECENT) {
-    std::vector<cv::DMatch> good_matches;
-    std::vector<float> dxs;
-    for (auto gm : matches) {
-        dxs.push_back(query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x);
-    }
-
-    std::sort(dxs.begin(), dxs.end());
-
-    int num = dxs.size();
-    int l = num*OUTLIER_XY_PRECENT;
-    if (l == 0) {
-        l = 1;
-    }
-    int r = num*(1-OUTLIER_XY_PRECENT);
-    if (r >= num - 1) {
-        r = num - 2;
-    }
-
-    if (r <= l ) {
-        return good_matches;
-    }
-
-    // printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dxs[0], dxs[l], dxs[num/2], dxs[r], dxs[dxs.size() - 1]);
-
-    double lv = dxs[l];
-    double rv = dxs[r];
-
-    for (auto gm: matches) {
-        if (query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x > lv && query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x < rv) {
-            good_matches.push_back(gm);
-        }
-    }
-
-    return good_matches;
-}
-
-std::vector<cv::DMatch> filter_by_y(const std::vector<cv::DMatch> & matches, 
-    std::vector<cv::KeyPoint> query_pts, 
-    std::vector<cv::KeyPoint> train_pts, double OUTLIER_XY_PRECENT) {
-    std::vector<cv::DMatch> good_matches;
-    std::vector<float> dys;
-    for (auto gm : matches) {
-        dys.push_back(query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y);
-    }
-
-    std::sort(dys.begin(), dys.end());
-
-    int num = dys.size();
-    int l = num*OUTLIER_XY_PRECENT;
-    if (l == 0) {
-        l = 1;
-    }
-    int r = num*(1-OUTLIER_XY_PRECENT);
-    if (r >= num - 1) {
-        r = num - 2;
-    }
-
-    if (r <= l ) {
-        return good_matches;
-    }
-
-    // printf("MIN DX DIS:%f, l:%f m:%f r:%f END:%f\n", dys[0], dys[l], dys[num/2], dys[r], dys[dys.size() - 1]);
-
-    double lv = dys[l];
-    double rv = dys[r];
-
-    for (auto gm: matches) {
-        if (query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y > lv && query_pts[gm.queryIdx].pt.y - train_pts[gm.trainIdx].pt.y < rv) {
-            good_matches.push_back(gm);
-        }
-    }
-
-    return good_matches;
-}
-
-
-std::vector<cv::DMatch> filter_by_crop_x(const std::vector<cv::DMatch> & matches, 
-    std::vector<cv::KeyPoint> query_pts, 
-    std::vector<cv::KeyPoint> train_pts, int width) {
-    std::vector<float> dxs;
-    std::vector<cv::DMatch> good_matches;
-
-    for (auto gm : matches) {
-        dxs.push_back(query_pts[gm.queryIdx].pt.x - train_pts[gm.trainIdx].pt.x);
-    }
-
-    std::sort(dxs.begin(), dxs.end());
-    int mid_dx = (int) dxs[dxs.size()/2];
-    bool crop_width = fabs(mid_dx) > CROP_WIDTH_THRES*width;
-
-    printf("MIN DX %f, MID %f END %f\n", dxs[0], dxs[dxs.size()/2], dxs[dxs.size() - 1]);
-
-    if (crop_width) {
-        if (mid_dx > 0) {
-            printf("Cropping img1 %d->%d img2 %d->%d\n", width - mid_dx, width, 0, mid_dx);
-        } else {
-            printf("Cropping img1 %d->%d img2 %d->%d\n", 0, - mid_dx, width+ mid_dx, width);
-        }
-    }
-
-    for (auto gm : matches) {
-        bool use_match = true;
-        double pt1x = train_pts[gm.trainIdx].pt.x;
-        double pt2x = query_pts[gm.queryIdx].pt.x;
-        if (crop_width) {
-            if (mid_dx > 0) {
-                if(pt1x > width - mid_dx || pt2x < mid_dx) {
-                    use_match = false;
-                }
-            }
-
-            if (mid_dx < 0) {
-                if (pt1x < - mid_dx || pt2x > width + mid_dx) {
-                    use_match = false;
-                }
-            }
-        }
-        if (use_match) {
-            good_matches.push_back(gm);
-        }
-    }
-    return good_matches;
-
-}
-
-inline std::vector<cv::KeyPoint> to_keypoints_with_max_height(const std::vector<cv::Point2f> & pts, int max_y) {
-    std::vector<cv::KeyPoint> kps;
-    for (auto pt : pts) {
-        cv::KeyPoint kp;
-        kp.pt = pt;
-        if (pt.y < max_y) {
-            kps.push_back(kp);
-        }
-    }
-    return kps;
-}
-
 
 bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rperr, const Swarm::Pose & DP_old_to_new) {
     bool success = pnp_success;
@@ -537,8 +357,8 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         }
 
         Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
-        std::cout << "Initial Old DPose";
-        old_drone_to_new_initial.print();
+        // std::cout << "Initial Old DPose";
+        // old_drone_to_new_initial.print();
         std::cout << "PnP solved DPose 6D";
         DP_old_to_new_6d.print();
         DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
@@ -551,7 +371,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
 
         success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
 
-        ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm());
+        ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
         inlier_num = inliers.rows;
 
         for (int i = 0; i < inlier_num; i++) {
