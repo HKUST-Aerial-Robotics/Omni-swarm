@@ -27,7 +27,7 @@
             enable_sub_remote_img: false
             max_freq: 0.5
             accept_min_3d_pts: 100
-
+            match_index_dist: 5
             recv_msg_duration: 0.5
         </rosparam>
         <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />

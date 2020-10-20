@@ -26,6 +26,7 @@
             self_id: 4
             accept_min_3d_pts: 200
             max_freq: 10
+            match_index_dist: 20
 
         </rosparam> 
         <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />

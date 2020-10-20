@@ -179,71 +179,82 @@ Swarm::Pose AffineRestoCamPose(Eigen::Matrix4d affine) {
 
 int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
     if (new_img_desc.drone_id == self_id) {
-        ROS_INFO("Add keyframe from %d to local keyframe database", new_img_desc.drone_id);
         local_index.add(1, new_img_desc.image_desc.data());
+        ROS_INFO("Add keyframe from %d to local keyframe database index: %d", new_img_desc.drone_id, local_index.ntotal - 1);
         return local_index.ntotal - 1;
     } else {
-        ROS_INFO("Add keyframe from %d to remote keyframe database", new_img_desc.drone_id);
         remote_index.add(1, new_img_desc.image_desc.data());
+        ROS_INFO("Add keyframe from %d to remote keyframe database index: %d", new_img_desc.drone_id, remote_index.ntotal - 1);
         return remote_index.ntotal - 1 + REMOTE_MAGIN_NUMBER;
     }
     return -1;
 }
 
-int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode) {
-    float distances[SEARCH_NEAREST_NUM] = {0};
-    faiss::Index::idx_t labels[SEARCH_NEAREST_NUM];
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss::IndexFlatIP & index, bool keyframe_from_remote, double thres, int max_index) {
+    float distances[1000] = {0};
+    faiss::Index::idx_t labels[1000];
+
+    int index_offset = 0;
+    if (keyframe_from_remote) {
+        index_offset = REMOTE_MAGIN_NUMBER;
+    }
     
-    for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
+    for (int i = 0; i < 1000; i++) {
         labels[i] = -1;
     }
 
-    index.search(1, img_desc.image_desc.data(), SEARCH_NEAREST_NUM, distances, labels);
+    int search_num = SEARCH_NEAREST_NUM + max_index;
+    index.search(1, img_desc.image_desc.data(), search_num, distances, labels);
     
-    int max_index = MATCH_INDEX_DIST;
-    
-    for (int i = 0; i < SEARCH_NEAREST_NUM; i++) {
-        double thres = INNER_PRODUCT_THRES;
+    for (int i = 0; i < search_num; i++) {
         if (labels[i] < 0) {
             continue;
         }
-        if (id2imgdes.find(labels[i]) == id2imgdes.end()) {
-            ROS_WARN("Can't find image %d; skipping", labels[i]);
+        if (id2imgdes.find(labels[i] + index_offset) == id2imgdes.end()) {
+            ROS_WARN("Can't find image %d; skipping", labels[i] + index_offset);
             continue;
         }
 
-        int return_drone_id = id2imgdes.at(labels[i]).drone_id;
+        int return_drone_id = id2imgdes.at(labels[i] + index_offset).drone_id;
 
-        ROS_INFO("Return Label %d from %d, distance %f", labels[i], return_drone_id, distances[i]);
+        ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
 
-        if (init_mode) {
-            thres = INIT_MODE_PRODUCT_THRES;
+        if (labels[i] < database_size() - max_index && distances[i] < thres) {
+            //Is same id, max index make sense
+            ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i] + index_offset, return_drone_id, img_desc.drone_id, distances[i]);
+            return labels[i] + index_offset;
         }
-
-        if (img_desc.drone_id == self_id || return_drone_id == self_id) {
-            if (img_desc.drone_id != return_drone_id) {
-                //Not same drone id, we don't care about the max index
-                thres = INIT_MODE_PRODUCT_THRES;
-                if (labels[i] < database_size() - 1 && distances[i] < thres) {
-                    ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
-                    return labels[i];
-                }
-            }
-
-            if (labels[i] < database_size() - max_index && distances[i] < thres) {
-                //Is same id, max index make sense
-                ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i], return_drone_id, img_desc.drone_id, distances[i]);
-                return labels[i];
-            }
-        }
-
     }
 
     return -1;
 }
 
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode) {
+    double thres = INNER_PRODUCT_THRES;
+    if (init_mode) {
+        thres = INIT_MODE_PRODUCT_THRES;
+    }
+
+    if (img_desc.drone_id == self_id) {
+        //Then this is self drone
+        int _id = query_from_database(img_desc, remote_index, false, thres, 1);
+        if (_id > 0) {
+            return _id;
+        } else {
+            int _id = query_from_database(img_desc, local_index, false, thres, MATCH_INDEX_DIST);
+            return _id;
+        }
+    } else {
+        if (init_mode) {
+            int _id = query_from_database(img_desc, local_index, true, thres, 1);
+            return _id;
+        }
+    }
+    return -1;
+}
+
 int LoopDetector::database_size() const {
-    return index.ntotal;
+    return local_index.ntotal + remote_index.ntotal;
 }
 
 bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rperr, const Swarm::Pose & DP_old_to_new) {
@@ -399,12 +410,10 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
     bool success = false;
     Swarm::Pose  DP_old_to_new;
 
-    bool first_try_match_mode = false;
-
-    ROS_INFO("Compute loop %d->%d LANDMARK from %d:%d. Match Mode %d Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
+    ROS_INFO("Compute loop drone %d->%d landmarks %d:%d. Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
         old_img_desc.landmark_num,
         new_img_desc.landmark_num,
-        first_try_match_mode, init_mode);
+        init_mode);
 
     auto now_2d = toCV(new_img_desc.landmarks_2d);
     auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
@@ -492,8 +501,7 @@ void LoopDetector::on_loop_connection(LoopConnection & loop_conn) {
     on_loop_cb(loop_conn);
 }
 
-#ifdef USE_DEEPNET
-LoopDetector::LoopDetector(): index(DEEP_DESC_SIZE) {
+LoopDetector::LoopDetector(): local_index(DEEP_DESC_SIZE), remote_index(DEEP_DESC_SIZE) {
     cv::RNG rng;
     for(int i = 0; i < 100; i++)
     {
@@ -503,19 +511,6 @@ LoopDetector::LoopDetector(): index(DEEP_DESC_SIZE) {
         colors.push_back(cv::Scalar(r,g,b));
     }
 }
-#else
-LoopDetector::LoopDetector(const std::string & voc_path):
-    voc(voc_path), db(voc, false, 0) {
-    cv::RNG rng;
-    for(int i = 0; i < 100; i++)
-    {
-        int r = rng.uniform(0, 256);
-        int g = rng.uniform(0, 256);
-        int b = rng.uniform(0, 256);
-        colors.push_back(cv::Scalar(r,g,b));
-    }
-}
-#endif
 
 
 
