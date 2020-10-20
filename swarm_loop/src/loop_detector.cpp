@@ -62,12 +62,12 @@ void LoopDetector::on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img)
 
         if (database_size() > MATCH_INDEX_DIST || init_mode || img_des.drone_id != self_id) {
 
-            ROS_INFO("Querying image from database size %d init_mode %d....", database_size(), init_mode);
+            ROS_INFO("Querying image from database size %d init_mode %d nonkeyframe %d", database_size(), init_mode, img_des.prevent_adding_db);
             int _old_id = -1;
             if (init_mode) {
-                _old_id = query_from_database(img_des, init_mode);
+                _old_id = query_from_database(img_des, init_mode, img_des.prevent_adding_db);
             } else {
-                _old_id = query_from_database(img_des);
+                _old_id = query_from_database(img_des, 0, img_des.prevent_adding_db);
             }
 
             auto stop = high_resolution_clock::now(); 
@@ -229,7 +229,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
     return -1;
 }
 
-int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode) {
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode, bool nonkeyframe) {
     double thres = INNER_PRODUCT_THRES;
     if (init_mode) {
         thres = INIT_MODE_PRODUCT_THRES;
@@ -240,7 +240,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
         int _id = query_from_database(img_desc, remote_index, false, thres, 1);
         if (_id > 0) {
             return _id;
-        } else {
+        } else if(!nonkeyframe){
             int _id = query_from_database(img_desc, local_index, false, thres, MATCH_INDEX_DIST);
             return _id;
         }
