@@ -52,6 +52,7 @@ protected:
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode=false);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool keyframe_from_remote, double thres, int max_index);
 
     std::set<int> success_loop_nodes;
     std::set<int> all_nodes;
@@ -59,11 +60,7 @@ protected:
 public:
     std::function<void(LoopConnection &)> on_loop_cb;
     int self_id = -1;
-#ifdef USE_DEEPNET
     LoopDetector();
-#else
-    LoopDetector(const std::string & voc_path);
-#endif
     void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img = cv::Mat());
     void on_loop_connection(LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
