@@ -18,15 +18,13 @@
 
 using namespace swarm_msgs;
 
+#define REMOTE_MAGIN_NUMBER 1000000
+
 class LoopDetector {
 
 protected:
-#ifdef USE_DEEPNET
-    faiss::IndexFlatIP index;
-#else
-    DBoW3::Vocabulary voc;
-    DBoW3::Database db;
-#endif
+    faiss::IndexFlatIP local_index;
+    faiss::IndexFlatIP remote_index;
     std::map<unsigned int, ImageDescriptor_t> id2imgdes;
     std::map<unsigned int, cv::Mat> id2cvimg;
     std::vector<cv::Scalar> colors;
