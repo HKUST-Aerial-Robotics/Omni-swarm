@@ -190,12 +190,12 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
     return -1;
 }
 
-int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss::IndexFlatIP & index, bool keyframe_from_remote, double thres, int max_index) {
+int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index) {
     float distances[1000] = {0};
     faiss::Index::idx_t labels[1000];
 
     int index_offset = 0;
-    if (keyframe_from_remote) {
+    if (remote_db) {
         index_offset = REMOTE_MAGIN_NUMBER;
     }
     
@@ -237,7 +237,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
 
     if (img_desc.drone_id == self_id) {
         //Then this is self drone
-        int _id = query_from_database(img_desc, remote_index, false, thres, 1);
+        int _id = query_from_database(img_desc, remote_index, true, thres, 1);
         if (_id > 0) {
             return _id;
         } else if(!nonkeyframe){
@@ -245,7 +245,8 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
             return _id;
         }
     } else {
-        int _id = query_from_database(img_desc, local_index, true, thres, 1);
+        ROS_INFO("Keyframe from remote, will query local db only");
+        int _id = query_from_database(img_desc, local_index, false, thres, 1);
         return _id;
     }
     return -1;
