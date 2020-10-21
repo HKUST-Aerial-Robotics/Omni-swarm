@@ -124,7 +124,6 @@ public:
         }
 
         if ((viokf.header.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
-            //
             VIOKF_callback(viokf, true);
         }
     }

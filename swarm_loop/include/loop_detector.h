@@ -52,7 +52,7 @@ protected:
 
     int add_to_database(const ImageDescriptor_t & new_img_desc);
     int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe);
-    int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool keyframe_from_remote, double thres, int max_index);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index);
 
     std::set<int> success_loop_nodes;
     std::set<int> all_nodes;
