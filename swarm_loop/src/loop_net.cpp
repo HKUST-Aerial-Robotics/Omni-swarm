@@ -16,14 +16,6 @@ void LoopNet::setup_network(std::string _lcm_uri) {
 }
 
 void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
-    /*
-    if (img_des.getEncodedSize() < 0) {
-        ROS_ERROR("WRONG SIZE!!!");
-        exit(-1);
-    }
-    */
-
-    
     int64_t msg_id = rand() + img_des.timestamp.nsec;
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
