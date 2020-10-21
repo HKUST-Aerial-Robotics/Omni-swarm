@@ -487,6 +487,8 @@ bool LoopDetector::compute_loop(const ImageDescriptor_t & new_img_desc, const Im
         ret.id_b = new_img_desc.drone_id;
         ret.ts_b = toROSTime(new_img_desc.timestamp);
 
+        ROS_INFO("OLD TS %ld NEW TS %ld", old_img_desc.timestamp.sec, new_img_desc.timestamp.sec);
+
         ret.self_pose_a = toROSPose(old_img_desc.pose_drone);
         ret.self_pose_b = toROSPose(new_img_desc.pose_drone);
 
