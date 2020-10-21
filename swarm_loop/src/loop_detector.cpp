@@ -245,10 +245,8 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
             return _id;
         }
     } else {
-        if (init_mode) {
-            int _id = query_from_database(img_desc, local_index, true, thres, 1);
-            return _id;
-        }
+        int _id = query_from_database(img_desc, local_index, true, thres, 1);
+        return _id;
     }
     return -1;
 }
