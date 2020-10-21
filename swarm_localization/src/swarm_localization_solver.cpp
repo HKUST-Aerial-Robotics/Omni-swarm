@@ -46,7 +46,7 @@ using namespace std::chrono;
 
 #define INIT_TRIAL 5
 
-#define BEGIN_MIN_LOOP_DT 1.0
+#define BEGIN_MIN_LOOP_DT 10.0
 
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
@@ -659,7 +659,7 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        generate_cgraph();
+        // generate_cgraph();
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
