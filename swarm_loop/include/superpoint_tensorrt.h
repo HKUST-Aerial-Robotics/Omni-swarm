@@ -1,3 +1,6 @@
+#pragma once
+
+#ifdef USE_TENSORRT
 #include "NvInfer.h"
 #include <opencv2/opencv.hpp>
 #include <trt_utils.h>
@@ -63,3 +66,4 @@ public:
         doInference(input);
     }
 };
+#endif

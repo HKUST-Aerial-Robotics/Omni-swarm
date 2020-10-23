@@ -26,7 +26,9 @@ class LoopCam {
     ros::ServiceClient hfnet_client;
     ros::ServiceClient superpoint_client;
 
+#ifdef USE_TENSORRT
     SuperPointTensorRT superpoint_net;
+#endif
 
     bool send_img;
 public:
