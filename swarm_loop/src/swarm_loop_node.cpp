@@ -129,6 +129,10 @@ public:
     }
 
     void VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyframe = false) {
+        if (viokf.header.stamp.toSec() - last_invoke < 1/max_freq) {
+            return;
+        }
+
         last_invoke = viokf.header.stamp.toSec();
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();

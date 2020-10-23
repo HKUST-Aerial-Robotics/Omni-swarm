@@ -24,7 +24,7 @@
             enable_sub_remote_img: false
             self_id: 4
             accept_min_3d_pts: 200
-            max_freq: 10
+            max_freq: 1.0
             match_index_dist: 20
 
         </rosparam> 
