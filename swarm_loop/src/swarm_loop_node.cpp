@@ -132,7 +132,6 @@ public:
         last_invoke = viokf.header.stamp.toSec();
         Eigen::Vector3d drone_pos(viokf.pose_drone.position.x, viokf.pose_drone.position.y, viokf.pose_drone.position.z);
         double dpos = (last_keyframe_position - drone_pos).norm();
-        bool is_non_kf = false;
 
         last_kftime = viokf.header.stamp;
 
@@ -197,8 +196,7 @@ private:
         auto nh = getMTPrivateNodeHandle();
         std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
-        std::string BRIEF_PATTHER_FILE = "";
-        std::string ORB_VOC = "";
+        std::string superpoint_model_path = "";
         cv::setNumThreads(1);
         nh.param<int>("self_id", self_id, -1);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
@@ -225,21 +223,14 @@ private:
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
-        nh.param<std::string>("BRIEF_PATTHER_FILE", BRIEF_PATTHER_FILE, 
-            "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/support_files/brief_pattern.yml");
-        nh.param<std::string>("ORB_VOC", ORB_VOC, 
-            "/home/xuhao/swarm_ws/src/swarm_localization/support_files/ORBvoc.txt");
+        nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
 
         nh.param<bool>("debug_image", debug_image, false);
         
         loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
-        loop_cam = new LoopCam(camera_config_path, BRIEF_PATTHER_FILE, self_id, send_img, nh);
+        loop_cam = new LoopCam(camera_config_path, superpoint_model_path, self_id, send_img, nh);
         loop_cam->show = debug_image; 
-#ifdef USE_DEEPNET
         loop_detector = new LoopDetector();
-#else
-        loop_detector = new LoopDetector(ORB_VOC);
-#endif
         loop_detector->self_id = self_id;
         loop_detector->loop_cam = loop_cam;
         loop_detector->enable_visualize = debug_image;

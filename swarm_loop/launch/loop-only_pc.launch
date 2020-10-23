@@ -4,7 +4,6 @@
     <arg name="manager"     default="manager"/>
     <arg name="send_img"     default="false"/>
     <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
-
     <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen" />
     <node pkg="nodelet" type="nodelet" name="SwarmLoopNode" 
         args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" ns="swarm_loop">
@@ -30,6 +29,7 @@
 
         </rosparam> 
         <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />
+        <param name="superpoint_model_path" value="/home/xuhao/swarm_ws/src/swarm_localization/swarm_loop/models/superpoint_v1.trt" type="string" />
         <param name="debug_image" value="$(arg show)" type="bool" />
         <param name="send_img" value="$(arg send_img)" type="bool" />
         <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
