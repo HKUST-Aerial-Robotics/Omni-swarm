@@ -5,6 +5,7 @@ project(swarm_loop)
 add_compile_options(-std=c++14)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wno-deprecated-declarations")
+set(USE_TENSORRT off)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -26,15 +27,15 @@ find_package(lcm REQUIRED)
 find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
-include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
-include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
-link_directories(${TENSORRT_ROOT}/lib)
-
-link_directories("$ENV{HOME}/source/yolo-tensorrt/build/")
-
-find_package(CUDA)
-
-include_directories(${CUDA_INCLUDE_DIRS})
+if (USE_TENSORRT) 
+  include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
+  include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
+  link_directories(${TENSORRT_ROOT}/lib)
+  link_directories("$ENV{HOME}/source/yolo-tensorrt/build/")
+  find_package(CUDA)
+  include_directories(${CUDA_INCLUDE_DIRS})
+  add_definitions("USE_TENSORRT")
+endif()
 
 add_service_files(
   FILES
@@ -74,7 +75,6 @@ add_library(${PROJECT_NAME}_nodelet
   include/loop_detector.h
   include/loop_net.h
   src/loop_params.cpp
-  src/superpoint_tensorrt.cpp
 )
 
 add_executable(${PROJECT_NAME}_spy
@@ -83,12 +83,12 @@ add_executable(${PROJECT_NAME}_spy
   src/loop_params.cpp
 )
 
-
-cuda_add_library(loop_cnn SHARED   
-  src/superpoint_tensorrt.cpp
-)
-
-target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector )
+if (USE_TENSORRT) 
+  cuda_add_library(loop_cnn SHARED   
+    src/superpoint_tensorrt.cpp
+  )
+  target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector )
+endif()
 
 add_dependencies(${PROJECT_NAME}_nodelet
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -96,15 +96,24 @@ add_dependencies(${PROJECT_NAME}_nodelet
 add_dependencies(${PROJECT_NAME}_spy
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(${PROJECT_NAME}_nodelet
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   lcm
-   faiss
-   dw
-   loop_cnn
-)
-
+if (USE_TENSORRT)
+  target_link_libraries(${PROJECT_NAME}_nodelet
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    lcm
+    faiss
+    dw
+    loop_cnn
+  )
+else()
+  target_link_libraries(${PROJECT_NAME}_nodelet
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  lcm
+  faiss
+  dw
+  )
+endif()
 
 target_link_libraries(${PROJECT_NAME}_spy
    ${catkin_LIBRARIES}
