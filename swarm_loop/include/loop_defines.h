@@ -1,5 +1,10 @@
 #pragma once
 
+
+#include <ctime>
+#include <cstdlib>
+#include <chrono>
+
 #define LOOP_BOW_THRES 0.015
 // #define MATCH_INDEX_DIST 1
 #define FAST_THRES (20.0f)
@@ -65,3 +70,27 @@ extern int ACCEPT_MIN_3D_PTS;
 #define LOCAL_DESC_LEN 256
 
 extern bool ENABLE_LK_LOOP_DETECTION; 
+
+class TicToc
+{
+  public:
+    TicToc()
+    {
+        tic();
+    }
+
+    void tic()
+    {
+        start = std::chrono::system_clock::now();
+    }
+
+    double toc()
+    {
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        return elapsed_seconds.count() * 1000;
+    }
+
+  private:
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+};

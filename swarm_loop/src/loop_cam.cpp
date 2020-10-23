@@ -9,7 +9,7 @@
 
 using namespace std::chrono;
 
-LoopCam::LoopCam(const std::string &camera_config_path, const std::string &BRIEF_PATTERN_FILE, int _self_id, bool _send_img, ros::NodeHandle &nh) : self_id(_self_id), send_img(_send_img)
+LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, int _self_id, bool _send_img, ros::NodeHandle &nh) : self_id(_self_id),superpoint_net(superpoint_model), send_img(_send_img)
 {
     camodocal::CameraFactory cam_factory;
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
@@ -416,6 +416,12 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
 
     HFNetSrv hfnet_srv;
     hfnet_srv.request.image = msg;
+
+    auto cv_ptr = cv_bridge::toCvCopy(msg);
+
+    //Use TensorRT here
+    std::vector<cv::Point2f> features;
+    superpoint_net.inference(cv_ptr->image, features, img_des.feature_descriptor);
 
     if (superpoint_mode) {
         if (superpoint_client.call(hfnet_srv))
