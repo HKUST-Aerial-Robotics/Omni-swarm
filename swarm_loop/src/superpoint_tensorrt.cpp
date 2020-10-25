@@ -14,7 +14,7 @@ TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
 }
 
 void TensorRTInferenceGeneric::init(const std::string & engine_path) {
-    printf("Trying to load TRT engine of superpoint");
+    std::cout << "Trying to load TRT engine of superpoint" << std::endl;
     m_Engine = loadTRTEngine(engine_path, nullptr, m_Logger);
     assert(m_Engine != nullptr);
     
@@ -22,7 +22,7 @@ void TensorRTInferenceGeneric::init(const std::string & engine_path) {
 	assert(m_Context != nullptr);
 	m_InputBindingIndex = m_Engine->getBindingIndex(m_InputBlobName.c_str());
 	assert(m_InputBindingIndex != -1);
-    std::cout << "MaxBatchSize" << m_Engine->getMaxBatchSize();
+    std::cout << "MaxBatchSize" << m_Engine->getMaxBatchSize() << std::endl;
 	assert(m_BatchSize <= static_cast<uint32_t>(m_Engine->getMaxBatchSize()));
 	allocateBuffers();
 	NV_CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
@@ -34,11 +34,8 @@ void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {
     TicToc inference;
     //This function is very slow event on i7, we need to optimize it
     //But not now.
-    cv::Mat trtInput = cv::dnn::blobFromImages(input, 1.0, cv::Size(input.cols, input.rows),
-                                   cv::Scalar(0.0, 0.0, 0.0), false);
-    double dt_blob = inference.toc(); 
     doInference(input.data, 1);
-    printf("Inference blob %fms full %fms", dt_blob, inference.toc());
+    printf("doInference %fms\n", inference.toc());
 }
 
 
@@ -63,7 +60,6 @@ void TensorRTInferenceGeneric::doInference(const unsigned char* input, const uin
 
 bool TensorRTInferenceGeneric::verifyEngine()
 {
-    std::cout << "NB bindings" <<  m_Engine->getNbBindings() <<  " output tensor " << m_OutputTensors.size() << std::endl;
     assert((m_Engine->getNbBindings() == (1 + m_OutputTensors.size())
             && "Binding info doesn't match between cfg and engine file \n"));
 
@@ -71,6 +67,7 @@ bool TensorRTInferenceGeneric::verifyEngine()
     {
         assert(!strcmp(m_Engine->getBindingName(tensor.bindingIndex), tensor.blobName.c_str())
                && "Blobs names dont match between cfg and engine file \n");
+        std::cout << get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex)) <<":" << tensor.volume << std::endl;
         assert(get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex))
                    == tensor.volume
                && "Tensor volumes dont match between cfg and engine file \n");
@@ -93,6 +90,11 @@ void TensorRTInferenceGeneric::allocateBuffers()
     for (auto& tensor : m_OutputTensors)
     {
         tensor.bindingIndex = m_Engine->getBindingIndex(tensor.blobName.c_str());
+        std::cout << "Tensor" << tensor.blobName.c_str() << " bind to " << tensor.bindingIndex 
+                << " dim " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[0]
+                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[1]
+                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[2]
+                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[3] << std::endl;
         assert((tensor.bindingIndex != -1) && "Invalid output binding index");
         NV_CUDA_CHECK(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
                                  m_BatchSize * tensor.volume * sizeof(float)));
@@ -104,42 +106,70 @@ void TensorRTInferenceGeneric::allocateBuffers()
 
 uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims)
 {
-    return inputDims.d[0] * inputDims.d[1] * inputDims.d[2] *  inputDims.d[3];
+    int ret = 1;
+    for (int i = 0; i < inputDims.nbDims; i ++) {
+        ret = ret * inputDims.d[i];
+    }
+    return ret;
 }
 
 
 void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
-    doInference(input);
+    TicToc tic;
+    cv::Mat _input;
+    assert(input.rows == height && input.cols == width && "Input image must have same size with network");
+    if (input.rows != height || input.cols != width) {
+        cv::resize(input, _input, cv::Size(400, 208));
+        _input.convertTo(_input, CV_32F, 1/255.0);
+    } else {
+        input.convertTo(_input, CV_32F, 1/255.0);
+    }
+    doInference(_input);
+    std::cout << "Inference Time " << tic.toc();
+
+    TicToc tic1;
     auto options = torch::TensorOptions().dtype(torch::kFloat32);
+    
+    
+    
     auto mProb = at::from_blob(m_OutputTensors[0].hostBuffer, {1, 1, height, width}, options);
     auto mDesc = at::from_blob(m_OutputTensors[1].hostBuffer, {1, 256, height/8, width/8}, options);
+    std::cout << " from_blob " << tic1.toc();
+
     cv::Mat descriptors;
+    TicToc tic2;
     getKeyPoints(mProb, thres, keypoints);
-    computeDescriptors(mProb, mDesc, keypoints, descriptors);
+    std::cout << " getKeyPoints " << tic2.toc();
+
+    cv::Mat heat(height, width, CV_32F, 1);
+    memcpy(heat.data, m_OutputTensors[0].hostBuffer, width*height * sizeof(float));
+    heat.convertTo(heat, CV_8U, 10000);
+    cv::resize(heat, heat, cv::Size(), 2, 2);
+    cv::imshow("Heat", heat);
 }
 
 void SuperPointTensorRT::getKeyPoints(const torch::Tensor & mProb, float threshold, std::vector<cv::Point2f> &keypoints)
 {
     auto kpts = (mProb > threshold);
     kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
-
+    std::cout << kpts.sizes();
     std::vector<cv::Point2f> keypoints_no_nms;
     for (int i = 0; i < kpts.size(0); i++) {
-        keypoints_no_nms.push_back(cv::Point2f(kpts[i][1].item<float>(), kpts[i][0].item<float>()));
+        // std::cout << kpts[i][3].item<float>() <<":" << kpts[i][2].item<float>() << std::endl;
+        keypoints_no_nms.push_back(cv::Point2f(kpts[i][3].item<float>(), kpts[i][2].item<float>()));
     }
 
     cv::Mat conf(keypoints_no_nms.size(), 1, CV_32F);
     for (size_t i = 0; i < keypoints_no_nms.size(); i++) {
         int x = keypoints_no_nms[i].x;
         int y = keypoints_no_nms[i].y;
-        conf.at<float>(i, 0) = mProb[y][x].item<float>();
+        conf.at<float>(i, 0) = mProb[0][0][y][x].item<float>();
     }
-
-    // cv::Mat descriptors;
 
     int border = 0;
     int dist_thresh = 4;
     NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height);
+    std::cout << "\nkeypoints no nms" << keypoints_no_nms.size() <<" keypoints nms " << keypoints.size() << std::endl;
 }
 
 
@@ -198,7 +228,7 @@ void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& 
 
         confidence.at<float>(vv, uu) = conf.at<float>(i, 0);
     }
-    
+
     cv::copyMakeBorder(grid, grid, dist_thresh, dist_thresh, dist_thresh, dist_thresh, cv::BORDER_CONSTANT, 0);
 
     for (int i = 0; i < pts_raw.size(); i++)
@@ -214,9 +244,9 @@ void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& 
             {
                 if(j==0 && k==0) continue;
 
-                if ( confidence.at<float>(vv + k, uu + j) < confidence.at<float>(vv, uu) )
+                if ( confidence.at<float>(vv + k - dist_thresh, uu + j - dist_thresh) < confidence.at<float>(vv-dist_thresh, uu - dist_thresh) ) {
                     grid.at<char>(vv + k, uu + j) = 0;
-                
+                }
             }
         grid.at<char>(vv, uu) = 2;
     }
