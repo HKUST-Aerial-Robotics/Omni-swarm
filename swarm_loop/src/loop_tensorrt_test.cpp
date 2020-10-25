@@ -8,7 +8,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Load Model from " << argv[1] << std::endl;
     std::string engine_path(argv[1]);
-    SuperPointTensorRT sp_trt(engine_path, true);
+    SuperPointTensorRT sp_trt(engine_path, 0.012, true);
     std::cout << "Load Model success" << std::endl;
 
     cv::Mat img = cv::imread(argv[2]);

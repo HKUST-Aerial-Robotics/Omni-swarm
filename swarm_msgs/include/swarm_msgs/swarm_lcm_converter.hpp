@@ -47,6 +47,15 @@ inline void ROSPoints2LCM(const std::vector<geometry_msgs::Point32> & src, std::
     }
 }
 
+inline void CVPoints2LCM(const std::vector<cv::Point2f> & src, std::vector<Point2d_t> & dst) {
+    for (auto pt : src) {
+        Point2d_t pt2;
+        pt2.x = pt.x;
+        pt2.y = pt.y;
+        dst.push_back(pt2);
+    }
+}
+
 inline void LCMPoints2ROS(const std::vector<Point2d_t> & src, std::vector<geometry_msgs::Point32> & dst) {
     for (auto pt : src) {
         geometry_msgs::Point32 pt2;
