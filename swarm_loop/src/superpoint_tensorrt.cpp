@@ -1,8 +1,6 @@
 #include "superpoint_tensorrt.h"
 #include "loop_defines.h"
-#include <torch/csrc/autograd/variable.h>
-#include <ATen/ATen.h>
-#include <torch/csrc/api/include/torch/types.h>
+
 
 //NMS code is from https://github.com/KinglittleQ/SuperPoint_SLAM
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
@@ -110,10 +108,18 @@ uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims)
 }
 
 
-void SuperPointTensorRT::getKeyPoints(float threshold, std::vector<cv::Point2f> &keypoints)
-{
-    auto options = torch::TensorOptions().dtype(torch::kFloat64);
+void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
+    doInference(input);
+    auto options = torch::TensorOptions().dtype(torch::kFloat32);
     auto mProb = at::from_blob(m_OutputTensors[0].hostBuffer, {1, 1, height, width}, options);
+    auto mDesc = at::from_blob(m_OutputTensors[1].hostBuffer, {1, 256, height/8, width/8}, options);
+    cv::Mat descriptors;
+    getKeyPoints(mProb, thres, keypoints);
+    computeDescriptors(mProb, mDesc, keypoints, descriptors);
+}
+
+void SuperPointTensorRT::getKeyPoints(const torch::Tensor & mProb, float threshold, std::vector<cv::Point2f> &keypoints)
+{
     auto kpts = (mProb > threshold);
     kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
 
@@ -137,34 +143,34 @@ void SuperPointTensorRT::getKeyPoints(float threshold, std::vector<cv::Point2f> 
 }
 
 
-void SuperPointTensorRT::computeDescriptors(const std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors)
+void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & mDesc, const std::vector<cv::Point2f> &keypoints, cv::Mat &descriptors)
 {
-    // cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
+    cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
 
-    // for (size_t i = 0; i < keypoints.size(); i++) {
-    //     kpt_mat.at<float>(i, 0) = (float)keypoints[i].pt.y;
-    //     kpt_mat.at<float>(i, 1) = (float)keypoints[i].pt.x;
-    // }
+    for (size_t i = 0; i < keypoints.size(); i++) {
+        kpt_mat.at<float>(i, 0) = (float)keypoints[i].y;
+        kpt_mat.at<float>(i, 1) = (float)keypoints[i].x;
+    }
 
-    // auto fkpts = torch::from_blob(kpt_mat.data, {keypoints.size(), 2}, torch::kFloat);
+    auto fkpts = torch::from_blob(kpt_mat.data, {keypoints.size(), 2}, torch::kFloat);
 
-    // auto grid = torch::zeros({1, 1, fkpts.size(0), 2});  // [1, 1, n_keypoints, 2]
-    // grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / mProb.size(1) - 1;  // x
-    // grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / mProb.size(0) - 1;  // y
+    auto grid = torch::zeros({1, 1, fkpts.size(0), 2});  // [1, 1, n_keypoints, 2]
+    grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / mProb.size(1) - 1;  // x
+    grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / mProb.size(0) - 1;  // y
 
-    // auto desc = torch::grid_sampler(mDesc, grid, 0, 0);  // [1, 256, 1, n_keypoints]
-    // desc = desc.squeeze(0).squeeze(1);  // [256, n_keypoints]
+    auto desc = torch::grid_sampler(mDesc, grid, 0, 0, 0);
+    desc = desc.squeeze(0).squeeze(1);
 
-    // // normalize to 1
-    // auto dn = torch::norm(desc, 2, 1);
-    // desc = desc.div(torch::unsqueeze(dn, 1));
+    // normalize to 1
+    auto dn = torch::norm(desc, 2, 1);
+    desc = desc.div(torch::unsqueeze(dn, 1));
 
-    // desc = desc.transpose(0, 1).contiguous();  // [n_keypoints, 256]
-    // desc = desc.to(torch::kCPU);
+    desc = desc.transpose(0, 1).contiguous();
+    desc = desc.to(torch::kCPU);
 
-    // cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
+    cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
 
-    // descriptors = desc_mat.clone();
+    descriptors = desc_mat.clone();
 }
 
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
