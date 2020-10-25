@@ -28,7 +28,7 @@
             match_index_dist: 20
 
         </rosparam> 
-        <remap from="/swarm_loop/superpoint" to="/swarm_loop/hfnet" />
+        <remap from="/swarm_loop/netvlad" to="/swarm_loop/hfnet" />
         <param name="superpoint_model_path" value="/home/xuhao/swarm_ws/src/swarm_localization/swarm_loop/models/superpoint_v1.trt" type="string" />
         <param name="debug_image" value="$(arg show)" type="bool" />
         <param name="send_img" value="$(arg send_img)" type="bool" />

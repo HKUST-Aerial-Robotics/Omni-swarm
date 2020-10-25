@@ -24,3 +24,4 @@ swarm_loop/.ipynb_checkpoints/
 swarm_loop/models/hfnet/
 swarm_loop/models/hfnet_v2
 swarm_loop/models/hfnet_trt
+swarm_loop/models/hfnet_v2_netvlad/saved_model.pb

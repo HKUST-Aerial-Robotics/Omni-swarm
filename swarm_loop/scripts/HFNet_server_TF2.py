@@ -40,14 +40,17 @@ class HFNet:
         signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
         return frozen_func
     
-    def inference(self, img, k, radius):
+    def inference(self, img, k, radius, netvlad_mode = False):
         _img = np.expand_dims(img, axis=2)
         _img = np.array([_img]).astype(np.float)
         _img = tf.convert_to_tensor(_img, dtype=tf.float32)
         start_time = time.time()
-        output = self.func(image=_img, 
-            k=tf.convert_to_tensor(k, dtype=tf.int32),
-            radius=tf.convert_to_tensor(radius, dtype=tf.int32))
+        if netvlad_mode:
+            output = self.func(image=_img)
+        else:
+            output = self.func(image=_img, 
+                k=tf.convert_to_tensor(k, dtype=tf.int32),
+                radius=tf.convert_to_tensor(radius, dtype=tf.int32))
 
         print( f'Inference hfnet {img.shape} in {( 1000. *(time.time() - start_time) ) }fms')
 
@@ -55,25 +58,30 @@ class HFNet:
 
 
 class HFNetServer:
-    def __init__(self, model_path, k, radius, superpoint_mode = False):
+    def __init__(self, model_path, k, radius, superpoint_mode = False, netvlad_mode=False):
         self.hfnet = HFNet(model_path)
 
         tmp_zer = np.random.randn(208, 400)
         self.superpoint_mode = superpoint_mode
+        self.netvlad_mode = netvlad_mode
         self.k = k
         self.radius = radius
         self.inference_network_on_image(tmp_zer)
 
         if superpoint_mode:
             print("SuperPoint Ready")
+        elif netvlad_mode:
+            print("NetVLAD Ready")
         else:
             print("NFNet ready")
         
     
     def inference_network_on_image(self, img):
-        ret = self.hfnet.inference(img, self.k, self.radius)
-        if superpoint_mode:
+        ret = self.hfnet.inference(img, self.k, self.radius, self.netvlad_mode)
+        if self.superpoint_mode:
             return ret["keypoints"][0].numpy(), ret["local_descriptors"][0].numpy()
+        elif self.netvlad_mode:
+            return ret["global_descriptor"][0].numpy()
         else:
             return ret["global_descriptor"][0].numpy(), ret["keypoints"][0].numpy(), ret["local_descriptors"][0].numpy()
     
@@ -119,12 +127,15 @@ def set_memory_limit(memory_limit):
 if __name__ == "__main__":
 
     superpoint_mode = False
+    netvlad_mode = False
     print(sys.argv)
     if len(sys.argv) > 1 and sys.argv[1] == "superpoint":
         superpoint_mode = True
         print("Initializing SuperPoint with tensorflow {}".format(tf.__version__))
-    else:
-        print("Initializing HFNet with tensorflow {}".format(tf.__version__))
+    elif len(sys.argv) > 1 and sys.argv[1] == "netvlad":
+        netvlad_mode = True
+        print("Initializing netvlad with tensorflow {}".format(tf.__version__))
+
 
 
     if superpoint_mode:
@@ -139,9 +150,11 @@ if __name__ == "__main__":
     
     set_memory_limit(memory_limit)
     
-    hfserver = HFNetServer(model_path, k, radius, superpoint_mode=superpoint_mode)
+    hfserver = HFNetServer(model_path, k, radius, superpoint_mode=superpoint_mode, netvlad_mode=netvlad_mode)
     if superpoint_mode:
         s = rospy.Service( '/swarm_loop/superpoint', HFNetSrv, hfserver.handle_req)
+    elif netvlad_mode:
+        s = rospy.Service( '/swarm_loop/netvlad_mode', HFNetSrv, hfserver.handle_req)
     else:
         s = rospy.Service( '/swarm_loop/hfnet', HFNetSrv, hfserver.handle_req)
     rospy.spin()
