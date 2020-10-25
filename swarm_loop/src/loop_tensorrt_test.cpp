@@ -1,4 +1,5 @@
 #include "superpoint_tensorrt.h"
+#include "loop_defines.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -17,7 +18,11 @@ int main(int argc, char* argv[]) {
 
     cv::Mat img_gray;
     cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
-    sp_trt.inference(img_gray, kps, local_desc);
+    TicToc tic;
+    for (unsigned int i = 0; i < 1000; i ++) {
+        sp_trt.inference(img_gray, kps, local_desc);
+    }
+    std::cout << "1000 takes" << tic.toc() << std::endl;
     for(auto pt : kps) {
         cv::circle(img, pt, 1, cv::Scalar(255, 0, 0), -1);
     }
