@@ -30,6 +30,7 @@ find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
 if (USE_TENSORRT) 
+  set(Torch_DIR "$ENV{HOME}/source/libtorch/share/cmake/Torch")
   include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
   include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
   include_directories("$ENV{HOME}/source/libtorch/include")
@@ -39,6 +40,7 @@ if (USE_TENSORRT)
   find_package(CUDA)
   include_directories(${CUDA_INCLUDE_DIRS})
   add_definitions("-D USE_TENSORRT")
+  find_package(Torch REQUIRED)
 endif()
 
 add_service_files(
@@ -99,12 +101,13 @@ if (USE_TENSORRT)
   target_link_libraries(loop_tensorrt_test 
     loop_cnn 
     dw 
-    torch 
-    c10
-    torch_cpu
     opencv_dnn
+    # ${TORCH_LIBRARIES}
+    torch
+    torch_cpu
     ${OpenCV_LIBRARIES}
-    ${catkin_LIBRARIES})
+    ${catkin_LIBRARIES}
+    )
 endif()
 
 add_dependencies(${PROJECT_NAME}_nodelet

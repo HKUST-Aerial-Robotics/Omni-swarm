@@ -1,6 +1,6 @@
 #include "superpoint_tensorrt.h"
 #include "loop_defines.h"
-
+#include "ATen/Parallel.h"
 
 //NMS code is from https://github.com/KinglittleQ/SuperPoint_SLAM
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
@@ -14,6 +14,7 @@ TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
 }
 
 void TensorRTInferenceGeneric::init(const std::string & engine_path) {
+    at::set_num_threads(1);
     std::cout << "Trying to load TRT engine of superpoint" << std::endl;
     m_Engine = loadTRTEngine(engine_path, nullptr, m_Logger);
     assert(m_Engine != nullptr);
@@ -67,7 +68,7 @@ bool TensorRTInferenceGeneric::verifyEngine()
     {
         assert(!strcmp(m_Engine->getBindingName(tensor.bindingIndex), tensor.blobName.c_str())
                && "Blobs names dont match between cfg and engine file \n");
-        std::cout << get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex)) <<":" << tensor.volume << std::endl;
+        // std::cout << get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex)) <<":" << tensor.volume << std::endl;
         assert(get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex))
                    == tensor.volume
                && "Tensor volumes dont match between cfg and engine file \n");
@@ -117,6 +118,8 @@ uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims)
 void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
     TicToc tic;
     cv::Mat _input;
+    keypoints.clear();
+    local_descriptors.clear();
     assert(input.rows == height && input.cols == width && "Input image must have same size with network");
     if (input.rows != height || input.cols != width) {
         cv::resize(input, _input, cv::Size(400, 208));
@@ -141,17 +144,21 @@ void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2
         std::cout << " from_blob " << tic1.toc();
     }
 
-    cv::Mat descriptors;
     TicToc tic2;
     getKeyPoints(Prob, thres, keypoints);
     if (enable_perf) {
         std::cout << " getKeyPoints " << tic2.toc();
+    }
 
-        cv::Mat heat(height, width, CV_32F, 1);
-        memcpy(heat.data, m_OutputTensors[0].hostBuffer, width*height * sizeof(float));
-        heat.convertTo(heat, CV_8U, 10000);
-        cv::resize(heat, heat, cv::Size(), 2, 2);
-        cv::imshow("Heat", heat);
+    computeDescriptors(mProb, mDesc, keypoints, local_descriptors);
+    
+    if (enable_perf) {
+        std::cout << " getKeyPoints+computeDescriptors " << tic2.toc() << "inference all" << tic.toc() << "features" << keypoints.size() << "desc size" << local_descriptors.size() << std::endl;
+        // cv::Mat heat(height, width, CV_32F, 1);
+        // memcpy(heat.data, m_OutputTensors[0].hostBuffer, width*height * sizeof(float));
+        // heat.convertTo(heat, CV_8U, 10000);
+        // cv::resize(heat, heat, cv::Size(), 2, 2);
+        // cv::imshow("Heat", heat);
     }
 }
 
@@ -173,23 +180,18 @@ void SuperPointTensorRT::getKeyPoints(const cv::Mat & prob, float threshold, std
         conf.at<float>(i, 0) = prob.at<float>(y, x);
     }
 
-    if (enable_perf) {
-        printf("GetKeyPointsNoNMS %f ", getkps.toc());
-    }
     int border = 0;
     int dist_thresh = 4;
     TicToc ticnms;
     NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height);
     if (enable_perf) {
-        printf("NMS %f keypoints_no_nms %ld keypoints %ld\n", ticnms.toc(), keypoints_no_nms.size(), keypoints.size());
+        printf(" NMS %f keypoints_no_nms %ld keypoints %ld\n", ticnms.toc(), keypoints_no_nms.size(), keypoints.size());
     }
 }
 
 
-void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & mDesc, const std::vector<cv::Point2f> &keypoints, cv::Mat &descriptors)
-{
+void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & mDesc, const std::vector<cv::Point2f> &keypoints, std::vector<float> & local_descriptors) {
     cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
-
     for (size_t i = 0; i < keypoints.size(); i++) {
         kpt_mat.at<float>(i, 0) = (float)keypoints[i].y;
         kpt_mat.at<float>(i, 1) = (float)keypoints[i].x;
@@ -201,6 +203,8 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     grid[0][0].slice(1, 0, 1) = 2.0 * fkpts.slice(1, 1, 2) / mProb.size(1) - 1;  // x
     grid[0][0].slice(1, 1, 2) = 2.0 * fkpts.slice(1, 0, 1) / mProb.size(0) - 1;  // y
 
+    // mDesc.to(torch::kCUDA);
+    // grid.to(torch::kCUDA);
     auto desc = torch::grid_sampler(mDesc, grid, 0, 0, 0);
     desc = desc.squeeze(0).squeeze(1);
 
@@ -211,9 +215,9 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     desc = desc.transpose(0, 1).contiguous();
     desc = desc.to(torch::kCPU);
 
-    cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
-
-    descriptors = desc_mat.clone();
+    local_descriptors = std::vector<float>(desc.data<float>(), desc.data<float>()+desc.size(1)*desc.size(0));
+    // cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
+    // descriptors = desc_mat.clone();
 }
 
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
