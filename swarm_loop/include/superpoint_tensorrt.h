@@ -51,7 +51,8 @@ public:
     int width = 400;
     int height = 208;
     double thres = 0.015;
-    SuperPointTensorRT(std::string engine_path) : TensorRTInferenceGeneric("image") {
+    bool enable_perf;
+    SuperPointTensorRT(std::string engine_path, bool _enable_perf = false) : TensorRTInferenceGeneric("image"), enable_perf(_enable_perf) {
         TensorInfo outputTensorSemi, outputTensorDesc;
         outputTensorSemi.blobName = "semi";
         outputTensorDesc.blobName = "desc";
@@ -64,7 +65,7 @@ public:
         init(engine_path);
     }
 
-    void getKeyPoints(const torch::Tensor & mProb, float threshold, std::vector<cv::Point2f> &keypoints);
+    void getKeyPoints(const cv::Mat & prob, float threshold, std::vector<cv::Point2f> &keypoints);
     void computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & desc, const std::vector<cv::Point2f> &keypoints, cv::Mat &descriptors);
 
     void inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors);
