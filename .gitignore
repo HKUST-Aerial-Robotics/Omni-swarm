@@ -21,3 +21,6 @@ swarm_loop/config/hfnet/variables/variables.index
 build/
 swarm_loop/config/
 swarm_loop/.ipynb_checkpoints/
+swarm_loop/models/hfnet/
+swarm_loop/models/hfnet_v2
+swarm_loop/models/hfnet_trt

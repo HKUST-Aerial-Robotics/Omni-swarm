@@ -52,7 +52,7 @@ public:
     int height = 208;
     double thres = 0.015;
     bool enable_perf;
-    SuperPointTensorRT(std::string engine_path, bool _enable_perf = false) : TensorRTInferenceGeneric("image"), enable_perf(_enable_perf) {
+    SuperPointTensorRT(std::string engine_path, float _thres = 0.015, bool _enable_perf = false) : TensorRTInferenceGeneric("image"), thres(_thres), enable_perf(_enable_perf) {
         TensorInfo outputTensorSemi, outputTensorDesc;
         outputTensorSemi.blobName = "semi";
         outputTensorDesc.blobName = "desc";
