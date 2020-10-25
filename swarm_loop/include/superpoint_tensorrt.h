@@ -4,7 +4,9 @@
 #include "NvInfer.h"
 #include <opencv2/opencv.hpp>
 #include <trt_utils.h>
-
+#include <torch/csrc/autograd/variable.h>
+#include <ATen/ATen.h>
+#include <torch/csrc/api/include/torch/types.h>
 
 //Original code from https://github.com/enazoe/yolo-tensorrt
 
@@ -48,6 +50,7 @@ class SuperPointTensorRT: public TensorRTInferenceGeneric {
 public:
     int width = 400;
     int height = 208;
+    double thres = 0.015;
     SuperPointTensorRT(std::string engine_path) : TensorRTInferenceGeneric("image") {
         TensorInfo outputTensorSemi, outputTensorDesc;
         outputTensorSemi.blobName = "semi";
@@ -61,11 +64,9 @@ public:
         init(engine_path);
     }
 
-    void getKeyPoints(float threshold, std::vector<cv::Point2f> &keypoints);
-    void computeDescriptors(const std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors);
+    void getKeyPoints(const torch::Tensor & mProb, float threshold, std::vector<cv::Point2f> &keypoints);
+    void computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & desc, const std::vector<cv::Point2f> &keypoints, cv::Mat &descriptors);
 
-    void inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
-        doInference(input);
-    }
+    void inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors);
 };
 #endif
