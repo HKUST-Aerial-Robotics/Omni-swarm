@@ -19,8 +19,12 @@ LoopCam::LoopCam(const std::string &camera_config_path, const std::string &super
     camodocal::CameraFactory cam_factory;
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
+#ifdef USE_TENSORRT
+    hfnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/netvlad");
+#else
     hfnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     superpoint_client = nh.serviceClient<HFNetSrv>("/swarm_loop/superpoint");
+#endif
     camodocal::PinholeCamera* _cam = (camodocal::PinholeCamera*)cam.get();
 
     Eigen::Matrix3d _cameraMatrix;
