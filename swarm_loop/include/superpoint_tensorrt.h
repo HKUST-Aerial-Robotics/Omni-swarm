@@ -60,7 +60,7 @@ public:
         m_InputSize = height*width;
         m_OutputTensors.push_back(outputTensorSemi);
         m_OutputTensors.push_back(outputTensorDesc);
-
+        std::cout << "Trying to init trt engine" << std::endl;
         init(engine_path);
     }
 

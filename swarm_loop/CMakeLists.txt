@@ -91,7 +91,20 @@ if (USE_TENSORRT)
   cuda_add_library(loop_cnn SHARED   
     src/superpoint_tensorrt.cpp
   )
-  target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector )
+  target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector opencv_dnn)
+
+  add_executable(loop_tensorrt_test
+    src/loop_tensorrt_test.cpp
+  )
+  target_link_libraries(loop_tensorrt_test 
+    loop_cnn 
+    dw 
+    torch 
+    c10
+    torch_cpu
+    opencv_dnn
+    ${OpenCV_LIBRARIES}
+    ${catkin_LIBRARIES})
 endif()
 
 add_dependencies(${PROJECT_NAME}_nodelet
