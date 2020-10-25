@@ -5,7 +5,7 @@ project(swarm_loop)
 add_compile_options(-std=c++14)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall -Wno-deprecated-declarations")
-set(USE_TENSORRT off)
+set(USE_TENSORRT on)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -30,11 +30,13 @@ set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 if (USE_TENSORRT) 
   include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
   include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
+  include_directories("$ENV{HOME}/source/libtorch/include")
   link_directories(${TENSORRT_ROOT}/lib)
   link_directories("$ENV{HOME}/source/yolo-tensorrt/build/")
+  link_directories("$ENV{HOME}/source/libtorch/lib/")
   find_package(CUDA)
   include_directories(${CUDA_INCLUDE_DIRS})
-  add_definitions("USE_TENSORRT")
+  add_definitions("-D USE_TENSORRT")
 endif()
 
 add_service_files(
@@ -104,6 +106,7 @@ if (USE_TENSORRT)
     faiss
     dw
     loop_cnn
+    torch
   )
 else()
   target_link_libraries(${PROJECT_NAME}_nodelet
