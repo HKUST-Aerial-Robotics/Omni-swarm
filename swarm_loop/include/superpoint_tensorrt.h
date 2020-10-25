@@ -46,20 +46,22 @@ public:
 
 class SuperPointTensorRT: public TensorRTInferenceGeneric {
 public:
+    int width = 400;
+    int height = 208;
     SuperPointTensorRT(std::string engine_path) : TensorRTInferenceGeneric("image") {
         TensorInfo outputTensorSemi, outputTensorDesc;
         outputTensorSemi.blobName = "semi";
         outputTensorDesc.blobName = "desc";
-        outputTensorSemi.volume = 65*26*50;
-        outputTensorDesc.volume = 1*256*26*50;
-        m_InputSize = 208*400;
+        outputTensorSemi.volume = height*width;
+        outputTensorDesc.volume = 1*256*height/8*width/8;
+        m_InputSize = height*width;
         m_OutputTensors.push_back(outputTensorSemi);
         m_OutputTensors.push_back(outputTensorDesc);
 
         init(engine_path);
     }
 
-    void getKeyPoints(float threshold, int iniX, int maxX, int iniY, int maxY, std::vector<cv::KeyPoint> &keypoints, bool nms);
+    void getKeyPoints(float threshold, std::vector<cv::Point2f> &keypoints);
     void computeDescriptors(const std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors);
 
     void inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {

@@ -1,8 +1,11 @@
 #include "superpoint_tensorrt.h"
 #include "loop_defines.h"
+#include <torch/csrc/autograd/variable.h>
+#include <ATen/ATen.h>
+#include <torch/csrc/api/include/torch/types.h>
 
 //NMS code is from https://github.com/KinglittleQ/SuperPoint_SLAM
-void NMS2(std::vector<cv::KeyPoint> det, cv::Mat conf, std::vector<cv::KeyPoint>& pts,
+void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height);
 
 using namespace nvinfer1;
@@ -107,38 +110,30 @@ uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims)
 }
 
 
-void SuperPointTensorRT::getKeyPoints(float threshold, int iniX, int maxX, int iniY, int maxY, std::vector<cv::KeyPoint> &keypoints, bool nms)
+void SuperPointTensorRT::getKeyPoints(float threshold, std::vector<cv::Point2f> &keypoints)
 {
-    // auto prob = mProb.slice(0, iniY, maxY).slice(1, iniX, maxX);  // [h, w]
-    // auto kpts = (prob > threshold);
-    // kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
+    auto options = torch::TensorOptions().dtype(torch::kFloat64);
+    auto mProb = at::from_blob(m_OutputTensors[0].hostBuffer, {1, 1, height, width}, options);
+    auto kpts = (mProb > threshold);
+    kpts = torch::nonzero(kpts);  // [n_keypoints, 2]  (y, x)
 
-    // std::vector<cv::KeyPoint> keypoints_no_nms;
-    // for (int i = 0; i < kpts.size(0); i++) {
-    //     float response = prob[kpts[i][0]][kpts[i][1]].item<float>();
-    //     keypoints_no_nms.push_back(cv::KeyPoint(kpts[i][1].item<float>(), kpts[i][0].item<float>(), 8, -1, response));
-    // }
+    std::vector<cv::Point2f> keypoints_no_nms;
+    for (int i = 0; i < kpts.size(0); i++) {
+        keypoints_no_nms.push_back(cv::Point2f(kpts[i][1].item<float>(), kpts[i][0].item<float>()));
+    }
 
-    // if (nms) {
-    //     cv::Mat conf(keypoints_no_nms.size(), 1, CV_32F);
-    //     for (size_t i = 0; i < keypoints_no_nms.size(); i++) {
-    //         int x = keypoints_no_nms[i].pt.x;
-    //         int y = keypoints_no_nms[i].pt.y;
-    //         conf.at<float>(i, 0) = prob[y][x].item<float>();
-    //     }
+    cv::Mat conf(keypoints_no_nms.size(), 1, CV_32F);
+    for (size_t i = 0; i < keypoints_no_nms.size(); i++) {
+        int x = keypoints_no_nms[i].x;
+        int y = keypoints_no_nms[i].y;
+        conf.at<float>(i, 0) = mProb[y][x].item<float>();
+    }
 
-    //     // cv::Mat descriptors;
+    // cv::Mat descriptors;
 
-    //     int border = 0;
-    //     int dist_thresh = 4;
-    //     int height = maxY - iniY;
-    //     int width = maxX - iniX;
-
-    //     NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height);
-    // }
-    // else {
-    //     keypoints = keypoints_no_nms;
-    // }
+    int border = 0;
+    int dist_thresh = 4;
+    NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height);
 }
 
 
@@ -172,19 +167,11 @@ void SuperPointTensorRT::computeDescriptors(const std::vector<cv::KeyPoint> &key
     // descriptors = desc_mat.clone();
 }
 
-void NMS2(std::vector<cv::KeyPoint> det, cv::Mat conf, std::vector<cv::KeyPoint>& pts,
+void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height)
 {
 
-    std::vector<cv::Point2f> pts_raw;
-
-    for (int i = 0; i < det.size(); i++){
-
-        int u = (int) det[i].pt.x;
-        int v = (int) det[i].pt.y;
-
-        pts_raw.push_back(cv::Point2f(u, v));
-    }
+    std::vector<cv::Point2f> pts_raw = det;
 
     cv::Mat grid = cv::Mat(cv::Size(img_width, img_height), CV_8UC1);
     cv::Mat inds = cv::Mat(cv::Size(img_width, img_height), CV_16UC1);
@@ -229,7 +216,6 @@ void NMS2(std::vector<cv::KeyPoint> det, cv::Mat conf, std::vector<cv::KeyPoint>
     }
 
     size_t valid_cnt = 0;
-    std::vector<int> select_indice;
 
     for (int v = 0; v < (img_height + dist_thresh); v++){
         for (int u = 0; u < (img_width + dist_thresh); u++)
@@ -241,22 +227,9 @@ void NMS2(std::vector<cv::KeyPoint> det, cv::Mat conf, std::vector<cv::KeyPoint>
             {
                 int select_ind = (int) inds.at<unsigned short>(v-dist_thresh, u-dist_thresh);
                 cv::Point2f p = pts_raw[select_ind];
-                float response = conf.at<float>(select_ind, 0);
-                pts.push_back(cv::KeyPoint(p, 8.0f, -1, response));
-
-                select_indice.push_back(select_ind);
+                pts.push_back(p);
                 valid_cnt++;
             }
         }
     }
-    
-    // descriptors.create(select_indice.size(), 256, CV_32F);
-
-    // for (int i=0; i<select_indice.size(); i++)
-    // {
-    //     for (int j=0; j < 256; j++)
-    //     {
-    //         descriptors.at<float>(i, j) = desc.at<float>(select_indice[i], j);
-    //     }
-    // }
 }
