@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(swarm_loop)
 
-## Compile as C++11, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -30,17 +29,17 @@ find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
 if (USE_TENSORRT) 
-  set(Torch_DIR "$ENV{HOME}/source/libtorch/share/cmake/Torch")
+  set(Torch_DIR "/usr/local/lib/python3.6/dist-packages/torch/share/cmake/Torch")
+  find_package(Torch REQUIRED)
+
   include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
   include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
-  include_directories("$ENV{HOME}/source/libtorch/include")
+  
   link_directories(${TENSORRT_ROOT}/lib)
   link_directories("$ENV{HOME}/source/yolo-tensorrt/build/")
-  link_directories("$ENV{HOME}/source/libtorch/lib/")
   find_package(CUDA)
-  include_directories(${CUDA_INCLUDE_DIRS})
+  include_directories(${CUDA_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
   add_definitions("-D USE_TENSORRT")
-  # find_package(Torch REQUIRED)
 endif()
 
 add_service_files(
@@ -102,8 +101,9 @@ if (USE_TENSORRT)
     loop_cnn 
     dw 
     opencv_dnn
-    # ${TORCH_LIBRARIES}
+    ${TORCH_LIBRARIES}
     torch
+    torch_cuda
     torch_cpu
     ${OpenCV_LIBRARIES}
     ${catkin_LIBRARIES}

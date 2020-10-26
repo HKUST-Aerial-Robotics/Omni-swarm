@@ -25,3 +25,6 @@ swarm_loop/models/hfnet/
 swarm_loop/models/hfnet_v2
 swarm_loop/models/hfnet_trt
 swarm_loop/models/hfnet_v2_netvlad/saved_model.pb
+swarm_loop/models/hfnet_v2_netvlad_trt/
+swarm_loop/models/hfnet_v2_superpoint_trt/
+*.pb
