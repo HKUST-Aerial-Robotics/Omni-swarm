@@ -40,7 +40,7 @@ if (USE_TENSORRT)
   find_package(CUDA)
   include_directories(${CUDA_INCLUDE_DIRS})
   add_definitions("-D USE_TENSORRT")
-  find_package(Torch REQUIRED)
+  # find_package(Torch REQUIRED)
 endif()
 
 add_service_files(
