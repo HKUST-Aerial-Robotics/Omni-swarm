@@ -191,11 +191,13 @@ void SuperPointTensorRT::getKeyPoints(const cv::Mat & prob, float threshold, std
 
 
 void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & mDesc, const std::vector<cv::Point2f> &keypoints, std::vector<float> & local_descriptors) {
+    TicToc tic;
     cv::Mat kpt_mat(keypoints.size(), 2, CV_32F);  // [n_keypoints, 2]  (y, x)
     for (size_t i = 0; i < keypoints.size(); i++) {
         kpt_mat.at<float>(i, 0) = (float)keypoints[i].y;
         kpt_mat.at<float>(i, 1) = (float)keypoints[i].x;
     }
+
 
     auto fkpts = torch::from_blob(kpt_mat.data, {keypoints.size(), 2}, torch::kFloat);
 
@@ -206,6 +208,7 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     // mDesc.to(torch::kCUDA);
     // grid.to(torch::kCUDA);
     auto desc = torch::grid_sampler(mDesc, grid, 0, 0, 0);
+
     desc = desc.squeeze(0).squeeze(1);
 
     // normalize to 1
@@ -216,8 +219,9 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     desc = desc.to(torch::kCPU);
 
     local_descriptors = std::vector<float>(desc.data<float>(), desc.data<float>()+desc.size(1)*desc.size(0));
-    // cv::Mat desc_mat(cv::Size(desc.size(1), desc.size(0)), CV_32FC1, desc.data<float>());
-    // descriptors = desc_mat.clone();
+    if (enable_perf) {
+        std::cout << " computeDescriptors full " << tic.toc() << std::endl;
+    }
 }
 
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
