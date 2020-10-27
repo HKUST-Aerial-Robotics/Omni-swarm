@@ -30,6 +30,7 @@
         </rosparam> 
         <remap from="/swarm_loop/netvlad" to="/swarm_loop/hfnet" />
         <param name="superpoint_model_path" value="/home/xuhao/swarm_ws/src/swarm_localization/swarm_loop/models/superpoint_v1.trt" type="string" />
+        <param name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" type="string" />
         <param name="debug_image" value="$(arg show)" type="bool" />
         <param name="send_img" value="$(arg send_img)" type="bool" />
         <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
