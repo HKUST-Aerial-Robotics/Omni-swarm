@@ -6,114 +6,21 @@
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height);
 
-using namespace nvinfer1;
-uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims);
-TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
-    m_InputBlobName(input_blob_name) {
 
-}
-
-void TensorRTInferenceGeneric::init(const std::string & engine_path) {
+SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, float _thres, bool _enable_perf):
+    TensorRTInferenceGeneric("image"), thres(_thres), enable_perf(_enable_perf) {
     at::set_num_threads(1);
-    std::cout << "Trying to load TRT engine of superpoint" << std::endl;
-    m_Engine = loadTRTEngine(engine_path, nullptr, m_Logger);
-    assert(m_Engine != nullptr);
-    
-    m_Context = m_Engine->createExecutionContext();
-	assert(m_Context != nullptr);
-	m_InputBindingIndex = m_Engine->getBindingIndex(m_InputBlobName.c_str());
-	assert(m_InputBindingIndex != -1);
-    std::cout << "MaxBatchSize" << m_Engine->getMaxBatchSize() << std::endl;
-	assert(m_BatchSize <= static_cast<uint32_t>(m_Engine->getMaxBatchSize()));
-	allocateBuffers();
-	NV_CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
-	assert(verifyEngine());
+    TensorInfo outputTensorSemi, outputTensorDesc;
+    outputTensorSemi.blobName = "semi";
+    outputTensorDesc.blobName = "desc";
+    outputTensorSemi.volume = height*width;
+    outputTensorDesc.volume = 1*256*height/8*width/8;
+    m_InputSize = height*width;
+    m_OutputTensors.push_back(outputTensorSemi);
+    m_OutputTensors.push_back(outputTensorDesc);
+    std::cout << "Trying to init TRT engine of SuperPointTensorRT" << std::endl;
+    init(engine_path);
 }
-
-void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {
-    assert(input.channels() == 1 && "Only support 1 channel now");
-    TicToc inference;
-    //This function is very slow event on i7, we need to optimize it
-    //But not now.
-    doInference(input.data, 1);
-    printf("doInference %fms\n", inference.toc());
-}
-
-
-void TensorRTInferenceGeneric::doInference(const unsigned char* input, const uint32_t batchSize)
-{
-	//Timer timer;
-    assert(batchSize <= m_BatchSize && "Image batch size exceeds TRT engines batch size");
-    NV_CUDA_CHECK(cudaMemcpyAsync(m_DeviceBuffers.at(m_InputBindingIndex), input,
-                                  batchSize * m_InputSize * sizeof(float), cudaMemcpyHostToDevice,
-                                  m_CudaStream));
-	
-    m_Context->enqueue(batchSize, m_DeviceBuffers.data(), m_CudaStream, nullptr);
-    for (auto& tensor : m_OutputTensors)
-    {
-        NV_CUDA_CHECK(cudaMemcpyAsync(tensor.hostBuffer, m_DeviceBuffers.at(tensor.bindingIndex),
-                                      batchSize * tensor.volume * sizeof(float),
-                                      cudaMemcpyDeviceToHost, m_CudaStream));
-    }
-    cudaStreamSynchronize(m_CudaStream);
-//	timer.out("inference");
-}
-
-bool TensorRTInferenceGeneric::verifyEngine()
-{
-    assert((m_Engine->getNbBindings() == (1 + m_OutputTensors.size())
-            && "Binding info doesn't match between cfg and engine file \n"));
-
-    for (auto tensor : m_OutputTensors)
-    {
-        assert(!strcmp(m_Engine->getBindingName(tensor.bindingIndex), tensor.blobName.c_str())
-               && "Blobs names dont match between cfg and engine file \n");
-        // std::cout << get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex)) <<":" << tensor.volume << std::endl;
-        assert(get3DTensorVolume4(m_Engine->getBindingDimensions(tensor.bindingIndex))
-                   == tensor.volume
-               && "Tensor volumes dont match between cfg and engine file \n");
-    }
-
-    assert(m_Engine->bindingIsInput(m_InputBindingIndex) && "Incorrect input binding index \n");
-    assert(m_Engine->getBindingName(m_InputBindingIndex) == m_InputBlobName
-           && "Input blob name doesn't match between config and engine file");
-    assert(get3DTensorVolume4(m_Engine->getBindingDimensions(m_InputBindingIndex)) == m_InputSize);
-    return true;
-}
-
-void TensorRTInferenceGeneric::allocateBuffers()
-{
-    m_DeviceBuffers.resize(m_Engine->getNbBindings(), nullptr);
-    assert(m_InputBindingIndex != -1 && "Invalid input binding index");
-    NV_CUDA_CHECK(cudaMalloc(&m_DeviceBuffers.at(m_InputBindingIndex),
-                             m_BatchSize * m_InputSize * sizeof(float)));
-
-    for (auto& tensor : m_OutputTensors)
-    {
-        tensor.bindingIndex = m_Engine->getBindingIndex(tensor.blobName.c_str());
-        std::cout << "Tensor" << tensor.blobName.c_str() << " bind to " << tensor.bindingIndex 
-                << " dim " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[0]
-                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[1]
-                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[2]
-                << " " << m_Engine->getBindingDimensions(tensor.bindingIndex).d[3] << std::endl;
-        assert((tensor.bindingIndex != -1) && "Invalid output binding index");
-        NV_CUDA_CHECK(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
-                                 m_BatchSize * tensor.volume * sizeof(float)));
-        NV_CUDA_CHECK(
-            cudaMallocHost(&tensor.hostBuffer, tensor.volume * m_BatchSize * sizeof(float)));
-    }
-}
-
-
-uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims)
-{
-    int ret = 1;
-    for (int i = 0; i < inputDims.nbDims; i ++) {
-        ret = ret * inputDims.d[i];
-    }
-    return ret;
-}
-
 
 void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
     TicToc tic;
