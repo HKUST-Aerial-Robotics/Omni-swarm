@@ -9,11 +9,18 @@ TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
 }
 
 void TensorRTInferenceGeneric::init(const std::string & engine_path) {
+
     m_Engine = loadTRTEngine(engine_path, nullptr, m_Logger);
     assert(m_Engine != nullptr);
     
     m_Context = m_Engine->createExecutionContext();
 	assert(m_Context != nullptr);
+
+    for (unsigned int i = 0; i < m_Engine->getNbBindings(); i ++ ) {
+        std::string name(m_Engine->getBindingName(i));
+        std::cout  << "TensorRT binding index " << i << " name " << name << std::endl;
+    }
+
 	m_InputBindingIndex = m_Engine->getBindingIndex(m_InputBlobName.c_str());
 	assert(m_InputBindingIndex != -1);
     std::cout << "MaxBatchSize" << m_Engine->getMaxBatchSize() << std::endl;
@@ -21,6 +28,8 @@ void TensorRTInferenceGeneric::init(const std::string & engine_path) {
 	allocateBuffers();
 	NV_CUDA_CHECK(cudaStreamCreate(&m_CudaStream));
 	assert(verifyEngine());
+
+    std::cout << "TensorRT workspace " << m_Engine->getWorkspaceSize () /1024.0/1024.0 << "mb" << std::endl;
 }
 
 void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {

@@ -11,13 +11,14 @@ int main(int argc, char* argv[]) {
     std::cout << "Load Model from " << argv[2] << std::endl;
     
     std::string engine_path(argv[1]);
-    std::string engine_path2(argv[1]);
+    std::string engine_path2(argv[2]);
 
     SuperPointTensorRT sp_trt(engine_path, 0.012, true);
     MobileNetVLADTensorRT netvlad_trt(engine_path2);
-    std::cout << "Load 2 Model success" << std::endl;
 
-    cv::Mat img = cv::imread(argv[2]);
+    std::cout << "Load 2 Model success" << std::endl << " Loading image " << argv[3] << std::endl;
+
+    cv::Mat img = cv::imread(argv[3]);
     cv::resize(img, img, cv::Size(400, 208));
     std::vector<float> local_desc;
     std::vector<cv::Point2f> kps;
@@ -28,12 +29,15 @@ int main(int argc, char* argv[]) {
     for (unsigned int i = 0; i < 1000; i ++) {
         sp_trt.inference(img_gray, kps, local_desc);
     }
-    std::cout << "Superpoint 1000 takes" << tic.toc() << std::endl;
+    double dt = tic.toc();
     
+    TicToc tic2;
     for (unsigned int i = 0; i < 1000; i ++) {
         netvlad_trt.inference(img_gray);
     }
-    std::cout << "Superpoint 1000 takes" << tic.toc() << std::endl;
+
+    std::cout << "\nSuperpoint 1000 takes" << dt << std::endl;
+    std::cout << "\nNetVLAD 1000 takes" << tic2.toc() << std::endl;
     
     for(auto pt : kps) {
         cv::circle(img, pt, 1, cv::Scalar(255, 0, 0), -1);

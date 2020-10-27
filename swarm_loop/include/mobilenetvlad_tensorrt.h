@@ -9,7 +9,7 @@ public:
     int height = 208;
     bool enable_perf;
     const int descriptor_size = 4096;
-    MobileNetVLADTensorRT(std::string engine_path, bool _enable_perf = false) : TensorRTInferenceGeneric("image"), enable_perf(_enable_perf) {
+    MobileNetVLADTensorRT(std::string engine_path, bool _enable_perf = false) : TensorRTInferenceGeneric("image:0"), enable_perf(_enable_perf) {
         TensorInfo outputTensorDesc;
         outputTensorDesc.blobName = "descriptor:0";
         outputTensorDesc.volume = descriptor_size;
