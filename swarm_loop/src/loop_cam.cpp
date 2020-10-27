@@ -9,10 +9,12 @@
 
 using namespace std::chrono;
 
-LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, double thres, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
+LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
+    const std::string & netvlad_model, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
     self_id(_self_id),
 #ifdef USE_TENSORRT
     superpoint_net(superpoint_model, thres), 
+    netvlad_net(netvlad_model), 
 #endif
     send_img(_send_img)
 {
@@ -436,10 +438,15 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     img_des.landmarks_flag.resize(img_des.landmark_num);
     std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
     img_des.image_size = 0;
-#endif
 
+    if (!superpoint_mode) {
+        img_des.image_desc = netvlad_net.inference(cv_ptr->image);
+        img_des.image_desc_size = img_des.image_desc.size();
+    }
+    
+    return img_des;
+#else
     if (superpoint_mode) {
-#ifndef USE_TENSORRT
         if (superpoint_client.call(hfnet_srv))
         {
             auto &local_kpts = hfnet_srv.response.keypoints;
@@ -459,9 +466,6 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
                 return img_des;
             }
         }
-#else
-    return img_des;
-#endif
     } else {
         if (hfnet_client.call(hfnet_srv))
         {
@@ -474,18 +478,17 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
                 img_des.image_desc_size = desc.size();
                 img_des.image_desc = desc;
                 img_des.image_size = 0;
-#ifndef USE_TENSORRT
                 ROSPoints2LCM(local_kpts, img_des.landmarks_2d);
                 img_des.landmark_num = local_kpts.size();
                 img_des.feature_descriptor = local_descriptors;
                 img_des.feature_descriptor_size = local_descriptors.size();
                 img_des.landmarks_flag.resize(img_des.landmark_num);
                 std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
-#endif
                 return img_des;
             }
         }
     }
+#endif
     ROS_INFO("FAILED on deepnet!!! Service error");
     return img_des;
 }

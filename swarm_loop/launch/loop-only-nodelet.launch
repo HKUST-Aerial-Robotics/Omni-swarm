@@ -31,6 +31,7 @@
             recv_msg_duration: 0.5
         </rosparam>
         <param name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_tx2_fp16.trt" type="string" />
+        <param name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" type="string" />
        <param name="debug_image" value="$(arg show)" type="bool" />
        <param name="send_img" value="$(arg send_img)" type="bool" />
        <param name="send_whole_img_desc" value="$(arg send_whole_img_desc)" type="bool" />

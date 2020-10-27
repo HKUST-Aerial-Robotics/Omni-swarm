@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     std::string engine_path2(argv[2]);
 
     SuperPointTensorRT sp_trt(engine_path, 0.012, true);
-    MobileNetVLADTensorRT netvlad_trt(engine_path2);
+    MobileNetVLADTensorRT netvlad_trt(engine_path2, true);
 
     std::cout << "Load 2 Model success" << std::endl << " Loading image " << argv[3] << std::endl;
 

@@ -193,6 +193,7 @@ protected:
         std::string _lcm_uri = "0.0.0.0";
         std::string camera_config_path = "";
         std::string superpoint_model_path = "";
+        std::string netvlad_model_path = "";
         nh.param<int>("self_id", self_id, -1);
         nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
@@ -220,11 +221,12 @@ protected:
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
         nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
+        nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
 
         nh.param<bool>("debug_image", debug_image, false);
         
         loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
-        loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, self_id, send_img, nh);
+        loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, self_id, send_img, nh);
         loop_cam->show = debug_image; 
         loop_detector = new LoopDetector();
         loop_detector->self_id = self_id;
