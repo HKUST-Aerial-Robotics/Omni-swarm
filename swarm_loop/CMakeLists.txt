@@ -96,6 +96,8 @@ set_property(TARGET libswarm_loop PROPERTY CXX_STANDARD 14)
 if (USE_TENSORRT) 
   cuda_add_library(loop_cnn   
     src/superpoint_tensorrt.cpp
+    src/tensorrt_generic.cpp
+    src/mobilenetvlad_tensorrt.cpp
   )
   target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector opencv_dnn)
 

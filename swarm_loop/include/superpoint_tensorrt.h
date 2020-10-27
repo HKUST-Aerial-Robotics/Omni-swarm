@@ -1,50 +1,10 @@
 #pragma once
 
 #ifdef USE_TENSORRT
-#include "NvInfer.h"
-#include <opencv2/opencv.hpp>
-#include <trt_utils.h>
+#include "tensorrt_generic.h"
 #include <torch/csrc/autograd/variable.h>
 #include <ATen/ATen.h>
 #include <torch/csrc/api/include/torch/types.h>
-
-//Original code from https://github.com/enazoe/yolo-tensorrt
-
-struct TensorInfo
-{
-    std::string blobName;
-    float* hostBuffer{nullptr};
-    uint64_t volume{0};
-    int bindingIndex{-1};
-};
-
-
-class TensorRTInferenceGeneric {
-protected:
-    Logger m_Logger;
-    nvinfer1::ICudaEngine* m_Engine = nullptr;
-    int m_InputBindingIndex;
-    uint64_t m_InputSize;
-    nvinfer1::IExecutionContext* m_Context;
-    std::vector<void*> m_DeviceBuffers;
-    cudaStream_t m_CudaStream;
-    std::vector<TensorInfo> m_OutputTensors;
-    int m_BatchSize = 1;
-    const std::string m_InputBlobName;
-public:
-    TensorRTInferenceGeneric(std::string input_blob_name);
-
-    virtual void doInference(const unsigned char* input, const uint32_t batchSize);
-
-    virtual void doInference(const cv::Mat & input);
-
-    bool verifyEngine();
-
-    void allocateBuffers();
-
-    void init(const std::string & engine_path);
-};
-
 
 class SuperPointTensorRT: public TensorRTInferenceGeneric {
 public:
@@ -52,18 +12,7 @@ public:
     int height = 208;
     double thres = 0.015;
     bool enable_perf;
-    SuperPointTensorRT(std::string engine_path, float _thres = 0.015, bool _enable_perf = false) : TensorRTInferenceGeneric("image"), thres(_thres), enable_perf(_enable_perf) {
-        TensorInfo outputTensorSemi, outputTensorDesc;
-        outputTensorSemi.blobName = "semi";
-        outputTensorDesc.blobName = "desc";
-        outputTensorSemi.volume = height*width;
-        outputTensorDesc.volume = 1*256*height/8*width/8;
-        m_InputSize = height*width;
-        m_OutputTensors.push_back(outputTensorSemi);
-        m_OutputTensors.push_back(outputTensorDesc);
-        std::cout << "Trying to init trt engine" << std::endl;
-        init(engine_path);
-    }
+    SuperPointTensorRT(std::string engine_path, float _thres = 0.015, bool _enable_perf = false);
 
     void getKeyPoints(const cv::Mat & prob, float threshold, std::vector<cv::Point2f> &keypoints);
     void computeDescriptors(const torch::Tensor & mProb, const torch::Tensor & desc, const std::vector<cv::Point2f> &keypoints, std::vector<float> & local_descriptors);
