@@ -6,7 +6,7 @@
             nms_radius: 4
             num_keypoints: 200
         </rosparam>
-        <param name="model_path" type="string" value="$(find swarm_loop)/models/hfnet_v2_netvlad" />
+        <param name="model_path" type="string" value="$(find swarm_loop)/models/hfnet_v2_netvlad_trt" />
         <param name="memory_limit" type="double" value="$(arg memory_limit)" />
     </node>
 </launch>

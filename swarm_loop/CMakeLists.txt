@@ -68,28 +68,33 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
-  # ${DBoW3_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME}_nodelet
-  src/swarm_loop_node.cpp
+add_library(libswarm_loop 
   src/loop_cam.cpp
   src/loop_detector.cpp
   src/loop_net.cpp
-  include/loop_cam.h
-  include/loop_detector.h
-  include/loop_net.h
   src/loop_params.cpp
+)
+
+add_library(${PROJECT_NAME}_nodelet
+  src/swarm_loop_nodelet.cpp
+)
+
+add_executable(${PROJECT_NAME}_node
+  src/swarm_loop_node.cpp
 )
 
 add_executable(${PROJECT_NAME}_spy
-  src/swarm_loop_spy.cpp
-  src/loop_net.cpp
-  src/loop_params.cpp
+  libswarm_loop
 )
 
+set_property(TARGET ${PROJECT_NAME}_nodelet PROPERTY CXX_STANDARD 14)
+set_property(TARGET ${PROJECT_NAME}_node PROPERTY CXX_STANDARD 14)
+set_property(TARGET libswarm_loop PROPERTY CXX_STANDARD 14)
+
 if (USE_TENSORRT) 
-  cuda_add_library(loop_cnn SHARED   
+  cuda_add_library(loop_cnn   
     src/superpoint_tensorrt.cpp
   )
   target_link_libraries(loop_cnn nvinfer nvinfer_plugin  detector opencv_dnn)
@@ -100,14 +105,11 @@ if (USE_TENSORRT)
   target_link_libraries(loop_tensorrt_test 
     loop_cnn 
     dw 
-    opencv_dnn
     ${TORCH_LIBRARIES}
-    torch
-    torch_cuda
-    torch_cpu
     ${OpenCV_LIBRARIES}
     ${catkin_LIBRARIES}
     )
+    set_property(TARGET loop_cnn PROPERTY CXX_STANDARD 14)
 endif()
 
 add_dependencies(${PROJECT_NAME}_nodelet
@@ -117,22 +119,62 @@ add_dependencies(${PROJECT_NAME}_spy
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 if (USE_TENSORRT)
-  target_link_libraries(${PROJECT_NAME}_nodelet
+  target_link_libraries(libswarm_loop 
     ${catkin_LIBRARIES}
     ${OpenCV_LIBRARIES}
+    ${TORCH_LIBRARIES}
     lcm
     faiss
     dw
     loop_cnn
-    torch
+  )
+
+  target_link_libraries(${PROJECT_NAME}_nodelet
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    ${TORCH_LIBRARIES}
+    lcm
+    faiss
+    dw
+    loop_cnn
+    libswarm_loop
+  )
+
+  target_link_libraries(${PROJECT_NAME}_node
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    ${TORCH_LIBRARIES}
+    lcm
+    faiss
+    dw
+    loop_cnn
+    libswarm_loop
   )
 else()
+  target_link_libraries(libswarm_loop 
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    ${TORCH_LIBRARIES}
+    lcm
+    faiss
+    dw
+    loop_cnn
+  )
   target_link_libraries(${PROJECT_NAME}_nodelet
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   lcm
   faiss
   dw
+  libswarm_loop
+  )
+  target_link_libraries(${PROJECT_NAME}_node
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBRARIES}
+    lcm
+    faiss
+    dw
+    libswarm_loop
   )
 endif()
 
