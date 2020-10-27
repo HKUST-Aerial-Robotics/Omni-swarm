@@ -86,7 +86,7 @@ add_executable(${PROJECT_NAME}_node
 )
 
 add_executable(${PROJECT_NAME}_spy
-  libswarm_loop
+  src/swarm_loop_spy.cpp
 )
 
 set_property(TARGET ${PROJECT_NAME}_nodelet PROPERTY CXX_STANDARD 14)
@@ -128,28 +128,6 @@ if (USE_TENSORRT)
     dw
     loop_cnn
   )
-
-  target_link_libraries(${PROJECT_NAME}_nodelet
-    ${catkin_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-    ${TORCH_LIBRARIES}
-    lcm
-    faiss
-    dw
-    loop_cnn
-    libswarm_loop
-  )
-
-  target_link_libraries(${PROJECT_NAME}_node
-    ${catkin_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-    ${TORCH_LIBRARIES}
-    lcm
-    faiss
-    dw
-    loop_cnn
-    libswarm_loop
-  )
 else()
   target_link_libraries(libswarm_loop 
     ${catkin_LIBRARIES}
@@ -160,27 +138,31 @@ else()
     dw
     loop_cnn
   )
-  target_link_libraries(${PROJECT_NAME}_nodelet
+endif()
+
+
+target_link_libraries(${PROJECT_NAME}_nodelet
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  ${TORCH_LIBRARIES}
   lcm
   faiss
   dw
   libswarm_loop
-  )
-  target_link_libraries(${PROJECT_NAME}_node
-    ${catkin_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-    lcm
-    faiss
-    dw
-    libswarm_loop
-  )
-endif()
+)
 
+target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${TORCH_LIBRARIES}
+  lcm
+  dw
+  libswarm_loop
+)
 target_link_libraries(${PROJECT_NAME}_spy
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   lcm
-   dw
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  lcm
+  dw
+  libswarm_loop
 )
