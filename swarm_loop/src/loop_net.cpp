@@ -166,6 +166,7 @@ void LoopNet::scan_recv_packets() {
     for (auto _id : finish_recv) {
         auto & msg = receved_msgs[_id];
         //Processed recevied message
+        msg.landmark_num = msg.landmarks_2d.size();
         if (msg.landmarks_2d.size() > 0) {
             this->img_desc_callback(msg);
         }
