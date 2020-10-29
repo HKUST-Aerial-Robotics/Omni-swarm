@@ -29,7 +29,8 @@ find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
 if (USE_TENSORRT) 
-  set(Torch_DIR "/usr/local/lib/python3.6/dist-packages/torch/share/cmake/Torch")
+  # set(Torch_DIR "/usr/local/lib/python3.6/dist-packages/torch/share/cmake/Torch")
+  set(Torch_DIR "/home/xuhao/source/libtorch/share/cmake/Torch")
   find_package(Torch REQUIRED)
 
   include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
