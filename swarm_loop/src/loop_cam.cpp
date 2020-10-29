@@ -275,13 +275,13 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         cv::Mat _img = cv_ptr->image;
         cv::Mat _img2 = cv_ptr2->image;
 
-        cv::Mat img_show;
-        cv::cvtColor(_img, img_show, cv::COLOR_GRAY2BGR);
-        for (auto pt : pts_up) {
-            cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
+        if (show) {
+            cv::Mat img_show;
+            cv::cvtColor(_img, img_show, cv::COLOR_GRAY2BGR);
+            for (auto pt : pts_up) {
+                cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
+            }
         }
-
-        // cv::imshow("Up SuperPoints", img_show);
 
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
@@ -314,7 +314,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         double err = triangulatePoint(pose_up.att(), pose_up.pos(), pose_down.att(), pose_down.pos(),
                         pt_up_norm, pt_down_norm, point_3d);
 
-        std::cout << "Pt: " << i << "Pos " << point_3d.transpose() << " err " << err << std::endl;
+        // std::cout << "Pt: " << i << "Pos " << point_3d.transpose() << " err " << err << std::endl;
 
         if (err > TRIANGLE_THRES) {
             continue;
