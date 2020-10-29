@@ -373,9 +373,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
             iteratives = 1000;
         }
 
-
-
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, false,   
+        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,   
             iteratives,  0.02, 0.99,  inliers);
 
         // std::set<int> inlier_cnt;
