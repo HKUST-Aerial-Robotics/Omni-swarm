@@ -217,6 +217,7 @@ protected:
         nh.param<double>("max_freq", max_freq, 1.0);
         nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
         nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
+        nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
 
         nh.param<std::string>("camera_config_path",camera_config_path, 
             "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");

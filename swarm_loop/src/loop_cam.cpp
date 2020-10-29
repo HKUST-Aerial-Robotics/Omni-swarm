@@ -9,6 +9,8 @@
 
 using namespace std::chrono;
 
+double TRIANGLE_THRES;
+
 LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
     const std::string & netvlad_model, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
     self_id(_self_id),
@@ -66,7 +68,7 @@ void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
     _img_desc.image_size = _img_desc.image.size();
 }
 
-void triangulatePoint(Eigen::Quaterniond q0, Eigen::Vector3d t0, Eigen::Quaterniond q1, Eigen::Vector3d t1,
+double triangulatePoint(Eigen::Quaterniond q0, Eigen::Vector3d t0, Eigen::Quaterniond q1, Eigen::Vector3d t1,
                       Eigen::Vector2d point0, Eigen::Vector2d point1, Eigen::Vector3d &point_3d)
 {
     Eigen::Matrix3d R0 = q0.toRotationMatrix();
@@ -94,6 +96,11 @@ void triangulatePoint(Eigen::Quaterniond q0, Eigen::Vector3d t0, Eigen::Quaterni
     point_3d(0) = triangulated_point(0) / triangulated_point(3);
     point_3d(1) = triangulated_point(1) / triangulated_point(3);
     point_3d(2) = triangulated_point(2) / triangulated_point(3);
+
+    Eigen::MatrixXd pts(4, 1);
+    pts << point_3d.x(), point_3d.y(), point_3d.z(), 1;
+    Eigen::MatrixXd errs = design_matrix*pts;
+    return errs.norm()/ errs.rows(); 
 }
 
 template <typename T>
@@ -197,13 +204,13 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     ROS_INFO("%ld matches...", _matches.size());
 
     std::vector<uint8_t> status;
-    cv::findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
+    // cv::findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
     // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
 
-    reduceVector(_pts_up, status);
-    reduceVector(_pts_down, status);
-    reduceVector(ids, status);
-    reduceVector(_matches, status);
+    // reduceVector(_pts_up, status);
+    // reduceVector(_pts_down, status);
+    // reduceVector(ids, status);
+    // reduceVector(_matches, status);
 
 
     if (show) {
@@ -279,9 +286,6 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
 
-    ROS_INFO("Tracked points %ld %ld", pts_up.size(), pts_down.size());
-
-
     ides.landmarks_2d.clear();
     ides.landmarks_2d_norm.clear();
     ides.landmarks_3d.clear();
@@ -307,8 +311,14 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         Eigen::Vector2d pt_down_norm(pt_down3d.x()/pt_down3d.z(), pt_down3d.y()/pt_down3d.z());
 
         Eigen::Vector3d point_3d;
-        triangulatePoint(pose_up.att(), pose_up.pos(), pose_down.att(), pose_down.pos(),
+        double err = triangulatePoint(pose_up.att(), pose_up.pos(), pose_down.att(), pose_down.pos(),
                         pt_up_norm, pt_down_norm, point_3d);
+
+        std::cout << "Pt: " << i << "Pos " << point_3d.transpose() << " err " << err << std::endl;
+
+        if (err > TRIANGLE_THRES) {
+            continue;
+        }
 
         pts_3d.push_back(point_3d);
 
@@ -338,9 +348,9 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
 
         // std::cout << "PT UP NORM" << pt_up_norm.transpose() << "PT DOWN NORM" << pt_down_norm.transpose() << std::endl;
 
-        // std::cout << "P3d:" << point_3d.transpose() << std::endl;
     }
 
+    std::cout << "Landmark num" << ides.landmarks_2d.size() << std::endl;
     ides.feature_descriptor.clear();
     ides.feature_descriptor = std::vector<float>(desc_new);
     std::cout << "Desc Size" << ides.feature_descriptor.size() << std::endl;
@@ -360,15 +370,17 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
         encode_image(img_up, ides);
 
         cv::Mat show;
-
-        for (auto pt : pts_up)
-        {
-            cv::circle(img_up, pt, 1, cv::Scalar(255, 0, 0), -1);
-        }
+        cv::cvtColor(img_up, img_up, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(img_down, img_down, cv::COLOR_GRAY2BGR);
 
         for (auto pt : pts_down)
         {
             cv::circle(img_down, pt, 1, cv::Scalar(255, 0, 0), -1);
+        }
+
+        for (auto _pt : ides.landmarks_2d) {
+            cv::Point2f pt(_pt.x, _pt.y);
+            cv::circle(img_up, pt, 3, cv::Scalar(0, 0, 255), 1);
         }
 
         cv::hconcat(img_up, img_down, show);
@@ -379,6 +391,16 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
 
         for (unsigned int i = 0; i < pts_up.size(); i++) {
             cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
+        }
+
+        cv::resize(show, show, cv::Size(), 2, 2);
+
+        for (unsigned int i = 0; i < pts_up.size(); i++)
+        {
+            char title[100] = {0};
+            auto pt = pts_up[i]*2;
+            sprintf(title, "%d", i);
+            cv::putText(show, title, pt + cv::Point2f(0, 10), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
         }
 
         cv::imshow("SHOW_FEATURES", show);
