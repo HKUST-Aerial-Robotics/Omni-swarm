@@ -182,19 +182,23 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     for (auto match : _matches) {
         int now_id = match.queryIdx;
         int old_id = match.trainIdx;
-        // std::cout<< "Query Idx" << now_id << "Train Idx" << old_id << std::endl;
-        _pts_up.push_back(pts_up[now_id]);
-        _pts_down.push_back(pts_down[old_id]);
-        ids.push_back(now_id);
+        // if ( cv::norm(desc_up.row(now_id) - desc_down.row(old_id)) < 0.8) 
+        {
+            _pts_up.push_back(pts_up[now_id]);
+            _pts_down.push_back(pts_down[old_id]);
+            ids.push_back(now_id);
+        }
+        //  else {
+        //     std::cout << "Giveup match dis" << cv::norm(desc_up.row(now_id) - desc_down.row(old_id)) << std::endl;
+        // }
+
     }
 
     ROS_INFO("%ld matches...", _matches.size());
 
-    Eigen::Matrix3d _cameraMatrix;
-
     std::vector<uint8_t> status;
-    // findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
-    cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
+    cv::findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
+    // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
 
     reduceVector(_pts_up, status);
     reduceVector(_pts_down, status);
@@ -377,12 +381,6 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
             cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
         }
 
-        // for (unsigned int i = 0; i < pts_up.size(); i++) {
-        //     sprintf(text, "[%3.2f, %3.2f, %3.2f]", pts_3d[i].x(), pts_3d[i].y(), pts_3d[i].z());
-        //     cv::putText(show, text, pts_up[i]*2 - cv::Point2f(0, 5), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 0), 1);
-        // }
-
-        // ROS_INFO("Try show image");
         cv::imshow("SHOW_FEATURES", show);
         cv::waitKey(10);
     }
