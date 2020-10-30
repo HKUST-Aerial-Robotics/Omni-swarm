@@ -111,9 +111,9 @@ void SwarmLoop::VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyfra
     last_kftime = viokf.header.stamp;
 
     auto start = high_resolution_clock::now();
-    cv::Mat img;
+    std::vector<cv::Mat> imgs;
     
-    auto ret = loop_cam->on_flattened_images(viokf, img);
+    auto ret = loop_cam->on_flattened_images(viokf, imgs);
     
     ret.prevent_adding_db = nonkeyframe;
 
@@ -126,7 +126,7 @@ void SwarmLoop::VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyfra
     last_keyframe_position = drone_pos;
 
     loop_net->broadcast_fisheye_desc(ret);
-    loop_detector->on_image_recv(ret, img);
+    loop_detector->on_image_recv(ret, imgs);
 }
 
 void SwarmLoop::on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc) {
