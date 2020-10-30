@@ -176,11 +176,11 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     // reduceVector(_matches, status);
 
 
-    if (show) {
-        cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
-        cv::imshow("Stereo Matches", img);
-        cv::waitKey(30);
-    }
+    // if (show) {
+    //     cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
+    //     cv::imshow("Stereo Matches", img);
+    //     cv::waitKey(30);
+    // }
 
     ROS_INFO("[match_HFNet_local_features] Matched %d features", _pts_up.size());
     pts_up = std::vector<cv::Point2f>(_pts_up);
@@ -201,7 +201,8 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.timestamp = frame_desc.images[0].timestamp;
     frame_desc.images[1].timestamp = frame_desc.timestamp;
     frame_desc.images[2].timestamp = frame_desc.timestamp;
-    frame_desc.msg_id = frame_desc.timestamp.nsec * 10000 + rand() + self_id * 100;
+    frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
+    frame_desc.drone_id = self_id;
     return frame_desc;
 }
 
@@ -368,17 +369,19 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
             cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
         }
 
-        cv::resize(show, show, cv::Size(), 2, 2);
+        // cv::resize(show, show, cv::Size(), 2, 2);
 
         for (unsigned int i = 0; i < pts_up.size(); i++)
         {
             char title[100] = {0};
-            auto pt = pts_up[i]*2;
+            auto pt = pts_up[i];
             sprintf(title, "%d", i);
             cv::putText(show, title, pt + cv::Point2f(0, 10), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
         }
 
-        cv::imshow("SHOW_FEATURES", show);
+        sprintf(text, "FEATURE CAM %d", vcam_id);
+        
+        cv::imshow(text, show);
         cv::waitKey(10);
     }
     return ides;
@@ -418,8 +421,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     hfnet_srv.request.image = msg;
 
     auto cv_ptr = cv_bridge::toCvCopy(msg);
-
-    //Use TensorRT here
+    // std::cout << "Image size" << cv_ptr->image.size() << std::endl;
 #ifdef USE_TENSORRT
     std::vector<cv::Point2f> features;
     superpoint_net.inference(cv_ptr->image, features, img_des.feature_descriptor);

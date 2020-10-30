@@ -202,7 +202,7 @@ int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_d
         imgid2fisheye[index] = new_fisheye_desc.msg_id;
         imgid2dir[index] = i;
     }
-
+    fisheyeframe_database[new_fisheye_desc.msg_id] = new_fisheye_desc;
     return new_fisheye_desc.msg_id;
 }
 
@@ -223,15 +223,18 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction) {
     double best_distance = 1000;
     int best_image_id = -1;
-    for (size_t dir = 0; dir < new_img_desc.images.size(); dir ++) {
-        double distance = 1000;
-        int id = query_from_database(new_img_desc.images.at(dir), init_mode, nonkeyframe, distance);
-        if (id > 0 && distance < best_distance) {
-            best_image_id = id;
-        }
+
+    int dir = 1;
+    double distance = 1000;
+    int id = query_from_database(new_img_desc.images.at(dir), init_mode, nonkeyframe, distance);
+    ROS_INFO("Direction %d msgid %d distance %f", 
+        dir, id, distance);
+    
+    if (id != -1 && distance < best_distance) {
+        best_image_id = id;
     }
 
-    if (best_image_id >= 0) {
+    if (best_image_id != -1) {
         int msg_id = imgid2fisheye[best_image_id];
         direction = imgid2dir[best_image_id];
         FisheyeFrameDescriptor_t & ret = fisheyeframe_database[best_image_id];
@@ -242,6 +245,7 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
 
     direction = -1;
     FisheyeFrameDescriptor_t ret;
+    ret.msg_id = -1;
     return ret;
 }
 
@@ -254,7 +258,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
     if (img_desc.drone_id == self_id) {
         //Then this is self drone
         int _id = query_from_database(img_desc, remote_index, true, thres, 1, distance);
-        if (_id > 0) {
+        if (_id != -1) {
             return _id;
         } else if(!nonkeyframe){
             int _id = query_from_database(img_desc, local_index, false, thres, MATCH_INDEX_DIST, distance);
@@ -296,11 +300,11 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         int return_msg_id = imgid2fisheye.at(labels[i] + index_offset);
         int return_drone_id = fisheyeframe_database[return_msg_id].drone_id;
 
-        ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
-
+        // ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
         if (labels[i] < database_size() - max_index && distances[i] < thres) {
             //Is same id, max index make sense
-            ROS_INFO("Suitable Find %ld on drone %d->%d, radius %f", labels[i] + index_offset, return_drone_id, img_desc.drone_id, distances[i]);
+            distance = distances[i];
+            ROS_INFO("Database return %ld on drone %d, radius %f msg_id %d", labels[i] + index_offset, return_drone_id, distances[i], return_msg_id);
             return return_msg_id;
         }
     }
