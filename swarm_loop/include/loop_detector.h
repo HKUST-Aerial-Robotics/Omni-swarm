@@ -9,7 +9,7 @@
 #include <loop_cam.h>
 #include <functional>
 #include <swarm_msgs/Pose.h>
-
+#include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
 #ifdef USE_DEEPNET
 #include <faiss/IndexFlat.h>
 #else
@@ -24,11 +24,20 @@ class LoopDetector {
 
 protected:
     faiss::IndexFlatIP local_index;
+
     faiss::IndexFlatIP remote_index;
-    std::map<unsigned int, ImageDescriptor_t> id2imgdes;
-    std::map<unsigned int, cv::Mat> id2cvimg;
+
+    std::map<int, int64_t> imgid2fisheye;
+    std::map<int, int> imgid2dir;
+
+    std::map<int64_t, FisheyeFrameDescriptor_t> fisheyeframe_database;
+
+    std::map<int64_t, std::vector<cv::Mat>> msgid2cvimgs;
+    
     std::vector<cv::Scalar> colors;
-    bool compute_loop(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, cv::Mat img_new, cv::Mat img_old, LoopConnection & ret, bool init_mode=false);
+    
+    bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc, 
+        std::vector<cv::Mat> img_new, std::vector<cv::Mat> img_old, LoopConnection & ret, bool init_mode=false);
 
     int compute_relative_pose(
         const std::vector<cv::Point2f> now_norm_2d,
@@ -49,10 +58,12 @@ protected:
         int &inlier_num
         );
 
-
+    int add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_desc);
     int add_to_database(const ImageDescriptor_t & new_img_desc);
-    int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe);
-    int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index);
+    FisheyeFrameDescriptor_t & query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, double & distance);
+    int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index, double & distance);
+
 
     std::set<int> success_loop_nodes;
     std::set<int> all_nodes;
@@ -61,7 +72,7 @@ public:
     std::function<void(LoopConnection &)> on_loop_cb;
     int self_id = -1;
     LoopDetector();
-    void on_image_recv(const ImageDescriptor_t & img_des, cv::Mat img = cv::Mat());
+    void on_image_recv(const FisheyeFrameDescriptor_t & img_des, std::vector<cv::Mat> img = std::vector<cv::Mat>(0));
     void on_loop_connection(LoopConnection & loop_conn);
     LoopCam * loop_cam = nullptr;
     bool enable_visualize = true;
