@@ -201,6 +201,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.timestamp = frame_desc.images[0].timestamp;
     frame_desc.images[1].timestamp = frame_desc.timestamp;
     frame_desc.images[2].timestamp = frame_desc.timestamp;
+    frame_desc.msg_id = frame_desc.timestamp.nsec * 10000 + rand() + self_id * 100;
     return frame_desc;
 }
 
