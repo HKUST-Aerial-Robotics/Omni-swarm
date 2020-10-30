@@ -9,6 +9,8 @@
 #include <functional>
 #include <vins/VIOKeyframe.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
+#include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
+
 #include "loop_defines.h"
 #include <swarm_loop/HFNetSrv.h>
 #include <vins/FlattenImages.h>
@@ -43,8 +45,10 @@ public:
     
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg, bool superpoint_mode=false);
     
-    ImageDescriptor_t on_flattened_images(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id = 2);
-  
+    ImageDescriptor_t generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id);
+    
+    FisheyeFrameDescriptor_t on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs);
+
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
     std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);

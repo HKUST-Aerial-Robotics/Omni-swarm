@@ -113,43 +113,6 @@ void reduceVector(std::vector<T> &v, std::vector<uchar> status)
     v.resize(j);
 }
 
-void track_pts(const cv::Mat &img_up, const cv::Mat &img_down, std::vector<cv::Point2f> &pts_up, std::vector<cv::Point2f> &pts_down, std::vector<int> & ids)
-{
-
-    for (size_t i = 0; i < pts_up.size(); i++) {
-        ids.push_back(i);
-    }
-
-    std::vector<float> err;
-    std::vector<uchar> status;
-    // std::cout << "DOWN " << img_down.size() << " Up" << img_up.size() << "Pts " << pts_up.size() << std::endl;
-
-    cv::calcOpticalFlowPyrLK(img_up, img_down, pts_up, pts_down, status, err, cv::Size(21, 21), 3);
-    // reduceVector(pts_down, status);
-    // reduceVector(pts_up, status);
-
-    std::vector<cv::Point2f> reverse_pts;
-    std::vector<uchar> reverse_status;
-    cv::calcOpticalFlowPyrLK(img_down, img_up, pts_down, reverse_pts, reverse_status, err, cv::Size(21, 21), 3);
-
-
-    for (size_t i = 0; i < status.size(); i++)
-    {
-        if (status[i] && reverse_status[i] && cv::norm(pts_up[i] - reverse_pts[i]) <= 0.5)
-        {
-            status[i] = 1;
-        }
-        else
-        {
-            status[i] = 0;
-        }
-    }
-
-    reduceVector(pts_down, status);
-    reduceVector(pts_up, status);
-    reduceVector(ids, status);
-}
-
 cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2, std::vector<cv::DMatch> _matches, const cv::Mat & up, const cv::Mat & down) {
     std::vector<cv::KeyPoint> kps1;
     std::vector<cv::KeyPoint> kps2;
@@ -225,7 +188,23 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     return ids;
 }
 
-ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id)
+
+FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
+    FisheyeFrameDescriptor_t frame_desc;
+    imgs.resize(3);
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1));
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2));
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
+    // Not use back now
+    // frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 3));
+    frame_desc.image_num = 3;
+    frame_desc.timestamp = frame_desc.images[0].timestamp;
+    frame_desc.images[1].timestamp = frame_desc.timestamp;
+    frame_desc.images[2].timestamp = frame_desc.timestamp;
+    return frame_desc;
+}
+
+ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id)
 {
     if (vcam_id > msg.up_cams.size()) {
         ROS_WARN("Flatten images too few");
@@ -262,12 +241,7 @@ ImageDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, 
 
     std::vector<int> ids;
 
-    // ROS_INFO("try track %d pts", pts_up.size());
-    // track_pts(cv_ptr->image, cv_ptr2->image, pts_up, pts_down, ids);
-    // Not use tracker now.
-
     if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
-        ROS_INFO("Tring BF Match with HfNet instead, optical flow gives %d", pts_up.size());
         pts_up = toCV(ides.landmarks_2d);
         auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], true);
         pts_down = toCV(ides_down.landmarks_2d);

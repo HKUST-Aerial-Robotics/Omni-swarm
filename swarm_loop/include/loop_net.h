@@ -12,6 +12,7 @@
 #include <set>
 #include <swarm_msgs/ImageDescriptorHeader_t.hpp>
 #include <swarm_msgs/LandmarkDescriptor_t.hpp>
+#include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
 #include <mutex>
 
 using namespace swarm_msgs;
@@ -45,6 +46,8 @@ public:
 
     void setup_network(std::string _lcm_uri);
     void broadcast_img_desc(ImageDescriptor_t & img_des);
+    void broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc);
+
     void broadcast_loop_connection(LoopConnection & loop_conn);
 
     void on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,

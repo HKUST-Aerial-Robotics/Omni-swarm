@@ -83,6 +83,15 @@ struct ImageDescriptor_t {
     int64_t msg_id;
 }
 
+struct FisheyeFrameDescriptor_t {
+    int64_t msg_id;
+    int32_t image_num;
+    boolean prevent_adding_db;
+    int32_t landmark_num;
+    int32_t drone_id;
+    Time_t  timestamp;
+    ImageDescriptor_t images[image_num];
+}
 
 struct LoopConnection_t {
     Time_t ts_a;
