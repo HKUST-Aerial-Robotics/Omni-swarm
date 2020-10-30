@@ -39,14 +39,21 @@ protected:
     bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc, 
         std::vector<cv::Mat> img_new, std::vector<cv::Mat> img_old, LoopConnection & ret, bool init_mode=false);
 
+    bool compute_correspond_featurs(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
+        std::vector<cv::Point2f> &new_norm_2d,
+        std::vector<cv::Point3f> &new_3d,
+        std::vector<int> new_directions,
+        std::vector<cv::Point2f> &old_norm_2d,
+        std::vector<cv::Point3f> &old_3d,
+        std::vector<int> old_directions
+    );
+
     int compute_relative_pose(
         const std::vector<cv::Point2f> now_norm_2d,
         const std::vector<cv::Point3f> now_3d,
-        const cv::Mat desc_now,
 
         const std::vector<cv::Point2f> old_norm_2d,
         const std::vector<cv::Point3f> old_3d,
-        const cv::Mat desc_old,
 
         Swarm::Pose old_extrinsic,
         Swarm::Pose drone_pose_now,
