@@ -235,8 +235,14 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
         int msg_id = imgid2fisheye[best_image_id];
         direction = imgid2dir[best_image_id];
         FisheyeFrameDescriptor_t & ret = fisheyeframe_database[best_image_id];
+        ROS_INFO("Database return fishe frame from drone %d with direction %d", 
+            ret.drone_id, direction);
         return ret;
     }
+
+    direction = -1;
+    FisheyeFrameDescriptor_t ret;
+    return ret;
 }
 
 int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode, bool nonkeyframe, double & distance) {

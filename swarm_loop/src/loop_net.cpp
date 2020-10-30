@@ -17,9 +17,6 @@ void LoopNet::setup_network(std::string _lcm_uri) {
 
 
 void LoopNet::broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc) {
-    int64_t msg_id = rand() + fisheye_desc.timestamp.nsec;
-    fisheye_desc.msg_id = msg_id;
-
     //Broadcast Three ImageDesc
     for (auto & img : fisheye_desc.images) {
         broadcast_img_desc(img);
