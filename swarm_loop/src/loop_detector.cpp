@@ -356,16 +356,23 @@ double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone
     return RPerr;
 }
 
+  bool compute_correspond_featurs(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
+        std::vector<cv::Point2f> &new_norm_2d,
+        std::vector<cv::Point3f> &new_3d,
+        std::vector<int> new_directions,
+        std::vector<cv::Point2f> &old_norm_2d,
+        std::vector<cv::Point3f> &old_3d,
+        std::vector<int> old_directions
+    ) {
+    // cv::BFMatcher bfmatcher(cv::NORM_L2, true);
+    // std::vector<cv::DMatch> _matches;
+    // bfmatcher.match(desc_now, desc_old, _matches);
+}
 
-
-int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_2d,
-        const std::vector<cv::Point3f> now_3d,
-        const cv::Mat desc_now,
-
-        const std::vector<cv::Point2f> old_norm_2d,
-        const std::vector<cv::Point3f> old_3d,
-        const cv::Mat desc_old,
-
+int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2d_norm_old,
+        const std::vector<cv::Point3f> matched_3d_now,
+        const std::vector<cv::Point2f> matched_2d_norm_now,
+        const std::vector<cv::Point3f> matched_3d_old,
         Swarm::Pose old_extrinsic,
         Swarm::Pose drone_pose_now,
         Swarm::Pose drone_pose_old,
@@ -375,14 +382,6 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         std::vector<cv::DMatch> &matches,
         int &inlier_num) {
     
-    cv::BFMatcher bfmatcher(cv::NORM_L2, true);
-    //query train
-
-    std::vector<cv::DMatch> _matches;
-    bfmatcher.match(desc_now, desc_old, _matches);
-
-    std::vector<cv::Point3f> matched_3d_now, matched_3d_old;
-    std::vector<cv::Point2f> matched_2d_norm_old, matched_2d_norm_now;
 
     for (auto match : _matches) {
         int now_id = match.queryIdx;
@@ -425,27 +424,6 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
         bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,   
             iteratives,  0.02, 0.99,  inliers);
 
-        // std::set<int> inlier_cnt;
-        // for (int i = 0; i < inliers.rows; i++) {
-        //     int idx = inliers.at<int>(i);
-        //     inlier_cnt.insert(idx);
-        // }
-        // std::vector<unsigned char> status(matched_3d_now.size(), 0);
-        // cv::Mat inliers2;
-        // bool success2 = solvePnPRansac(matched_3d_old, matched_2d_norm_now, K, D, rvec2, t2, false,   
-        //     iteratives,  0.02, 0.99,  inliers2);
-
-        // for (int i = 0; i < inliers2.rows; i++) {
-        //     int idx = inliers2.at<int>(i);
-        //     if (inlier_cnt.find(idx) != inlier_cnt.end()) {
-        //         status[idx] = 1;
-        //     }
-        // }
-        // auto p_cam_old_in_new2 = PnPRestoCamPose(rvec2, t2);
-        // Swarm::Pose DP_new_to_old_6d = Swarm::Pose::DeltaPose(p_cam_old_in_new2*(old_extrinsic.to_isometry().inverse()), drone_pose_old, false);
-        // std::cout << "DP_new_to_old_6d inliers" << inliers2.size();
-        // DP_new_to_old_6d.print();
-
         auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
         auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
         
@@ -483,32 +461,31 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> now_norm_
 }
 
 
-bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_img_desc, const FisheyeFrameDescriptor_t & old_img_desc, 
+bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc, const FisheyeFrameDescriptor_t & old_frame_desc, 
     std::vector<cv::Mat> imgs_new, std::vector<cv::Mat> imgs_old, LoopConnection & ret, bool init_mode) {
-    /*
-    if (new_img_desc.landmark_num < MIN_LOOP_NUM) {
+    if (new_frame_desc.landmark_num < MIN_LOOP_NUM) {
         return false;
     }
     //Recover imformation
 
-    assert(new_img_desc.drone_id == self_id && "old img desc must from self drone!");
+    assert(new_frame_desc.drone_id == self_id && "old img desc must from self drone!");
 
     bool success = false;
     Swarm::Pose  DP_old_to_new;
 
-    ROS_INFO("Compute loop drone %d->%d landmarks %d:%d. Init %d", old_img_desc.drone_id, new_img_desc.drone_id, 
-        old_img_desc.landmark_num,
-        new_img_desc.landmark_num,
+    ROS_INFO("Compute loop drone %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, new_frame_desc.drone_id, 
+        old_frame_desc.landmark_num,
+        new_frame_desc.landmark_num,
         init_mode);
 
-    auto now_2d = toCV(new_img_desc.landmarks_2d);
-    auto now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
-    auto now_3d = toCV(new_img_desc.landmarks_3d);
+    auto now_2d = toCV(new_frame_desc.landmarks_2d);
+    auto now_norm_2d = toCV(new_frame_desc.landmarks_2d_norm);
+    auto now_3d = toCV(new_frame_desc.landmarks_3d);
 
-    assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
-    assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
+    // assert(new_frame_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
+    // assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
-    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    cv::Mat desc_now( new_frame_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
 
     auto old_2d = toCV(old_img_desc.landmarks_2d);
@@ -584,7 +561,6 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_img_desc, c
         return true;
     }
     return false;
-    */
 }
 
 void LoopDetector::on_loop_connection(LoopConnection & loop_conn) {
