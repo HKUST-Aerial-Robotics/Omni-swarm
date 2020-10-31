@@ -86,8 +86,9 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
 
             ROS_INFO("Querying image from database size %d init_mode %d nonkeyframe %d", database_size(), init_mode, flatten_desc.prevent_adding_db);
             
-            int direction = 2;
-            FisheyeFrameDescriptor_t & _old_fisheye_img = query_fisheyeframe_from_database(flatten_desc, init_mode, flatten_desc.prevent_adding_db, direction);
+            int direction = 1;
+            int direction_old = -1;
+            FisheyeFrameDescriptor_t & _old_fisheye_img = query_fisheyeframe_from_database(flatten_desc, init_mode, flatten_desc.prevent_adding_db, direction, direction_old);
 
             auto stop = high_resolution_clock::now(); 
 
@@ -95,11 +96,11 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                 LoopConnection ret;
 
                 if (_old_fisheye_img.drone_id == self_id) {
-                    success = compute_loop(_old_fisheye_img, flatten_desc, msgid2cvimgs[_old_fisheye_img.msg_id],  imgs, ret, init_mode);
+                    success = compute_loop(_old_fisheye_img, flatten_desc, direction_old, direction, msgid2cvimgs[_old_fisheye_img.msg_id],  imgs, ret, init_mode);
                 } else {
                     //We grab remote drone from database
                     if (flatten_desc.drone_id == self_id) {
-                        success = compute_loop(flatten_desc, _old_fisheye_img, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
+                        success = compute_loop(flatten_desc, _old_fisheye_img, direction, direction_old, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
                     } else {
                         ROS_WARN("Will not compute loop, drone id is %d(self %d)", flatten_desc.drone_id, self_id);
                     }
@@ -220,30 +221,31 @@ int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
 }
 
 
-FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction) {
+FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old) {
     double best_distance = 1000;
     int best_image_id = -1;
+    //Strict use direction 1 now
+    direction_new = 1;
+    if (new_img_desc.images[direction_new].landmark_num > 0) {
+        double distance = 1000;
+        int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);
+        ROS_INFO("Direction %d msgid %d distance %f", direction_new, id, distance);
+        
+        if (id != -1 && distance < best_distance) {
+            best_image_id = id;
+        }
 
-    int dir = 1;
-    double distance = 1000;
-    int id = query_from_database(new_img_desc.images.at(dir), init_mode, nonkeyframe, distance);
-    ROS_INFO("Direction %d msgid %d distance %f", 
-        dir, id, distance);
-    
-    if (id != -1 && distance < best_distance) {
-        best_image_id = id;
+        if (best_image_id != -1) {
+            int msg_id = imgid2fisheye[best_image_id];
+            direction_old = imgid2dir[best_image_id];
+            FisheyeFrameDescriptor_t & ret = fisheyeframe_database[best_image_id];
+            ROS_INFO("Database return fishe frame from drone %d with direction %d", 
+                ret.drone_id, direction_old);
+            return ret;
+        }
     }
 
-    if (best_image_id != -1) {
-        int msg_id = imgid2fisheye[best_image_id];
-        direction = imgid2dir[best_image_id];
-        FisheyeFrameDescriptor_t & ret = fisheyeframe_database[best_image_id];
-        ROS_INFO("Database return fishe frame from drone %d with direction %d", 
-            ret.drone_id, direction);
-        return ret;
-    }
-
-    direction = -1;
+    direction_old = -1;
     FisheyeFrameDescriptor_t ret;
     ret.msg_id = -1;
     return ret;
@@ -356,18 +358,7 @@ double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone
     return RPerr;
 }
 
-  bool compute_correspond_featurs(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
-        std::vector<cv::Point2f> &new_norm_2d,
-        std::vector<cv::Point3f> &new_3d,
-        std::vector<int> new_directions,
-        std::vector<cv::Point2f> &old_norm_2d,
-        std::vector<cv::Point3f> &old_3d,
-        std::vector<int> old_directions
-    ) {
-    // cv::BFMatcher bfmatcher(cv::NORM_L2, true);
-    // std::vector<cv::DMatch> _matches;
-    // bfmatcher.match(desc_now, desc_old, _matches);
-}
+ 
 
 int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2d_norm_old,
         const std::vector<cv::Point3f> matched_3d_now,
@@ -381,88 +372,203 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2
         int drone_id_new, int drone_id_old,
         std::vector<cv::DMatch> &matches,
         int &inlier_num) {
-    
-
-    for (auto match : _matches) {
-        int now_id = match.queryIdx;
-        int old_id = match.trainIdx;
-
-        matched_3d_now.push_back(now_3d[now_id]);
-        matched_2d_norm_old.push_back(old_norm_2d[old_id]);
-        matched_2d_norm_now.push_back(now_norm_2d[now_id]);
-        matched_3d_old.push_back(old_3d[old_id]);
-    }
-
-    std::cout << std::endl;
-
-    if(_matches.size() > MIN_LOOP_NUM || (init_mode && matches.size() > INIT_MODE_MIN_LOOP_NUM  )) {
         //Compute PNP
-        ROS_INFO("Matched features %ld/%ld", matched_2d_norm_old.size(), _matches.size());
-        cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
+    ROS_INFO("Matched features %ld", matched_2d_norm_old.size());
+    cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
-        cv::Mat r, rvec, rvec2, t, t2, D, tmp_r;
-        cv::Mat inliers;
+    cv::Mat r, rvec, rvec2, t, t2, D, tmp_r;
+    cv::Mat inliers;
 
 
-        //TODO: Prepare initial pose for swarm
+    // Swarm::Pose initial_old_drone_pose = drone_pose_old;
+    // Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
+    // Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
+    // Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
+    // PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
+    
+    int iteratives = 100;
 
-        Swarm::Pose initial_old_drone_pose = drone_pose_old;
-        // }
-
-        Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
-        Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
-        Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
-
-        PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
-        
-        int iteratives = 100;
-
-        if (init_mode) {
-            iteratives = 1000;
-        }
-
-        bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, true,   
-            iteratives,  0.02, 0.99,  inliers);
-
-        auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
-        auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
-        
-        if (!success) {
-            return 0;
-        }
-
-        Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
-        std::cout << "DP_old_to_new_6d inliers" << inliers.size();
-        DP_old_to_new_6d.print();
-
-        DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
-        //As our pose graph uses 4D pose, here we must solve 4D pose
-        //6D pose could use to verify the result but not give to swarm_localization
-        std::cout << "PnP solved DPose 4D";
-        DP_old_to_new.print();
-        
-        auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
-
-        success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
-
-        ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
-        inlier_num = inliers.rows;
-
-        for (int i = 0; i < inlier_num; i++) {
-            int idx = inliers.at<int>(i);
-            matches.push_back(_matches[idx]);
-        }
-        return success;
-    } else {
-        ROS_INFO("Matched features too less %ld", _matches.size());
+    if (init_mode) {
+        iteratives = 1000;
     }
 
-    return 0;
+    bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, false,   
+        iteratives,  0.02, 0.99,  inliers);
+
+    auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
+    auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
+    
+    if (!success) {
+        return 0;
+    }
+
+    Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+    std::cout << "DP_old_to_new_6d inliers" << inliers.size();
+    DP_old_to_new_6d.print();
+
+    DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
+    //As our pose graph uses 4D pose, here we must solve 4D pose
+    //6D pose could use to verify the result but not give to swarm_localization
+    std::cout << "PnP solved DPose 4D";
+    DP_old_to_new.print();
+    
+    auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
+
+    success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
+
+    ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
+    inlier_num = inliers.rows;
+
+    for (int i = 0; i < inlier_num; i++) {
+        matches.push_back(cv::DMatch(inliers.at<int>(i, 0), inliers.at<int>(i, 0), 0));
+    }
+    return success;
 }
 
+cv::Point2f rotate_pt_norm2d(cv::Point2f pt, Eigen::Quaterniond q) {
+    Eigen::Vector3d pt3d(pt.x, pt.y, 1);
+    pt3d = q * pt3d;
 
-bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc, const FisheyeFrameDescriptor_t & old_frame_desc, 
-    std::vector<cv::Mat> imgs_new, std::vector<cv::Mat> imgs_old, LoopConnection & ret, bool init_mode) {
+    if (pt3d.z() < 1e-3 && pt3d.z() > 0) {
+        pt3d.z() = 1e-3;
+    }
+
+    if (pt3d.z() > -1e-3 && pt3d.z() < 0) {
+        pt3d.z() = -1e-3;
+    }
+
+    return cv::Point2f(pt3d.x()/ pt3d.z(), pt3d.y()/pt3d.z());
+}
+
+//Note! here the norms are both projected to main dir's unit sphere.
+bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & new_frame_desc,
+    const FisheyeFrameDescriptor_t & old_frame_desc, 
+    int main_dir_new,
+    int main_dir_old,
+    std::vector<cv::Point2f> &new_norm_2d,
+    std::vector<cv::Point3f> &new_3d,
+    std::vector<std::vector<int>> &new_idx,
+    std::vector<cv::Point2f> &old_norm_2d,
+    std::vector<cv::Point3f> &old_3d,
+    std::vector<std::vector<int>> &old_idx,
+    std::vector<int> &dirs_new,
+    std::vector<int> &dirs_old
+) {
+    //For each FisheyeFrameDescriptor_t, there must be 4 frames
+    //However, due to the transmission and parameter, some may be empty.
+    //We will only matched the frame which isn't empty
+    for (int _dir_new = main_dir_new; _dir_new < main_dir_new + MAX_DIRS; _dir_new ++) {
+        int dir_new = _dir_new % MAX_DIRS;
+        int dir_old = ((main_dir_old - main_dir_new + MAX_DIRS) % MAX_DIRS + _dir_new)% MAX_DIRS;
+
+        if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num) {
+            dirs_new.push_back(dir_new);
+            dirs_old.push_back(dir_old);
+        }
+    }
+
+    Swarm::Pose extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
+    Swarm::Pose extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
+    Eigen::Quaterniond main_quat_new =  extrinsic_new.att();
+    Eigen::Quaterniond main_quat_old =  extrinsic_old.att();
+
+    for (size_t i = 0; i < dirs_new.size(); i++) {
+        int dir_new = dirs_new[i];
+        int dir_old = dirs_old[i];
+        std::vector<cv::Point2f> _new_norm_2d;
+        std::vector<cv::Point3f> _new_3d;
+        std::vector<int> _new_idx;
+        std::vector<cv::Point2f> _old_norm_2d;
+        std::vector<cv::Point3f> _old_3d;
+        std::vector<int> _old_idx;
+
+        compute_correspond_features(
+            new_frame_desc.images[dir_new],
+            old_frame_desc.images[dir_old],
+            _new_norm_2d,
+            _new_3d,
+            _new_idx,
+            _old_norm_2d,
+            _old_3d,
+            _old_idx
+        );
+
+        new_3d.insert(new_3d.end(), _new_3d.begin(), _new_3d.end());
+        old_3d.insert(old_3d.end(), _old_3d.begin(), _old_3d.end());
+        new_idx.push_back(_new_idx);
+        old_idx.push_back(_old_idx);
+
+        Swarm::Pose _extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
+        Swarm::Pose _extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
+
+        Eigen::Quaterniond dq_new = main_quat_new.inverse() * _extrinsic_new.att();
+        Eigen::Quaterniond dq_old = main_quat_old.inverse() * _extrinsic_old.att();
+
+        for (auto pt : _old_norm_2d) {
+            old_norm_2d.push_back(rotate_pt_norm2d(pt, dq_old));
+        }
+
+        for (auto pt : _new_norm_2d) {
+            new_norm_2d.push_back(rotate_pt_norm2d(pt, dq_new));
+        }
+    }
+
+    if(new_norm_2d.size() > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
+        std::vector<cv::Point2f> &new_norm_2d,
+        std::vector<cv::Point3f> &new_3d,
+        std::vector<int> new_idx,
+        std::vector<cv::Point2f> &old_norm_2d,
+        std::vector<cv::Point3f> &old_3d,
+        std::vector<int> old_idx
+    ){
+    assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
+    assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
+
+    auto _old_norm_2d = toCV(old_img_desc.landmarks_2d_norm);
+    auto _old_3d = toCV(old_img_desc.landmarks_3d);
+    
+    auto _now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
+    auto _now_3d = toCV(new_img_desc.landmarks_3d);
+
+    cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
+    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
+
+    cv::BFMatcher bfmatcher(cv::NORM_L2, true);
+    std::vector<cv::DMatch> _matches;
+    bfmatcher.match(desc_now, desc_old, _matches);
+    for (auto match : _matches) {
+        if (match.distance < ACCEPT_SP_MATCH_DISTANCE) {
+            int now_id = match.queryIdx;
+            int old_id = match.trainIdx;
+
+            new_idx.push_back(now_id);
+            old_idx.push_back(old_id);
+
+            new_3d.push_back(_now_3d[now_id]);
+            new_norm_2d.push_back(_now_norm_2d[now_id]);
+
+            old_3d.push_back(_old_3d[old_id]);
+            old_norm_2d.push_back(_old_norm_2d[old_id]);
+        }
+    }
+
+    return true;
+}
+
+bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc, const FisheyeFrameDescriptor_t & old_frame_desc,
+    int main_dir_new, int main_dir_old,
+    std::vector<cv::Mat> imgs_new, std::vector<cv::Mat> imgs_old,
+    LoopConnection & ret, bool init_mode) {
+
     if (new_frame_desc.landmark_num < MIN_LOOP_NUM) {
         return false;
     }
@@ -471,74 +577,73 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     assert(new_frame_desc.drone_id == self_id && "old img desc must from self drone!");
 
     bool success = false;
-    Swarm::Pose  DP_old_to_new;
 
     ROS_INFO("Compute loop drone %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, new_frame_desc.drone_id, 
         old_frame_desc.landmark_num,
         new_frame_desc.landmark_num,
         init_mode);
 
-    auto now_2d = toCV(new_frame_desc.landmarks_2d);
-    auto now_norm_2d = toCV(new_frame_desc.landmarks_2d_norm);
-    auto now_3d = toCV(new_frame_desc.landmarks_3d);
-
-    // assert(new_frame_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
-    // assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
-
-    cv::Mat desc_now( new_frame_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
-    memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
-
-    auto old_2d = toCV(old_img_desc.landmarks_2d);
-    auto old_norm_2d = toCV(old_img_desc.landmarks_2d_norm);
-    auto old_3d = toCV(old_img_desc.landmarks_3d);
-    cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
-    memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
-
+    std::vector<cv::Point2f> new_norm_2d;
+    std::vector<cv::Point3f> new_3d;
+    std::vector<std::vector<int>> new_idx;
+    std::vector<cv::Point2f> old_norm_2d;
+    std::vector<cv::Point3f> old_3d;
+    std::vector<std::vector<int>> old_idx;
+    std::vector<int> dirs_new;
+    std::vector<int> dirs_old;
+    Swarm::Pose DP_old_to_new;
     std::vector<cv::DMatch> matches;
 
-    int inlier_num = 0;
-    success = compute_relative_pose(
-            now_norm_2d, now_3d, desc_now,
-            old_norm_2d, old_3d, desc_old,
-            Swarm::Pose(old_img_desc.camera_extrinsic),
-            Swarm::Pose(new_img_desc.pose_drone),
-            Swarm::Pose(old_img_desc.pose_drone),
-            DP_old_to_new,
-            init_mode,
-            new_img_desc.drone_id,
-            old_img_desc.drone_id,
-            matches,
-            inlier_num
-    );
-
+    compute_correspond_features(new_frame_desc, old_frame_desc, 
+        main_dir_new, main_dir_old,
+        new_norm_2d, new_3d, new_idx,
+        old_norm_2d, old_3d, old_idx, dirs_new, dirs_old);
+  
+    if(new_norm_2d.size() > MIN_LOOP_NUM || (init_mode && new_norm_2d.size() > INIT_MODE_MIN_LOOP_NUM  )) 
+    {
+        int inlier_num = 0;
+        success = compute_relative_pose(
+                new_norm_2d, new_3d, 
+                old_norm_2d, old_3d,
+                Swarm::Pose(old_frame_desc.images[main_dir_old].camera_extrinsic),
+                Swarm::Pose(new_frame_desc.pose_drone),
+                Swarm::Pose(old_frame_desc.pose_drone),
+                DP_old_to_new,
+                init_mode,
+                new_frame_desc.drone_id,
+                old_frame_desc.drone_id,
+                matches,
+                inlier_num
+        );
+    }
     cv::Mat show;
 
     if (enable_visualize) {
-        assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
-        assert(!img_old.empty() && "ERROR IMG old is emptry!");
-        static char title[256] = {0};
-        cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
-        // cv::resize(show, show, cv::Size(), 2, 2);
-         if (success) {
-            sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
-            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
-        } else {
-            sprintf(title, "FAILED LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
-            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
-        }
+        // assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
+        // assert(!img_old.empty() && "ERROR IMG old is emptry!");
+        // static char title[256] = {0};
+        // cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
+        // // cv::resize(show, show, cv::Size(), 2, 2);
+        //  if (success) {
+        //     sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
+        //     cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
+        // } else {
+        //     sprintf(title, "FAILED LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
+        //     cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
+        // }
 
-        cv::Mat show2 = img_old;
+        // cv::Mat show2 = img_old;
 
-        for (auto match : matches) {
-            int now_id = match.queryIdx;
-            int old_id = match.trainIdx;
-            cv::arrowedLine(show2, now_2d[now_id], old_2d[old_id], cv::Scalar(255, 255, 0), 1);
-        }
+        // for (auto match : matches) {
+        //     int now_id = match.queryIdx;
+        //     int old_id = match.trainIdx;
+        //     cv::arrowedLine(show2, now_2d[now_id], old_2d[old_id], cv::Scalar(255, 255, 0), 1);
+        // }
 
-        cv::imshow("SHOW_FEA", show2);
+        // cv::imshow("SHOW_FEA", show2);
 
-        cv::imshow("Matches", show);
-        cv::waitKey(10);
+        // cv::imshow("Matches", show);
+        // cv::waitKey(10);
     }
 
     if (success) {
@@ -547,16 +652,16 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.dpos.z = DP_old_to_new.pos().z();
         ret.dyaw = DP_old_to_new.yaw();
 
-        ret.id_a = old_img_desc.drone_id;
-        ret.ts_a = toROSTime(old_img_desc.timestamp);
+        ret.id_a = old_frame_desc.drone_id;
+        ret.ts_a = toROSTime(old_frame_desc.timestamp);
 
-        ret.id_b = new_img_desc.drone_id;
-        ret.ts_b = toROSTime(new_img_desc.timestamp);
+        ret.id_b = new_frame_desc.drone_id;
+        ret.ts_b = toROSTime(new_frame_desc.timestamp);
 
-        ROS_INFO("OLD TS %ld NEW TS %ld", old_img_desc.timestamp.sec, new_img_desc.timestamp.sec);
+        ROS_INFO("OLD TS %ld NEW TS %ld", old_frame_desc.timestamp.sec, new_frame_desc.timestamp.sec);
 
-        ret.self_pose_a = toROSPose(old_img_desc.pose_drone);
-        ret.self_pose_b = toROSPose(new_img_desc.pose_drone);
+        ret.self_pose_a = toROSPose(old_frame_desc.pose_drone);
+        ret.self_pose_b = toROSPose(new_frame_desc.pose_drone);
 
         return true;
     }

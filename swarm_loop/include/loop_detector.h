@@ -36,16 +36,30 @@ protected:
     
     std::vector<cv::Scalar> colors;
     
-    bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc, 
+    bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc,
+        int main_dir_new, int main_dir_old,
         std::vector<cv::Mat> img_new, std::vector<cv::Mat> img_old, LoopConnection & ret, bool init_mode=false);
 
-    bool compute_correspond_featurs(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
+    bool compute_correspond_features(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
         std::vector<cv::Point2f> &new_norm_2d,
         std::vector<cv::Point3f> &new_3d,
-        std::vector<int> new_directions,
+        std::vector<int> new_idx,
         std::vector<cv::Point2f> &old_norm_2d,
         std::vector<cv::Point3f> &old_3d,
-        std::vector<int> old_directions
+        std::vector<int> old_idx
+    );
+
+    bool compute_correspond_features(const FisheyeFrameDescriptor_t & new_img_desc, const FisheyeFrameDescriptor_t & old_img_desc, 
+        int main_dir_new,
+        int main_dir_old,
+        std::vector<cv::Point2f> &new_norm_2d,
+        std::vector<cv::Point3f> &new_3d,
+        std::vector<std::vector<int>> &new_idx,
+        std::vector<cv::Point2f> &old_norm_2d,
+        std::vector<cv::Point3f> &old_3d,
+        std::vector<std::vector<int>> &old_idx,
+        std::vector<int> &dirs_new,
+        std::vector<int> &dirs_old
     );
 
     int compute_relative_pose(
@@ -67,7 +81,7 @@ protected:
 
     int add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_desc);
     int add_to_database(const ImageDescriptor_t & new_img_desc);
-    FisheyeFrameDescriptor_t & query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction);
+    FisheyeFrameDescriptor_t & query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old);
     int query_from_database(const ImageDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, double & distance);
     int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index, double & distance);
 

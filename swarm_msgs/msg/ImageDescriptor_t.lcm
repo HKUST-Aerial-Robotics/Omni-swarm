@@ -90,6 +90,7 @@ struct FisheyeFrameDescriptor_t {
     int32_t landmark_num;
     int32_t drone_id;
     Time_t  timestamp;
+    Pose_t pose_drone;
     ImageDescriptor_t images[image_num];
 }
 
