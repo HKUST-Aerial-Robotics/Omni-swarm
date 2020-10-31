@@ -11,6 +11,7 @@
 
 #include <vector>
 #include "Time_t.hpp"
+#include "Pose_t.hpp"
 #include "ImageDescriptor_t.hpp"
 
 
@@ -28,6 +29,8 @@ class FisheyeFrameDescriptor_t
         int32_t    drone_id;
 
         Time_t     timestamp;
+
+        Pose_t     pose_drone;
 
         std::vector< ImageDescriptor_t > images;
 
@@ -145,6 +148,9 @@ int FisheyeFrameDescriptor_t::_encodeNoHash(void *buf, int offset, int maxlen) c
     tlen = this->timestamp._encodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = this->pose_drone._encodeNoHash(buf, offset + pos, maxlen - pos);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     for (int a0 = 0; a0 < this->image_num; a0++) {
         tlen = this->images[a0]._encodeNoHash(buf, offset + pos, maxlen - pos);
         if(tlen < 0) return tlen; else pos += tlen;
@@ -175,6 +181,9 @@ int FisheyeFrameDescriptor_t::_decodeNoHash(const void *buf, int offset, int max
     tlen = this->timestamp._decodeNoHash(buf, offset + pos, maxlen - pos);
     if(tlen < 0) return tlen; else pos += tlen;
 
+    tlen = this->pose_drone._decodeNoHash(buf, offset + pos, maxlen - pos);
+    if(tlen < 0) return tlen; else pos += tlen;
+
     try {
         this->images.resize(this->image_num);
     } catch (...) {
@@ -197,6 +206,7 @@ int FisheyeFrameDescriptor_t::_getEncodedSizeNoHash() const
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += __int32_t_encoded_array_size(NULL, 1);
     enc_size += this->timestamp._getEncodedSizeNoHash();
+    enc_size += this->pose_drone._getEncodedSizeNoHash();
     for (int a0 = 0; a0 < this->image_num; a0++) {
         enc_size += this->images[a0]._getEncodedSizeNoHash();
     }
@@ -211,8 +221,9 @@ uint64_t FisheyeFrameDescriptor_t::_computeHash(const __lcm_hash_ptr *p)
             return 0;
     const __lcm_hash_ptr cp = { p, FisheyeFrameDescriptor_t::getHash };
 
-    uint64_t hash = 0x1be8d9cb8f34e720LL +
+    uint64_t hash = 0xc8fbe317ad8fb724LL +
          Time_t::_computeHash(&cp) +
+         Pose_t::_computeHash(&cp) +
          ImageDescriptor_t::_computeHash(&cp);
 
     return (hash<<1) + ((hash>>63)&1);

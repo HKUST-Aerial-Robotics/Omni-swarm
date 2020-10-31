@@ -150,18 +150,15 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     std::vector<cv::Point2f> _pts_up, _pts_down;
     std::vector<int> ids;
     for (auto match : _matches) {
-        int now_id = match.queryIdx;
-        int old_id = match.trainIdx;
-        // if ( cv::norm(desc_up.row(now_id) - desc_down.row(old_id)) < 0.8) 
-        {
+        if (match.distance < ACCEPT_SP_MATCH_DISTANCE) {
+            int now_id = match.queryIdx;
+            int old_id = match.trainIdx;
             _pts_up.push_back(pts_up[now_id]);
             _pts_down.push_back(pts_down[old_id]);
             ids.push_back(now_id);
+        } else {
+            std::cout << "Giveup match dis" << match.distance << std::endl;
         }
-        //  else {
-        //     std::cout << "Giveup match dis" << cv::norm(desc_up.row(now_id) - desc_down.row(old_id)) << std::endl;
-        // }
-
     }
 
     ROS_INFO("%ld matches...", _matches.size());
@@ -197,11 +194,17 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
     // Not use back now
     // frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 3));
-    frame_desc.image_num = 3;
+    ImageDescriptor_t empty;
+    empty.landmark_num = 0;
+    frame_desc.images.push_back(empty);
+    
+    frame_desc.image_num = 4;
     frame_desc.timestamp = frame_desc.images[0].timestamp;
     frame_desc.images[1].timestamp = frame_desc.timestamp;
     frame_desc.images[2].timestamp = frame_desc.timestamp;
+    frame_desc.images[3].timestamp = frame_desc.timestamp;
     frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
+    frame_desc.pose_drone = fromROSPose(msg.pose_drone);
     frame_desc.drone_id = self_id;
     return frame_desc;
 }
