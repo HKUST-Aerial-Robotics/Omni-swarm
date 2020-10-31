@@ -59,7 +59,9 @@ protected:
         std::vector<cv::Point3f> &old_3d,
         std::vector<std::vector<int>> &old_idx,
         std::vector<int> &dirs_new,
-        std::vector<int> &dirs_old
+        std::vector<int> &dirs_old,
+        std::map<int, std::pair<int, int>> &index2dirindex_new,
+        std::map<int, std::pair<int, int>> &index2dirindex_old
     );
 
     int compute_relative_pose(
