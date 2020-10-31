@@ -452,7 +452,9 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     std::vector<cv::Point3f> &old_3d,
     std::vector<std::vector<int>> &old_idx,
     std::vector<int> &dirs_new,
-    std::vector<int> &dirs_old
+    std::vector<int> &dirs_old,
+    std::map<int, std::pair<int, int>> &index2dirindex_new,
+    std::map<int, std::pair<int, int>> &index2dirindex_old
 ) {
     //For each FisheyeFrameDescriptor_t, there must be 4 frames
     //However, due to the transmission and parameter, some may be empty.
@@ -504,11 +506,15 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
         Eigen::Quaterniond dq_new = main_quat_new.inverse() * _extrinsic_new.att();
         Eigen::Quaterniond dq_old = main_quat_old.inverse() * _extrinsic_old.att();
 
-        for (auto pt : _old_norm_2d) {
+        for (size_t id = 0; id < _old_norm_2d.size(); id++) {
+            auto pt = _old_norm_2d[id];
+            index2dirindex_old[old_norm_2d.size()] = std::make_pair(dir_old, _old_idx[id]);
             old_norm_2d.push_back(rotate_pt_norm2d(pt, dq_old));
         }
 
-        for (auto pt : _new_norm_2d) {
+        for (size_t id = 0; id < _new_norm_2d.size(); id++) {
+            auto pt = _new_norm_2d[id];
+            index2dirindex_new[new_norm_2d.size()] = std::make_pair(dir_new, _new_idx[id]);
             new_norm_2d.push_back(rotate_pt_norm2d(pt, dq_new));
         }
     }
@@ -526,8 +532,8 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
         std::vector<int> new_idx,
         std::vector<cv::Point2f> &old_norm_2d,
         std::vector<cv::Point3f> &old_3d,
-        std::vector<int> old_idx
-    ){
+        std::vector<int> old_idx) {
+
     assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
     assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
@@ -593,15 +599,18 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     std::vector<int> dirs_old;
     Swarm::Pose DP_old_to_new;
     std::vector<cv::DMatch> matches;
-
+    std::map<int, std::pair<int, int>> index2dirindex_old;
+    std::map<int, std::pair<int, int>> index2dirindex_new;
+    int inlier_num = 0;
+    
     compute_correspond_features(new_frame_desc, old_frame_desc, 
         main_dir_new, main_dir_old,
         new_norm_2d, new_3d, new_idx,
-        old_norm_2d, old_3d, old_idx, dirs_new, dirs_old);
-  
+        old_norm_2d, old_3d, old_idx, dirs_new, dirs_old, 
+        index2dirindex_new, index2dirindex_old);
+    
     if(new_norm_2d.size() > MIN_LOOP_NUM || (init_mode && new_norm_2d.size() > INIT_MODE_MIN_LOOP_NUM  )) 
     {
-        int inlier_num = 0;
         success = compute_relative_pose(
                 new_norm_2d, new_3d, 
                 old_norm_2d, old_3d,
@@ -619,31 +628,18 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     cv::Mat show;
 
     if (enable_visualize) {
-        // assert(!img_new.empty() && "ERROR IMG NEW is emptry!");
-        // assert(!img_old.empty() && "ERROR IMG old is emptry!");
-        // static char title[256] = {0};
-        // cv::drawMatches(img_new, to_keypoints(now_2d), img_old, to_keypoints(old_2d), matches, show, cv::Scalar::all(-1), cv::Scalar::all(-1));
-        // // cv::resize(show, show, cv::Size(), 2, 2);
-        //  if (success) {
-        //     sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
-        //     cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
-        // } else {
-        //     sprintf(title, "FAILED LOOP %d->%d inliers %d", old_img_desc.drone_id, new_img_desc.drone_id, inlier_num);
-        //     cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
-        // }
+        char title[100] = {0};
+        // cv::resize(show, show, cv::Size(), 2, 2);
+         if (success) {
+            sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
+            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
+        } else {
+            sprintf(title, "FAILED LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
+            cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
+        }
 
-        // cv::Mat show2 = img_old;
-
-        // for (auto match : matches) {
-        //     int now_id = match.queryIdx;
-        //     int old_id = match.trainIdx;
-        //     cv::arrowedLine(show2, now_2d[now_id], old_2d[old_id], cv::Scalar(255, 255, 0), 1);
-        // }
-
-        // cv::imshow("SHOW_FEA", show2);
-
-        // cv::imshow("Matches", show);
-        // cv::waitKey(10);
+        cv::imshow("Matches", show);
+        cv::waitKey(10);
     }
 
     if (success) {
