@@ -44,7 +44,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         ROS_INFO("Empty local database, where giveup remote image");
         return;
     } else {
-        ROS_INFO("Receive image from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
+        ROS_INFO("Detetor start process images from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
             flatten_desc.landmark_num);
     }
 
@@ -199,9 +199,11 @@ Swarm::Pose AffineRestoCamPose(Eigen::Matrix4d affine) {
 int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_desc) {
     for (size_t i = 0; i < new_fisheye_desc.images.size(); i++) {
         auto & img_desc = new_fisheye_desc.images[i];
-        int index = add_to_database(img_desc);
-        imgid2fisheye[index] = new_fisheye_desc.msg_id;
-        imgid2dir[index] = i;
+        if (img_desc.landmark_num > 0) {
+            int index = add_to_database(img_desc);
+            imgid2fisheye[index] = new_fisheye_desc.msg_id;
+            imgid2dir[index] = i;
+        }
     }
     fisheyeframe_database[new_fisheye_desc.msg_id] = new_fisheye_desc;
     return new_fisheye_desc.msg_id;
@@ -529,10 +531,10 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
 bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
         std::vector<cv::Point2f> &new_norm_2d,
         std::vector<cv::Point3f> &new_3d,
-        std::vector<int> new_idx,
+        std::vector<int> &new_idx,
         std::vector<cv::Point2f> &old_norm_2d,
         std::vector<cv::Point3f> &old_3d,
-        std::vector<int> old_idx) {
+        std::vector<int> &old_idx) {
 
     assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
     assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
@@ -629,7 +631,17 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
     if (enable_visualize) {
         char title[100] = {0};
-        // cv::resize(show, show, cv::Size(), 2, 2);
+        std::vector<cv::Mat> _matched_imgs;
+        _matched_imgs.resize(imgs_old.size());
+        for (size_t i = 0; i < imgs_old.size(); i ++) {
+            cv::vconcat(imgs_old[i], imgs_new[i], _matched_imgs[i]);
+        } 
+
+        show = _matched_imgs[0];
+        for (size_t i = 1; i < _matched_imgs.size(); i ++) {
+            cv::hconcat(show, _matched_imgs[i], show);
+        }
+
          if (success) {
             sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
