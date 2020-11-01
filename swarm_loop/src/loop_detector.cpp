@@ -274,7 +274,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         int return_msg_id = labels[i] + index_offset;
         int return_drone_id = fisheyeframe_database[return_msg_id].drone_id;
 
-        // ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
+        ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
         if (labels[i] < database_size() - max_index && distances[i] < thres) {
             //Is same id, max index make sense
             distance = distances[i];
@@ -501,7 +501,7 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
             _old_idx
         );
 
-        ROS_INFO("compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, new_3d.size());
+        ROS_INFO("compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, _new_3d.size());
 
         new_3d.insert(new_3d.end(), _new_3d.begin(), _new_3d.end());
         old_3d.insert(old_3d.end(), _old_3d.begin(), _old_3d.end());
@@ -645,7 +645,8 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         std::vector<cv::Mat> _matched_imgs;
         _matched_imgs.resize(imgs_old.size());
         for (size_t i = 0; i < imgs_old.size(); i ++) {
-            cv::vconcat(imgs_old[i], imgs_new[i], _matched_imgs[i]);
+            int dir_new = ((-main_dir_old + main_dir_new + MAX_DIRS) % MAX_DIRS + i)% MAX_DIRS;
+            cv::vconcat(imgs_old[i], imgs_new[dir_new], _matched_imgs[i]);
         } 
 
         for (size_t i = 0; i < new_norm_2d.size(); i ++) {
@@ -659,7 +660,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
             cv::line(_matched_imgs[old_dir_id], pt_old, pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), cv::Scalar(0, 0, 255));
             cv::circle(_matched_imgs[old_dir_id], pt_old, 3, cv::Scalar(255, 0, 0), 1);
-            cv::circle(_matched_imgs[new_dir_id], pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), 3, cv::Scalar(255, 0, 0), 1);
+            cv::circle(_matched_imgs[old_dir_id], pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), 3, cv::Scalar(255, 0, 0), 1);
         
         }
 
@@ -682,6 +683,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
         show = _matched_imgs[0];
         for (size_t i = 1; i < _matched_imgs.size(); i ++) {
+            cv::line(_matched_imgs[i], cv::Point2f(0, 0), cv::Point2f(0, _matched_imgs[i].rows), cv::Scalar(255, 255, 0), 2);
             cv::hconcat(show, _matched_imgs[i], show);
         }
 
@@ -694,7 +696,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
         }
 
-        cv::resize(show, show, cv::Size(), 2, 2);
+        // cv::resize(show, show, cv::Size(), 2, 2);
         cv::imshow("Matches", show);
         cv::waitKey(10);
     }
