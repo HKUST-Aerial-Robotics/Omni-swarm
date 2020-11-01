@@ -363,9 +363,10 @@ double RPerror(const Swarm::Pose & p_drone_old_in_new, const Swarm::Pose & drone
 
  
 
-int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2d_norm_old,
-        const std::vector<cv::Point3f> matched_3d_now,
+int LoopDetector::compute_relative_pose(
         const std::vector<cv::Point2f> matched_2d_norm_now,
+        const std::vector<cv::Point3f> matched_3d_now,
+        const std::vector<cv::Point2f> matched_2d_norm_old,
         const std::vector<cv::Point3f> matched_3d_old,
         Swarm::Pose old_extrinsic,
         Swarm::Pose drone_pose_now,
@@ -383,10 +384,12 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2
     cv::Mat inliers;
 
 
-    // Swarm::Pose initial_old_drone_pose = drone_pose_old;
-    // Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
-    // Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
-    // Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
+    Swarm::Pose initial_old_drone_pose = drone_pose_old;
+    Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
+    Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
+    Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
+    std::cout << "OLD to new initial" << std::endl;
+    old_drone_to_new_initial.print();
     // PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
     
     int iteratives = 100;
@@ -396,7 +399,7 @@ int LoopDetector::compute_relative_pose(const std::vector<cv::Point2f> matched_2
     }
 
     bool success = solvePnPRansac(matched_3d_now, matched_2d_norm_old, K, D, rvec, t, false,   
-        iteratives,  0.02, 0.99,  inliers);
+        iteratives,  3, 0.99,  inliers);
 
     auto p_cam_old_in_new = PnPRestoCamPose(rvec, t);
     auto p_drone_old_in_new = p_cam_old_in_new*(old_extrinsic.to_isometry().inverse());
@@ -461,7 +464,7 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
 ) {
     //For each FisheyeFrameDescriptor_t, there must be 4 frames
     //However, due to the transmission and parameter, some may be empty.
-    //We will only matched the frame which isn't empty
+    // We will only matched the frame which isn't empty
     for (int _dir_new = main_dir_new; _dir_new < main_dir_new + MAX_DIRS; _dir_new ++) {
         int dir_new = _dir_new % MAX_DIRS;
         int dir_old = ((main_dir_old - main_dir_new + MAX_DIRS) % MAX_DIRS + _dir_new)% MAX_DIRS;
@@ -471,6 +474,8 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
             dirs_old.push_back(dir_old);
         }
     }
+    // dirs_new.push_back(main_dir_new);
+    // dirs_old.push_back(main_dir_old);
 
 
     ROS_INFO("compute_correspond_features on main dir %d: %d", main_dir_old, main_dir_new);
