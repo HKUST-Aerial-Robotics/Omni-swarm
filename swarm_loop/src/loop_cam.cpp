@@ -150,7 +150,8 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     std::vector<cv::Point2f> _pts_up, _pts_down;
     std::vector<int> ids;
     for (auto match : _matches) {
-        if (match.distance < ACCEPT_SP_MATCH_DISTANCE) {
+        if (match.distance < ACCEPT_SP_MATCH_DISTANCE || true) 
+        {
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
             _pts_up.push_back(pts_up[now_id]);
@@ -185,6 +186,14 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     return ids;
 }
 
+ImageDescriptor_t generate_null_img_desc() {
+    ImageDescriptor_t empty;
+    empty.landmark_num = 0;
+    empty.feature_descriptor_size = 0;
+    empty.image_desc_size = 0;
+    empty.image_size = 0;
+    return empty;
+}
 
 FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
     FisheyeFrameDescriptor_t frame_desc;
@@ -194,9 +203,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
     // Not use back now
     // frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 3));
-    ImageDescriptor_t empty;
-    empty.landmark_num = 0;
-    frame_desc.images.push_back(empty);
+    frame_desc.images.push_back(generate_null_img_desc());
     
     frame_desc.image_num = 4;
     frame_desc.timestamp = frame_desc.images[0].timestamp;
@@ -205,6 +212,10 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.images[3].timestamp = frame_desc.timestamp;
     frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
     frame_desc.pose_drone = fromROSPose(msg.pose_drone);
+    frame_desc.landmark_num = 0;
+    for (auto & frame : frame_desc.images) {
+        frame_desc.landmark_num += frame.landmark_num;
+    }
     frame_desc.drone_id = self_id;
     return frame_desc;
 }
@@ -329,10 +340,8 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
     }
 
-    std::cout << "Landmark num" << ides.landmarks_2d.size() << std::endl;
     ides.feature_descriptor.clear();
     ides.feature_descriptor = std::vector<float>(desc_new);
-    std::cout << "Desc Size" << ides.feature_descriptor.size() << std::endl;
     ides.feature_descriptor_size = ides.feature_descriptor.size();
 
     ides.landmark_num = ides.landmarks_2d.size();

@@ -40,7 +40,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc_size = img_des.image_desc_size;
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = img_des.landmark_num;
-    ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
+    // ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
 
 
     lcm.publish("VIOKF_HEADER", &img_desc_header);
@@ -80,7 +80,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     }
     
 
-    ROS_INFO("Sent Message KEYFRAME %ld with %d landmarks", msg_id, img_des.landmark_num);
+    // ROS_INFO("Sent Message KEYFRAME %ld with %d landmarks", msg_id, img_des.landmark_num);
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {
