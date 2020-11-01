@@ -473,6 +473,8 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     }
 
 
+    ROS_INFO("compute_correspond_features on main dir %d: %d", main_dir_old, main_dir_new);
+
     Swarm::Pose extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
     Swarm::Pose extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
     Eigen::Quaterniond main_quat_new =  extrinsic_new.att();
@@ -499,21 +501,22 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
             _old_idx
         );
 
-        ROS_INFO("compute_correspond_features %d:%d gives %d common features", dir_old, dir_new, new_3d.size());
+        ROS_INFO("compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, new_3d.size());
 
         new_3d.insert(new_3d.end(), _new_3d.begin(), _new_3d.end());
         old_3d.insert(old_3d.end(), _old_3d.begin(), _old_3d.end());
         new_idx.push_back(_new_idx);
         old_idx.push_back(_old_idx);
 
-        Swarm::Pose _extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
-        Swarm::Pose _extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
+        Swarm::Pose _extrinsic_new(new_frame_desc.images[dir_new].camera_extrinsic);
+        Swarm::Pose _extrinsic_old(old_frame_desc.images[dir_old].camera_extrinsic);
 
         Eigen::Quaterniond dq_new = main_quat_new.inverse() * _extrinsic_new.att();
         Eigen::Quaterniond dq_old = main_quat_old.inverse() * _extrinsic_old.att();
 
         for (size_t id = 0; id < _old_norm_2d.size(); id++) {
             auto pt = _old_norm_2d[id];
+            // std::cout << "PT " << pt << " ROTATED " << rotate_pt_norm2d(pt, dq_old) << std::endl;
             index2dirindex_old[old_norm_2d.size()] = std::make_pair(dir_old, _old_idx[id]);
             old_norm_2d.push_back(rotate_pt_norm2d(pt, dq_old));
         }
