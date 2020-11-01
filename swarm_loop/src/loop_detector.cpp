@@ -92,7 +92,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
 
             auto stop = high_resolution_clock::now(); 
 
-            if (_old_fisheye_img.msg_id > 0 ) {
+            if (direction_old >= 0 ) {
                 LoopConnection ret;
 
                 if (_old_fisheye_img.drone_id == self_id) {
@@ -203,6 +203,7 @@ int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_d
             int index = add_to_database(img_desc);
             imgid2fisheye[index] = new_fisheye_desc.msg_id;
             imgid2dir[index] = i;
+            ROS_INFO("Add keyframe from %d(dir %d) to local keyframe database index: %d", img_desc.drone_id, i, index);
         }
     }
     fisheyeframe_database[new_fisheye_desc.msg_id] = new_fisheye_desc;
@@ -212,46 +213,14 @@ int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_d
 int LoopDetector::add_to_database(const ImageDescriptor_t & new_img_desc) {
     if (new_img_desc.drone_id == self_id) {
         local_index.add(1, new_img_desc.image_desc.data());
-        ROS_INFO("Add keyframe from %d to local keyframe database index: %d", new_img_desc.drone_id, local_index.ntotal - 1);
         return local_index.ntotal - 1;
     } else {
         remote_index.add(1, new_img_desc.image_desc.data());
-        ROS_INFO("Add keyframe from %d to remote keyframe database index: %d", new_img_desc.drone_id, remote_index.ntotal - 1);
         return remote_index.ntotal - 1 + REMOTE_MAGIN_NUMBER;
     }
     return -1;
 }
 
-
-FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old) {
-    double best_distance = 1000;
-    int best_image_id = -1;
-    //Strict use direction 1 now
-    direction_new = 1;
-    if (new_img_desc.images[direction_new].landmark_num > 0) {
-        double distance = 1000;
-        int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);
-        ROS_INFO("Direction %d msgid %d distance %f", direction_new, id, distance);
-        
-        if (id != -1 && distance < best_distance) {
-            best_image_id = id;
-        }
-
-        if (best_image_id != -1) {
-            int msg_id = imgid2fisheye[best_image_id];
-            direction_old = imgid2dir[best_image_id];
-            FisheyeFrameDescriptor_t & ret = fisheyeframe_database[best_image_id];
-            ROS_INFO("Database return fishe frame from drone %d with direction %d", 
-                ret.drone_id, direction_old);
-            return ret;
-        }
-    }
-
-    direction_old = -1;
-    FisheyeFrameDescriptor_t ret;
-    ret.msg_id = -1;
-    return ret;
-}
 
 int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool init_mode, bool nonkeyframe, double & distance) {
     double thres = INNER_PRODUCT_THRES;
@@ -301,7 +270,8 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
             continue;
         }
 
-        int return_msg_id = imgid2fisheye.at(labels[i] + index_offset);
+        // int return_msg_id = imgid2fisheye.at(labels[i] + index_offset);
+        int return_msg_id = labels[i] + index_offset;
         int return_drone_id = fisheyeframe_database[return_msg_id].drone_id;
 
         // ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
@@ -315,6 +285,37 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
 
     return -1;
 }
+
+
+FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old) {
+    double best_distance = 1000;
+    int best_image_id = -1;
+    //Strict use direction 1 now
+    direction_new = 1;
+    if (new_img_desc.images[direction_new].landmark_num > 0) {
+        double distance = 1000;
+        int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);
+        
+        if (id != -1 && distance < best_distance) {
+            best_image_id = id;
+        }
+
+        if (best_image_id != -1) {
+            int msg_id = imgid2fisheye[best_image_id];
+            direction_old = imgid2dir[best_image_id];
+            FisheyeFrameDescriptor_t & ret = fisheyeframe_database[msg_id];
+            ROS_INFO("Database return image %d fisheye frame from drone %d with direction %d", 
+                best_image_id, ret.drone_id, direction_old);
+            return ret;
+        }
+    }
+
+    direction_old = -1;
+    FisheyeFrameDescriptor_t ret;
+    ret.msg_id = -1;
+    return ret;
+}
+
 
 int LoopDetector::database_size() const {
     return local_index.ntotal + remote_index.ntotal;
@@ -465,11 +466,12 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
         int dir_new = _dir_new % MAX_DIRS;
         int dir_old = ((main_dir_old - main_dir_new + MAX_DIRS) % MAX_DIRS + _dir_new)% MAX_DIRS;
 
-        if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num) {
+        if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num > 0) {
             dirs_new.push_back(dir_new);
             dirs_old.push_back(dir_old);
         }
     }
+
 
     Swarm::Pose extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
     Swarm::Pose extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
@@ -496,6 +498,8 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
             _old_3d,
             _old_idx
         );
+
+        ROS_INFO("compute_correspond_features %d:%d gives %d common features", dir_old, dir_new, new_3d.size());
 
         new_3d.insert(new_3d.end(), _new_3d.begin(), _new_3d.end());
         old_3d.insert(old_3d.end(), _old_3d.begin(), _old_3d.end());
@@ -566,6 +570,8 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
 
             old_3d.push_back(_old_3d[old_id]);
             old_norm_2d.push_back(_old_norm_2d[old_id]);
+        } else {
+            // printf("Give up distance too high %f\n", match.distance);
         }
     }
 
@@ -586,7 +592,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
     bool success = false;
 
-    ROS_INFO("Compute loop drone %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, new_frame_desc.drone_id, 
+    ROS_INFO("Compute loop drone %d(dir %d)->%d(dir %d) landmarks %d:%d. Init %d", old_frame_desc.drone_id, main_dir_old,  new_frame_desc.drone_id, main_dir_new,
         old_frame_desc.landmark_num,
         new_frame_desc.landmark_num,
         init_mode);
@@ -626,6 +632,8 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
                 matches,
                 inlier_num
         );
+    } else {
+        ROS_INFO("Too less common feature %ld, will give up", new_norm_2d.size());
     }
     cv::Mat show;
 
@@ -637,10 +645,43 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             cv::vconcat(imgs_old[i], imgs_new[i], _matched_imgs[i]);
         } 
 
+        for (size_t i = 0; i < new_norm_2d.size(); i ++) {
+            int old_pt_id = index2dirindex_old[i].second;
+            int old_dir_id = index2dirindex_old[i].first;
+
+            int new_pt_id = index2dirindex_new[i].second;
+            int new_dir_id = index2dirindex_new[i].first;
+            auto pt_old = toCV(old_frame_desc.images[old_dir_id].landmarks_2d[old_pt_id]);
+            auto pt_new = toCV(new_frame_desc.images[new_dir_id].landmarks_2d[new_pt_id]);
+
+            cv::line(_matched_imgs[old_dir_id], pt_old, pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), cv::Scalar(0, 0, 255));
+            cv::circle(_matched_imgs[old_dir_id], pt_old, 3, cv::Scalar(255, 0, 0), 1);
+            cv::circle(_matched_imgs[new_dir_id], pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), 3, cv::Scalar(255, 0, 0), 1);
+        
+        }
+
+        for (auto match: matches) {
+            int idi = match.queryIdx;
+            int idj = match.trainIdx;
+            int old_pt_id = index2dirindex_old[idi].second;
+            int old_dir_id = index2dirindex_old[idi].first;
+
+            int new_pt_id = index2dirindex_new[idi].second;
+            int new_dir_id = index2dirindex_new[idi].first;
+            auto pt_old = toCV(old_frame_desc.images[old_dir_id].landmarks_2d[old_pt_id]);
+            auto pt_new = toCV(new_frame_desc.images[new_dir_id].landmarks_2d[new_pt_id]);
+
+            cv::line(_matched_imgs[old_dir_id], pt_old, pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), cv::Scalar(0, 255, 0));
+            cv::circle(_matched_imgs[old_dir_id], pt_old, 3, cv::Scalar(255, 0, 0), 1);
+            cv::circle(_matched_imgs[new_dir_id], pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), 3, cv::Scalar(255, 0, 0), 1);
+        }
+        
+
         show = _matched_imgs[0];
         for (size_t i = 1; i < _matched_imgs.size(); i ++) {
             cv::hconcat(show, _matched_imgs[i], show);
         }
+
 
          if (success) {
             sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
@@ -650,6 +691,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
         }
 
+        cv::resize(show, show, cv::Size(), 2, 2);
         cv::imshow("Matches", show);
         cv::waitKey(10);
     }
