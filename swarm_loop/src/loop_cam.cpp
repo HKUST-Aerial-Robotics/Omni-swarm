@@ -23,6 +23,7 @@ LoopCam::LoopCam(const std::string &camera_config_path, const std::string &super
     camodocal::CameraFactory cam_factory;
     ROS_INFO("Read camera from %s", camera_config_path.c_str());
     cam = cam_factory.generateCameraFromYamlFile(camera_config_path);
+
 #ifndef USE_TENSORRT
     hfnet_client = nh.serviceClient<HFNetSrv>("/swarm_loop/hfnet");
     superpoint_client = nh.serviceClient<HFNetSrv>("/swarm_loop/superpoint");
@@ -450,7 +451,17 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
         img_des.image_desc = netvlad_net.inference(cv_ptr->image);
         img_des.image_desc_size = img_des.image_desc.size();
     }
-    
+    // if (hfnet_client.call(hfnet_srv))
+    // {
+    //     auto &desc = hfnet_srv.response.global_desc;
+    //     if (desc.size() > 0)
+    //     {
+    //         // ROS_INFO("Received response from server desc.size %ld", desc.size());
+    //         img_des.image_desc_size = desc.size();
+    //         img_des.image_desc = desc;
+    //         return img_des;
+    //     }
+    // }
     return img_des;
 #else
     if (superpoint_mode) {
