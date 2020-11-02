@@ -101,9 +101,35 @@ void LoopNet::on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
     }
     
     ROS_INFO("Received drone %d image from LCM!!!", msg->drone_id);
-    this->img_desc_callback(*msg);
+    this->image_desc_callback(*msg);
 }
 
+void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
+    int64_t frame_hash = hash_stamp_drone_id(image.timestamp, image.drone_id);
+
+    if (received_frames.find(frame_hash) == received_frames.end()) {
+        FisheyeFrameDescriptor_t frame_desc;
+
+        frame_desc.image_num = 4;
+        frame_desc.timestamp = image.timestamp;
+        for (size_t i = 0; i < frame_desc.image_num; i ++) {
+            if (i != image.direction) {
+                auto img_desc = generate_null_img_desc();           
+                frame_desc.images.push_back(img_desc);
+            } else {
+                frame_desc.images.push_back(image);
+            }
+        }
+        frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + image.drone_id * 100;
+        frame_desc.pose_drone = image.pose_drone;
+        frame_desc.landmark_num = 0;
+        frame_desc.drone_id = image.drone_id;
+        received_frames[frame_hash] = frame_desc;
+    } else {
+        auto & frame_desc = received_frames[frame_hash];
+        frame_desc.images[image.direction] = image;
+    }
+}
 
 void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 
@@ -131,13 +157,13 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
     update_recv_img_desc_ts(msg->msg_id, true);
 
-    if (receved_msgs.find(msg->msg_id) == receved_msgs.end()) {
+    if (received_images.find(msg->msg_id) == received_images.end()) {
         ImageDescriptor_t tmp;
-        receved_msgs[msg->msg_id] = tmp; 
+        received_images[msg->msg_id] = tmp; 
         active_receving_msg.insert(msg->msg_id);
     }
 
-    auto & tmp = receved_msgs[msg->msg_id];
+    auto & tmp = received_images[msg->msg_id];
     tmp.timestamp = msg->timestamp;
     tmp.drone_id = msg->drone_id;
     tmp.image_desc_size = msg->image_desc_size;
@@ -147,6 +173,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.landmark_num = msg->feature_num;
     tmp.msg_id = msg->msg_id;
     tmp.prevent_adding_db = msg->prevent_adding_db;
+    tmp.direction = msg->direction;
 
     recv_lock.unlock();
 }
@@ -157,9 +184,9 @@ void LoopNet::scan_recv_packets() {
     recv_lock.lock();
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
-            receved_msgs[msg_id].landmark_num == receved_msgs[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%ld", msg_id, receved_msgs[msg_id].drone_id, receved_msgs[msg_id].landmarks_2d.size(), receved_msgs[msg_id].landmark_num);
-            receved_msgs[msg_id].landmark_num = receved_msgs[msg_id].landmarks_2d.size();
+            received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
+            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%ld", msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num);
+            received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.insert(msg_id);
         }
     }
@@ -172,14 +199,16 @@ void LoopNet::scan_recv_packets() {
     recv_lock.unlock();
 
     for (auto _id : finish_recv) {
-        auto & msg = receved_msgs[_id];
+        auto & msg = received_images[_id];
         //Processed recevied message
         msg.landmark_num = msg.landmarks_2d.size();
         if (msg.landmarks_2d.size() > 0) {
-            this->img_desc_callback(msg);
+            this->image_desc_callback(msg);
         }
-        receved_msgs.erase(_id);
+        received_images.erase(_id);
     }
+
+
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
@@ -191,12 +220,12 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     recv_lock.lock();
     update_recv_img_desc_ts(msg->header_id, false);
     // ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
-    if (receved_msgs.find(msg->header_id) == receved_msgs.end()) {
+    if (received_images.find(msg->header_id) == received_images.end()) {
         ImageDescriptor_t tmp;
-        receved_msgs[msg->header_id] = tmp; 
+        received_images[msg->header_id] = tmp; 
     }
 
-    auto & tmp = receved_msgs[msg->header_id];
+    auto & tmp = received_images[msg->header_id];
     tmp.landmarks_2d_norm.push_back(msg->landmark_2d_norm);
     tmp.landmarks_2d.push_back(msg->landmark_2d);
     tmp.landmarks_3d.push_back(msg->landmark_3d);

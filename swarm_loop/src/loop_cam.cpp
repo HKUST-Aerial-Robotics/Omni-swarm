@@ -187,14 +187,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     return ids;
 }
 
-ImageDescriptor_t generate_null_img_desc() {
-    ImageDescriptor_t empty;
-    empty.landmark_num = 0;
-    empty.feature_descriptor_size = 0;
-    empty.image_desc_size = 0;
-    empty.image_size = 0;
-    return empty;
-}
+
 
 FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
     FisheyeFrameDescriptor_t frame_desc;

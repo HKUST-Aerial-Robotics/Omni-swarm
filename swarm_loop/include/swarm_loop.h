@@ -50,7 +50,7 @@ protected:
 
     void on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc);
 
-    void on_remote_image(const ImageDescriptor_t & img_desc);
+    void on_remote_image(const FisheyeFrameDescriptor_t & frame_desc);
 
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
