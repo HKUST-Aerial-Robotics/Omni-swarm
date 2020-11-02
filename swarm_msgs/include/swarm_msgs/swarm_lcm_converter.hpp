@@ -262,3 +262,21 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
 
     return _img;
 }
+
+
+inline int64_t to_nsec(Time_t stamp) {
+    return stamp.sec * 1e9 + stamp.nsec;
+}
+
+inline int64_t hash_stamp_drone_id(Time_t stamp, int drone_id) {
+    return to_nsec(stamp)*100 + drone_id;
+}
+
+inline ImageDescriptor_t generate_null_img_desc() {
+    ImageDescriptor_t empty;
+    empty.landmark_num = 0;
+    empty.feature_descriptor_size = 0;
+    empty.image_desc_size = 0;
+    empty.image_size = 0;
+    return empty;
+}
