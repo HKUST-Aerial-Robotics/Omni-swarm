@@ -222,7 +222,6 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     if (enable_pub_local_frame) {
         local_image_desc_pub = nh.advertise<swarm_msgs::FisheyeFrameDescriptor>("local_frame_desc", 10);
     }
-
     
 
     timer = nh.createTimer(ros::Duration(0.01), [&](const ros::TimerEvent & e) {
