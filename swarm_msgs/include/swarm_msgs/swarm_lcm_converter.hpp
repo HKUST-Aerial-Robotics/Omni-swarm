@@ -6,9 +6,8 @@
 #include <swarm_msgs/LoopConnection.h>
 #include "LoopConnection_t.hpp"
 #include <swarm_msgs/Pose.h>
-
-
-
+#include <swarm_msgs/FisheyeFrameDescriptor.h>
+#include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
 
 inline Pose_t fromROSPose(const geometry_msgs::Pose & pose) {
     Pose_t t;
@@ -263,6 +262,34 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
     return _img;
 }
 
+
+inline FisheyeFrameDescriptor_t toLCMFisheyeDescriptor(const swarm_msgs::FisheyeFrameDescriptor & img_desc) {
+    // return _img;
+    FisheyeFrameDescriptor_t fisheye_frame;
+    fisheye_frame.msg_id = img_desc.msg_id;
+    fisheye_frame.image_num = img_desc.images.size();
+    fisheye_frame.prevent_adding_db = img_desc.prevent_adding_db;
+    fisheye_frame.landmark_num = img_desc.landmark_num;
+    fisheye_frame.drone_id = img_desc.drone_id;
+    fisheye_frame.timestamp = toLCMTime(img_desc.header.stamp);
+    fisheye_frame.pose_drone = fromROSPose(img_desc.pose_drone);
+    for (auto & _img: img_desc.images) {
+        fisheye_frame.images.push_back(toLCMImageDescriptor(_img));
+    }
+}
+
+inline swarm_msgs::FisheyeFrameDescriptor toROSFisheyeDescriptor(const FisheyeFrameDescriptor_t & img_desc) {
+    swarm_msgs::FisheyeFrameDescriptor fisheye_frame;
+    fisheye_frame.msg_id = img_desc.msg_id;
+    fisheye_frame.prevent_adding_db = img_desc.prevent_adding_db;
+    fisheye_frame.landmark_num = img_desc.landmark_num;
+    fisheye_frame.drone_id = img_desc.drone_id;
+    fisheye_frame.header.stamp = toROSTime(img_desc.timestamp);
+    fisheye_frame.pose_drone = toROSPose(img_desc.pose_drone);
+    for (auto & _img: img_desc.images) {
+        fisheye_frame.images.push_back(toROSImageDescriptor(_img));
+    }
+}
 
 inline int64_t to_nsec(Time_t stamp) {
     return stamp.sec * 1e9 + stamp.nsec;
