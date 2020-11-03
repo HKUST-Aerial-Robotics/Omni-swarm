@@ -21,8 +21,9 @@
             init_query_thres: 100
 
             min_movement_keyframe: 0.1
-            enable_pub_remote_img: true
-            enable_sub_remote_img: false
+            enable_pub_remote_frame: false
+            enable_sub_remote_frame: false
+            enable_pub_local_frame: false
             max_freq: 0.5
             accept_min_3d_pts: 100
             match_index_dist: 5
