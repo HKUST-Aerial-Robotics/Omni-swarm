@@ -125,6 +125,9 @@ void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
         frame_desc.landmark_num = 0;
         frame_desc.drone_id = image.drone_id;
         received_frames[frame_hash] = frame_desc;
+        frame_header_recv_time[frame_hash] = msg_header_recv_time[image.msg_id];
+
+        active_receving_frames.insert(frame_desc.msg_id);
     } else {
         auto & frame_desc = received_frames[frame_hash];
         frame_desc.images[image.direction] = image;
@@ -180,14 +183,14 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
 void LoopNet::scan_recv_packets() {
     double tnow = ros::Time::now().toSec();
-    std::set<int64_t> finish_recv;
+    std::vector<int64_t> finish_recv;
     recv_lock.lock();
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
             ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%ld", msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num);
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
-            finish_recv.insert(msg_id);
+            finish_recv.push_back(msg_id);
         }
     }
 
@@ -208,7 +211,27 @@ void LoopNet::scan_recv_packets() {
         received_images.erase(_id);
     }
 
+    std::vector<int64_t> finish_recv_frames;
+    for (auto frame_hash : active_receving_frames) {
+        int count_images = 0;
+        auto & frame_desc = received_frames[frame_hash];
+        for (size_t i = 0; i < frame_desc.images.size(); i++) {
+            if (frame_desc.images[i].landmark_num > 0) {
+                count_images++;
+            }
+        }
 
+        if(tnow - frame_header_recv_time[frame_hash] > 2.0*recv_period  || count_images >= MIN_DIRECTION_LOOP) {
+            finish_recv_frames.push_back(frame_hash);
+        }
+    }
+
+    for (auto & frame_hash :finish_recv_frames) {
+        auto & frame_desc = received_frames[frame_hash];
+        active_receving_frames.erase(frame_hash);
+        frame_desc_callback(frame_desc);
+        received_frames.erase(frame_hash);
+    }
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
