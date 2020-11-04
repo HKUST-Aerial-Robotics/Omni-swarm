@@ -28,14 +28,14 @@ find_package(lcm REQUIRED)
 find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
-if (USE_TENSORRT) 
-  # set(Torch_DIR "/usr/local/lib/python3.6/dist-packages/torch/share/cmake/Torch")
-  set(Torch_DIR "/home/xuhao/source/libtorch/share/cmake/Torch")
+if (USE_TENSORRT)
+  set(Torch_DIR "/usr/local/lib/python3.6/dist-packages/torch/share/cmake/Torch")
+  # set(Torch_DIR "/home/xuhao/source/libtorch/share/cmake/Torch")
   find_package(Torch REQUIRED)
 
   include_directories("$ENV{HOME}/source/yolo-tensorrt/modules/")
   include_directories("$ENV{HOME}/source/TensorRT-7.1.3.4/include")
-  
+
   link_directories(${TENSORRT_ROOT}/lib)
   link_directories("$ENV{HOME}/source/yolo-tensorrt/build/")
   find_package(CUDA)
@@ -71,7 +71,7 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
 )
 
-add_library(libswarm_loop 
+add_library(libswarm_loop
   src/loop_cam.cpp
   src/loop_detector.cpp
   src/loop_net.cpp
@@ -95,8 +95,8 @@ set_property(TARGET ${PROJECT_NAME}_nodelet PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_NAME}_node PROPERTY CXX_STANDARD 14)
 set_property(TARGET libswarm_loop PROPERTY CXX_STANDARD 14)
 
-if (USE_TENSORRT) 
-  cuda_add_library(loop_cnn   
+if (USE_TENSORRT)
+  cuda_add_library(loop_cnn
     src/superpoint_tensorrt.cpp
     src/tensorrt_generic.cpp
     src/mobilenetvlad_tensorrt.cpp
@@ -106,9 +106,9 @@ if (USE_TENSORRT)
   add_executable(loop_tensorrt_test
     src/loop_tensorrt_test.cpp
   )
-  target_link_libraries(loop_tensorrt_test 
-    loop_cnn 
-    dw 
+  target_link_libraries(loop_tensorrt_test
+    loop_cnn
+    dw
     ${TORCH_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${catkin_LIBRARIES}
@@ -123,7 +123,7 @@ add_dependencies(${PROJECT_NAME}_spy
     ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 if (USE_TENSORRT)
-  target_link_libraries(libswarm_loop 
+  target_link_libraries(libswarm_loop
     ${catkin_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${TORCH_LIBRARIES}
@@ -133,7 +133,7 @@ if (USE_TENSORRT)
     loop_cnn
   )
 else()
-  target_link_libraries(libswarm_loop 
+  target_link_libraries(libswarm_loop
     ${catkin_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${TORCH_LIBRARIES}

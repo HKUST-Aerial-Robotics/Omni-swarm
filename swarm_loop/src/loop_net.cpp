@@ -40,6 +40,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc_size = img_des.image_desc_size;
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = img_des.landmark_num;
+    img_desc_header.direction = img_des.direction;
     // ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
 
 
@@ -127,7 +128,7 @@ void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
         received_frames[frame_hash] = frame_desc;
         frame_header_recv_time[frame_hash] = msg_header_recv_time[image.msg_id];
 
-        active_receving_frames.insert(frame_desc.msg_id);
+        active_receving_frames.insert(frame_hash);
     } else {
         auto & frame_desc = received_frames[frame_hash];
         frame_desc.images[image.direction] = image;
@@ -228,6 +229,7 @@ void LoopNet::scan_recv_packets() {
 
     for (auto & frame_hash :finish_recv_frames) {
         auto & frame_desc = received_frames[frame_hash];
+        ROS_INFO("Frame contains of %d images from drone %d", frame_desc.images.size(), frame_desc.drone_id);
         active_receving_frames.erase(frame_hash);
         frame_desc_callback(frame_desc);
         received_frames.erase(frame_hash);
