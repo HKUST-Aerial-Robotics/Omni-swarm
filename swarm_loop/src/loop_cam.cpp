@@ -204,6 +204,11 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.images[1].timestamp = frame_desc.timestamp;
     frame_desc.images[2].timestamp = frame_desc.timestamp;
     frame_desc.images[3].timestamp = frame_desc.timestamp;
+
+    for (size_t i = 0; i < 4; i++) {
+        frame_desc.images[i].direction = i;
+    }
+    
     frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
     frame_desc.pose_drone = fromROSPose(msg.pose_drone);
     frame_desc.landmark_num = 0;
