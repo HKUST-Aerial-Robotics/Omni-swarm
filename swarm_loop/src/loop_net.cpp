@@ -131,6 +131,7 @@ void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
         active_receving_frames.insert(frame_hash);
     } else {
         auto & frame_desc = received_frames[frame_hash];
+        ROS_INFO("Adding image to frame %d from drone_id %d direction %d", frame_hash, frame_desc.drone_id, image.direction);
         frame_desc.images[image.direction] = image;
     }
 }
