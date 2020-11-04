@@ -41,7 +41,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = img_des.landmark_num;
     img_desc_header.direction = img_des.direction;
-    // ROS_INFO("Sent Message VIOHEADER size :%ld", img_desc_header.getEncodedSize());
+    ROS_INFO("Sent Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
 
 
     lcm.publish("VIOKF_HEADER", &img_desc_header);
@@ -159,7 +159,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
     recv_lock.lock();
 
-    ROS_INFO("Image descriptor from drone (%d) : %ld", msg->drone_id, msg->msg_id);
+    ROS_INFO("Image descriptor from drone (%d) : %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
     update_recv_img_desc_ts(msg->msg_id, true);
 
     if (received_images.find(msg->msg_id) == received_images.end()) {
@@ -190,7 +190,8 @@ void LoopNet::scan_recv_packets() {
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%ld", msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num);
+            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%d", 
+                msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num);
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.push_back(msg_id);
         }
@@ -230,8 +231,15 @@ void LoopNet::scan_recv_packets() {
 
     for (auto & frame_hash :finish_recv_frames) {
         auto & frame_desc = received_frames[frame_hash];
-        ROS_INFO("Frame contains of %d images from drone %d", frame_desc.images.size(), frame_desc.drone_id);
         active_receving_frames.erase(frame_hash);
+
+        frame_desc.landmark_num = 0;
+        for (size_t i = 0; i < frame_desc.images.size(); i ++) {
+            frame_desc.landmark_num += frame_desc.images[i].landmark_num;
+        }
+
+        ROS_INFO("Fisheyframe contains of %d images from drone %d, landmark %d", frame_desc.images.size(), frame_desc.drone_id, frame_desc.landmark_num );
+
         frame_desc_callback(frame_desc);
         received_frames.erase(frame_hash);
     }

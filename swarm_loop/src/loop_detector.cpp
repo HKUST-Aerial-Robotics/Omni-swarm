@@ -44,7 +44,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         ROS_INFO("Empty local database, where giveup remote image");
         return;
     } else {
-        ROS_INFO("Detetor start process images from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
+        ROS_INFO("Detetor start process FisheyFrame from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
             flatten_desc.landmark_num);
     }
 
