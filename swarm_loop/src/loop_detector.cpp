@@ -44,6 +44,18 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
 
     all_nodes.insert(flatten_desc.drone_id);
 
+    int dir_count = 0;
+    for (auto & img : flatten_desc.images) {
+        if (img.landmark_num > 0) {
+            dir_count ++;
+        }
+    }
+
+    if (dir_count < 3) {
+        ROS_INFO("Give up frame_desc with less than 3(%d) available images", dir_count);
+        return;
+    }
+
     if (flatten_desc.landmark_num >= MIN_LOOP_NUM) {
         bool init_mode = false;
         if (drone_id != self_id) {
@@ -265,7 +277,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         int return_msg_id = labels[i] + index_offset;
         int return_drone_id = fisheyeframe_database[return_msg_id].drone_id;
 
-        // ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
+        ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
         if (labels[i] < database_size() - max_index && distances[i] < thres) {
             //Is same id, max index make sense
             distance = distances[i];
@@ -576,7 +588,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
     for (auto match : _matches) {
-        if (match.distance < 0.8) {
+        if (match.distance < 0.9) {
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
 
