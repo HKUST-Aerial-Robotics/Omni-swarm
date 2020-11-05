@@ -21,7 +21,7 @@
             init_query_thres: 100
 
             min_movement_keyframe: 0.1
-            enable_pub_remote_frame: false
+            enable_pub_remote_frame: true
             enable_sub_remote_frame: false
             enable_pub_local_frame: false
             max_freq: 0.5

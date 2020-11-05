@@ -193,7 +193,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & frame_desc) {
         if (enable_pub_remote_frame) {
-            remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
+            auto remote_ros = toROSFisheyeDescriptor(frame_desc);
+            remote_image_desc_pub.publish(remote_ros);
         }
 
         this->on_remote_image(frame_desc);

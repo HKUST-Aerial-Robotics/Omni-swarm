@@ -289,7 +289,8 @@ inline swarm_msgs::FisheyeFrameDescriptor toROSFisheyeDescriptor(const FisheyeFr
     fisheye_frame.header.stamp = toROSTime(img_desc.timestamp);
     fisheye_frame.pose_drone = toROSPose(img_desc.pose_drone);
     for (auto & _img: img_desc.images) {
-        fisheye_frame.images.push_back(toROSImageDescriptor(_img));
+        auto img_desc = toROSImageDescriptor(_img);
+        fisheye_frame.images.push_back(img_desc);
     }
 }
 

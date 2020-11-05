@@ -19,6 +19,7 @@ void LoopNet::setup_network(std::string _lcm_uri) {
 void LoopNet::broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc) {
     //Broadcast Three ImageDesc
     for (auto & img : fisheye_desc.images) {
+        if (img.landmark_num > 0)
         broadcast_img_desc(img);
     }
 }
