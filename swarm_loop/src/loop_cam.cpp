@@ -274,10 +274,10 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
         ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
     }
-
-    ides.landmarks_2d.clear();
-    ides.landmarks_2d_norm.clear();
-    ides.landmarks_3d.clear();
+    
+    // ides.landmarks_2d.clear();
+    // ides.landmarks_2d_norm.clear();
+    // ides.landmarks_3d.clear();
     
     std::vector<Eigen::Vector3d> pts_3d;
 
@@ -316,22 +316,19 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         pt2d.x = pt_up.x;
         pt2d.y = pt_up.y;
 
-        Point2d_t pt2d_norm;
-        pt2d_norm.x = pt_up_norm.x();
-        pt2d_norm.y = pt_up_norm.y();
-
         Point3d_t pt3d;
         pt3d.x = point_3d.x();
         pt3d.y = point_3d.y();
         pt3d.z = point_3d.z();
 
-        ides.landmarks_2d.push_back(pt2d);
-        ides.landmarks_2d_norm.push_back(pt2d_norm);
-        ides.landmarks_3d.push_back(pt3d);
+        int idx = ids[i];
+        // ides.landmarks_2d.push_back(pt2d);
+        // ides.landmarks_2d_norm.push_back(pt2d_norm);
+        ides.landmarks_3d[idx] = pt3d;
 
         // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
-        desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
+        // desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
 
         // std::cout << "PT UP" << pt_up << "PT DOWN" << pt_down << std::endl;
 
@@ -339,11 +336,10 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
     }
 
-    ides.feature_descriptor.clear();
-    ides.feature_descriptor = std::vector<float>(desc_new);
-    ides.feature_descriptor_size = ides.feature_descriptor.size();
-
-    ides.landmark_num = ides.landmarks_2d.size();
+    // ides.feature_descriptor.clear();
+    // ides.feature_descriptor = std::vector<float>(desc_new);
+    // ides.feature_descriptor_size = ides.feature_descriptor.size();
+    // ides.landmark_num = ides.landmarks_2d.size();
 
     if (send_img) {
         encode_image(cv_ptr->image, ides);
@@ -441,8 +437,9 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     CVPoints2LCM(features, img_des.landmarks_2d);
     img_des.landmark_num = features.size();
     img_des.feature_descriptor_size =  img_des.feature_descriptor.size();
-    img_des.landmarks_flag.resize(img_des.landmark_num);
-    std::fill(img_des.landmarks_flag.begin(),img_des.landmarks_flag.begin()+img_des.landmark_num,0);  
+    img_des.landmarks_flag.clear();
+    img_des.landmarks_3d.clear();
+    img_des.landmarks_2d_norm.clear();
     img_des.image_size = 0;
 
     if (!superpoint_mode) {
@@ -460,6 +457,26 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     //         return img_des;
     //     }
     // }
+    for (unsigned int i = 0; i < img_des.landmarks_2d.size(); i++)
+    {
+        auto pt_up = img_des.landmarks_2d[i];
+        Eigen::Vector3d pt_up3d;
+        Point2d_t pt2d_norm;
+        cam->liftProjective(Eigen::Vector2d(pt_up.x, pt_up.y), pt_up3d);
+        Eigen::Vector2d pt_up_norm(pt_up3d.x()/pt_up3d.z(), pt_up3d.y()/pt_up3d.z());
+
+        pt2d_norm.x = pt_up_norm.x();
+        pt2d_norm.y = pt_up_norm.y();
+
+        img_des.landmarks_2d_norm.push_back(pt2d_norm);
+        Point3d_t pt3d;
+        pt3d.x = 0;
+        pt3d.y = 0;
+        pt3d.z = 0;
+        img_des.landmarks_3d.push_back(pt3d);
+        img_des.landmarks_flag.push_back(0);
+    } 
+
     return img_des;
 #else
     if (superpoint_mode) {

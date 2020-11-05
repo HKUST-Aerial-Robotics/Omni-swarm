@@ -18,15 +18,6 @@ void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
     cv::waitKey(30);
 }
 
-template<typename T>
-void reduceVector(std::vector<T> &v, std::vector<uchar> status)
-{
-    int j = 0;
-    for (int i = 0; i < int(v.size()); i++)
-        if (status[i])
-            v[j++] = v[i];
-    v.resize(j);
-}
 
 
 void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, std::vector<cv::Mat> imgs) {
@@ -96,11 +87,11 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                 LoopConnection ret;
 
                 if (_old_fisheye_img.drone_id == self_id) {
-                    success = compute_loop(_old_fisheye_img, flatten_desc, direction_old, direction, msgid2cvimgs[_old_fisheye_img.msg_id],  imgs, ret, init_mode);
+                    success = compute_loop(flatten_desc, _old_fisheye_img, direction, direction_old, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
                 } else {
                     //We grab remote drone from database
                     if (flatten_desc.drone_id == self_id) {
-                        success = compute_loop(flatten_desc, _old_fisheye_img, direction, direction_old, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
+                        success = compute_loop(_old_fisheye_img, flatten_desc, direction_old, direction, msgid2cvimgs[_old_fisheye_img.msg_id],  imgs, ret, init_mode);
                     } else {
                         ROS_WARN("Will not compute loop, drone id is %d(self %d)", flatten_desc.drone_id, self_id);
                     }
@@ -560,11 +551,27 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     auto _now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
     auto _now_3d = toCV(new_img_desc.landmarks_3d);
 
+    std::vector<int> ids;
+    for (size_t i = 0; i < new_img_desc.landmarks_3d.size(); i++) {
+        ids.push_back(i);
+    }
+
+
+    //Only reserve 3d points for new
+    reduceVector(_now_norm_2d, new_img_desc.landmarks_flag);
+    reduceVector(_now_3d, new_img_desc.landmarks_flag);
+    reduceVector(ids, new_img_desc.landmarks_flag);
+
+    std::vector<float> landmark_desc_now;
+    for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
+        landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
+    }
+
+    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F, landmark_desc_now.data());
+
     cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
-    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
-    memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
-
+    
     cv::BFMatcher bfmatcher(cv::NORM_L2, true);
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
@@ -573,7 +580,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
 
-            new_idx.push_back(now_id);
+            new_idx.push_back(ids[now_id]);
             old_idx.push_back(old_id);
 
             new_3d.push_back(_now_3d[now_id]);
@@ -589,6 +596,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     return true;
 }
 
+//Require 3d points of new frame and 2d point of old frame
 bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc, const FisheyeFrameDescriptor_t & old_frame_desc,
     int main_dir_new, int main_dir_old,
     std::vector<cv::Mat> imgs_new, std::vector<cv::Mat> imgs_old,
@@ -599,7 +607,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     }
     //Recover imformation
 
-    assert(new_frame_desc.drone_id == self_id && "old img desc must from self drone!");
+    assert(old_frame_desc.drone_id == self_id && "old img desc must from self drone to provide more 2d points!");
 
     bool success = false;
 

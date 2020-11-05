@@ -4,6 +4,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <chrono>
+#include <vector>
 
 #define LOOP_BOW_THRES 0.015
 // #define MATCH_INDEX_DIST 1
@@ -102,3 +103,14 @@ class TicToc
   private:
     std::chrono::time_point<std::chrono::system_clock> start, end;
 };
+
+
+template<typename T, typename B>
+inline void reduceVector(std::vector<T> &v, std::vector<B> status)
+{
+    int j = 0;
+    for (int i = 0; i < int(v.size()); i++)
+        if (status[i])
+            v[j++] = v[i];
+    v.resize(j);
+}
