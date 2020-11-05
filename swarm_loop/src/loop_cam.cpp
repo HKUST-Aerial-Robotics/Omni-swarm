@@ -325,6 +325,7 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         // ides.landmarks_2d.push_back(pt2d);
         // ides.landmarks_2d_norm.push_back(pt2d_norm);
         ides.landmarks_3d[idx] = pt3d;
+        ides.landmarks_flag[idx] = 1;
 
         // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
