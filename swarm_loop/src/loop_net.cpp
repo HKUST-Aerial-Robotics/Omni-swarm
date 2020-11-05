@@ -42,7 +42,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = img_des.landmark_num;
     img_desc_header.direction = img_des.direction;
-    ROS_INFO("Sent Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
+    // ROS_INFO("Sent Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
 
 
     lcm.publish("VIOKF_HEADER", &img_desc_header);
