@@ -49,23 +49,24 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
 
     // ROS_INFO("Sending landmarks num: %d, local desc size %d", img_des.landmark_num, img_des.local_descriptors_size);
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
-        LandmarkDescriptor_t lm;
-        lm.landmark_id = i;
-        lm.landmark_2d_norm = img_des.landmarks_2d_norm[i];
-        lm.landmark_2d = img_des.landmarks_2d[i];
-        lm.landmark_3d = img_des.landmarks_3d[i];
-        lm.landmark_flag = 1;
-        lm.drone_id = img_des.drone_id;
-        memcpy(lm.feature_descriptor, img_des.feature_descriptor.data() + i *256, 256*sizeof(float));
-        
-        int64_t msg_id = rand() + img_des.timestamp.nsec;
-        sent_message.insert(img_des.msg_id);
+        if (img_des.landmarks_flag[i] > 0) {
+            LandmarkDescriptor_t lm;
+            lm.landmark_id = i;
+            lm.landmark_2d_norm = img_des.landmarks_2d_norm[i];
+            lm.landmark_2d = img_des.landmarks_2d[i];
+            lm.landmark_3d = img_des.landmarks_3d[i];
+            lm.landmark_flag = img_des.landmarks_flag[i];
+            lm.drone_id = img_des.drone_id;
+            memcpy(lm.feature_descriptor, img_des.feature_descriptor.data() + i *256, 256*sizeof(float));
+            
+            int64_t msg_id = rand() + img_des.timestamp.nsec;
+            sent_message.insert(img_des.msg_id);
 
-        lm.msg_id = msg_id;
-        lm.header_id = img_des.msg_id;
+            lm.msg_id = msg_id;
+            lm.header_id = img_des.msg_id;
 
-        // ROS_INFO("Sending landmark %d, size %d", i, lm.getEncodedSize());
-        lcm.publish("VIOKF_LANDMARKS", &lm);
+            lcm.publish("VIOKF_LANDMARKS", &lm);
+        }
     }
 
     if (send_img || send_whole_img_desc) {
