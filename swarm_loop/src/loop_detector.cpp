@@ -465,20 +465,23 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     //For each FisheyeFrameDescriptor_t, there must be 4 frames
     //However, due to the transmission and parameter, some may be empty.
     // We will only matched the frame which isn't empty
+
+    printf("compute_correspond_features on main dir [%d(drone%d): %d(drone%d)]: ", \
+        main_dir_old, old_frame_desc.drone_id,
+        main_dir_new, new_frame_desc.drone_id
+    );
+
     for (int _dir_new = main_dir_new; _dir_new < main_dir_new + MAX_DIRS; _dir_new ++) {
         int dir_new = _dir_new % MAX_DIRS;
         int dir_old = ((main_dir_old - main_dir_new + MAX_DIRS) % MAX_DIRS + _dir_new)% MAX_DIRS;
-
+        printf(" [%d: %d](%d:%d) ", dir_old, dir_new, old_frame_desc.images[dir_old].landmark_num, new_frame_desc.images[dir_new].landmark_num );
         if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num > 0) {
             dirs_new.push_back(dir_new);
             dirs_old.push_back(dir_old);
         }
     }
-    // dirs_new.push_back(main_dir_new);
-    // dirs_old.push_back(main_dir_old);
 
-
-    ROS_INFO("compute_correspond_features on main dir %d: %d", main_dir_old, main_dir_new);
+    printf("\n");
 
     Swarm::Pose extrinsic_new(new_frame_desc.images[main_dir_new].camera_extrinsic);
     Swarm::Pose extrinsic_old(old_frame_desc.images[main_dir_old].camera_extrinsic);
@@ -566,7 +569,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
     for (auto match : _matches) {
-        if (match.distance < ACCEPT_SP_MATCH_DISTANCE) {
+        if (match.distance < ACCEPT_SP_MATCH_DISTANCE || true) {
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
 
