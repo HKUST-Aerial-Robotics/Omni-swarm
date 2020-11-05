@@ -278,6 +278,7 @@ inline FisheyeFrameDescriptor_t toLCMFisheyeDescriptor(const swarm_msgs::Fisheye
     for (auto & _img: img_desc.images) {
         fisheye_frame.images.push_back(toLCMImageDescriptor(_img));
     }
+    return fisheye_frame;
 }
 
 inline swarm_msgs::FisheyeFrameDescriptor toROSFisheyeDescriptor(const FisheyeFrameDescriptor_t & img_desc) {
@@ -289,9 +290,9 @@ inline swarm_msgs::FisheyeFrameDescriptor toROSFisheyeDescriptor(const FisheyeFr
     fisheye_frame.header.stamp = toROSTime(img_desc.timestamp);
     fisheye_frame.pose_drone = toROSPose(img_desc.pose_drone);
     for (auto & _img: img_desc.images) {
-        auto img_desc = toROSImageDescriptor(_img);
-        fisheye_frame.images.push_back(img_desc);
+        fisheye_frame.images.push_back(toROSImageDescriptor(_img));
     }
+    return fisheye_frame;
 }
 
 inline int64_t to_nsec(Time_t stamp) {
