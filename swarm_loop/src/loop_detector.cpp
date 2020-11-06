@@ -491,6 +491,9 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     Eigen::Quaterniond main_quat_new =  extrinsic_new.att();
     Eigen::Quaterniond main_quat_old =  extrinsic_old.att();
 
+
+    int matched_dir_count = 0;
+
     for (size_t i = 0; i < dirs_new.size(); i++) {
         int dir_new = dirs_new[i];
         int dir_old = dirs_old[i];
@@ -513,6 +516,10 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
         );
 
         ROS_INFO("compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, _new_3d.size());
+
+        if ( _new_3d.size() >= MIN_MATCH_PRE_DIR ) {
+            matched_dir_count ++;            
+        }
 
         new_3d.insert(new_3d.end(), _new_3d.begin(), _new_3d.end());
         old_3d.insert(old_3d.end(), _old_3d.begin(), _old_3d.end());
@@ -539,7 +546,7 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
         }
     }
 
-    if(new_norm_2d.size() > 0) {
+    if(new_norm_2d.size() > 0 && matched_dir_count >= MIN_DIRECTION_LOOP) {
         return true;
     } else {
         return false;
@@ -642,33 +649,37 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     std::map<int, std::pair<int, int>> index2dirindex_new;
     int inlier_num = 0;
     
-    compute_correspond_features(new_frame_desc, old_frame_desc, 
+    success = compute_correspond_features(new_frame_desc, old_frame_desc, 
         main_dir_new, main_dir_old,
         new_norm_2d, new_3d, new_idx,
         old_norm_2d, old_3d, old_idx, dirs_new, dirs_old, 
         index2dirindex_new, index2dirindex_old);
     
-    if(new_norm_2d.size() > MIN_LOOP_NUM || (init_mode && new_norm_2d.size() > INIT_MODE_MIN_LOOP_NUM  )) 
-    {
-        success = compute_relative_pose(
-                new_norm_2d, new_3d, 
-                old_norm_2d, old_3d,
-                Swarm::Pose(old_frame_desc.images[main_dir_old].camera_extrinsic),
-                Swarm::Pose(new_frame_desc.pose_drone),
-                Swarm::Pose(old_frame_desc.pose_drone),
-                DP_old_to_new,
-                init_mode,
-                new_frame_desc.drone_id,
-                old_frame_desc.drone_id,
-                matches,
-                inlier_num
-        );
-    } else {
-        ROS_INFO("Too less common feature %ld, will give up", new_norm_2d.size());
+    if(success) {
+        if (new_norm_2d.size() > MIN_LOOP_NUM || (init_mode && new_norm_2d.size() > INIT_MODE_MIN_LOOP_NUM)) {
+            success = compute_relative_pose(
+                    new_norm_2d, new_3d, 
+                    old_norm_2d, old_3d,
+                    Swarm::Pose(old_frame_desc.images[main_dir_old].camera_extrinsic),
+                    Swarm::Pose(new_frame_desc.pose_drone),
+                    Swarm::Pose(old_frame_desc.pose_drone),
+                    DP_old_to_new,
+                    init_mode,
+                    new_frame_desc.drone_id,
+                    old_frame_desc.drone_id,
+                    matches,
+                    inlier_num
+            );
+        } else {
+            ROS_INFO("Too less common feature %ld, will give up", new_norm_2d.size());
+        }
+    } 
+    else {
+        ROS_INFO("compute_correspond_features failed");
     }
-    cv::Mat show;
 
     if (enable_visualize) {
+        cv::Mat show;
         char title[100] = {0};
         std::vector<cv::Mat> _matched_imgs;
         _matched_imgs.resize(imgs_old.size());

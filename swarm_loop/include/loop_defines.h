@@ -76,6 +76,8 @@ extern int ACCEPT_MIN_3D_PTS;
 
 #define MIN_DIRECTION_LOOP 3
 
+#define MIN_MATCH_PRE_DIR 1
+
 extern double TRIANGLE_THRES;
 
 extern bool ENABLE_LK_LOOP_DETECTION; 
