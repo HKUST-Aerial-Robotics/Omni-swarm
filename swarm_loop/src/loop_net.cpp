@@ -167,7 +167,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
     recv_lock.lock();
 
-    ROS_INFO("Image descriptor from drone (%d) : %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
+    ROS_INFO("Image descriptor header from drone (%d) : %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
     update_recv_img_desc_ts(msg->msg_id, true);
 
     if (received_images.find(msg->msg_id) == received_images.end()) {
@@ -198,8 +198,10 @@ void LoopNet::scan_recv_packets() {
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%d", 
-                msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num);
+            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%d feature_desc_size %ld(%ld)", 
+                msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num,
+                received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size
+            );
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.push_back(msg_id);
         }

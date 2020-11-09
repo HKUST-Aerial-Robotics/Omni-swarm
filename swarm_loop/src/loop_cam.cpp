@@ -139,7 +139,7 @@ cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2
 
 std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
         const cv::Mat & up, const cv::Mat & down) {
-    ROS_INFO("match_HFNet_local_features %ld %ld", pts_up.size(), pts_down.size());
+    printf("match_HFNet_local_features %ld %ld: ", pts_up.size(), pts_down.size());
     cv::Mat desc_up( _desc_up.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_up.data());
     cv::Mat desc_down( _desc_down.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_down.data());
 
@@ -163,7 +163,7 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
         }
     }
 
-    ROS_INFO("%ld matches...", _matches.size());
+    printf("%ld matches...", _matches.size());
 
     std::vector<uint8_t> status;
     // cv::findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
@@ -181,7 +181,6 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
     //     cv::waitKey(30);
     // }
 
-    ROS_INFO("[match_HFNet_local_features] Matched %d features", _pts_up.size());
     pts_up = std::vector<cv::Point2f>(_pts_up);
     pts_down = std::vector<cv::Point2f>(_pts_down);
     return ids;
@@ -336,6 +335,8 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         // std::cout << "PT UP NORM" << pt_up_norm.transpose() << "PT DOWN NORM" << pt_down_norm.transpose() << std::endl;
 
     }
+
+    printf("3D features: %d\n", pts_3d.size());
 
     // ides.feature_descriptor.clear();
     // ides.feature_descriptor = std::vector<float>(desc_new);
