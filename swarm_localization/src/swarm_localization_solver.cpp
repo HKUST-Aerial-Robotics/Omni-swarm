@@ -61,7 +61,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
-            cgraph_path(_params.cgraph_path)
+            cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation)
     {
     }
 
@@ -659,7 +659,9 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        // generate_cgraph();
+        if (enable_cgraph_generation) {
+            generate_cgraph();
+        }
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
