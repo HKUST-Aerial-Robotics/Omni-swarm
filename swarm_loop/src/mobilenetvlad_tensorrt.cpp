@@ -4,9 +4,9 @@ std::vector<float> MobileNetVLADTensorRT::inference(const cv::Mat & input) {
     cv::Mat _input;
     if (input.rows != height || input.cols != width) {
         cv::resize(input, _input, cv::Size(400, 208));
-        _input.convertTo(_input, CV_32F, 1/255.0);
+        _input.convertTo(_input, CV_32F);
     } else {
-        input.convertTo(_input, CV_32F, 1/255.0);
+        input.convertTo(_input, CV_32F);
     }
     doInference(_input);
 

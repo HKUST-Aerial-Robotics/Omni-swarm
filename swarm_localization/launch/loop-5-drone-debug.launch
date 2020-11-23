@@ -2,9 +2,8 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph" default="false" />
 
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  launch-prefix="gdb -ex run --args ">
         <rosparam>
             force_freq: 1
             max_accept_cost: 100
@@ -18,8 +17,7 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <param name="cgraph_path" value="/home/dji/graph.dot" type="string" />
-        <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
+        <param name="cgraph_path" value="/home/dji/swarm_log_lastest/graph.dot" type="string" />
     </node>
     <group if="$(arg viz)">
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />

@@ -1,13 +1,10 @@
 Header header
 int32 drone_id
 
-geometry_msgs/Point32[] all_features_2d
 float32[] feature_descriptor
 
 geometry_msgs/Pose pose_drone
 geometry_msgs/Pose camera_extrinsic
-geometry_msgs/Point32[] keyfeature_point_2d_norm
-geometry_msgs/Point32[] keyfeature_point_3d
 
 float32[] image_desc
 int32 image_width
@@ -19,3 +16,5 @@ geometry_msgs/Point32[] landmarks_2d
 geometry_msgs/Point32[] landmarks_3d
 uint8[] landmarks_flag
 bool prevent_adding_db
+
+int32 direction

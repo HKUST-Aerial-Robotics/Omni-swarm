@@ -62,6 +62,7 @@ struct swarm_localization_solver_params{
     int self_id = -1;
     std::string cgraph_path;
     float DA_TRI_accept_thres = 0.1;
+    bool enable_cgraph_generation = false;
 };
 
 class SwarmLocalizationSolver {
@@ -100,6 +101,7 @@ class SwarmLocalizationSolver {
 
     bool has_new_keyframe = false;
 
+    bool enable_cgraph_generation;
 
     void delete_frame_i(int i);
 

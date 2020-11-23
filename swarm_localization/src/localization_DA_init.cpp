@@ -27,6 +27,7 @@ LocalizationDAInit::LocalizationDAInit(std::vector<SwarmFrame> & _sf_sld_win, do
 }
 
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
+    ROS_INFO("Trying to initialize with data associaition...");
     //First we try to summarized all the UNIDENTIFIED detections
     std::set<int> unidentified;
     

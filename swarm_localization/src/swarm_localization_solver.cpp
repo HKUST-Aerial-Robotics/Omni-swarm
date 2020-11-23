@@ -61,7 +61,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
-            cgraph_path(_params.cgraph_path)
+            cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation)
     {
     }
 
@@ -659,7 +659,9 @@ double SwarmLocalizationSolver::solve() {
        
     } else if (has_new_keyframe) {
         ROS_INFO("New keyframe, solving....");
-        // generate_cgraph();
+        if (enable_cgraph_generation) {
+            generate_cgraph();
+        }
         cost_now = solve_once(this->est_poses_tsid, this->est_poses_idts, true);
     }
 
@@ -1161,7 +1163,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
-        ROS_WARN("Can't find loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
         return false;
     }
 
@@ -1182,6 +1184,10 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         }
     }
 
+    if (_index_a < 0 || _index_b < 0) {
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1186", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        return false;
+    }
 
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);

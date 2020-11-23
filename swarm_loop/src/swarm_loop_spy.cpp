@@ -16,7 +16,7 @@ using namespace std::chrono;
 class SwarmLoopSpy {
 public:
     LoopNet * loop_net = nullptr;
-    std::map<int, ImageDescriptor_t> all_images;
+    std::map<int, FisheyeFrameDescriptor_t> all_images;
     ros::Timer timer;
 public:
     SwarmLoopSpy(ros::NodeHandle& nh) {
@@ -31,7 +31,7 @@ public:
 
         nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
         loop_net = new LoopNet(_lcm_uri, false, false);
-        loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
+        loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & img_desc) {
             ROS_INFO("Received Img Desc from %d", img_desc.drone_id);
             all_images[img_desc.drone_id] = img_desc;
         };
@@ -53,8 +53,8 @@ public:
             char win_name[100] = {0};
             char frame_name[100] = {0};
             sprintf(win_name, "Drone: %d", img_desc.drone_id);
-            auto ret = cv::imdecode(img_desc.image, cv::IMREAD_GRAYSCALE);
-            auto nowPts = toCV(img_desc.landmarks_2d);
+            auto ret = cv::imdecode(img_desc.images[1].image, cv::IMREAD_GRAYSCALE);
+            auto nowPts = toCV(img_desc.images[1].landmarks_2d);
 
             cv::cvtColor(ret, ret, cv::COLOR_GRAY2BGR);
             for (auto pt: nowPts) {
@@ -66,7 +66,7 @@ public:
             sprintf(frame_name, "Frame %ld", img_desc.msg_id);
             cv::putText(ret, frame_name, cv::Point2f(10,10), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(0,255,0));
 
-            sprintf(frame_name, "Landmark num %ld", img_desc.landmarks_2d.size());
+            sprintf(frame_name, "Landmark num %ld", img_desc.landmark_num);
             cv::putText(ret, frame_name, cv::Point2f(10,20), cv::FONT_HERSHEY_PLAIN, 0.8,  cv::Scalar(0,255,0));
 
             cv::imshow(win_name, ret);

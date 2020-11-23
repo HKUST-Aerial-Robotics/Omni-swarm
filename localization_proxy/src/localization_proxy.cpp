@@ -273,7 +273,7 @@ class LocalProxy {
             (int)(nd.probaility*10000),
             inv_dep);
         
-        send_mavlink_message(msg);
+        send_mavlink_message(msg, true);
     }
 
 
@@ -606,7 +606,7 @@ class LocalProxy {
                                                         (int)(basecoor.position_cov[_index].y * 1000),
                                                         (int)(basecoor.position_cov[_index].z * 1000),
                                                         (int)(float_constrain(basecoor.yaw_cov[_index], 0, M_PI*M_PI) * 1000));
-                send_mavlink_message(msg);
+                send_mavlink_message(msg, true);
                 
                 last_send_fused_base = ros::Time::now();
         }
@@ -639,7 +639,7 @@ class LocalProxy {
                                                     (int)(fused.position_cov[i].z * 1000),
                                                     (int)(float_constrain(fused.yaw_cov[i], 0, M_PI*M_PI) * 1000));
                 
-                send_mavlink_message(msg);
+                send_mavlink_message(msg, true);
             }
 
             last_send_rel_fused = ros::Time::now();
@@ -688,7 +688,7 @@ class LocalProxy {
                                                         (int)(fused.position_cov[_index].y * 1000),
                                                         (int)(fused.position_cov[_index].z * 1000),
                                                         (int)(float_constrain(fused.yaw_cov[_index], 0, M_PI*M_PI) * 1000));
-                    send_mavlink_message(msg);
+                    send_mavlink_message(msg, true);
                 }
                 
                 last_send_fused = ros::Time::now();

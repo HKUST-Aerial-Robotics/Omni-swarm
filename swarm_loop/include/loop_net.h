@@ -35,15 +35,21 @@ public:
         this->setup_network(_lcm_uri);
     }
 
-    std::map<int64_t, ImageDescriptor_t> receved_msgs;
+    std::map<int64_t, ImageDescriptor_t> received_images;
     std::map<int64_t, double> msg_recv_last_time;
-    std::map<int64_t, double> msg_header_recv_time;
-    std::set<int64_t> active_receving_msg;
-    std::set<int64_t> blacklist;
 
-    std::function<void(const ImageDescriptor_t &)> img_desc_callback;
+    std::map<int64_t, double> msg_header_recv_time;
+    std::map<int64_t, double> frame_header_recv_time;
+    
+    std::set<int64_t> active_receving_msg;
+    std::set<int64_t> active_receving_frames;
+    std::set<int64_t> blacklist;
+    std::map<int64_t, FisheyeFrameDescriptor_t> received_frames;
+
+    std::function<void(const FisheyeFrameDescriptor_t &)> frame_desc_callback;
     std::function<void(const LoopConnection_t &)> loopconn_callback;
 
+    void image_desc_callback(const ImageDescriptor_t & image);
     void setup_network(std::string _lcm_uri);
     void broadcast_img_desc(ImageDescriptor_t & img_des);
     void broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc);
