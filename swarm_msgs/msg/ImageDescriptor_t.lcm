@@ -30,6 +30,7 @@ struct ImageDescriptorHeader_t {
     boolean prevent_adding_db;
     int64_t msg_id;
     int32_t feature_num;
+    int32_t direction;
 }
 
 struct LandmarkDescriptor_t {
@@ -67,6 +68,7 @@ struct ImageDescriptor_t {
     int32_t image_height;
     int32_t image_size;
     byte image[image_size];
+    int32_t direction;
 
     Pose_t pose_drone;
 

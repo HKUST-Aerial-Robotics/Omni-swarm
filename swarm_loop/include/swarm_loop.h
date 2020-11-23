@@ -9,6 +9,7 @@
 #include <thread>
 #include <nav_msgs/Odometry.h>
 #include <mutex>
+#include <swarm_msgs/FisheyeFrameDescriptor.h>
 
 using namespace std::chrono; 
 
@@ -48,9 +49,9 @@ protected:
 
     void VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyframe = false);
 
-    void on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc);
+    void on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc);
 
-    void on_remote_image(const ImageDescriptor_t & img_desc);
+    void on_remote_image(const FisheyeFrameDescriptor_t & frame_desc);
 
     ros::Subscriber camera_sub;
     ros::Subscriber viokeyframe_sub;
@@ -61,8 +62,10 @@ protected:
     ros::Subscriber viononkeyframe_sub;
     ros::Publisher loopconn_pub;
     ros::Publisher remote_image_desc_pub;
-    bool enable_pub_remote_img;
-    bool enable_sub_remote_img;
+    ros::Publisher local_image_desc_pub;
+    bool enable_pub_remote_frame;
+    bool enable_pub_local_frame;
+    bool enable_sub_remote_frame;
     bool send_img;
     bool send_whole_img_desc;
     std::thread th;

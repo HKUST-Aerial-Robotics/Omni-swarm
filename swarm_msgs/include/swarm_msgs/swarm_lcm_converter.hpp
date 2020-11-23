@@ -6,9 +6,8 @@
 #include <swarm_msgs/LoopConnection.h>
 #include "LoopConnection_t.hpp"
 #include <swarm_msgs/Pose.h>
-
-
-
+#include <swarm_msgs/FisheyeFrameDescriptor.h>
+#include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
 
 inline Pose_t fromROSPose(const geometry_msgs::Pose & pose) {
     Pose_t t;
@@ -229,6 +228,7 @@ inline swarm_msgs::ImageDescriptor toROSImageDescriptor(const ImageDescriptor_t 
     img_desc.image = _img.image;
     img_desc.prevent_adding_db = _img.prevent_adding_db;
     img_desc.landmarks_flag = _img.landmarks_flag;
+    img_desc.direction = _img.direction;
     return img_desc;
 }
 
@@ -259,6 +259,55 @@ inline ImageDescriptor_t toLCMImageDescriptor(const swarm_msgs::ImageDescriptor 
     _img.image_size = img_desc.image.size();
     _img.prevent_adding_db = img_desc.prevent_adding_db;
     _img.landmarks_flag = img_desc.landmarks_flag;
+    _img.direction = img_desc.direction;
 
     return _img;
+}
+
+
+inline FisheyeFrameDescriptor_t toLCMFisheyeDescriptor(const swarm_msgs::FisheyeFrameDescriptor & img_desc) {
+    // return _img;
+    FisheyeFrameDescriptor_t fisheye_frame;
+    fisheye_frame.msg_id = img_desc.msg_id;
+    fisheye_frame.image_num = img_desc.images.size();
+    fisheye_frame.prevent_adding_db = img_desc.prevent_adding_db;
+    fisheye_frame.landmark_num = img_desc.landmark_num;
+    fisheye_frame.drone_id = img_desc.drone_id;
+    fisheye_frame.timestamp = toLCMTime(img_desc.header.stamp);
+    fisheye_frame.pose_drone = fromROSPose(img_desc.pose_drone);
+    for (auto & _img: img_desc.images) {
+        fisheye_frame.images.push_back(toLCMImageDescriptor(_img));
+    }
+    return fisheye_frame;
+}
+
+inline swarm_msgs::FisheyeFrameDescriptor toROSFisheyeDescriptor(const FisheyeFrameDescriptor_t & img_desc) {
+    swarm_msgs::FisheyeFrameDescriptor fisheye_frame;
+    fisheye_frame.msg_id = img_desc.msg_id;
+    fisheye_frame.prevent_adding_db = img_desc.prevent_adding_db;
+    fisheye_frame.landmark_num = img_desc.landmark_num;
+    fisheye_frame.drone_id = img_desc.drone_id;
+    fisheye_frame.header.stamp = toROSTime(img_desc.timestamp);
+    fisheye_frame.pose_drone = toROSPose(img_desc.pose_drone);
+    for (auto & _img: img_desc.images) {
+        fisheye_frame.images.push_back(toROSImageDescriptor(_img));
+    }
+    return fisheye_frame;
+}
+
+inline int64_t to_nsec(Time_t stamp) {
+    return stamp.sec * 1e9 + stamp.nsec;
+}
+
+inline int64_t hash_stamp_drone_id(Time_t stamp, int drone_id) {
+    return to_nsec(stamp)*100 + drone_id;
+}
+
+inline ImageDescriptor_t generate_null_img_desc() {
+    ImageDescriptor_t empty;
+    empty.landmark_num = 0;
+    empty.feature_descriptor_size = 0;
+    empty.image_desc_size = 0;
+    empty.image_size = 0;
+    return empty;
 }

@@ -129,13 +129,13 @@ void SwarmLoop::VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyfra
     loop_detector->on_image_recv(ret, imgs);
 }
 
-void SwarmLoop::on_remote_image_ros(const swarm_msgs::ImageDescriptor & remote_img_desc) {
-    ROS_INFO("Remote");
-    this->on_remote_image(toLCMImageDescriptor(remote_img_desc));
+void SwarmLoop::on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc) {
+    // ROS_INFO("Remote");
+    this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
 }
 
-void SwarmLoop::on_remote_image(const ImageDescriptor_t & img_desc) {
-    // loop_detector->on_image_recv(img_desc);
+void SwarmLoop::on_remote_image(const FisheyeFrameDescriptor_t & frame_desc) {
+    loop_detector->on_image_recv(frame_desc);
 }
 
 SwarmLoop::SwarmLoop () {}
@@ -159,8 +159,9 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<int>("jpg_quality", JPG_QUALITY, 50);
     nh.param<int>("accept_min_3d_pts", ACCEPT_MIN_3D_PTS, 50);
     nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
-    nh.param<bool>("enable_pub_remote_img", enable_pub_remote_img, false);
-    nh.param<bool>("enable_sub_remote_img", enable_sub_remote_img, false);
+    nh.param<bool>("enable_pub_remote_frame", enable_pub_remote_frame, false);
+    nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);
+    nh.param<bool>("enable_sub_remote_frame", enable_sub_remote_frame, false);
     nh.param<bool>("send_img", send_img, false);
     nh.param<bool>("send_whole_img_desc", send_whole_img_desc, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
@@ -190,12 +191,12 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         this->on_loop_connection(loop_con, true);
     };
 
-    loop_net->img_desc_callback = [&] (const ImageDescriptor_t & img_desc) {
-        if (enable_pub_remote_img) {
-            remote_image_desc_pub.publish(toROSImageDescriptor(img_desc));
+    loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & frame_desc) {
+        if (enable_pub_remote_frame) {
+            remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
         }
 
-        this->on_remote_image(img_desc);
+        this->on_remote_image(frame_desc);
     };
 
     loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
@@ -209,14 +210,19 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
     
-    if (enable_sub_remote_img) {
+    if (enable_sub_remote_frame) {
         ROS_INFO("Subscribing remote image from bag");
-        remote_img_sub = nh.subscribe("/swarm_loop/remote_image_desc", 1, &SwarmLoop::on_remote_image_ros, this, ros::TransportHints().tcpNoDelay());
+        remote_img_sub = nh.subscribe("/swarm_loop/remote_frame_desc", 1, &SwarmLoop::on_remote_frame_ros, this, ros::TransportHints().tcpNoDelay());
     }
 
-    if (enable_pub_remote_img) {
-        remote_image_desc_pub = nh.advertise<swarm_msgs::ImageDescriptor>("remote_image_desc", 10);
+    if (enable_pub_remote_frame) {
+        remote_image_desc_pub = nh.advertise<swarm_msgs::FisheyeFrameDescriptor>("remote_frame_desc", 10);
     }
+
+    if (enable_pub_local_frame) {
+        local_image_desc_pub = nh.advertise<swarm_msgs::FisheyeFrameDescriptor>("local_frame_desc", 10);
+    }
+    
 
     timer = nh.createTimer(ros::Duration(0.01), [&](const ros::TimerEvent & e) {
         loop_net->scan_recv_packets();
