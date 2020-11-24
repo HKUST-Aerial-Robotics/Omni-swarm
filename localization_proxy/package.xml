@@ -71,7 +71,8 @@
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
 
-
+  <build_depend>swarmcomm_msgs</build_depend>
+  <exec_depend>swarmcomm_msgs</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

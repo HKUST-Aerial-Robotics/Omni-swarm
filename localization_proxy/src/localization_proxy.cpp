@@ -14,9 +14,9 @@
 #include <swarm_msgs/node_detected_xyzyaw.h>
 #include <swarm_msgs/Pose.h>
 
-#include <inf_uwb_ros/incoming_broadcast_data.h>
-#include <inf_uwb_ros/data_buffer.h>
-#include <inf_uwb_ros/remote_uwb_info.h>
+#include <swarmcomm_msgs/incoming_broadcast_data.h>
+#include <swarmcomm_msgs/data_buffer.h>
+#include <swarmcomm_msgs/remote_uwb_info.h>
 #include <geometry_msgs/Point.h>
 #include <map>
 
@@ -24,7 +24,7 @@
 using namespace swarm_msgs;
 using namespace nav_msgs;
 using namespace geometry_msgs;
-using namespace inf_uwb_ros;
+using namespace  swarmcomm_msgs;
 // using namespace Swarm;
 
 #define MAX_DRONE_SIZE 10
