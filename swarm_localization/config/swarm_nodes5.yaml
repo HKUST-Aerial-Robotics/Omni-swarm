@@ -2,21 +2,6 @@
 ---
 
 nodes:
-  #Is VICON Node
-  0:
-    has_uwb: true
-    has_armarkers: true
-    has_camera: true
-    has_vo: true
-    is_static: false
-    has_global_pose: false
-    anntena_pos: [-0.083, 0, 0.078]
-    armarker_size : 0.0925
-    bias:
-      1: [0.2475, 0.9415]
-      2: [0.1680, 0.9558]
-      3: [0.2409, 0.9609]
-      4: [0.1830, 0.9585]
 
   1:
     has_uwb: true
@@ -27,10 +12,11 @@ nodes:
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
     bias:
-      0: [0.2475, 0.9415]
-      2: [0.2710, 0.9558]
-      3: [0.3369, 0.9409]
-      4: [0.2726, 0.9566]
+      0: [0.0, 1.0]
+      2: [0.0, 1.0]
+      3: [0.0, 1.0]
+      4: [0.0, 1.0]
+      5: [0.0, 1.0]
 
   2:
     has_uwb: true
@@ -41,10 +27,12 @@ nodes:
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
     bias:
-      0: [0.1680, 0.9558]
-      1: [0.2710, 0.9558]
-      3: [0.3596, 0.9533]
-      4: [0.2142, 0.9450]
+      0: [0.0, 1.0]
+      2: [0.0, 1.0]
+      3: [0.0, 1.0]
+      4: [0.0, 1.0]
+      5: [0.0, 1.0]
+
   3:
     has_uwb: true
     has_armarkers: true
@@ -54,10 +42,12 @@ nodes:
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
     bias:
-      0: [0.2409, 0.9609]
-      1: [0.3369, 0.9409]
-      2: [0.3596, 0.9533]
-      4: [0.2872, 0.9512]
+      0: [0.0, 1.0]
+      2: [0.0, 1.0]
+      3: [0.0, 1.0]
+      4: [0.0, 1.0]
+      5: [0.0, 1.0]
+
   4:
     has_uwb: true
     has_armarkers: true
@@ -67,7 +57,22 @@ nodes:
     has_global_pose: false
     anntena_pos: [-0.083, 0, 0.078]
     bias:
-      0: [0.1830, 0.9585]
-      1: [0.2726, 0.9566]
-      2: [0.2142, 0.9450]
-      3: [0.2872, 0.9512]
+      0: [0.0, 1.0]
+      2: [0.0, 1.0]
+      3: [0.0, 1.0]
+      4: [0.0, 1.0]
+      5: [0.0, 1.0]
+  5:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    anntena_pos: [-0.083, 0, 0.078]
+    bias:
+      0: [0.0, 1.0]
+      2: [0.0, 1.0]
+      3: [0.0, 1.0]
+      4: [0.0, 1.0]
+      5: [0.0, 1.0]
