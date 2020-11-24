@@ -25,7 +25,7 @@ SET("OpenCV_DIR"  "/usr/local/share/OpenCV/")
 find_package(OpenCV 3.4 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(lcm REQUIRED)
-find_package(Backward)
+# find_package(Backward)
 set(TENSORRT_ROOT $ENV{HOME}/source/TensorRT-7.1.3.4)
 
 if (USE_TENSORRT)
@@ -42,18 +42,6 @@ if (USE_TENSORRT)
   include_directories(${CUDA_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
   add_definitions("-D USE_TENSORRT")
 endif()
-
-add_service_files(
-  FILES
-  HFNetSrv.srv
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  sensor_msgs
-)
-
 
 catkin_package(
   INCLUDE_DIRS include
