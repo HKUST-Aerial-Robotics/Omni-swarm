@@ -1145,7 +1145,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     printf("\n");
 }
 
-bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err) const{
+bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1162,10 +1162,10 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         return false;
     }
 
-    if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT ) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
-        return false;
-    }
+    // if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
+    //     ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+    //     return false;
+    // }
 
     loc_ret = Swarm::LoopConnection(_loc);
 
@@ -1185,7 +1185,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if (_index_a < 0 || _index_b < 0) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1186", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1188", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
         return false;
     }
 
@@ -1230,6 +1230,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 #endif
     loc_ret.relative_pose = new_loop;
     dt_err = min_ts_err_a + min_ts_err_b;
+    dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
     return true;
 }
 
@@ -1243,12 +1244,12 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
         double dt_err = 0;
         int idxa = loc_ret.id_a + TSLong(loc_ret.ts_a)*100;
         int idxb = loc_ret.id_b + TSLong(loc_ret.ts_b)*100;
-
-        if(loop_from_src_loop_connection(_loc, loc_ret, dt_err)) {
+        double dpos;
+        if(loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos)) {
             if (loop_errs.find(idxa) != loop_errs.end()) {
                 if (loop_errs[idxa].find(idxb)!= loop_errs[idxa].end()) {
                     // ROS_WARN("DUPLICATE EDGE from [%d]%d to [%d]%d!!!!", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b);
-                    if (dt_err > loop_errs[idxa][idxb]) {
+                    if (dt_err > loop_errs[idxa][idxb] && dpos > NOT_MOVING_THRES*2) {
                         ROS_WARN("Too big dt err; skipping");
                         continue;
                     }
