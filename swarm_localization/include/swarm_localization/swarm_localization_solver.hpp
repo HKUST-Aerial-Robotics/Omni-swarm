@@ -120,7 +120,7 @@ class SwarmLocalizationSolver {
 
     std::vector<Swarm::LoopConnection> find_available_loops(std::map<int, std::set<int>> & loop_edges) const;
 
-    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err) const;
+    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
 
 
     CostFunction *
