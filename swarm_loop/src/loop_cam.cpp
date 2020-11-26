@@ -426,8 +426,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     img_des.image_size = 0;
     img_des.landmark_num = 0;
 
-    HFNetSrv hfnet_srv;
-    hfnet_srv.request.image = msg;
+
 
     auto cv_ptr = cv_bridge::toCvCopy(msg);
     // std::cout << "Image size" << cv_ptr->image.size() << std::endl;
@@ -481,6 +480,8 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
 
     return img_des;
 #else
+    HFNetSrv hfnet_srv;
+    hfnet_srv.request.image = msg;
     if (superpoint_mode) {
         if (superpoint_client.call(hfnet_srv))
         {

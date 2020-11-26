@@ -12,14 +12,14 @@
 #include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
 
 #include "loop_defines.h"
-#include <swarm_loop/HFNetSrv.h>
 #include <vins/FlattenImages.h>
 #include "superpoint_tensorrt.h"
 #include "mobilenetvlad_tensorrt.h"
+//#include <swarm_loop/HFNetSrv.h>
 
 using namespace swarm_msgs;
 using namespace camodocal;
-using namespace swarm_loop;
+// using namespace swarm_loop;
 
 
 class LoopCam {
