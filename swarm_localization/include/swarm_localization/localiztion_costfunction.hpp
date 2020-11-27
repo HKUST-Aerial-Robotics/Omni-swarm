@@ -189,7 +189,17 @@ struct SwarmLoopError {
     }
 
     int residual_count() {
-        return locs.size()*4;
+        int res_count = 0;
+        for (auto & loc : locs) {
+            int _ida = loc.id_a;
+            int _idb = loc.id_b;
+            int64_t _tsa = loc.ts_a;
+            int64_t _tsb = loc.ts_b;
+            if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
+                res_count = res_count + 4;
+            }
+        }
+        return res_count;
     }
 
     template<typename T>
@@ -198,6 +208,8 @@ struct SwarmLoopError {
         for (auto & loc : locs) {
             res_count = loop_relpose_residual(loc, _poses, _residual, res_count);
         }
+
+        // std::cout << "LOOP RES COUNT " << res_count << std::endl;
         return true;
     }
 };

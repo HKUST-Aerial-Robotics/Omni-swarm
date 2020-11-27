@@ -1299,12 +1299,12 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     int num_res_blks_sf = problem.NumResidualBlocks();
     int num_res_sf = problem.NumResiduals();
     ROS_INFO("SF residual blocks %d residual nums %d", num_res_blks_sf, num_res_sf);
+    num_res_blks_sf = problem.NumResidualBlocks();
 
     for (int _id: all_nodes) {
         this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
 
-    num_res_blks_sf = problem.NumResidualBlocks();
     num_res_sf = problem.NumResiduals();
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
@@ -1337,6 +1337,12 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     ceres::Solve(options, &problem, &summary);
 
+
+    if (summary.termination_type == ceres::TerminationType::FAILURE) {
+        ROS_ERROR("Ceres critical failure. Exiting...");
+        exit(-1);
+    }
+
     double equv_cost = summary.final_cost / sliding_window_size();
 
     if (num_res_sf > 1) {
@@ -1350,7 +1356,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
-    //std::cout << summary.FullReport() << std::endl;
+    std::cout << summary.message << std::endl;
 
 #ifdef DEBUG_OUTPUT_POSES
     //if (finish_init) 
