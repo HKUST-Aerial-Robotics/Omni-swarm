@@ -448,7 +448,7 @@ public:
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
 
 
-        ROS_INFO("Will use %d number of keyframe\n", solver_params.max_frame_number);
+        ROS_INFO("Max Keyframe %d. Generate CGraph %d path %s\n", solver_params.max_frame_number, solver_params.enable_cgraph_generation, solver_params.cgraph_path.c_str());
     }
 };
 

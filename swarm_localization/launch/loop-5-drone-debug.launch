@@ -3,7 +3,7 @@
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
 
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  launch-prefix="gdb -ex run --args ">
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  >
         <rosparam>
             force_freq: 1
             max_accept_cost: 100
