@@ -1246,7 +1246,6 @@ std::vector<LoopConnection> average_same_loop(std::vector<LoopConnection> good_l
         loop_sets[key].push_back(loop);
     }
 
-    ROS_INFO("Total loops %ld, total sets %ld", good_loops.size(), loop_sets.size());
     good_loops.clear();
     
     for (auto & it : loop_sets) {
@@ -1269,16 +1268,15 @@ std::vector<LoopConnection> average_same_loop(std::vector<LoopConnection> good_l
 std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const {
     loop_edges.clear();
     std::vector<LoopConnection> good_loops;
-    ROS_INFO("All loops %ld", all_loops.size());
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
         double dpos;
         if(loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos)) {
-            ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
-                loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
-                loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
-                loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
+            // ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
+            //     loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
+            //     loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
+            //     loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
             good_loops.push_back(loc_ret);
             if (loop_edges.find(loc_ret.id_a) == loop_edges.end()) {
                 loop_edges[loc_ret.id_a] = std::set<int>();
@@ -1290,8 +1288,9 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
     }
-
-    return average_same_loop(good_loops);
+    auto ret = average_same_loop(good_loops);
+    ROS_INFO("All loops %ld good_loops %ld averaged loop %ld", all_loops.size(), good_loops.size(), ret.size());
+    return ret;
 }
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
