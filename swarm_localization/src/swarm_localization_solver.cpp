@@ -658,7 +658,7 @@ double SwarmLocalizationSolver::solve() {
         }
        
     } else if (has_new_keyframe) {
-        ROS_INFO("New keyframe, solving....");
+        // ROS_INFO("New keyframe, solving....%d good_loop %ld", enable_cgraph_generation, good_loops.size());
         if (enable_cgraph_generation) {
             generate_cgraph();
         }
@@ -1076,8 +1076,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     yaw_observability.clear();
     good_loops = find_available_loops(loop_edges);
 
-    ROS_INFO("GOOD LOOPS NUM %ld", good_loops.size());
-
+    // ROS_INFO("GOOD LOOPS NUM %ld", good_loops.size());
     for (int _id : all_nodes) {
         //Can't deal with machines power on later than movement
         pos_observability[_id] = false;
@@ -1202,9 +1201,8 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 
     loc_ret.ts_a = _nf_a.ts;
     loc_ret.ts_b = _nf_b.ts;
-
-
-
+    loc_ret.self_pose_a = _nf_a.pose();
+    loc_ret.self_pose_b = _nf_b.pose();
 
 #ifdef DEBUG_OUTPUT_LOOPS
 
@@ -1234,37 +1232,53 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     return true;
 }
 
-std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const{
+std::vector<LoopConnection> average_same_loop(std::vector<LoopConnection> good_loops) {
+    //tuple 
+    //    int64_t ts_a, int64_t ts_b, int id_a int id_b;
+    std::map<Swarm::LoopConnectionKey, std::vector<Swarm::LoopConnection>> loop_sets;
+
+    for (auto & loop : good_loops) {
+        LoopConnectionKey key = loop.key();
+        if (loop_sets.find(key) == loop_sets.end()) {
+            loop_sets[key] = std::vector<Swarm::LoopConnection>();
+        }
+
+        loop_sets[key].push_back(loop);
+    }
+
+    ROS_INFO("Total loops %ld, total sets %ld", good_loops.size(), loop_sets.size());
+    good_loops.clear();
+    
+    for (auto & it : loop_sets) {
+        auto & loop_vec = it.second;
+        Eigen::Vector3d pos_sum(0, 0, 0);
+        double yaw_sum = 0;
+        for (auto loop : loop_vec) {
+            pos_sum = pos_sum + loop.relative_pose.pos();
+            yaw_sum = yaw_sum + loop.relative_pose.yaw();
+        }
+
+        auto loop = loop_vec[0];
+        loop.relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
+        good_loops.push_back(loop);
+    }
+
+    return good_loops;
+}
+
+std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const {
     loop_edges.clear();
     std::vector<LoopConnection> good_loops;
-    std::map<int64_t, std::map<int64_t, double>> loop_errs;
     ROS_INFO("All loops %ld", all_loops.size());
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
-        int idxa = loc_ret.id_a + TSLong(loc_ret.ts_a)*100;
-        int idxb = loc_ret.id_b + TSLong(loc_ret.ts_b)*100;
         double dpos;
         if(loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos)) {
-            if (loop_errs.find(idxa) != loop_errs.end()) {
-                if (loop_errs[idxa].find(idxb)!= loop_errs[idxa].end()) {
-                    // ROS_WARN("DUPLICATE EDGE from [%d]%d to [%d]%d!!!!", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b);
-                    if (dt_err > loop_errs[idxa][idxb] && dpos > NOT_MOVING_THRES*2) {
-                        ROS_WARN("Too big dt err; skipping");
-                        continue;
-                    }
-                }
-            } else {
-                loop_errs[idxa] = std::map<int64_t, double>();
-            }
-
-            if (loop_errs.find(idxb) == loop_errs.end()) {
-                loop_errs[idxb] = std::map<int64_t, double>();
-            }
-
-            loop_errs[idxa][idxb] = dt_err;
-            loop_errs[idxb][idxa] = dt_err;
-
+            ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
+                loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
+                loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
+                loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
             good_loops.push_back(loc_ret);
             if (loop_edges.find(loc_ret.id_a) == loop_edges.end()) {
                 loop_edges[loc_ret.id_a] = std::set<int>();
@@ -1277,7 +1291,7 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
         }
     }
 
-    return good_loops;
+    return average_same_loop(good_loops);
 }
 
 double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, EstimatePosesIDTS & est_poses_idts, bool report) {
@@ -1286,7 +1300,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size());
+    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_loops.size());
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
@@ -1434,7 +1448,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 
 void SwarmLocalizationSolver::generate_cgraph() {
-    // ROS_INFO("Gen cgraph");
     auto start = high_resolution_clock::now();
     Agraph_t *g;
     g = agopen("G", Agdirected, NULL);
@@ -1509,9 +1522,18 @@ void SwarmLocalizationSolver::generate_cgraph() {
     }
 
     //
+    int count = 0;
     for (auto & loop: good_loops) {
         
-        sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
+        // sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
+        //     loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
+        //     loop.relative_pose.pos().x(),
+        //     loop.relative_pose.pos().y(),
+        //     loop.relative_pose.pos().z(),
+        //     loop.relative_pose.yaw()*57.3
+        // );
+
+        sprintf(edgename, "loop(%d->%d dt %4.1fms)",
             loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
             loop.relative_pose.pos().x(),
             loop.relative_pose.pos().y(),
@@ -1519,17 +1541,21 @@ void SwarmLocalizationSolver::generate_cgraph() {
             loop.relative_pose.yaw()*57.3
         );
 
-        auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], "Loop", 1);
+        char loopname[10] = {0};
+        sprintf(loopname, "Loop %d", count);
+        auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], loopname, 1);
         agattrsym (edge, "label");
         agattrsym (edge, "color");
         agset(edge, "label", edgename);
         agset(edge, "color", "orange");
+
+        count += 1;
     }
     FILE * f = fopen(cgraph_path.c_str(), "w");
     agwrite(g,f);
     agclose(g);
     fclose(f);
-
+    ROS_INFO("Generated cgraph to %s", cgraph_path.c_str());
     double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
 
     ROS_INFO("Generate cgraph cost %4.3fms\n", dt);

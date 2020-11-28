@@ -37,7 +37,7 @@ inline int64_t TSLong(int64_t ts) {
 
 using namespace Eigen;
 namespace Swarm {
-    class Node {
+class Node {
     protected:
         bool _has_vo = false;
         bool _has_uwb = false;
@@ -122,6 +122,7 @@ namespace Swarm {
         }
     };
 
+typedef std::tuple<int64_t, int64_t, int, int> LoopConnectionKey;
 class LoopConnection {
 public:
     int64_t ts_a;
@@ -142,6 +143,10 @@ public:
 
         self_pose_a = Pose(loc.self_pose_a);
         self_pose_b = Pose(loc.self_pose_b);
+    }
+
+    LoopConnectionKey key() {
+        return LoopConnectionKey(ts_a, ts_b, id_a, id_b);
     }
 
     LoopConnection() {
