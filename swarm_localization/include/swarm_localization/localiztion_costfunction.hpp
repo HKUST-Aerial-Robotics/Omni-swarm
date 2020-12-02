@@ -38,7 +38,7 @@ typedef std::vector<Quaterniond> quat_array;
 // pixel error/focal length
 #define COV_SPHERE_ERROR 0.02
 //percent of width error
-#define COV_WIDTH_PERCENT 0.1
+#define COV_WIDTH_PERCENT 1.0
 
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
@@ -313,7 +313,7 @@ struct SwarmFrameError {
                 res_count = res_count + 2;
 
                 if(!detection_no_scale) {
-                    _residual[res_count] = (est_inv_dep - inv_dep)/COV_WIDTH_PERCENT;
+                    _residual[res_count] = (est_inv_dep - inv_dep)*COV_WIDTH_PERCENT;
                     res_count = res_count + 1;
                 }
             }
