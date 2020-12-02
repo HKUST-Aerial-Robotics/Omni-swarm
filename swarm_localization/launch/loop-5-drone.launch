@@ -2,13 +2,13 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph" default="false" />
+    <arg name="cgraph" default="true" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
             force_freq: 1
             max_accept_cost: 100
-            max_keyframe_num: 100
+            max_keyframe_num: 50
             min_keyframe_num: 1
             thread_num: 1
             min_kf_movement : 0.5
@@ -18,7 +18,7 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <param name="cgraph_path" value="/home/dji/graph.dot" type="string" />
+        <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
     </node>
     <group if="$(arg viz)">
