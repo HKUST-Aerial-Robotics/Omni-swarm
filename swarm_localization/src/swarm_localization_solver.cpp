@@ -338,6 +338,11 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
     has_new_keyframe = true;
 }
 
+void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_xyzyaw & detected) {
+    all_detections.push_back(detected);
+    has_new_keyframe = true;
+}
+
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
     all_loops.push_back(loop_con);
     has_new_keyframe = true;

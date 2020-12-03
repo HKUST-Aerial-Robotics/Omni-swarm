@@ -10,7 +10,7 @@
 #include <exception>
 #include <set>
 #include <swarm_msgs/LoopConnection.h>
-#include <swarm_msgs/node_detected.h>
+#include <swarm_msgs/node_detected_xyzyaw.h>
 
 #define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
 #define VO_DRIFT_METER_Z 0.005
@@ -181,23 +181,34 @@ public:
 };
 
 class DroneDetection: public GeneralMeasurement2Drones {
-    Eigen::Vector3d p = Eigen::Vector3d::Zero();
-    double inv_dep = 0;
 
 public:
-    DroneDetection(swarm_msgs::node_detected & nd, bool enable_depth = true) {
-        // id_a = loc.id_a;
-        // id_b = loc.id_b;
-        // ts_a = loc.ts_a.toNSec();
-        // ts_b = loc.ts_b.toNSec();
+    Eigen::Vector3d detect_tan_base;
+    Eigen::Vector3d p = Eigen::Vector3d::Zero();
+    double inv_dep = 0;
+    double probaility = 0;
 
-        // relative_pose = Pose(loc.dpos, loc.dyaw);
-        // self_pose_a = Pose(loc.self_pose_a);
-        // self_pose_b = Pose(loc.self_pose_b);
+    bool enable_depth = false;
+
+    DroneDetection(swarm_msgs::node_detected_xyzyaw & nd, bool _enable_depth = true) {
+        id_a = nd.self_drone_id;
+        id_b = nd.remote_drone_id;
+        ts_a = nd.header.stamp.toNSec();
+
+        probaility = nd.probaility;
+
+        self_pose_a = Pose(nd.local_pose_self);
+        self_pose_b = Pose(nd.local_pose_remote);
+
+        inv_dep = nd.inv_dep;
+        p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);
         meaturement_type = Detection;
-        if (enable_depth) {
+
+        if (_enable_depth && nd.enable_scale) {
+            enable_depth = true;
             res_count = 3;
         } else {
+            enable_depth = false;
             res_count = 2;
         }
     }

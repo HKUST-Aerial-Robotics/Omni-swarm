@@ -81,6 +81,7 @@ class SwarmLocalizationSolver {
 
 
     std::vector<swarm_msgs::LoopConnection> all_loops;
+    std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
 
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
@@ -187,7 +188,7 @@ public:
 
     void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
 
-    void add_new_detection(const swarm_msgs::node_detected & detected);
+    void add_new_detection(const swarm_msgs::node_detected_xyzyaw & detected);
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
