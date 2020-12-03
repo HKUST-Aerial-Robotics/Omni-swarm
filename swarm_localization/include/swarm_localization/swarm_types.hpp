@@ -164,9 +164,12 @@ struct DetectedObject {
     bool detect_type = 0;
     bool enable_scale = false;
 
+    int detector_id = -1;
+    int target_id = -1;
+
     DetectedObject() {}
-    DetectedObject(Eigen::Vector3d _p, double _inv_dep, bool _enable_scale):
-        p(_p), inv_dep(_inv_dep),enable_scale(_enable_scale) {}
+    DetectedObject(Eigen::Vector3d _p, double _inv_dep, bool _enable_scale, int _detector_id, int _target_id):
+        p(_p), inv_dep(_inv_dep),enable_scale(_enable_scale), detector_id(_detector_id), target_id(_target_id) {}
 };
 
 class NodeFrame {
@@ -174,7 +177,6 @@ class NodeFrame {
         bool frame_available = false;
         bool vo_available = false;
         bool dists_available = false;
-        bool corners_available = false;
         bool has_detect_relpose = false;
         bool is_static = false;
         Node *node = nullptr;
@@ -186,7 +188,6 @@ class NodeFrame {
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d position_cov_to_last = VO_DRIFT_XYZ;
         double yaw_cov_to_last = VO_ERROR_ANGLE;
-        std::map<int, DetectedObject> detected_nodes;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
@@ -211,10 +212,6 @@ class NodeFrame {
 
         }
 
-        bool has_detected_node(int _id) const {
-            return detected_nodes.find(_id) != detected_nodes.end();
-        }
-        
         bool has_odometry() const {
             return vo_available;
         }
@@ -318,47 +315,6 @@ class SwarmFrame {
 
         bool has_node(const int _id) const{
             return (id2nodeframe.find(_id) != id2nodeframe.end());
-        }
-
-        bool has_detection_measurement(const int _id) const {
-            if (id2nodeframe.find(_id) == id2nodeframe.end()) {
-                return false;
-            }
-            if (id2nodeframe.at(_id).has_detect_relpose) {
-                return true;
-            }
-            return false;
-        }
-
-        bool has_detection_measurement(const int _idi, const int _idj) const {
-            if (id2nodeframe.find(_idi) == id2nodeframe.end()) {
-                return false;
-            }
-
-            if (id2nodeframe.find(_idj) == id2nodeframe.end()) {
-                return false;
-            }
-
-            if (id2nodeframe.at(_idi).detected_nodes.find(_idj) != id2nodeframe.at(_idi).detected_nodes.end()) {
-                return true;
-            }
-            return false;
-        }
-
-        int has_detection_measurement() const {
-            int total_detect = 0;
-            for (auto it : id2nodeframe) {
-                total_detect += it.second.detected_nodes.size();
-            }
-
-            return total_detect;
-        }
-
-        int detected_number(const int _id) const {
-            if (id2nodeframe.find(_id) == id2nodeframe.end()) {
-                return 0;
-            }
-            return id2nodeframe.at(_id).detected_nodes.size();
         }
 
         double distance(const int idj, const int idi) const {
