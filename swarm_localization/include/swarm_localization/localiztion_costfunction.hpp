@@ -286,6 +286,7 @@ struct SwarmFrameError {
         return res_count;
     }
 
+    /*
     template<typename T>
     inline int nodeframe_relpose_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (const auto & it: _nf.detected_nodes) {
@@ -321,6 +322,7 @@ struct SwarmFrameError {
         // ROS_INFO("Work with detected node");
         return res_count;
     }
+    */
 
     int residual_count() {
         int res_count = 0;
@@ -336,17 +338,6 @@ struct SwarmFrameError {
                     for (auto it : _nf.dis_map) {
                         if (has_id(it.first) && _nf.enabled_distance.at(it.first))
                             res_count++;
-                    }
-                }
-                if (_nf.has_detect_relpose) {
-                    for (const auto & it: _nf.detected_nodes) {
-                        if (has_id(it.first) && _nf.enabled_detection.at(it.first)) {
-                            if(detection_no_scale) {
-                                res_count = res_count + 2;
-                            } else{
-                                res_count = res_count + 3;
-                            }
-                        }
                     }
                 }
             }
@@ -370,10 +361,6 @@ struct SwarmFrameError {
                 if (_nf.dists_available) {
                     res_count = nodeframe_distance_residual(_nf, _poses, _residual, res_count);
                 }
-                if (_nf.has_detect_relpose) {
-                    res_count = nodeframe_relpose_residual(_nf, _poses, _residual, res_count);
-                }
-
             }
 
         }

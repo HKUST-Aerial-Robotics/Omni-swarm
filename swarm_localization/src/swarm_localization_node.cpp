@@ -23,6 +23,7 @@
 #include <chrono>
 #include <swarm_msgs/swarm_drone_basecoor.h>
 #include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/swarm_detected.h>
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -115,16 +116,6 @@ class SwarmLocalizationNode {
             nf.is_valid = false;
         }
 
-        for (auto nd: _nf.detected) {
-            Eigen::Vector3d dir(nd.dpos.x, nd.dpos.y, nd.dpos.z);
-            DetectedObject dobj(dir.normalized(), nd.inv_dep, nd.enable_scale);
-            nf.detected_nodes_posvar[nd.remote_drone_id] = 
-                Eigen::Vector3d(nd.dpos_cov.x, nd.dpos_cov.y, nd.dpos_cov.z);
-            nf.has_detect_relpose = true;
-            // ROS_INFO("Det from %d to %d dir %f %f %f", nf.id, nd.remote_drone_id, dir.x(), dir.y(), dir.z());
-
-            nf.detected_nodes[nd.remote_drone_id] = dobj;
-        }
         return nf;
     }
 
@@ -149,18 +140,6 @@ class SwarmLocalizationNode {
             }
         }
 
-        for (auto it : sf.id2nodeframe) {
-            for (auto it_d :it.second.detected_nodes) {
-                //Add only in node id list
-                if ( sf.id2nodeframe.find(it_d.first) != sf.id2nodeframe.end() && 
-                    sf.id2nodeframe.find(it_d.first) != sf.id2nodeframe.end() ) {
-                    sf.id2nodeframe[it_d.first].has_detect_relpose = true;
-                    sf.id2nodeframe[it.first].has_detect_relpose = true;
-                    // ROS_INFO("Has detection %d by %d", it_d.first, it.first);
-                }
-            }
-        }
-
         return sf;
     }
 
@@ -172,9 +151,11 @@ class SwarmLocalizationNode {
 
     double t_last = 0;
 protected:
+    void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
+        
+    }
+
     void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
-        //TODO:Fix when nodeframe invaild!!!!
-//        ROS_INFO("Recv swarm frame with %ld nodes", _sf.node_frames.size());
         SwarmFrame sf = swarm_frame_from_msg(_sf);
 
         int _self_id = _sf.self_id;
@@ -218,19 +199,11 @@ protected:
         odom.twist.twist.linear.x = vel.x();
         odom.twist.twist.linear.y = vel.y();
         odom.twist.twist.linear.z = vel.z();
-        for (int i = 0; i < 4; i++) {
-            for (int j =0; j < 4; j++) {
-                int _i = i;
-                int _j = j;
-                if (_i == 3) {
-                    _i = 5;
-                }
-                if (_j == 3) {
-                    _j = 5;
-                }
-                odom.pose.covariance[_i*6+_j] = cov(i, j);
-            }
-        }
+        // for (int i = 0; i < 4; i++) {
+            // for (int j =0; j < 4; j++) {
+                // odom.pose.covariance[i*6+j] = cov(i, j);
+            // }
+        // }
         pub_odom_id(id, odom);
     }
 
@@ -254,6 +227,7 @@ private:
     ros::Subscriber recv_sf_est, recv_sf_predict;
     ros::Subscriber recv_drone_odom_now;
     ros::Subscriber loop_connection_sub;
+    ros::Subscriber swarm_detected_sub;
     ros::Publisher fused_drone_data_pub, fused_drone_basecoor_pub, solving_cost_pub, fused_drone_rel_data_pub;
 
     std::string frame_id = "";
@@ -418,6 +392,7 @@ public:
                                     &SwarmLocalizationNode::on_loop_connection_received, this, 
                                     ros::TransportHints().tcpNoDelay());
         
+        swarm_detected_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
         std::string swarm_node_config;
 
         swarm_localization_solver_params solver_params;

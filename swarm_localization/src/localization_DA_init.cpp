@@ -40,7 +40,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
             }
         }    
     }
-
+    /*
     for (auto & sf : sf_sld_win) {
         // ROS_INFO("Scan sf %d", sf.ts);
 
@@ -65,7 +65,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
                 }
             }
         }
-    }
+    }*/
 
     ROS_INFO("The sliding window contain %d unidentified drones", unidentified.size());
 
@@ -276,6 +276,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
     Eigen::Vector3d max_bbx_det(-100000,-100000,-100000);
     Eigen::Vector3d min_bbx_det(1000000,100000,100000);
 
+    /*
     for (auto & _sf : sf_sld_win) {
         for (auto it: _sf.id2nodeframe) {
             if (est_pathes.find(it.first) != est_pathes.end()) {
@@ -311,7 +312,7 @@ std::pair<int, double>  LocalizationDAInit::estimate_path(DroneTraj & traj, int 
                 }
             }
         }
-    }
+    }*/
 
 #ifdef DFS_BEBUG_OUTPUT
     ROS_INFO("Node %d has %ld distance M baseline %f and %ld det M baseline %f", 

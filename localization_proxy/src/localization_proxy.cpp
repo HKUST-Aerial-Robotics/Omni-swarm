@@ -55,13 +55,10 @@ geometry_msgs::Quaternion Yaw2ROSQuat(double yaw) {
 }
 
 inline Odometry naive_predict(const Odometry &odom_now, double now, bool debug_output = false) {
-    static int count = 0;
     Odometry ret = odom_now;
-    // double now = ros::Time::now().toSec();
     double t_odom = odom_now.header.stamp.toSec();
-    // if (count ++ % 100 == 0)
     if (debug_output) {
-        ROS_INFO("Naive1 predict now %f t_odom %f dt %f", now, t_odom, now - t_odom);
+        ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now - t_odom);
     } else {
     }
 
@@ -134,8 +131,8 @@ class LocalProxy {
     void on_local_odometry_recv(const nav_msgs::Odometry &odom) {
 
         // ROS_INFO("Odom recv");
-        double t_odom = odom.header.stamp.toSec();
-        double now = ros::Time::now().toSec();
+        // double t_odom = odom.header.stamp.toSec();
+        // double now = ros::Time::now().toSec();
         // ROS_INFO("Naive1 predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
         pos.x() = odom.pose.pose.position.x;
         pos.y() = odom.pose.pose.position.y;
@@ -389,29 +386,6 @@ class LocalProxy {
         for (node_detected_xyzyaw nd : node_xyzyaws) {
             send_node_detected(nd);
         }
-
-        int i = find_sf_swarm_detected(sd.header.stamp);
-        int sd_self_id = sd.self_drone_id;
-        if (sd_self_id < 0) {
-            sd_self_id = self_id;
-        }
-        if (i < 0) {
-            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
-            return;
-        }
-        swarm_frame &_sf = sf_queue[i];
-
-
-        // ROS_INFO("SF node size %ld", _sf.node_frames.size());
-        for (int j = 0; j < _sf.node_frames.size(); j++) {
-            // ROS_INFO("NF id %d", _sf.node_frames[j].id);
-            if (_sf.node_frames[j].id == sd_self_id) {
-                _sf.node_frames[j].detected = node_xyzyaws;
-                ROS_INFO("SF BUF %d got detection", j);
-                break;
-            }
-        }
-
     }
 
     //Eul is roll pitch yaw
@@ -436,16 +410,6 @@ class LocalProxy {
         }
     }
 
-    void add_node_detected_to_sf(swarm_frame & sf, const node_detected_xyzyaw & nd) {
-        for (node_frame & nf : sf.node_frames) {
-            if (nf.id == nd.self_drone_id) {
-                nf.detected.push_back(nd);
-                return;
-            }
-        }
-    }
-
-
     void parse_node_realtime_info(mavlink_message_t & msg, int _id) {
         Odometry odom;
         std::map<int, float> _dis;
@@ -459,22 +423,6 @@ class LocalProxy {
                 ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, eul, vel, ts, _dis);
             }
-        }
-    }
-
-    void parse_node_detected(mavlink_message_t & msg, int _id) {
-        node_detected_xyzyaw nd = on_node_detected_msg(_id, msg);
-        ros::Time ts = nd.header.stamp;
-        int s_index = find_sf_swarm_detected(ts);
-        ROS_INFO_THROTTLE(1.0, "Appending ND %dby%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
-            nd.remote_drone_id,
-            nd.self_drone_id,
-            (ts - this->tsstart).toSec()*1000, 
-            (ros::Time::now() - this->tsstart).toSec()*1000, 
-            s_index, sf_queue.size());
-
-        if (s_index >= 0) {
-            add_node_detected_to_sf(sf_queue[s_index], nd);
         }
     }
 
@@ -500,9 +448,7 @@ class LocalProxy {
                     }
 
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
-#ifndef DISABLE_DETECTION_6D
-                        parse_node_detected(msg, _id);
-#endif
+                        //TODO: handle node detected
                         break;
                     }
 
@@ -574,19 +520,8 @@ class LocalProxy {
 
 
         if ((ros::Time::now() - last_send_fused_base).toSec() > 1.0/send_fused_basecoor_freq) {
-                uint8_t buf[1000] = {0};
                 send_fused_basecoor_count ++;
                 int _index = send_fused_basecoor_count % basecoor.ids.size();
-                /*
-                if (basecoor.ids[_index] == self_id) {
-                    if (basecoor.ids.size() == 1) {
-                        return;
-                    } else {
-                        send_fused_basecoor_count ++;
-                        _index = send_fused_basecoor_count % basecoor.ids.size();
-                    }
-                }*/
-
                 mavlink_message_t msg;
                 // printf("Fused data recv\n");
                 if (self_id < 0)
@@ -619,7 +554,7 @@ class LocalProxy {
         }
         
         if ((ros::Time::now() - last_send_rel_fused).toSec() > 1.0/send_rel_fused_freq) {
-            uint8_t buf[1000] = {0};
+            // uint8_t buf[1000] = {0};
 
             mavlink_message_t msg;
             // printf("Fused data recv\n");
@@ -627,7 +562,7 @@ class LocalProxy {
                 return;
 
             int32_t ts = ROSTIME2LPS(fused.header.stamp);
-            for (int i = 0; i < fused.ids.size(); i++) {
+            for (unsigned int i = 0; i < fused.ids.size(); i++) {
                 uint8_t _id = fused.ids[i];
                 mavlink_msg_node_relative_fused_pack(self_id, 0, &msg, ts, _id,
                                                     (int)(fused.relative_drone_position[i].x * 1000),
@@ -656,7 +591,7 @@ class LocalProxy {
         }
 
         if ((ros::Time::now() - last_send_fused).toSec() > 1.0/send_fused_freq) {
-                uint8_t buf[1000] = {0};
+                // uint8_t buf[1000] = {0};
                 send_fused_count ++;
                 int _index = send_fused_count % fused.ids.size();
                 if (fused.ids[_index] == self_id) {
@@ -708,9 +643,9 @@ class LocalProxy {
 
     node_frame * find_lastest_nf_with_vo_in_queue(int _id) {
         //Find where this nf has vo available in our sldwin
-        for (int ptr = sf_queue.size() - 1; ptr >= 0; ptr --) {
+        for (unsigned int ptr = sf_queue.size() - 1; ptr >= 0; ptr --) {
             swarm_frame & _sf = sf_queue[ptr];
-            for (int k = 0; k < _sf.node_frames.size(); k++) {
+            for (unsigned int k = 0; k < _sf.node_frames.size(); k++) {
                 node_frame & _nf = _sf.node_frames[k];
                 if (_nf.id == _id) {
                     if (_nf.vo_available){
@@ -852,7 +787,7 @@ class LocalProxy {
             self_nf.velocity.y = self_odom.twist.twist.linear.y;
             self_nf.velocity.z = self_odom.twist.twist.linear.z;
 
-            for (int i = 0; i < info.node_ids.size(); i++) {
+            for (unsigned int i = 0; i < info.node_ids.size(); i++) {
                 int _idx = info.node_ids[i];
                 if (info.active[i] && _idx!=self_id) {
                     self_nf.dismap_ids.push_back(_idx);
@@ -863,7 +798,7 @@ class LocalProxy {
             sf.node_frames.push_back(self_nf);
         }
         all_nodes.insert(self_id);
-        for (int i = 0; i< info.node_ids.size(); i++) {
+        for (unsigned int i = 0; i< info.node_ids.size(); i++) {
             int _idx = info.node_ids[i];
             if (info.active[i] && _idx!=self_id) {
                 node_frame nf;
@@ -895,7 +830,7 @@ class LocalProxy {
             self_dis[i] = -1;
         }
 
-        for (int i = 0; i < info.node_ids.size(); i++) {
+        for (unsigned int i = 0; i < info.node_ids.size(); i++) {
             int _id = info.node_ids[i];
             if (_id < MAX_DRONE_SIZE) {
                 self_dis[_id] = info.node_dis[i];

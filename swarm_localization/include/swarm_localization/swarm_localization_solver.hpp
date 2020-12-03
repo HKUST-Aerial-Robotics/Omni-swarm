@@ -189,6 +189,8 @@ public:
 
     void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
 
+    void add_new_detection(const Swarm::DetectedObject & detected);
+
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
     bool PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const;
