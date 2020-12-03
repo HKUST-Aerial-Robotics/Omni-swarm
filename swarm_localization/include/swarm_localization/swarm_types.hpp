@@ -10,6 +10,7 @@
 #include <exception>
 #include <set>
 #include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/node_detected.h>
 
 #define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
 #define VO_DRIFT_METER_Z 0.005
@@ -122,17 +123,29 @@ class Node {
         }
     };
 
-typedef std::tuple<int64_t, int64_t, int, int> LoopConnectionKey;
-class LoopConnection {
+typedef std::tuple<int64_t, int64_t, int, int> GeneralMeasurement2DronesKey;
+
+class GeneralMeasurement2Drones {
 public:
     int64_t ts_a;
     int64_t ts_b;
     int id_a;
     int id_b;
-    Pose relative_pose;
     Pose self_pose_a;
     Pose self_pose_b;
-    
+    int res_count = 0;
+    enum { 
+        Loop,
+        Detection
+    } meaturement_type;
+    GeneralMeasurement2DronesKey key() {
+        return GeneralMeasurement2DronesKey(ts_a, ts_b, id_a, id_b);
+    }
+};
+
+class LoopConnection: public GeneralMeasurement2Drones {
+public:
+    Pose relative_pose;
     LoopConnection(swarm_msgs::LoopConnection loc) {
         id_a = loc.id_a;
         id_b = loc.id_b;
@@ -143,34 +156,59 @@ public:
 
         self_pose_a = Pose(loc.self_pose_a);
         self_pose_b = Pose(loc.self_pose_b);
+        meaturement_type = Loop;
+        res_count = 4;
     }
 
-    LoopConnectionKey key() {
-        return LoopConnectionKey(ts_a, ts_b, id_a, id_b);
-    }
+    LoopConnection(const LoopConnection &loc) {
+        id_a = loc.id_a;
+        id_b = loc.id_b;
+        ts_a = loc.ts_a;
+        ts_b = loc.ts_b;
 
+        relative_pose = loc.relative_pose;
+
+        self_pose_a = loc.self_pose_a;
+        self_pose_b = loc.self_pose_b;
+        meaturement_type = Loop;
+        res_count = 4;
+    }
+    
     LoopConnection() {
+        meaturement_type = Loop;
+        res_count = 0;
+    }
+};
 
+class DroneDetection: public GeneralMeasurement2Drones {
+    Eigen::Vector3d p = Eigen::Vector3d::Zero();
+    double inv_dep = 0;
+
+public:
+    DroneDetection(swarm_msgs::node_detected & nd, bool enable_depth = true) {
+        // id_a = loc.id_a;
+        // id_b = loc.id_b;
+        // ts_a = loc.ts_a.toNSec();
+        // ts_b = loc.ts_b.toNSec();
+
+        // relative_pose = Pose(loc.dpos, loc.dyaw);
+        // self_pose_a = Pose(loc.self_pose_a);
+        // self_pose_b = Pose(loc.self_pose_b);
+        meaturement_type = Detection;
+        if (enable_depth) {
+            res_count = 3;
+        } else {
+            res_count = 2;
+        }
+    }
+
+    DroneDetection() {
+        meaturement_type = Detection;
+        res_count = 0;
     }
 };
 
 typedef std::vector<std::pair<int64_t, Pose>> DroneTraj;
-
-struct DetectedObject {
-    //TYPE 1: Drone
-    int obj_type = 1;
-    Eigen::Vector3d p = Eigen::Vector3d::Zero();
-    double inv_dep = 0;
-    bool detect_type = 0;
-    bool enable_scale = false;
-
-    int detector_id = -1;
-    int target_id = -1;
-
-    DetectedObject() {}
-    DetectedObject(Eigen::Vector3d _p, double _inv_dep, bool _enable_scale, int _detector_id, int _target_id):
-        p(_p), inv_dep(_inv_dep),enable_scale(_enable_scale), detector_id(_detector_id), target_id(_target_id) {}
-};
 
 class NodeFrame {
     public:

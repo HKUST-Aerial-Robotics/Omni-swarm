@@ -128,10 +128,10 @@ inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan
 
 
 struct SwarmLoopError {
-    std::vector<Swarm::LoopConnection> locs;
+    std::vector<Swarm::GeneralMeasurement2Drones*> locs;
     std::map<int, std::map<int64_t, int>> id_ts_poseindex;
 
-    SwarmLoopError(std::vector<Swarm::LoopConnection> _locs, std::map<int, std::map<int64_t, int>>  _id_ts_poseindex) :
+    SwarmLoopError(std::vector<Swarm::GeneralMeasurement2Drones*> _locs, std::map<int, std::map<int64_t, int>>  _id_ts_poseindex) :
         locs(_locs), id_ts_poseindex(_id_ts_poseindex) {
 
     }
@@ -168,14 +168,14 @@ struct SwarmLoopError {
     }
 
     template<typename T>
-    inline int loop_relpose_residual(const Swarm::LoopConnection & loc, T const *const *_poses, T *_residual, int res_count) const {
-        int _ida = loc.id_a;
-        int _idb = loc.id_b;
-        int64_t _tsa = loc.ts_a;
-        int64_t _tsb = loc.ts_b;
+    inline int loop_relpose_residual(const Swarm::LoopConnection * loc, T const *const *_poses, T *_residual, int res_count) const {
+        int _ida = loc->id_a;
+        int _idb = loc->id_b;
+        int64_t _tsa = loc->ts_a;
+        int64_t _tsb = loc->ts_b;
 
         if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
-            Pose _rel_pose = loc.relative_pose;
+            Pose _rel_pose = loc->relative_pose;
             T rel_pose[4];
             _rel_pose.to_vector_xyzyaw(rel_pose);
 
@@ -191,12 +191,12 @@ struct SwarmLoopError {
     int residual_count() {
         int res_count = 0;
         for (auto & loc : locs) {
-            int _ida = loc.id_a;
-            int _idb = loc.id_b;
-            int64_t _tsa = loc.ts_a;
-            int64_t _tsb = loc.ts_b;
+            int _ida = loc->id_a;
+            int _idb = loc->id_b;
+            int64_t _tsa = loc->ts_a;
+            int64_t _tsb = loc->ts_b;
             if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
-                res_count = res_count + 4;
+                res_count = res_count + loc->res_count;
             }
         }
         return res_count;
@@ -206,7 +206,9 @@ struct SwarmLoopError {
     bool operator()(T const *const *_poses, T *_residual) const {
         int res_count = 0;
         for (auto & loc : locs) {
-            res_count = loop_relpose_residual(loc, _poses, _residual, res_count);
+            if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
+                res_count = loop_relpose_residual(static_cast<Swarm::LoopConnection*>(loc), _poses, _residual, res_count);
+            }
         }
 
         // std::cout << "LOOP RES COUNT " << res_count << std::endl;
