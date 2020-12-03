@@ -617,7 +617,7 @@ double SwarmLocalizationSolver::solve() {
         }
        
     } else if (has_new_keyframe) {
-        // ROS_INFO("New keyframe, solving....%d good_loop %ld", enable_cgraph_generation, good_loops.size());
+        // ROS_INFO("New keyframe, solving....%d good_loop %ld", enable_cgraph_generation, good_2drone_measurements.size());
         if (enable_cgraph_generation) {
             generate_cgraph();
         }
@@ -711,7 +711,7 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
     
 CostFunction *
-SwarmLocalizationSolver:: _setup_cost_function_by_loop(const std::vector<Swarm::LoopConnection> & loops, IDTSIndex  _id_ts_poseindex) const {
+SwarmLocalizationSolver::_setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex  _id_ts_poseindex) const {
     auto sle = new SwarmLoopError(loops, _id_ts_poseindex);
     auto cost_function = new LoopCost(sle);
     int res_num = sle->residual_count();
@@ -734,38 +734,38 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     std::vector<double*> pose_state; // For involved poses
     std::set<double*> added_poses;
 
-    if (good_loops.size() == 0) {
+    if (good_2drone_measurements.size() == 0) {
         // ROS_INFO("No loop; Return");
         return;
     }
-    // ROS_INFO("Find %ld good loops", good_loops.size());
+    // ROS_INFO("Find %ld good loops", good_2drone_measurements.size());
     IDTSIndex  _id_ts_poseindex;
 
-    for (auto loc : good_loops) {
-         if (_id_ts_poseindex.find(loc.id_a) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc.id_a] = std::map<int64_t, int>();
+    for (auto loc : good_2drone_measurements) {
+         if (_id_ts_poseindex.find(loc->id_a) == _id_ts_poseindex.end()) {
+            _id_ts_poseindex[loc->id_a] = std::map<int64_t, int>();
         }
 
-        if (_id_ts_poseindex.find(loc.id_b) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc.id_b] = std::map<int64_t, int>();
+        if (_id_ts_poseindex.find(loc->id_b) == _id_ts_poseindex.end()) {
+            _id_ts_poseindex[loc->id_b] = std::map<int64_t, int>();
         }
 
-        double * posea = est_poses_idts.at(loc.id_a).at(loc.ts_a);
+        double * posea = est_poses_idts.at(loc->id_a).at(loc->ts_a);
         if (added_poses.find(posea) == added_poses.end()) {
             pose_state.push_back(posea);
-            _id_ts_poseindex[loc.id_a][loc.ts_a] = pose_state.size() - 1;
+            _id_ts_poseindex[loc->id_a][loc->ts_a] = pose_state.size() - 1;
             added_poses.insert(posea);
         }
 
-        double * poseb = est_poses_idts.at(loc.id_b).at(loc.ts_b);
+        double * poseb = est_poses_idts.at(loc->id_b).at(loc->ts_b);
         if (added_poses.find(poseb) == added_poses.end()) {
             pose_state.push_back(poseb);
-            _id_ts_poseindex[loc.id_b][loc.ts_b] = pose_state.size() - 1;
+            _id_ts_poseindex[loc->id_b][loc->ts_b] = pose_state.size() - 1;
             added_poses.insert(poseb);
         }
     }
 
-    CostFunction * cost = _setup_cost_function_by_loop(good_loops, _id_ts_poseindex);
+    CostFunction * cost = _setup_cost_function_by_loop(good_2drone_measurements, _id_ts_poseindex);
     ceres::LossFunction *loss_function;
     loss_function = new ceres::HuberLoss(0.1);
     problem.AddResidualBlock(cost, loss_function, pose_state);
@@ -905,7 +905,7 @@ void SwarmLocalizationSolver::cutting_edges() {
     int distance_count = 0;
     int total_distance_count = 0;
     int detection_count = 0, total_detection_count = 0;
-    
+
     SwarmFrame & sf0 = sf_sld_win[0];
     for (auto & it : sf0.id2nodeframe) {
         auto & _nf = it.second;
@@ -959,7 +959,7 @@ void SwarmLocalizationSolver::cutting_edges() {
         }
     }
 
-    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %ld", distance_count, total_distance_count, detection_count, total_detection_count, good_loops.size());
+    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %ld", distance_count, total_distance_count, detection_count, total_detection_count, good_2drone_measurements.size());
     /*
     for (auto & sf : sf_sld_win) {
         for (auto & it : sf.id2nodeframe) {
@@ -1009,9 +1009,13 @@ std::set<int> SwarmLocalizationSolver::loop_observable_set(const std::map<int, s
 
 void SwarmLocalizationSolver::estimate_observability() {
     yaw_observability.clear();
-    good_loops = find_available_loops(loop_edges);
+    for (auto p : good_2drone_measurements) {
+        delete p;
+    }
+    good_2drone_measurements.clear();
+    good_2drone_measurements = find_available_loops(loop_edges);
 
-    // ROS_INFO("GOOD LOOPS NUM %ld", good_loops.size());
+    // ROS_INFO("GOOD LOOPS NUM %ld", good_2drone_measurements.size());
     for (int _id : all_nodes) {
         //Can't deal with machines power on later than movement
         pos_observability[_id] = false;
@@ -1167,21 +1171,21 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     return true;
 }
 
-std::vector<LoopConnection> average_same_loop(std::vector<LoopConnection> good_loops) {
+std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopConnection> good_2drone_measurements) {
     //tuple 
     //    int64_t ts_a, int64_t ts_b, int id_a int id_b;
-    std::map<Swarm::LoopConnectionKey, std::vector<Swarm::LoopConnection>> loop_sets;
-
-    for (auto & loop : good_loops) {
-        LoopConnectionKey key = loop.key();
+    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopConnection>> loop_sets;
+    std::vector<Swarm::LoopConnection*> ret;
+    for (auto & loop : good_2drone_measurements) {
+        GeneralMeasurement2DronesKey key = loop.key();
         if (loop_sets.find(key) == loop_sets.end()) {
             loop_sets[key] = std::vector<Swarm::LoopConnection>();
         }
 
         loop_sets[key].push_back(loop);
     }
-
-    good_loops.clear();
+    
+    good_2drone_measurements.clear();
     
     for (auto & it : loop_sets) {
         auto & loop_vec = it.second;
@@ -1192,17 +1196,19 @@ std::vector<LoopConnection> average_same_loop(std::vector<LoopConnection> good_l
             yaw_sum = yaw_sum + loop.relative_pose.yaw();
         }
 
-        auto loop = loop_vec[0];
-        loop.relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
-        good_loops.push_back(loop);
+        auto loop = new Swarm::LoopConnection(loop_vec[0]);
+        
+        loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
+        ret.push_back(loop);
     }
 
-    return good_loops;
+    return ret;
 }
 
-std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const {
+std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const {
     loop_edges.clear();
-    std::vector<LoopConnection> good_loops;
+    std::vector<Swarm::LoopConnection> good_loops;
+    std::vector<GeneralMeasurement2Drones*> ret;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
@@ -1223,8 +1229,11 @@ std::vector<LoopConnection> SwarmLocalizationSolver::find_available_loops(std::m
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
     }
-    auto ret = average_same_loop(good_loops);
-    ROS_INFO("All loops %ld good_loops %ld averaged loop %ld", all_loops.size(), good_loops.size(), ret.size());
+    auto ret_loops = average_same_loop(good_loops);
+    for (auto p : ret_loops) {
+        ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
+    }
+    ROS_INFO("All loops %ld good_2drone_measurements %ld averaged loop %ld", all_loops.size(), good_2drone_measurements.size(), ret.size());
     return ret;
 }
 
@@ -1234,7 +1243,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_loops.size());
+    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_2drone_measurements.size());
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
@@ -1457,33 +1466,37 @@ void SwarmLocalizationSolver::generate_cgraph() {
 
     //
     int count = 0;
-    for (auto & loop: good_loops) {
-        
-        // sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
-        //     loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
-        //     loop.relative_pose.pos().x(),
-        //     loop.relative_pose.pos().y(),
-        //     loop.relative_pose.pos().z(),
-        //     loop.relative_pose.yaw()*57.3
-        // );
+    for (auto & _loop: good_2drone_measurements) {
+        if (_loop->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop)
+        {
+            auto loop = static_cast<Swarm::LoopConnection * >(_loop);
+            
+            // sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
+            //     loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
+            //     loop.relative_pose.pos().x(),
+            //     loop.relative_pose.pos().y(),
+            //     loop.relative_pose.pos().z(),
+            //     loop.relative_pose.yaw()*57.3
+            // );
 
-        sprintf(edgename, "loop(%d->%d dt %4.1fms)",
-            loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
-            loop.relative_pose.pos().x(),
-            loop.relative_pose.pos().y(),
-            loop.relative_pose.pos().z(),
-            loop.relative_pose.yaw()*57.3
-        );
+            sprintf(edgename, "loop(%d->%d dt %4.1fms)",
+                loop->id_a, loop->id_b, (loop->ts_b - loop->ts_a)/1000000.0,
+                loop->relative_pose.pos().x(),
+                loop->relative_pose.pos().y(),
+                loop->relative_pose.pos().z(),
+                loop->relative_pose.yaw()*57.3
+            );
 
-        char loopname[10] = {0};
-        sprintf(loopname, "Loop %d", count);
-        auto edge = agedge(g, AGNodes[loop.ts_a][loop.id_a], AGNodes[loop.ts_b][loop.id_b], loopname, 1);
-        agattrsym (edge, "label");
-        agattrsym (edge, "color");
-        agset(edge, "label", edgename);
-        agset(edge, "color", "orange");
+            char loopname[10] = {0};
+            sprintf(loopname, "Loop %d", count);
+            auto edge = agedge(g, AGNodes[loop->ts_a][loop->id_a], AGNodes[loop->ts_b][loop->id_b], loopname, 1);
+            agattrsym (edge, "label");
+            agattrsym (edge, "color");
+            agset(edge, "label", edgename);
+            agset(edge, "color", "orange");
 
-        count += 1;
+            count += 1;
+        }
     }
     FILE * f = fopen(cgraph_path.c_str(), "w");
     agwrite(g,f);

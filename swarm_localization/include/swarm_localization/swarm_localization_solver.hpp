@@ -96,7 +96,7 @@ class SwarmLocalizationSolver {
 
     std::map<unsigned int, unsigned int> node_kf_count;
 
-    std::vector<Swarm::LoopConnection> good_loops;
+    std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
     std::map<int, std::set<int>> loop_edges;
 
     bool has_new_keyframe = false;
@@ -115,13 +115,11 @@ class SwarmLocalizationSolver {
 
     void init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
 
-
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
-    std::vector<Swarm::LoopConnection> find_available_loops(std::map<int, std::set<int>> & loop_edges) const;
+    std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops(std::map<int, std::set<int>> & loop_edges) const;
 
     bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
-
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
@@ -136,7 +134,7 @@ class SwarmLocalizationSolver {
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
     CostFunction *
-    _setup_cost_function_by_loop(const std::vector<Swarm::LoopConnection> & loops, IDTSIndex _id_ts_poseindex) const;
+    _setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex _id_ts_poseindex) const;
 
     void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
     
@@ -189,7 +187,7 @@ public:
 
     void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
 
-    void add_new_detection(const Swarm::DetectedObject & detected);
+    void add_new_detection(const swarm_msgs::node_detected & detected);
 
     SwarmFrameState PredictSwarm(const SwarmFrame &sf) const;
 
