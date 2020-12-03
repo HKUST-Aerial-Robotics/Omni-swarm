@@ -188,6 +188,37 @@ struct SwarmLoopError {
         return res_count;
     }
 
+    template<typename T>
+    inline int detection_residual(const Swarm::DroneDetection * det, T const *const *_poses, T *_residual, int res_count) const {
+        int _ida = det->id_a;
+        int _idb = det->id_b;
+        int64_t _tsa = det->ts_a;
+        int64_t _tsb = det->ts_b;
+
+        if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
+            T relpose_est[4];
+            estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
+
+            T inv_dep = (T)det->inv_dep;
+            T rel_p[3];
+            rel_p[0] = T(det->p.x());
+            rel_p[1] = T(det->p.y());
+            rel_p[2] = T(det->p.z());
+
+            if (det->enable_depth) {
+                T est_inv_dep = 1.0/sqrt(relpose_est[0]*relpose_est[0] + relpose_est[1]*relpose_est[1] + relpose_est[2]*relpose_est[2]);
+                _residual[res_count] = (est_inv_dep - inv_dep)*COV_WIDTH_PERCENT;
+                res_count = res_count + 1;
+            }
+                
+            const double * tan_base = det->detect_tan_base.data();
+
+            unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
+            res_count = res_count + 2;
+        }
+        return res_count;
+    }
+
     int residual_count() {
         int res_count = 0;
         for (auto & loc : locs) {
@@ -208,6 +239,8 @@ struct SwarmLoopError {
         for (auto & loc : locs) {
             if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
                 res_count = loop_relpose_residual(static_cast<Swarm::LoopConnection*>(loc), _poses, _residual, res_count);
+            } else if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection) {
+                res_count = detection_residual(static_cast<Swarm::DroneDetection*>(loc), _poses, _residual, res_count);
             }
         }
 
