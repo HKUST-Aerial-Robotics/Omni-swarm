@@ -31,6 +31,14 @@ using namespace  swarmcomm_msgs;
 #define INVAILD_DISTANCE 65535
 #define YAW_UNAVAIL 32767
 
+
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward
+{
+    backward::SignalHandling sh;
+}
+
 inline double float_constrain(double v, double min, double max)
 {
     if (v < min) {
@@ -589,7 +597,7 @@ class LocalProxy {
 
     node_frame * find_lastest_nf_with_vo_in_queue(int _id) {
         //Find where this nf has vo available in our sldwin
-        for (unsigned int ptr = sf_queue.size() - 1; ptr >= 0; ptr --) {
+        for (int ptr = sf_queue.size() - 1; ptr >= 0; ptr --) {
             swarm_frame & _sf = sf_queue[ptr];
             for (unsigned int k = 0; k < _sf.node_frames.size(); k++) {
                 node_frame & _nf = _sf.node_frames[k];
@@ -867,6 +875,7 @@ public:
                                         ros::TransportHints().tcpNoDelay());
 
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
+        swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 10);
 
         swarm_detect_pub = nh.advertise<node_detected_xyzyaw>("/swarm_drones/node_detected", 10);
         
