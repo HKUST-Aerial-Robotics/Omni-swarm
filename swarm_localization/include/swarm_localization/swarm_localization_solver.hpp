@@ -118,9 +118,13 @@ class SwarmLocalizationSolver {
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
-    std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops(std::map<int, std::set<int>> & loop_edges) const;
+    std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const;
+
+    bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b) const;
 
     bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
+
+    bool detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _loc, Swarm::DroneDetection & loc_ret, double & dt_err, double & dpos) const;
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
