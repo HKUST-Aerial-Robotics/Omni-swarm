@@ -417,6 +417,19 @@ class SwarmFrame {
             return id2nodeframe.size();
         }
 
+        void print() const {
+            printf("SF %d Nodes: %ld\n", TSShort(ts), id2nodeframe.size());
+            for (auto it: id2nodeframe) {
+                printf("Node %d Pos [%3.2f, %3.2f, %3.2f] Yaw %3.2f\n",
+                    it.first,
+                    it.second.position().x(),
+                    it.second.position().y(),
+                    it.second.position().z(),
+                    it.second.yaw()
+                );
+            }
+        }
+
         bool has_distance_measurement(const int id) const {
             if (id2nodeframe.find(id) == id2nodeframe.end()) {
                 return 0;

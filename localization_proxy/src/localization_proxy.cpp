@@ -306,7 +306,7 @@ class LocalProxy {
         if (s_index >= 0) {
             auto & sf = sf_queue[s_index];
             for (node_frame & nf : sf.node_frames) {
-                if (nf.id == nd.remote_drone_id) {
+                if (nf.id == nd.remote_drone_id && nf.vo_available) {
                     nd.local_pose_remote.position.x = nf.position.x;
                     nd.local_pose_remote.position.y = nf.position.y;
                     nd.local_pose_remote.position.z = nf.position.z;
@@ -318,9 +318,12 @@ class LocalProxy {
                     nd.local_pose_remote.orientation.z = quat.z();
 
                     swarm_detect_pub.publish(nd);
+                    return;
                 }
             }
         }
+
+        printf("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
     }
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {
@@ -850,7 +853,8 @@ public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
         ROS_INFO("Start SWARM Drone Proxy");
         // bigger than 3 is ok
-        nh.param<int>("sf_queue_size", sf_queue_max_size, 10);
+        nh.param<int>("sf_queue_max_size", sf_queue_max_size, 10);
+        ROS_INFO("sf_queue_max_size %d", sf_queue_max_size);
         nh.param<int>("force_id", _force_id, -1); //Use a force id to publish the swarm frame messages, which means you can direct use gcs to compute same thing
         nh.param<int>("self_id", self_id, 0); 
 

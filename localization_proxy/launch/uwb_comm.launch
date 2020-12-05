@@ -8,6 +8,7 @@
             send_fused_freq: 0.0
             send_fused_basecoor_freq: 30.0
             self_id: 0
+            sf_queue_max_size: 20
        </rosparam>
     </node>
 </launch>
