@@ -1363,7 +1363,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
     }
 
-    ROS_INFO("All loops %ld good_2drone_measurements %ld averaged loop %ld", all_loops.size(), good_2drone_measurements.size(), ret.size());
+    ROS_INFO("All loops %ld good_2drone_measurements %ld averaged loop %ld good_detections %ld", all_loops.size(), good_2drone_measurements.size(), ret.size(), good_detections.size());
     return ret;
 }
 
@@ -1373,7 +1373,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_2drone_measurements.size());
+    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop and detections %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_2drone_measurements.size());
     has_new_keyframe = false;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
