@@ -26,7 +26,7 @@
 // pixel error/focal length
 #define COV_SPHERE_ERROR 0.1
 //percent of inv dep
-#define COV_WIDTH_PERCENT 1.0
+#define COV_WIDTH_PERCENT 0.5
 
 
 #define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)
