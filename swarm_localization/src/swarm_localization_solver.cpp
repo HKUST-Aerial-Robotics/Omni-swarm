@@ -104,6 +104,12 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         return 1;
     }
 
+    for (auto _id : _ids) {
+        if (all_nodes.find(_id) == all_nodes.end()) {
+            return 1;
+        }
+    }
+
     return 0;
 }
 
@@ -372,12 +378,13 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     process_frame_clear();
 
     auto _ids = sf.node_id_list;
-    for (int _id : _ids) {
-        all_nodes.insert(_id);
-    }
 
     int is_kf = judge_is_key_frame(sf);
     if (is_kf == 1) {
+        for (int _id : _ids) {
+            all_nodes.insert(_id);
+        }
+
         add_as_keyframe(sf);
         ROS_INFO("New kf found, sld win size %ld TS %d NFTS %d ID: [", sf_sld_win.size(),
             TSShort(sf_sld_win.back().ts),
