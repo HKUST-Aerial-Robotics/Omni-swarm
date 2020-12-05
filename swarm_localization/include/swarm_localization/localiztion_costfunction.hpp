@@ -175,7 +175,7 @@ struct SwarmLoopError {
             T relpose_est[4];
             estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
 
-            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d::Ones() * LOOP_COV,LOOP_YAWCOV);
+            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d::Ones() * LOOP_COV/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
             res_count = res_count + 4;
         }
         return res_count;
@@ -212,7 +212,7 @@ struct SwarmLoopError {
 
             if (det->enable_depth) {
                 T est_inv_dep = 1.0/sqrt(relpose_est[0]*relpose_est[0] + relpose_est[1]*relpose_est[1] + relpose_est[2]*relpose_est[2]);
-                _residual[res_count] = (est_inv_dep - inv_dep)*COV_WIDTH_PERCENT;
+                _residual[res_count] = (est_inv_dep - inv_dep)*COV_WIDTH_PERCENT*ERROR_NORMLIZED;
                 res_count = res_count + 1;
             }
                 

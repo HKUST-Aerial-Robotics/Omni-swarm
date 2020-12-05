@@ -1,0 +1,27 @@
+<launch>
+    <arg name="rand" default="10.0" />
+    <arg name="viz" default="false" />
+    <arg name="output" default="screen" />
+    <arg name="cgraph" default="true" />
+
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
+        <rosparam>
+            force_freq: 10
+            max_accept_cost: 100
+            max_keyframe_num: 10000
+            min_keyframe_num: 1
+            thread_num: 8
+            min_kf_movement : 0.2
+            init_xy_movement : 1.0
+            init_z_movement : 0.5
+            pub_swarm_odom: true
+        </rosparam>
+        <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
+        <param name="initial_random_noise" value="$(arg rand)" type="double" />
+        <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
+        <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
+    </node>
+    <group if="$(arg viz)">
+        <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
+    </group>
+</launch>

@@ -15,9 +15,9 @@
 #define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
 #define VO_DRIFT_METER_Z 0.005
 #define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
-#define DISTANCE_MEASURE_ERROR 0.1
-#define LOOP_COV 0.05
-#define LOOP_YAWCOV 0.02
+#define DISTANCE_MEASURE_ERROR 0.2
+#define LOOP_COV 0.15
+#define LOOP_YAWCOV 0.1
 #define ERROR_NORMLIZED 0.01
 #define UNIDENTIFIED_MIN_ID 1000
 #define NO_ANNETAPOS
@@ -171,6 +171,7 @@ public:
 
 class LoopConnection: public GeneralMeasurement2Drones {
 public:
+    int avg_count = 1;
     Pose relative_pose;
     LoopConnection(swarm_msgs::LoopConnection loc) {
         id_a = loc.id_a;
