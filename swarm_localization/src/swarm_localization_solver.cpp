@@ -29,7 +29,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_POSES
 // #define DEBUG_OUTPUT_LOOPS
 // #define DEBUG_OUTPUT_COV
-#define DEBUG_OUTPUT_NEW_KF
+// #define DEBUG_OUTPUT_NEW_KF
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -592,20 +592,20 @@ double SwarmLocalizationSolver::solve() {
 
     estimate_observability();
 
-    if (!finish_init) {
-        //Use da initer to initial the system
-        LocalizationDAInit DAIniter(sf_sld_win, params.DA_TRI_accept_thres);
-        std::map<int, int> mapper;
-        bool success = DAIniter.try_data_association(mapper);
-        if (success) {
-            ROS_INFO("Success initial system with visual data association");
-            for (auto it : mapper) {
-                ROS_INFO("UNIDENTIFIED %d ASSOCIATION %d", it.first, it.second);
-            }
-        } else {
-            ROS_INFO("Could not initail system with visual data association");
-        }
-    }
+    // if (!finish_init) {
+    //     //Use da initer to initial the system
+    //     LocalizationDAInit DAIniter(sf_sld_win, params.DA_TRI_accept_thres);
+    //     std::map<int, int> mapper;
+    //     bool success = DAIniter.try_data_association(mapper);
+    //     if (success) {
+    //         ROS_INFO("Success initial system with visual data association");
+    //         for (auto it : mapper) {
+    //             ROS_INFO("UNIDENTIFIED %d ASSOCIATION %d", it.first, it.second);
+    //         }
+    //     } else {
+    //         ROS_INFO("Could not initail system with visual data association");
+    //     }
+    // }
 
 
     if (!finish_init) {
@@ -1058,10 +1058,16 @@ void SwarmLocalizationSolver::estimate_observability() {
     if (!enable_to_init) {
 
         if (_loop_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
-            ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld", 
+            ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld. Swarm Frame Sliding Window:", 
                 _loop_observable_set.size(),
                 all_nodes.size()
             );
+
+            for (auto & sf : sf_sld_win) {
+                sf.print();
+                printf("\n");
+            }
+
         } else {
             ROS_INFO("Solve with loop");
             enable_to_init = true;
