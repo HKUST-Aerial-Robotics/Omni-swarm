@@ -17,14 +17,23 @@
 #define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
 #define DISTANCE_MEASURE_ERROR 0.1
 #define LOOP_COV 0.05
-#define LOOP_YAWCOV 0.01
+#define LOOP_YAWCOV 0.02
 #define ERROR_NORMLIZED 0.01
 #define UNIDENTIFIED_MIN_ID 1000
-//#define DETECTION_COV_POS 10
+#define NO_ANNETAPOS
+#define ENABLE_DETECTION
+#define ENABLE_LOOP
+// pixel error/focal length
+#define COV_SPHERE_ERROR 0.1
+//percent of inv dep
+#define COV_WIDTH_PERCENT 1.0
+
 
 #define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)
 using namespace Swarm;
 
+typedef std::vector<Vector3d> vec_array;
+typedef std::vector<Quaterniond> quat_array;
 typedef std::map<int, double> DisMap;
 
 inline int TSShort(int64_t ts) {
