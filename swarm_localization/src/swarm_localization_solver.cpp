@@ -855,6 +855,8 @@ SwarmLocalizationSolver::_setup_cost_function_by_nf_win(std::vector<NodeFrame> &
         ROS_WARN("Set cost function with NF has 0 res num; NF id %d WIN %ld", nf_win[0].id, nf_win.size());
         // exit(-1);
         return nullptr;
+    } else {
+        // ROS_INFO("nf_win of %d res_num %d", _id, res_num);
     }
 
     cost_function->SetNumResiduals(res_num);
@@ -901,6 +903,8 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
         problem.AddResidualBlock(cf , nullptr, pose_win);
+    } else {
+        ROS_WARN("Emptry swarm fram horizon error");
     }
 }
 
@@ -1304,6 +1308,7 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
         auto loop = new Swarm::LoopConnection(loop_vec[0]);
         
         loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
+        loop->avg_count = loop_vec.size();
         ret.push_back(loop);
     }
 
@@ -1315,6 +1320,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
     std::vector<Swarm::LoopConnection> good_loops;
     std::vector<Swarm::DroneDetection> good_detections;
     std::vector<GeneralMeasurement2Drones*> ret;
+
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
@@ -1398,8 +1404,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     for (int _id: all_nodes) {
         this->setup_problem_with_sfherror(est_poses_idts, problem, _id);       
     }
-
-    num_res_sf = problem.NumResiduals();
 
     ROS_INFO("SFH residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
 
@@ -1608,15 +1612,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
         {
             auto loop = static_cast<Swarm::LoopConnection * >(_loop);
             
-            // sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
-            //     loop.id_a, loop.id_b, (loop.ts_b - loop.ts_a)/1000000.0,
-            //     loop.relative_pose.pos().x(),
-            //     loop.relative_pose.pos().y(),
-            //     loop.relative_pose.pos().z(),
-            //     loop.relative_pose.yaw()*57.3
-            // );
-
-            sprintf(edgename, "loop(%d->%d dt %4.1fms)",
+            sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
                 loop->id_a, loop->id_b, (loop->ts_b - loop->ts_a)/1000000.0,
                 loop->relative_pose.pos().x(),
                 loop->relative_pose.pos().y(),
@@ -1624,9 +1620,25 @@ void SwarmLocalizationSolver::generate_cgraph() {
                 loop->relative_pose.yaw()*57.3
             );
 
+            // sprintf(edgename, "loop(%d->%d T:%4.1fs)", loop->id_a, loop->id_b, (loop->ts_b - loop->ts_a)/1e9);
+
             char loopname[10] = {0};
             sprintf(loopname, "Loop %d", count);
             auto edge = agedge(g, AGNodes[loop->ts_a][loop->id_a], AGNodes[loop->ts_b][loop->id_b], loopname, 1);
+            agattrsym (edge, "label");
+            agattrsym (edge, "color");
+            agset(edge, "label", edgename);
+            agset(edge, "color", "orange");
+
+            count += 1;
+        } else {
+            auto det = static_cast<Swarm::DroneDetection * >(_loop);
+            sprintf(edgename, "Detection(%d->%d)",
+                det->id_a, det->id_b);
+
+            char loopname[10] = {0};
+            sprintf(loopname, "Det %d", count);
+            auto edge = agedge(g, AGNodes[det->ts_a][det->id_a], AGNodes[det->ts_b][det->id_b], loopname, 1);
             agattrsym (edge, "label");
             agattrsym (edge, "color");
             agset(edge, "label", edgename);
