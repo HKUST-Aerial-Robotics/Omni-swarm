@@ -21,24 +21,6 @@ using ceres::Covariance;
 using namespace Swarm;
 using namespace Eigen;
 
-typedef std::vector<Vector3d> vec_array;
-typedef std::vector<Quaterniond> quat_array;
-
-#define NO_ANNETAPOS
-
-
-
-#define DETECTION_COV_POS 1
-
-#define DETECTION_COV_ANG 1
-#define ENABLE_DETECTION
-// #define INIT_FXIED_YAW
-#define ENABLE_LOOP
-
-// pixel error/focal length
-#define COV_SPHERE_ERROR 0.02
-//percent of width error
-#define COV_WIDTH_PERCENT 1.0
 
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
@@ -107,6 +89,17 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
     tmp[2] = poseb[2] - posea[2];
 
     YawRotatePoint(-posea[3], tmp, dpose);
+}
+
+
+//dpose = a.b
+template<typename T>
+inline void PoseMulti(const T *posea, const T *poseb, T *pose) {
+    pose[3] = wrap_angle(poseb[3] + posea[3]);
+    YawRotatePoint(posea[3], poseb, pose);
+    pose[0] = pose[0] + posea[0];
+    pose[0] = pose[1] + posea[1];
+    pose[0] = pose[2] + posea[2];
 }
 
 template<typename T>
@@ -197,7 +190,19 @@ struct SwarmLoopError {
 
         if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
             T relpose_est[4];
-            estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
+
+            T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
+            get_pose(_ida, _tsa, _poses, posea);
+            get_pose(_idb, _tsb, _poses, poseb);
+
+            det->dpose_self_a.to_vector_xyzyaw(dposea);
+            det->dpose_self_b.to_vector_xyzyaw(dposeb);
+
+            PoseMulti(posea, dposea, _posea);
+            PoseMulti(poseb, dposeb, _poseb);
+
+
+            DeltaPose(_posea, _posea, relpose_est);
 
             T inv_dep = (T)det->inv_dep;
             T rel_p[3];

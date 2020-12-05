@@ -17,14 +17,23 @@
 #define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
 #define DISTANCE_MEASURE_ERROR 0.1
 #define LOOP_COV 0.05
-#define LOOP_YAWCOV 0.01
+#define LOOP_YAWCOV 0.02
 #define ERROR_NORMLIZED 0.01
 #define UNIDENTIFIED_MIN_ID 1000
-//#define DETECTION_COV_POS 10
+#define NO_ANNETAPOS
+#define ENABLE_DETECTION
+#define ENABLE_LOOP
+// pixel error/focal length
+#define COV_SPHERE_ERROR 0.1
+//percent of inv dep
+#define COV_WIDTH_PERCENT 0.5
+
 
 #define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)
 using namespace Swarm;
 
+typedef std::vector<Vector3d> vec_array;
+typedef std::vector<Quaterniond> quat_array;
 typedef std::map<int, double> DisMap;
 
 inline int TSShort(int64_t ts) {
@@ -35,6 +44,21 @@ inline int64_t TSLong(int64_t ts) {
     return (ts/1000000)%10000000000;
 }
 
+
+inline Eigen::Matrix<double, 2, 3> tangent_base_for_unit_detect(const Eigen::Vector3d & pts_j) {
+    Eigen::Matrix<double, 2, 3> tangent_base;
+    Eigen::Vector3d b1, b2;
+    Eigen::Vector3d a = pts_j.normalized();
+    Eigen::Vector3d tmp(0, 0, 1);
+    if(a == tmp)
+        tmp << 1, 0, 0;
+    b1 = (tmp - a * (a.transpose() * tmp)).normalized();
+    b2 = a.cross(b1);
+    tangent_base.block<1, 3>(0, 0) = b1.transpose();
+    tangent_base.block<1, 3>(1, 0) = b2.transpose();
+
+    return tangent_base;
+}
 
 using namespace Eigen;
 namespace Swarm {
@@ -129,6 +153,8 @@ class GeneralMeasurement2Drones {
 public:
     int64_t ts_a;
     int64_t ts_b;
+    ros::Time stamp_a;
+    ros::Time stamp_b;
     int id_a;
     int id_b;
     Pose self_pose_a;
@@ -152,6 +178,9 @@ public:
         ts_a = loc.ts_a.toNSec();
         ts_b = loc.ts_b.toNSec();
 
+        stamp_a = loc.ts_a;
+        stamp_b = loc.ts_b;
+
         relative_pose = Pose(loc.dpos, loc.dyaw);
 
         self_pose_a = Pose(loc.self_pose_a);
@@ -165,6 +194,9 @@ public:
         id_b = loc.id_b;
         ts_a = loc.ts_a;
         ts_b = loc.ts_b;
+
+        stamp_a = loc.stamp_a;
+        stamp_b = loc.stamp_b;
 
         relative_pose = loc.relative_pose;
 
@@ -183,17 +215,24 @@ public:
 class DroneDetection: public GeneralMeasurement2Drones {
 
 public:
-    Eigen::Vector3d detect_tan_base;
+    Eigen::Matrix<double, 2, 3> detect_tan_base;
     Eigen::Vector3d p = Eigen::Vector3d::Zero();
     double inv_dep = 0;
     double probaility = 0;
 
     bool enable_depth = false;
-
-    DroneDetection(swarm_msgs::node_detected_xyzyaw & nd, bool _enable_depth = true) {
+    
+    Pose dpose_self_a;
+    Pose dpose_self_b;
+    
+    DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_depth = true) {
         id_a = nd.self_drone_id;
         id_b = nd.remote_drone_id;
         ts_a = nd.header.stamp.toNSec();
+        ts_b = nd.header.stamp.toNSec();
+
+        stamp_a = nd.header.stamp;
+        stamp_b = nd.header.stamp;
 
         probaility = nd.probaility;
 
@@ -202,6 +241,7 @@ public:
 
         inv_dep = nd.inv_dep;
         p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);
+        p.normalize();
         meaturement_type = Detection;
 
         if (_enable_depth && nd.enable_scale) {
@@ -211,6 +251,35 @@ public:
             enable_depth = false;
             res_count = 2;
         }
+
+
+        detect_tan_base = tangent_base_for_unit_detect(p);
+    }
+
+
+    DroneDetection(const DroneDetection & dronedet) {
+        id_a = dronedet.id_a;
+        id_b = dronedet.id_b;
+        ts_a = dronedet.ts_a;
+        ts_b = dronedet.ts_b;
+
+        stamp_a = dronedet.stamp_a;
+        stamp_b = dronedet.stamp_b;
+
+        probaility = dronedet.probaility;
+
+        self_pose_a = dronedet.self_pose_a;
+        self_pose_b = dronedet.self_pose_b;
+
+        inv_dep = dronedet.inv_dep;
+        p = dronedet.p;
+        p.normalize();
+        meaturement_type = Detection;
+
+        enable_depth = dronedet.enable_depth;
+        res_count = dronedet.res_count;
+
+        detect_tan_base = dronedet.detect_tan_base;
     }
 
     DroneDetection() {

@@ -56,6 +56,7 @@ using namespace std::chrono;
 
 #define RANDOM_DELETE_KF 
 
+#define ENABLE_DEPTH true
 
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
@@ -1018,7 +1019,7 @@ void SwarmLocalizationSolver::estimate_observability() {
         delete p;
     }
     good_2drone_measurements.clear();
-    good_2drone_measurements = find_available_loops(loop_edges);
+    good_2drone_measurements = find_available_loops_detections(loop_edges);
 
     // ROS_INFO("GOOD LOOPS NUM %ld", good_2drone_measurements.size());
     for (int _id : all_nodes) {
@@ -1088,6 +1089,108 @@ void SwarmLocalizationSolver::estimate_observability() {
     printf("\n");
 }
 
+bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b) const {
+    ros::Time tsa = loc->stamp_a;
+    ros::Time tsb = loc->stamp_b;
+    
+    int _ida = loc->id_a;
+    int _idb = loc->id_b;
+    double min_ts_err_a = 10000;
+    double min_ts_err_b = 10000;
+
+        for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
+        //Find suitable timestamp for tsa
+        //If the first frame is older than tsa, than useless
+
+        if (sf_sld_win[i].has_node(_ida) && fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec()) < min_ts_err_a) {
+            min_ts_err_a = fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec());
+            _index_a = i;
+        }
+
+        if (sf_sld_win[i].has_node(_idb) && fabs((sf_sld_win[i].id2nodeframe.at(_idb).stamp - tsb).toSec()) < min_ts_err_b) {
+            min_ts_err_b = fabs((sf_sld_win.at(i).id2nodeframe.at(_idb).stamp - tsb).toSec());
+            _index_b = i;
+        }
+    }
+
+    if (_index_a < 0 || _index_b < 0) {
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        return false;
+    }
+    return true;
+}
+
+
+bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _det, Swarm::DroneDetection & det_ret, double & dt_err, double & dpos) const {
+    ros::Time ts = _det.header.stamp;
+    
+    int _ida = _det.self_drone_id;
+    int _idb = _det.remote_drone_id;
+    int _index_a = -1;
+    int _index_b = -1;
+    double min_ts_err_a = 10000;
+    double min_ts_err_b = 10000;
+
+    //Give up if first timestamp is bigger than 1 sec than tsa
+    if (sf_sld_win.empty()) {
+        ROS_WARN("Can't find loop No sld win");
+        return false;
+    }
+
+    // if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
+    //     ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+    //     return false;
+    // }
+
+    det_ret = Swarm::DroneDetection(_det, ENABLE_DEPTH);
+
+    bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b);
+    if (!success) {
+        return false;
+    }
+   
+    const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
+    const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
+
+
+
+    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, det_ret.self_pose_a, true); //2->0
+    Pose dpose_self_b = Pose::DeltaPose(det_ret.self_pose_b, _nf_b.self_pose, true); //1->3
+
+    det_ret.dpose_self_a = dpose_self_a;
+    det_ret.dpose_self_b = dpose_self_b;
+
+    det_ret.ts_a = _nf_a.ts;
+    det_ret.ts_b = _nf_b.ts;
+    det_ret.self_pose_a = _nf_a.pose();
+    det_ret.self_pose_b = _nf_b.pose();
+
+#ifdef DEBUG_OUTPUT_DETS
+
+    printf("SELF POSE A");
+    _nf_a.self_pose.print();
+    printf("SELF POSE B");
+    _nf_b.self_pose.print();
+    printf("SELF POSE A1");
+    det_ret.self_pose_a.print();
+    printf("SELF POSE B1");
+    det_ret.self_pose_b.print();
+
+    printf("DPOSE A");
+    dpose_self_a.print();
+    printf("DPOSE B");
+    dpose_self_b.print();
+
+    printf("Det [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
+        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
+    new_loop.print();
+#endif
+    dt_err = min_ts_err_a + min_ts_err_b;
+    dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
+    return true;
+}
+
+
 bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
@@ -1112,26 +1215,10 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 
     loc_ret = Swarm::LoopConnection(_loc);
 
-    for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
-        //Find suitable timestamp for tsa
-        //If the first frame is older than tsa, than useless
-
-        if (sf_sld_win[i].has_node(_ida) && fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec()) < min_ts_err_a) {
-            min_ts_err_a = fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec());
-            _index_a = i;
-        }
-
-        if (sf_sld_win[i].has_node(_idb) && fabs((sf_sld_win[i].id2nodeframe.at(_idb).stamp - tsb).toSec()) < min_ts_err_b) {
-            min_ts_err_b = fabs((sf_sld_win.at(i).id2nodeframe.at(_idb).stamp - tsb).toSec());
-            _index_b = i;
-        }
-    }
-
-    if (_index_a < 0 || _index_b < 0) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1188", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+    bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b);
+    if (!success) {
         return false;
     }
-
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
@@ -1210,9 +1297,10 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
     return ret;
 }
 
-std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops(std::map<int, std::set<int>> & loop_edges) const {
+std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const {
     loop_edges.clear();
     std::vector<Swarm::LoopConnection> good_loops;
+    std::vector<Swarm::DroneDetection> good_detections;
     std::vector<GeneralMeasurement2Drones*> ret;
     for (auto _loc : all_loops) {
         Swarm::LoopConnection loc_ret;
@@ -1234,10 +1322,41 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
     }
+
     auto ret_loops = average_same_loop(good_loops);
     for (auto p : ret_loops) {
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
     }
+
+
+    for (auto _det : all_detections) {
+        Swarm::DroneDetection det_ret;
+        double dt_err = 0;
+        double dpos;
+        if(detection_from_src_node_detection(_det, det_ret, dt_err, dpos)) {
+            // ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
+            //     loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
+            //     loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
+            //     loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
+            good_detections.push_back(det_ret);
+            if (loop_edges.find(det_ret.id_a) == loop_edges.end()) {
+                loop_edges[det_ret.id_a] = std::set<int>();
+            }
+            if (loop_edges.find(det_ret.id_b) == loop_edges.end()) {
+                loop_edges[det_ret.id_b] = std::set<int>();
+            }
+            loop_edges[det_ret.id_a].insert(det_ret.id_b);
+            loop_edges[det_ret.id_b].insert(det_ret.id_a);
+        }
+    }
+
+
+    // auto ret_loops = average_same_loop(good_loops);
+    for (auto p : good_detections) {
+        auto ptr = new Swarm::DroneDetection(p);
+        ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
+    }
+
     ROS_INFO("All loops %ld good_2drone_measurements %ld averaged loop %ld", all_loops.size(), good_2drone_measurements.size(), ret.size());
     return ret;
 }

@@ -46,21 +46,6 @@ using namespace std::chrono;
 
 
 
-Eigen::Matrix<double, 2, 3> tangent_base_for_unit_detect(const Eigen::Vector3d & pts_j) {
-    Eigen::Matrix<double, 2, 3> tangent_base;
-    Eigen::Vector3d b1, b2;
-    Eigen::Vector3d a = pts_j.normalized();
-    Eigen::Vector3d tmp(0, 0, 1);
-    if(a == tmp)
-        tmp << 1, 0, 0;
-    b1 = (tmp - a * (a.transpose() * tmp)).normalized();
-    b2 = a.cross(b1);
-    tangent_base.block<1, 3>(0, 0) = b1.transpose();
-    tangent_base.block<1, 3>(1, 0) = b2.transpose();
-
-    return tangent_base;
-}
-
 class SwarmLocalizationNode {
 
     void add_drone_id(int _id) {
@@ -151,8 +136,9 @@ class SwarmLocalizationNode {
 
     double t_last = 0;
 protected:
-    void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        
+    void on_swarm_detected(const swarm_msgs::node_detected_xyzyaw & sd) {
+        ROS_INFO("Add new detector from %d to %d", sd.self_drone_id, sd.remote_drone_id);
+        this->swarm_localization_solver->add_new_detection(sd);
     }
 
     void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
