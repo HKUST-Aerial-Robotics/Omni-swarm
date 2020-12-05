@@ -21,24 +21,6 @@ using ceres::Covariance;
 using namespace Swarm;
 using namespace Eigen;
 
-typedef std::vector<Vector3d> vec_array;
-typedef std::vector<Quaterniond> quat_array;
-
-#define NO_ANNETAPOS
-
-
-
-#define DETECTION_COV_POS 1
-
-#define DETECTION_COV_ANG 1
-#define ENABLE_DETECTION
-// #define INIT_FXIED_YAW
-#define ENABLE_LOOP
-
-// pixel error/focal length
-#define COV_SPHERE_ERROR 0.05
-//percent of width error
-#define COV_WIDTH_PERCENT 1.0
 
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
