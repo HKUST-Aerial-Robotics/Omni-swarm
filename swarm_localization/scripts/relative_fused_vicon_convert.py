@@ -16,7 +16,6 @@ class Converter:
 
         self.vicon_sub = rospy.Subscriber(self_odom_topic, Odometry, self.self_vicon_cb, queue_size=1)
 
-
         self.vicon_sub = rospy.Subscriber(self_odom_topic, Odometry, self.self_vicon_cb, queue_size=1)
 
         self.relative_fused_sub = rospy.Subscriber("/swarm_drones/swarm_drone_fused_relative", swarm_fused_relative, self.relative_fused_cb, queue_size=1)

@@ -890,11 +890,11 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
         } 
 
     }
-        //Do not reestimate first
-        // pose_win.erase(pose_win.begin());
+
     if (_id == self_id) {
         problem.SetParameterBlockConstant(pose_win[0]);
     }
+
     if (nfs.size() < 2) {
         ROS_INFO("Frame nums for id %d is to small:%ld", _id, nfs.size());
         return;
