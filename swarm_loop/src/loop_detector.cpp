@@ -51,8 +51,8 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         }
     }
 
-    if (dir_count < 3) {
-        ROS_INFO("Give up frame_desc with less than 3(%d) available images", dir_count);
+    if (dir_count < MIN_DIRECTION_LOOP) {
+        ROS_INFO("Give up frame_desc with less than %d(%d) available images", MIN_DIRECTION_LOOP, dir_count);
         return;
     }
 
