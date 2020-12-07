@@ -11,6 +11,8 @@
 #include <nav_msgs/Odometry.h>
 #include <mutex>
 
+int MIN_DIRECTION_LOOP;
+
 using namespace std::chrono; 
 
 inline double DT_MS(system_clock::time_point start) {
@@ -171,6 +173,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
+    nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
 
     nh.param<std::string>("camera_config_path",camera_config_path, 
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");

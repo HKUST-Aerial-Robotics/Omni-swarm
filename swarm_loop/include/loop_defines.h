@@ -74,7 +74,7 @@ extern int ACCEPT_MIN_3D_PTS;
 
 #define ACCEPT_SP_MATCH_DISTANCE 0.7
 
-#define MIN_DIRECTION_LOOP 3
+extern int MIN_DIRECTION_LOOP;
 
 #define MIN_MATCH_PRE_DIR 1
 
