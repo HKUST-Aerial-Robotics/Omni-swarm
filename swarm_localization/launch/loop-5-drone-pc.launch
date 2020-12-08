@@ -10,8 +10,8 @@
             max_accept_cost: 100
             max_keyframe_num: 10000
             min_keyframe_num: 1
-            thread_num: 8
-            min_kf_movement : 0.2
+            thread_num: 20
+            min_kf_movement : 0.5
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true

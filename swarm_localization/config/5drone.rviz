@@ -15,6 +15,7 @@ Panels:
         - /Odometry1/Shape1
         - /Pose1
         - /Pose2
+        - /Odometry2
       Splitter Ratio: 0.5006552934646606
     Tree Height: 751
   - Class: rviz/Selection
@@ -456,6 +457,40 @@ Visualization Manager:
       Topic: /SwarmNode2/pose
       Unreliable: false
       Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 1
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /vins_estimator/odometry
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -484,25 +519,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 6.190576076507568
+      Distance: 5.84162712097168
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.4606750011444092
-        Y: -1.5317285060882568
-        Z: 6.6152497311122715e-6
+        X: 3.559852361679077
+        Y: 0.7349355220794678
+        Z: 6.734459020663053e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4597976803779602
+      Pitch: -0.1052020937204361
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.284907341003418
+      Yaw: 3.349893569946289
     Saved: ~
 Window Geometry:
   Displays:

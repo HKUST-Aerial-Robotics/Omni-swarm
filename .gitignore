@@ -28,3 +28,4 @@ swarm_loop/models/hfnet_v2_netvlad/saved_model.pb
 swarm_loop/models/hfnet_v2_netvlad_trt/
 swarm_loop/models/hfnet_v2_superpoint_trt/
 *.pb
+data_analyze/.ipynb_checkpoints/

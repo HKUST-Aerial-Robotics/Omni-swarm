@@ -16,8 +16,9 @@
 #define VO_DRIFT_METER_Z 0.005
 #define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
 #define DISTANCE_MEASURE_ERROR 0.2
-#define LOOP_COV 0.15
-#define LOOP_YAWCOV 0.1
+#define LOOP_COV_XY 0.5
+#define LOOP_COV_Z 0.1
+#define LOOP_YAWCOV 0.05
 #define ERROR_NORMLIZED 0.01
 #define UNIDENTIFIED_MIN_ID 1000
 #define NO_ANNETAPOS

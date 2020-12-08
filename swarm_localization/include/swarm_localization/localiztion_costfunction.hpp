@@ -175,7 +175,7 @@ struct SwarmLoopError {
             T relpose_est[4];
             estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
 
-            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d::Ones() * LOOP_COV/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
+            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
             res_count = res_count + 4;
         }
         return res_count;
