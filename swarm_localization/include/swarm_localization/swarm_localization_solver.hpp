@@ -63,6 +63,8 @@ struct swarm_localization_solver_params{
     std::string cgraph_path;
     float DA_TRI_accept_thres = 0.1;
     bool enable_cgraph_generation = false;
+    float loop_outlier_threshold_pos = 1.0;
+    float loop_outlier_threshold_yaw = 1.0;
 };
 
 class SwarmLocalizationSolver {
@@ -181,6 +183,9 @@ public:
     ros::Time last_est_time_tick = ros::Time::now();
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
+    float loop_outlier_threshold_pos = 1.0;
+    float loop_outlier_threshold_yaw = 1.0;
+
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
 

@@ -49,7 +49,6 @@ inline void position_error(const T *posea, const T *poseb, T *error,
 }
 
 
-//TODO: Add direction to this
 template<typename T>
 inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
@@ -177,6 +176,9 @@ struct SwarmLoopError {
 
             pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
             res_count = res_count + 4;
+        } else {
+            ROS_ERROR("Loop not found in residual.");
+            exit(-1);
         }
         return res_count;
     }
@@ -202,7 +204,7 @@ struct SwarmLoopError {
             PoseMulti(poseb, dposeb, _poseb);
 
 
-            DeltaPose(_posea, _posea, relpose_est);
+            DeltaPose(_posea, _poseb, relpose_est);
 
             T inv_dep = (T)det->inv_dep;
             T rel_p[3];
@@ -220,6 +222,9 @@ struct SwarmLoopError {
 
             unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
             res_count = res_count + 2;
+        } else {
+            ROS_ERROR("Detection not found in residual.");
+            exit(-1);
         }
         return res_count;
     }
@@ -233,6 +238,9 @@ struct SwarmLoopError {
             int64_t _tsb = loc->ts_b;
             if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
                 res_count = res_count + loc->res_count;
+            } else {
+                ROS_ERROR("Loop not found in residual count.");
+                exit(-1);
             }
         }
         return res_count;

@@ -62,7 +62,9 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
-            cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation)
+            cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
+            loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
+            loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw)
     {
     }
 
@@ -1164,6 +1166,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b);
     if (!success) {
+        ROS_WARN("Detection find failed");
         return false;
     }
    
@@ -1252,32 +1255,26 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     loc_ret.ts_b = _nf_b.ts;
     loc_ret.self_pose_a = _nf_a.pose();
     loc_ret.self_pose_b = _nf_b.pose();
-
-#ifdef DEBUG_OUTPUT_LOOPS
-
-    printf("SELF POSE A");
-    _nf_a.self_pose.print();
-    printf("SELF POSE B");
-    _nf_b.self_pose.print();
-    printf("SELF POSE A1");
-    loc_ret.self_pose_a.print();
-    printf("SELF POSE B1");
-    loc_ret.self_pose_b.print();
-
-    printf("DPOSE A");
-    dpose_self_a.print();
-    printf("DPOSE B");
-    dpose_self_b.print();
-
-    printf("ORIGINAL LOOP");
-    loc_ret.relative_pose.print();
-    printf("loop DT%fms [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", (tsa - tsb).toSec()*1000, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
-        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
-    new_loop.print();
-#endif
     loc_ret.relative_pose = new_loop;
+    
+    if (finish_init) {
+        const double * posea = est_poses_tsid.at(_nf_a.ts).at(_ida);
+        const double * poseb = est_poses_tsid.at(_nf_b.ts).at(_idb);
+        auto posea_est = Pose(posea, true);
+        auto poseb_est = Pose(poseb, true);
+        Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
+        Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
+        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
+            ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Give up this loop", 
+                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
+            return false;
+        }
+    }
+
     dt_err = min_ts_err_a + min_ts_err_b;
+
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
+
     return true;
 }
 
@@ -1377,7 +1374,9 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
     }
 
-    ROS_INFO("All loops %ld good_2drone_measurements %ld averaged loop %ld good_detections %ld", all_loops.size(), good_2drone_measurements.size(), ret.size(), good_detections.size());
+    ROS_INFO("All loops %ld, all detections %ld good_2drone_measurements %ld averaged loop %ld good_detections %ld",
+        all_loops.size(), all_detections.size(),
+        ret.size(), ret.size(), good_detections.size());
     return ret;
 }
 

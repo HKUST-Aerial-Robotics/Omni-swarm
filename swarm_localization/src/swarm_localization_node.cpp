@@ -378,7 +378,7 @@ public:
                                     &SwarmLocalizationNode::on_loop_connection_received, this, 
                                     ros::TransportHints().tcpNoDelay());
         
-        swarm_detected_sub = nh.subscribe("/swarm_detection/swarm_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
+        swarm_detected_sub = nh.subscribe("/swarm_drones/node_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
         std::string swarm_node_config;
 
         swarm_localization_solver_params solver_params;
@@ -392,6 +392,8 @@ public:
         nh.param<float>("min_kf_movement", solver_params.kf_movement, 0.4f);
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
+        nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
+        nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);

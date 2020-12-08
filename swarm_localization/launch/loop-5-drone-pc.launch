@@ -3,6 +3,7 @@
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
     <arg name="cgraph" default="true" />
+    <arg name="bag" default="true" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
@@ -15,13 +16,19 @@
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
+            loop_outlier_threshold_pos: 1.0
+            loop_outlier_threshold_yaw: 0.5
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
         <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
+        <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />
     </node>
     <group if="$(arg viz)">
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
     </group>
+    <node pkg="rosbag" type="record" name="rosbag_record_local" 
+        args="record -O /home/xuhao/swarm_ws/src/swarm_localization/data_analyze/data/swarm_local_pc.bag -a" 
+        if="$(arg bag)" />
 </launch>
