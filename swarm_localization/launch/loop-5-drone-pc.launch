@@ -18,6 +18,9 @@
             pub_swarm_odom: true
             loop_outlier_threshold_pos: 1.0
             loop_outlier_threshold_yaw: 0.5
+            enable_detection: false
+            enable_loop: true
+            enable_distance: true
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />

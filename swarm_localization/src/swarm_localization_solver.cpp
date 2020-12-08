@@ -64,7 +64,10 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
             cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
             loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
-            loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw)
+            loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
+            enable_detection(_params.enable_detection),
+            enable_loop(_params.enable_loop),
+            enable_distance(_params.enable_distance)
     {
     }
 
@@ -348,13 +351,17 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
 }
 
 void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_xyzyaw & detected) {
-    all_detections.push_back(detected);
-    has_new_keyframe = true;
+    if (enable_detection) {
+        all_detections.push_back(detected);
+        has_new_keyframe = true;
+    }
 }
 
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
-    all_loops.push_back(loop_con);
-    has_new_keyframe = true;
+    if (enable_loop) {
+        all_loops.push_back(loop_con);
+        has_new_keyframe = true;
+    }
 }
 
 
@@ -1345,7 +1352,6 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
     }
 
-
     for (auto _det : all_detections) {
         Swarm::DroneDetection det_ret;
         double dt_err = 0;
@@ -1366,7 +1372,6 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[det_ret.id_b].insert(det_ret.id_a);
         }
     }
-
 
     // auto ret_loops = average_same_loop(good_loops);
     for (auto p : good_detections) {
