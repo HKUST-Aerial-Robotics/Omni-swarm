@@ -931,7 +931,7 @@ void SwarmLocalizationSolver::cutting_edges() {
 
     int distance_count = 0;
     int total_distance_count = 0;
-    int detection_count = 0, total_detection_count = 0;
+    int total_detection_count = all_detections.size();
 
     SwarmFrame & sf0 = sf_sld_win[0];
     for (auto & it : sf0.id2nodeframe) {
@@ -986,7 +986,7 @@ void SwarmLocalizationSolver::cutting_edges() {
         }
     }
 
-    ROS_INFO("Edge Optimized DIS %d(%d) DET %d(%d) LOOPS %ld", distance_count, total_distance_count, detection_count, total_detection_count, good_2drone_measurements.size());
+    ROS_INFO("Edge Optimized DIS %d(%d) All Det and LOOPS %ld", distance_count, total_distance_count, total_detection_count, good_2drone_measurements.size());
     /*
     for (auto & sf : sf_sld_win) {
         for (auto & it : sf.id2nodeframe) {
