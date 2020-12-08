@@ -398,6 +398,9 @@ public:
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
         nh.param<bool>("enable_cgraph_generation", solver_params.enable_cgraph_generation, false);
+        nh.param<bool>("enable_detection", solver_params.enable_detection, true);
+        nh.param<bool>("enable_loop", solver_params.enable_loop, true);
+        nh.param<bool>("enable_distance", solver_params.enable_distance, true);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
