@@ -12,9 +12,9 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/node_detected_xyzyaw.h>
 
-#define VO_DRIFT_METER 0.003 //1/100m; 2e-3 per kf
-#define VO_DRIFT_METER_Z 0.005
-#define VO_ERROR_ANGLE 3e-6 //3deg/1000m; average kf 0.2m, e.g 6e-4deg kf, eg 3e^-6
+#define VO_DRIFT_METER 0.1 
+#define VO_DRIFT_METER_Z 0.2
+#define VO_ERROR_ANGLE 1e-2
 #define DISTANCE_MEASURE_ERROR 0.2
 #define LOOP_COV_XY 0.5
 #define LOOP_COV_Z 0.1
@@ -29,8 +29,8 @@
 //percent of inv dep
 #define COV_WIDTH_PERCENT 0.5
 
+#define VO_DRIFT_XYZ (Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z))
 
-#define VO_DRIFT_XYZ (Eigen::Vector3d::Ones() * VO_DRIFT_METER)
 using namespace Swarm;
 
 typedef std::vector<Vector3d> vec_array;
