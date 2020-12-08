@@ -781,6 +781,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     CostFunction * cost = _setup_cost_function_by_loop(good_2drone_measurements, _id_ts_poseindex);
     ceres::LossFunction *loss_function;
     loss_function = new ceres::HuberLoss(0.1);
+    //loss_function = new ceres::HuberLoss(0.5);
     problem.AddResidualBlock(cost, loss_function, pose_state);
 }
     
@@ -1423,7 +1424,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     if (finish_init) {
         options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
-        options.max_num_iterations = 5;
+        options.max_num_iterations = 1000;
     }
     
     options.num_threads = thread_num;
