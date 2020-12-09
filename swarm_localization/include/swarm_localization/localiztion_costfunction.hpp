@@ -72,6 +72,11 @@ inline void unit_position_error(const T *posea, const T *poseb, const T inv_dep,
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
     error[2] = inv_dep - _inv_dep;
+
+    // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
+    // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
+    // std::cout << "err" << err0 << " " << err1 << " " << err2 << std::endl;
+    // std::cout << "Error" << error[0] << " " << error[1] << " " << error[2] << std::endl;
 }
 
 template<typename T>
@@ -108,10 +113,11 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
 template<typename T>
 inline void PoseMulti(const T *posea, const T *poseb, T *pose) {
     pose[3] = wrap_angle(poseb[3] + posea[3]);
-    YawRotatePoint(posea[3], poseb, pose);
-    pose[0] = pose[0] + posea[0];
-    pose[0] = pose[1] + posea[1];
-    pose[0] = pose[2] + posea[2];
+    T tmp[3];
+    YawRotatePoint(posea[3], poseb, tmp);
+    pose[0] = tmp[0] + posea[0];
+    pose[1] = tmp[1] + posea[1];
+    pose[2] = tmp[2] + posea[2];
 }
 
 template<typename T>
@@ -202,8 +208,8 @@ struct SwarmLoopError {
         int _idb = det->id_b;
         int64_t _tsa = det->ts_a;
         int64_t _tsb = det->ts_b;
-
         if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
+            // std::cout << "Residual of detection " << _ida << "->" << _idb << std::endl;
             T relpose_est[4];
 
             T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
@@ -215,7 +221,8 @@ struct SwarmLoopError {
 
             PoseMulti(posea, dposea, _posea);
             PoseMulti(poseb, dposeb, _poseb);
-
+            // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
+            // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
 
             DeltaPose(_posea, _poseb, relpose_est);
 
@@ -234,6 +241,7 @@ struct SwarmLoopError {
                 unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
                 res_count = res_count + 2;
             }
+
         } else {
             ROS_ERROR("Detection not found in residual.");
             exit(-1);
