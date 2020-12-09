@@ -57,8 +57,8 @@ inline void unit_position_error(const T *posea, const T *poseb, const double * t
     const T err1 = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]);
     const T err2 = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]);
 
-    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / COV_SPHERE_ERROR;
-    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / COV_SPHERE_ERROR;
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
 }
 
 template<typename T>
@@ -214,7 +214,7 @@ struct SwarmLoopError {
 
             if (det->enable_depth) {
                 T est_inv_dep = 1.0/sqrt(relpose_est[0]*relpose_est[0] + relpose_est[1]*relpose_est[1] + relpose_est[2]*relpose_est[2]);
-                _residual[res_count] = (est_inv_dep - inv_dep)*COV_WIDTH_PERCENT*ERROR_NORMLIZED;
+                _residual[res_count] = (est_inv_dep - inv_dep)/((T)(DETECTION_INV_DEP_COV))*ERROR_NORMLIZED;
                 res_count = res_count + 1;
             }
                 
@@ -327,7 +327,7 @@ struct SwarmFrameError {
             if (has_id(_idj)  && _nf.enabled_distance.at(_idj)) {
                 T _dis = T(it.second);
                 //Less accuracy on distance
-                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) *ERROR_NORMLIZED/ DISTANCE_MEASURE_ERROR;
+                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_MEASURE_ERROR))*ERROR_NORMLIZED;
                 res_count++;
             }
         }

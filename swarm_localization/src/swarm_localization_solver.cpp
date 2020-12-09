@@ -58,6 +58,17 @@ using namespace std::chrono;
 
 #define ENABLE_DEPTH true
 
+
+float VO_DRIFT_METER;
+float VO_DRIFT_METER_Z;
+float VO_ERROR_ANGLE;
+float DISTANCE_MEASURE_ERROR;
+float LOOP_COV_XY;
+float LOOP_COV_Z;
+float LOOP_YAWCOV;
+float DETECTION_SPHERE_COV;
+float DETECTION_INV_DEP_COV;
+
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
