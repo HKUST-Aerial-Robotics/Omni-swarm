@@ -18,7 +18,7 @@
             pub_swarm_odom: true
             loop_outlier_threshold_pos: 1.0
             loop_outlier_threshold_yaw: 0.5
-            enable_detection: true
+            enable_detection: false
             enable_loop: true
             enable_distance: true
             vo_drift_meter: 0.003
@@ -41,6 +41,6 @@
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
     </group>
     <node pkg="rosbag" type="record" name="rosbag_record_local" 
-        args="record -O /home/xuhao/swarm_ws/src/swarm_localization/data_analyze/data/swarm_local_pc.bag -a" 
+        args="record -O /home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/DataAnalysis/data/swarm_local_pc.bag -a" 
         if="$(arg bag)" />
 </launch>

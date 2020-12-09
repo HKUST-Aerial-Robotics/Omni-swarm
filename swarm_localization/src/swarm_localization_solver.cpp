@@ -46,7 +46,7 @@ using namespace std::chrono;
 
 #define INIT_TRIAL 5
 
-#define BEGIN_MIN_LOOP_DT 10.0
+#define BEGIN_MIN_LOOP_DT 100.0
 
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
@@ -1175,11 +1175,6 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         return false;
     }
 
-    // if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
-    //     ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
-    //     return false;
-    // }
-
     det_ret = Swarm::DroneDetection(_det, ENABLE_DEPTH);
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b);
@@ -1248,10 +1243,10 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         return false;
     }
 
-    // if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
-    //     ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
-    //     return false;
-    // }
+    if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        return false;
+    }
 
     loc_ret = Swarm::LoopConnection(_loc);
 
