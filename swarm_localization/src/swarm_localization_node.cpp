@@ -174,14 +174,18 @@ protected:
             t_last = t_now;
             if (cost.data > 0)
                 solving_cost_pub.publish(cost);
-            if (publish_full_path) {
-                pub_full_path();
-            }
+            pub_full_path();
         }
     }
 
     void pub_full_path() {
-        for (auto & it: swarm_localization_solver->pathes) {
+        auto path = &(swarm_localization_solver->kf_pathes);
+
+        if (publish_full_path) {
+            path = &(swarm_localization_solver->full_pathes);
+        }
+
+        for (auto & it: *path) {
             auto id = it.first;
             auto & path = it.second;
 
