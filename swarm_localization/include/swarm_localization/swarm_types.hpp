@@ -57,7 +57,7 @@ inline Eigen::Matrix<double, 2, 3> tangent_base_for_unit_detect(const Eigen::Vec
     b2 = a.cross(b1);
     tangent_base.block<1, 3>(0, 0) = b1.transpose();
     tangent_base.block<1, 3>(1, 0) = b2.transpose();
-
+    std::cout << "PT" << pts_j.transpose() << "Tan Base" << tangent_base << std::endl;
     return tangent_base;
 }
 
