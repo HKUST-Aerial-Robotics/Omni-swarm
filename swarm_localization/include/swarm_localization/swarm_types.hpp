@@ -12,22 +12,22 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/node_detected_xyzyaw.h>
 
-#define VO_DRIFT_METER 0.1 
-#define VO_DRIFT_METER_Z 0.2
-#define VO_ERROR_ANGLE 1e-2
-#define DISTANCE_MEASURE_ERROR 0.2
-#define LOOP_COV_XY 0.5
-#define LOOP_COV_Z 0.1
-#define LOOP_YAWCOV 0.05
+extern float VO_DRIFT_METER;
+extern float VO_DRIFT_METER_Z;
+extern float VO_ERROR_ANGLE;
+extern float DISTANCE_MEASURE_ERROR;
+extern float LOOP_COV_XY;
+extern float LOOP_COV_Z;
+extern float LOOP_YAWCOV;
+extern float DETECTION_SPHERE_COV;
+extern float DETECTION_INV_DEP_COV;
+
 #define ERROR_NORMLIZED 0.01
 #define UNIDENTIFIED_MIN_ID 1000
 #define NO_ANNETAPOS
 #define ENABLE_DETECTION
 #define ENABLE_LOOP
 // pixel error/focal length
-#define COV_SPHERE_ERROR 0.1
-//percent of inv dep
-#define COV_WIDTH_PERCENT 0.5
 
 #define VO_DRIFT_XYZ (Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z))
 

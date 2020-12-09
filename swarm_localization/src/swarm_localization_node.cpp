@@ -45,7 +45,6 @@ using namespace swarm_msgs;
 using namespace std::chrono;
 
 
-
 class SwarmLocalizationNode {
 
     void add_drone_id(int _id) {
@@ -402,6 +401,18 @@ public:
         nh.param<bool>("enable_loop", solver_params.enable_loop, true);
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
+
+
+        nh.param<float>("vo_drift_meter", VO_DRIFT_METER, 0.01f);
+        nh.param<float>("vo_drift_meter_z", VO_DRIFT_METER_Z, 0.02f);
+        nh.param<float>("vo_drift_angle", VO_ERROR_ANGLE, 0.01f);
+        nh.param<float>("distance_measurement_error", DISTANCE_MEASURE_ERROR, 0.2f);
+        nh.param<float>("loop_cov_xy", LOOP_COV_XY, 0.5f);
+        nh.param<float>("loop_cov_z", LOOP_COV_Z, 0.5f);
+        nh.param<float>("loop_cov_yaw", LOOP_YAWCOV, 0.5f);
+        nh.param<float>("detection_sphere_cov", DETECTION_SPHERE_COV, 0.1f);
+        nh.param<float>("detection_inv_dep_cov", DETECTION_INV_DEP_COV, 0.5f);
+
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");
 
