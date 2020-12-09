@@ -1187,7 +1187,6 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         ROS_WARN("Detection find failed");
         return false;
     } else {
-        ROS_INFO("Detection %d->%d P %3.2f %3.2f %3.2f", det_ret.id_a, det_ret.id_b, det_ret.p.x(), det_ret.p.y(), det_ret.p.z());
     }
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
