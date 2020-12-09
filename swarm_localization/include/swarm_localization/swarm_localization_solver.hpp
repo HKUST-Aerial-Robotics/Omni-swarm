@@ -173,6 +173,8 @@ class SwarmLocalizationSolver {
 
     void generate_cgraph();
 
+    bool generate_full_path = false;
+
 public:
     int self_id = -1;
     unsigned int thread_num;
@@ -195,6 +197,8 @@ public:
 
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
+
+    std::map<int, Swarm::Path> pathes;
 
     std::string cgraph_path = "";
 

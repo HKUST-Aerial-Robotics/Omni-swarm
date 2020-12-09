@@ -24,6 +24,7 @@
 #include <swarm_msgs/swarm_drone_basecoor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/swarm_detected.h>
+#include <nav_msgs/Path.h>
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -173,6 +174,36 @@ protected:
             t_last = t_now;
             if (cost.data > 0)
                 solving_cost_pub.publish(cost);
+            if (publish_full_path) {
+                pub_full_path();
+            }
+        }
+    }
+
+    void pub_full_path() {
+        for (auto & it: swarm_localization_solver->pathes) {
+            auto id = it.first;
+            auto & path = it.second;
+
+            nav_msgs::Path _path;
+            _path.header.frame_id = "world";
+
+            for (auto & pose_stamped: path) {
+                auto & pose = pose_stamped.second;
+                geometry_msgs::PoseStamped _pose_stamped;
+                _pose_stamped.header.stamp.fromNSec(pose_stamped.first);
+                _path.header.stamp = _pose_stamped.header.stamp;
+                _pose_stamped.pose = pose.to_ros_pose();
+                _path.poses.push_back(_pose_stamped);
+            }
+
+            if (pathes_pubs.find(id) == pathes_pubs.end()) {
+                char name[100] = {0};
+                sprintf(name, "/swarm_drones/est_drone_%d_path", id);
+                pathes_pubs[id] = nh.advertise<nav_msgs::Path>(name, 1);
+            }
+
+            pathes_pubs[id].publish(_path);
         }
     }
 
@@ -218,6 +249,7 @@ private:
     std::string frame_id = "";
 
     std::map<int, ros::Publisher> remote_drone_odom_pubs;
+    std::map<int, ros::Publisher> pathes_pubs;
     SwarmLocalizationSolver *swarm_localization_solver = nullptr;
 
     std::vector<int> remote_ids_arr;
@@ -228,6 +260,7 @@ private:
     ros::Timer timer;
 
     bool pub_swarm_odom = false;
+    bool publish_full_path = false;
 
 
     int self_id = -1;
@@ -400,6 +433,7 @@ public:
         nh.param<bool>("enable_detection", solver_params.enable_detection, true);
         nh.param<bool>("enable_loop", solver_params.enable_loop, true);
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);
+        nh.param<bool>("publish_full_path", publish_full_path, true);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
 
 
