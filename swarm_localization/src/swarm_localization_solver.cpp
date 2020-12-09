@@ -400,6 +400,20 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
 
     int is_kf = judge_is_key_frame(sf);
+
+    if (generate_full_path) {
+        for (auto & it : sf.id2nodeframe) {
+            int _id = it.first;
+            auto nf = it.second;
+            if (nf.vo_available) {
+                if (vo_pathes.find(_id) == vo_pathes.end()) {
+                    vo_pathes[_id] = Swarm::Path(0);
+                }
+                vo_pathes[_id].push_back(std::make_pair(nf.ts,nf.pose()));
+            }
+        }
+    }
+
     if (is_kf == 1) {
         for (int _id : _ids) {
             all_nodes.insert(_id);
@@ -671,7 +685,8 @@ double SwarmLocalizationSolver::solve() {
 void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
     ROS_INFO("Sync poses to saved while init successful");
     int64_t last_ts = sf_sld_win.back().ts;
-    pathes.clear();
+    kf_pathes.clear();
+    full_pathes.clear();
 
     for (const SwarmFrame & sf : sf_sld_win) {
         //Only update param in sf to saved
@@ -679,8 +694,8 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             int _id = it.first;
             const NodeFrame _nf = it.second;
 
-            if (pathes.find(_nf.id) == pathes.end()) {
-                pathes[_nf.id] = Swarm::Path(0);
+            if (kf_pathes.find(_nf.id) == kf_pathes.end()) {
+                kf_pathes[_nf.id] = Swarm::Path(0);
             }
 
            
@@ -708,8 +723,15 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 memcpy(est_poses_tsid_saved[sf.ts][_id], ptr, 4*sizeof(double));
                 memcpy(est_poses_idts_saved[_id][sf.ts], ptr, 4*sizeof(double));
                 Pose p(ptr, true);
-                pathes[_nf.id].push_back(std::make_pair(_nf.ts, p));
+                kf_pathes[_nf.id].push_back(std::make_pair(_nf.ts, p));
             } 
+        }
+    }
+
+    if (generate_full_path) {
+        for (auto & it : kf_pathes) {
+            int _id = it.first;
+            auto & _kf_path = it.second;
         }
     }
 
