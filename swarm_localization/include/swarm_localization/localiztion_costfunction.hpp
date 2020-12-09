@@ -52,13 +52,26 @@ inline void position_error(const T *posea, const T *poseb, T *error,
 template<typename T>
 inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
-    const T scalea = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    const T err0 = ERROR_NORMLIZED*(posea[0]/scalea - poseb[0]);
-    const T err1 = ERROR_NORMLIZED*(posea[1]/scalea - poseb[1]);
-    const T err2 = ERROR_NORMLIZED*(posea[2]/scalea - poseb[2]);
+    const T _inv_dep = 1.0/sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
+    const T err0 = ERROR_NORMLIZED*(posea[0]*_inv_dep - poseb[0]);
+    const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
+    const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
+}
+
+template<typename T>
+inline void unit_position_error(const T *posea, const T *poseb, const T inv_dep, const double * tangent_base, T *error) {
+    //For this residual; we assume poseb a unit vector
+    const T _inv_dep = 1.0/sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
+    const T err0 = ERROR_NORMLIZED*(posea[0]*_inv_dep - poseb[0]);
+    const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
+    const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
+
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
+    error[2] = inv_dep - _inv_dep;
 }
 
 template<typename T>
@@ -212,16 +225,15 @@ struct SwarmLoopError {
             rel_p[1] = T(det->p.y());
             rel_p[2] = T(det->p.z());
 
-            if (det->enable_depth) {
-                T est_inv_dep = 1.0/sqrt(relpose_est[0]*relpose_est[0] + relpose_est[1]*relpose_est[1] + relpose_est[2]*relpose_est[2]);
-                _residual[res_count] = (est_inv_dep - inv_dep)/((T)(DETECTION_INV_DEP_COV))*ERROR_NORMLIZED;
-                res_count = res_count + 1;
-            }
-                
             const double * tan_base = det->detect_tan_base.data();
 
-            unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
-            res_count = res_count + 2;
+            if (det->enable_depth) {
+                unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual + res_count);
+                res_count = res_count + 3;
+            } else {
+                unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
+                res_count = res_count + 2;
+            }
         } else {
             ROS_ERROR("Detection not found in residual.");
             exit(-1);
