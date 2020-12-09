@@ -20,6 +20,10 @@ def quat2eulers(w, x, y ,z):
 def RMSE(predictions, targets):
     return np.sqrt(np.mean((predictions-targets)**2))
 
+def yaw_rotate_vec(yaw, vec):
+    Re = rotation_matrix(-yaw, [0, 0, 1])[0:3, 0:3]
+    return np.transpose(np.dot(Re, np.transpose(vec)))
+
 def read_pose_swarm_fused(bag, topic, _id, t0):
     pos = []
     ypr = []
@@ -38,7 +42,6 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
         "ypr": np.array(ypr),
     }
     return ret
-
 def read_pose_swarm_frame(bag, topic, _id, t0):
     pos = []
     ypr = []
@@ -93,6 +96,9 @@ def poses_length(poses):
 def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
     loops = []
     for topic, msg, t in bag.read_messages(topics=[topic]):
+        # if msg.ts_a.to_sec() - t0 < -100 or msg.ts_b.to_sec() - t0 < -100:
+        #     print(msg.ts_a.to_sec() - t0, msg.ts_b.to_sec() - t0)
+        #     continue
         loop = {
             "ts_a": msg.ts_a.to_sec() - t0,
             "ts_b": msg.ts_b.to_sec() - t0,
@@ -103,7 +109,20 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
         }
         loops.append(loop)
     return loops
-    
+
+def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
+    dets = []
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        det = {
+            "ts": msg.header.stamp.to_sec() - t0,
+            "id_a":msg.self_drone_id,
+            "id_b":msg.remote_drone_id,
+            "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
+            "inv_dep":msg.inv_dep
+        }
+        dets.append(det)
+    return dets
+
 def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     bag = rosbag.Bag(bagname)
     poses = {}
@@ -119,7 +138,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
-
+    detections = read_detections(bag, t0, "/swarm_drones/node_detected")
     bag.close()
     
     fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
@@ -140,11 +159,12 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     
-    return poses, poses_fused, poses_vo, loops
+    return poses, poses_fused, poses_vo, loops, detections
     
-def plot_fused(poses, poses_fused, poses_vo, loops, nodes):
+
+def plot_fused(poses, poses_fused, poses_vo, loops, detections, nodes):
     fig = plt.figure("Ground Truth3d")
-    plt.title("Ground Truth3d")
+    fig.suptitle("Ground Truth3d")
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
     
@@ -157,24 +177,39 @@ def plot_fused(poses, poses_fused, poses_vo, loops, nodes):
     
     #Plot Loops
     quivers = []
+    quivers_det = []
     for loop in loops:
         posa_gt = poses[loop["id_a"]]["pos_func"](loop["ts_a"])
         posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
         quivers.append([posa_gt[0], posa_gt[1], posa_gt[2], posb_gt[0]-posa_gt[0], posb_gt[1]-posa_gt[1], posb_gt[2]-posa_gt[2]])
-        
+    
+    for det in detections:
+        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
+        yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
+
+        dpos = yaw_rotate_vec(yawa_gt, det["dpos"]/det["inv_dep"])
+        posb_gt = posa_gt + dpos
+        quivers_det.append([posa_gt[0], posa_gt[1], posa_gt[2], posb_gt[0]-posa_gt[0], posb_gt[1]-posa_gt[1], posb_gt[2]-posa_gt[2]])
+    
     quivers = np.array(quivers)
-    c = np.arctan2(quivers[:,4], quivers[:,3])
-    c = (c.ravel() - c.min()) / c.ptp()
-    c = np.concatenate((c, np.repeat(c, 2)))
-    c = plt.cm.hsv(c)
-    ax.quiver(quivers[:,0], quivers[:,1], quivers[:,2], quivers[:,3], quivers[:,4], quivers[:,5], arrow_length_ratio=0.1, colors = c)
+    quivers_det = np.array(quivers_det)
+
+    # c = np.arctan2(quivers[:,4], quivers[:,3])
+    # c = (c.ravel() - c.min()) / c.ptp()
+    # c = np.concatenate((c, np.repeat(c, 2)))
+    # c = plt.cm.hsv(c)
+    
+    ax.quiver(quivers[:,0], quivers[:,1], quivers[:,2], quivers[:,3], quivers[:,4], quivers[:,5], 
+        arrow_length_ratio=0.1, color="gray",linewidths=0.5)
+
+    ax.quiver(quivers_det[:,0], quivers_det[:,1], quivers_det[:,2], quivers_det[:,3], quivers_det[:,4], quivers_det[:,5], 
+        arrow_length_ratio=0.1, color="red",linewidths=1.0)
 
     plt.legend()
 
-
     #Plot Fused Vs GT 3D
     fig = plt.figure("Fused Vs GT 3D")
-    plt.title("Fused Vs GT 3D")
+    fig.suptitle("Fused Vs GT 3D")
     for k in range(len(nodes)):
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
@@ -189,7 +224,7 @@ def plot_fused(poses, poses_fused, poses_vo, loops, nodes):
         ax.set_ylabel('$Z$')
     
     fig = plt.figure("Fused Vs GT 2D")
-    plt.title("Fused Vs GT 2D")
+    fig.suptitle("Fused Vs GT 2D")
     for k in range(len(nodes)):
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1)
@@ -202,7 +237,7 @@ def plot_fused(poses, poses_fused, poses_vo, loops, nodes):
 def plot_fused_err(poses, poses_fused, poses_vo, nodes, main_id=1):
     t_calib = 0
     fig = plt.figure("Fused Vs GT 1D")
-    plt.title("Fused Vs GT 1D")
+    fig.suptitle("Fused Vs GT 1D")
     ax1, ax2, ax3 = fig.subplots(3, 1)
 
     for i in nodes:
@@ -229,7 +264,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, nodes, main_id=1):
 
     #Plot Fused Vs GT absolute error
     fig = plt.figure("Fused Absolute Error")
-    plt.title("Fused Absolute Error")
+    fig.suptitle("Fused Absolute Error")
     ax1, ax2, ax3 = fig.subplots(3, 1)
     for i in nodes:
         t_ = poses_fused[i]["t"]
@@ -277,7 +312,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, nodes, main_id=1):
     ax3.grid()
 
     fig = plt.figure("Relative Pose")
-    plt.title("Relative Pose")
+    fig.suptitle("Relative Pose")
     
     ts = poses_fused[main_id]["t"]
     posa_gt =  poses[main_id]["pos_func"](ts)
@@ -328,7 +363,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, nodes, main_id=1):
     ax3.grid()
         
     fig = plt.figure("Fused Relative Error")
-    plt.title("Fused Relative Error")
+    fig.suptitle("Fused Relative Error")
     ax1, ax2, ax3 = fig.subplots(3, 1)
     for i in nodes:
         if i!= main_id:
@@ -368,14 +403,14 @@ def plot_fused_err(poses, poses_fused, poses_vo, nodes, main_id=1):
         yaw_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])
         yaw_fused = poses_fused[i]["ypr"]
         
-        ax1.plot(t_,  yaw_gt[:,0], label=f"$\psi_g{i}$")
-        ax1.plot(t_,  yaw_fused[:,0], label=f"$\psi_f{i}$")
-        
+        ax1.plot(t_,  yaw_gt[:,0], label=f"$\psi gt{i}$")
+        ax1.plot(t_,  yaw_fused[:,0], label=f"$\psi fused{i}$")
+
         ax2.plot(t_,  (yaw_fused[:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$\psi_E{i}$")
-        
         yaw_gt=  poses[i]["ypr_func"](poses_vo[i]["t"])
         ax2.plot(poses_vo[i]["t"],  (poses_vo[i]["ypr"][:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$VO \psi_E{i}$")
-        
+
+    ax2.set_ylim(-0.5, 0.5)
     ax1.grid()
     ax2.grid()
     ax1.legend()
@@ -499,8 +534,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     nodes = [1, 2]
     print(f"Read bag from {args.bagname}, is replay bag :{args.replay}")
-    poses, poses_fused, poses_vo, loops = bag_read(args.bagname, nodes, args.replay)
-    plot_fused(poses, poses_fused, poses_vo, loops, nodes)
+    poses, poses_fused, poses_vo, loops, detections = bag_read(args.bagname, nodes, args.replay)
+    plot_fused(poses, poses_fused, poses_vo, loops, detections, nodes)
     plot_fused_err(poses, poses_fused, poses_vo, nodes, 1)
     plot_loops_error(poses, loops, nodes)
     plt.show()
