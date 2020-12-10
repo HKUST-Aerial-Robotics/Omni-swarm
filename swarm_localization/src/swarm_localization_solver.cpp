@@ -30,6 +30,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_LOOPS
 // #define DEBUG_OUTPUT_COV
 // #define DEBUG_OUTPUT_NEW_KF
+#define DEBUG_OUTPUT_DETS
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -535,6 +536,19 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
     }
 
     return sfs;
+}
+
+
+std::pair<bool, Swarm::Pose> SwarmLocalizationSolver::get_estimated_pose(int _id, int64_t ts) const {
+    if (est_poses_idts.find(_id) == est_poses_idts.end()) {
+        return std::make_pair(false, Swarm::Pose());
+    }
+
+    if (est_poses_idts.at(_id).find(ts) == est_poses_idts.at(_id).end()) {
+        return std::make_pair(false, Swarm::Pose());
+    }
+
+    return std::make_pair(true, Swarm::Pose(est_poses_idts.at(_id).at(ts)));
 }
 
 
@@ -1161,7 +1175,7 @@ void SwarmLocalizationSolver::estimate_observability() {
     printf("\n");
 }
 
-bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b) const {
+bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const {
     ros::Time tsa = loc->stamp_a;
     ros::Time tsb = loc->stamp_b;
     
@@ -1185,6 +1199,8 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
         }
     }
 
+    dt_err = min_ts_err_a + min_ts_err_b;
+
     if (_index_a < 0 || _index_b < 0) {
         ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
         return false;
@@ -1200,8 +1216,8 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     int _idb = _det.remote_drone_id;
     int _index_a = -1;
     int _index_b = -1;
-    double min_ts_err_a = 10000;
-    double min_ts_err_b = 10000;
+
+    dt_err = 0;
 
     //Give up if first timestamp is bigger than 1 sec than tsa
     if (sf_sld_win.empty()) {
@@ -1211,7 +1227,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     det_ret = Swarm::DroneDetection(_det, ENABLE_DEPTH);
 
-    bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b);
+    bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);
     if (!success) {
         ROS_WARN("Detection find failed");
         return false;
@@ -1222,39 +1238,55 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
 
+    //NFA-> Pdeta -(det)-> Pdetb --> NFB
 
-    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, det_ret.self_pose_a, true); //2->0
-    Pose dpose_self_b = Pose::DeltaPose(det_ret.self_pose_b, _nf_b.self_pose, true); //1->3
+    // Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, det_ret.self_pose_a, true); 
+    // Pose dpose_self_b = Pose::DeltaPose(_nf_b.self_pose, det_ret.self_pose_b, true); 
+    Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, det_ret.self_pose_a, true); 
+    Pose dpose_self_b = Pose::DeltaPose(_nf_b.self_pose, det_ret.self_pose_b, true); 
 
     det_ret.dpose_self_a = dpose_self_a;
     det_ret.dpose_self_b = dpose_self_b;
 
     det_ret.ts_a = _nf_a.ts;
     det_ret.ts_b = _nf_b.ts;
-    det_ret.self_pose_a = _nf_a.pose();
-    det_ret.self_pose_b = _nf_b.pose();
+    //det_ret.self_pose_a = _nf_a.pose();
+    //det_ret.self_pose_b = _nf_b.pose();
 
 #ifdef DEBUG_OUTPUT_DETS
 
-    printf("SELF POSE A");
-    _nf_a.self_pose.print();
-    printf("SELF POSE B");
-    _nf_b.self_pose.print();
-    printf("SELF POSE A1");
-    det_ret.self_pose_a.print();
-    printf("SELF POSE B1");
-    det_ret.self_pose_b.print();
+    // printf("SELF POSE A:");
+    // _nf_a.self_pose.print();
+    // printf("SELF POSE B:");
+    // _nf_b.self_pose.print();
+    // printf("SELF POSE Ad:");
+    // det_ret.self_pose_a.print();
+    // printf("SELF POSE Bd:");
+    // det_ret.self_pose_b.print();
 
-    printf("DPOSE A");
-    dpose_self_a.print();
-    printf("DPOSE B");
-    dpose_self_b.print();
+    // printf("DPOSE A");
+    // dpose_self_a.print();
+    // printf("DPOSE B");
+    // dpose_self_b.print();
 
-    printf("Det [TS%d]%d->[TS%d]%d; DTS a %4.3fms b %4.3fms LOOP:", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), 
-        _idb, min_ts_err_a*1000, min_ts_err_b*1000);
-    new_loop.print();
+    printf("Det [TS%d]%d->%d\n", TSShort(ts.toNSec()), _ida, 
+        _idb);
+
+    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
+    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
+
+    if (reta.first && retb.first) {
+        Pose posea = reta.second * dpose_self_a;
+        Pose poseb = retb.second * dpose_self_b;
+        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        Eigen::Vector3d est_dpos = est_rel_pose.pos();
+        double est_inv_dep = 1/est_dpos.norm();
+        est_dpos.normalize();
+        std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+        std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+    }
+    return false;
 #endif
-    dt_err = min_ts_err_a + min_ts_err_b;
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
     return true;
 }
@@ -1284,7 +1316,7 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
 
     loc_ret = Swarm::LoopConnection(_loc);
 
-    bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b);
+    bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
     if (!success) {
         return false;
     }
@@ -1318,8 +1350,6 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
             return false;
         }
     }
-
-    dt_err = min_ts_err_a + min_ts_err_b;
 
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
