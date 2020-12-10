@@ -144,6 +144,8 @@ def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
             "id_a":msg.self_drone_id,
             "id_b":msg.remote_drone_id,
             "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
+            "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
+            "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
             "inv_dep":msg.inv_dep
         }
         dets.append(det)
@@ -174,7 +176,6 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     
     fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
     yaw_offset = (poses[main_id]["ypr"][0] - poses_fused[main_id]["ypr"][0])[0]
-    Re = rotation_matrix(-yaw_offset, [0, 0, 1])[0:3, 0:3]
     for i in nodes:
         poses_fused[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_fused[i]["pos"]) + fused_offset
         poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset, 0, 0])
@@ -187,8 +188,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     for i in nodes:
         vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos"][0]
         yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr"][0])[0]
-        Re = rotation_matrix(-yaw_offset, [0, 0, 1])[0:3, 0:3]
-        poses_vo[i]["pos"] = np.transpose(np.dot(Re, np.transpose(poses_vo[i]["pos"]))) + vo_offset
+        poses_vo[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_vo[i]["pos"]) + vo_offset
         poses_vo[i]["ypr"] = poses_vo[i]["ypr"] + np.array([yaw_offset, 0, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
@@ -471,7 +471,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     ax1.legend()
     ax2.legend() 
 
-def plot_detection_error(poses, detections, nodes):
+def plot_detection_error(poses, poses_vo, detections,  nodes):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -479,11 +479,14 @@ def plot_detection_error(poses, detections, nodes):
     dpos_det_norms= []
     dpos_errs = []
     inv_dep_errs = []
+    inv_deps = []
     dpos_errs_norm = []
     posa_gts = []
     ts_a = []
     dyaws = []
     yawa_gts = []
+    self_pos_a = []
+    self_pos_b = []
     print("Total detection", len(detections))
     for det in detections:
         if det["id_a"] == 2:
@@ -503,6 +506,11 @@ def plot_detection_error(poses, detections, nodes):
             "dpos_err": dpos_gt - dpos_det,
             "inv_dep_err": inv_dep_gt - inv_dep_det
             })
+        #TMP
+        inv_deps.append(det["inv_dep"])
+        self_pos_a.append(det["pos_a"])
+        self_pos_b.append(det["pos_b"])
+
         inv_dep_errs.append(inv_dep_gt - inv_dep_det)
         dpos_dets.append(dpos_det)
         dpos_gts.append(dpos_gt)
@@ -513,14 +521,21 @@ def plot_detection_error(poses, detections, nodes):
         posa_gts.append(posa_gt)
         ts_a.append(det["ts"])
         yawa_gts.append(yawa_gt)
-        
-#         if np.linalg.norm(dpos_gt - dpos_det) > 1.0:
-#             print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
+
+        # pa = det['pos_a']
+        # pb = det["pos_b"]
+        # dp = det["dpos"]
+        # print(f"Det {det['id_a']} -> {det['id_b']}")
+        # print(f"SELF POSE A {pa} B {pb} p {dp}")
+        # print(f"POSE A {posa_gt} B {posb_gt} PB-PA {posb_gt-posa_gt}")
+        # print(f"det dp {dpos_det} est dp{dpos_gt} yawa {yawa_gt*57.3}deg")
         
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
     dpos_gts = np.array(dpos_gts)
     dpos_dets = np.array(dpos_dets)
+    self_pos_a = np.array(self_pos_a)
+    self_pos_b = np.array(self_pos_b)
     fig = plt.figure()
 
     plt.subplot(311)
@@ -548,6 +563,39 @@ def plot_detection_error(poses, detections, nodes):
     plt.grid(which="both")
     plt.legend()
 
+    plt.figure("INV DEPS")
+    plt.plot(ts_a, inv_deps)
+
+    # plt.figure("Self Pose Plot")
+    # plt.subplot(311)
+    # plt.title("VO X")
+    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,0], label="VO1")
+    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,0], label="VO2")
+    # plt.plot(ts_a, self_pos_a[:,0], 'o')
+    # plt.plot(ts_a, self_pos_b[:,0], '+')
+    # plt.legend()
+    # plt.grid()
+    
+    # plt.subplot(312)
+    # plt.title("VO Y")
+    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,1], label="VO1")
+    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,1], label="VO2")
+    # plt.plot(ts_a, self_pos_a[:,1], 'o')
+    # plt.plot(ts_a, self_pos_b[:,1], '+')
+
+    # plt.legend()
+    # plt.grid()
+    
+    # plt.subplot(313)
+    # plt.title("VO Z")
+    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,2], label="VO1")
+    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,2], label="VO2")
+    # plt.plot(ts_a, self_pos_a[:,2], 'o')
+    # plt.plot(ts_a, self_pos_b[:,2], '+')
+
+
+    # plt.legend()
+    # plt.grid()
     plt.figure("Hist")
     plt.subplot(141)
     plt.hist(inv_dep_errs, 5, density=True, facecolor='g', alpha=0.75)
