@@ -30,3 +30,4 @@ swarm_loop/models/hfnet_v2_superpoint_trt/
 *.pb
 data_analyze/.ipynb_checkpoints/
 swarm_localization/DataAnalysis/.ipynb_checkpoints/
+swarm_localization/scripts/.ipynb_checkpoints/local_plot-checkpoint.py

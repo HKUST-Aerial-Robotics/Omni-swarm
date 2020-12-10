@@ -6,6 +6,7 @@ from math import *
 from scipy.interpolate import interp1d
 from transformations import * 
 import argparse
+from numpy.linalg import norm
 
 plt.rc('figure', figsize=(10,5))
 #plt.rc('figure', figsize=(20,15))
@@ -21,7 +22,7 @@ def RMSE(predictions, targets):
     return np.sqrt(np.mean((predictions-targets)**2))
 
 def yaw_rotate_vec(yaw, vec):
-    Re = rotation_matrix(-yaw, [0, 0, 1])[0:3, 0:3]
+    Re = rotation_matrix(yaw, [0, 0, 1])[0:3, 0:3]
     return np.transpose(np.dot(Re, np.transpose(vec)))
 
 def read_pose_swarm_fused(bag, topic, _id, t0):
@@ -220,10 +221,8 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     for det in detections:
         posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
         yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
-
         dpos = yaw_rotate_vec(yawa_gt, det["dpos"]/det["inv_dep"])
-        posb_gt = posa_gt + dpos
-        quivers_det.append([posa_gt[0], posa_gt[1], posa_gt[2], posb_gt[0]-posa_gt[0], posb_gt[1]-posa_gt[1], posb_gt[2]-posa_gt[2]])
+        quivers_det.append([posa_gt[0], posa_gt[1], posa_gt[2], dpos[0], dpos[1], dpos[2]])
     
     quivers = np.array(quivers)
     quivers_det = np.array(quivers_det)
@@ -471,6 +470,98 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     ax2.grid()
     ax1.legend()
     ax2.legend() 
+
+def plot_detection_error(poses, detections, nodes):
+    _dets_data = []
+    dpos_dets = []
+    dpos_gts = []
+    dpos_gt_norms= []
+    dpos_det_norms= []
+    dpos_errs = []
+    inv_dep_errs = []
+    dpos_errs_norm = []
+    posa_gts = []
+    ts_a = []
+    dyaws = []
+    yawa_gts = []
+    print("Total detection", len(detections))
+    for det in detections:
+        if det["id_a"] == 2:
+            continue
+        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
+        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"])
+        yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
+        dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
+        inv_dep_gt = 1/norm(dpos_gt)
+        dpos_gt = dpos_gt * inv_dep_gt
+        
+        dpos_det = np.array(det["dpos"]) - np.array([0.02, 0, 0.05])
+        inv_dep_det = det["inv_dep"]
+        _dets_data.append({
+            "dpos_det": dpos_det,
+            "dpos_gt": dpos_gt,
+            "dpos_err": dpos_gt - dpos_det,
+            "inv_dep_err": inv_dep_gt - inv_dep_det
+            })
+        inv_dep_errs.append(inv_dep_gt - inv_dep_det)
+        dpos_dets.append(dpos_det)
+        dpos_gts.append(dpos_gt)
+        dpos_errs.append(dpos_gt - dpos_det)    
+        dpos_gt_norms.append(norm(dpos_gt))
+        dpos_det_norms.append(norm(dpos_det))
+        dpos_errs_norm.append(norm(dpos_gt - dpos_det))
+        posa_gts.append(posa_gt)
+        ts_a.append(det["ts"])
+        yawa_gts.append(yawa_gt)
+        
+#         if np.linalg.norm(dpos_gt - dpos_det) > 1.0:
+#             print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
+        
+    posa_gts = np.array(posa_gts)
+    dpos_errs = np.array(dpos_errs)
+    dpos_gts = np.array(dpos_gts)
+    dpos_dets = np.array(dpos_dets)
+    fig = plt.figure()
+
+    plt.subplot(311)
+    plt.plot(ts_a, dpos_errs_norm, '.', label="Err NORM")
+    plt.plot(ts_a, np.abs(dpos_errs[:,0]), '+', label="ERR X")
+    plt.plot(ts_a, np.abs(dpos_errs[:,1]), '+', label="ERR Y")
+    plt.plot(ts_a, dpos_errs[:,2], '+', label="ERR Z")
+    plt.title("Error Pos Detection vs Vicon")
+    plt.grid(which="both")
+    plt.legend()
+
+    plt.subplot(312)
+    plt.plot(ts_a, dpos_gts[:,0], '.', label="GT X")
+    plt.plot(ts_a, dpos_gts[:,1], '.', label="GT Y")
+    plt.plot(ts_a, dpos_gts[:,2], '.', label="GT Z")
+    
+    plt.plot(ts_a, dpos_dets[:,0], '+', label="Detection X")
+    plt.plot(ts_a, dpos_dets[:,1], '+', label="Detection Y")
+    plt.plot(ts_a, dpos_dets[:,2], '+', label="Detection Z")
+    plt.legend()
+    plt.grid()
+    plt.subplot(313)
+    plt.plot(ts_a, inv_dep_errs, '.', label="INV DEP ERR")
+
+    plt.grid(which="both")
+    plt.legend()
+
+    plt.figure("Hist")
+    plt.subplot(141)
+    plt.hist(inv_dep_errs, 5, density=True, facecolor='g', alpha=0.75)
+    plt.subplot(142)
+    plt.hist(dpos_errs[:,0], 5, density=True, facecolor='g', alpha=0.75)
+    plt.subplot(143)
+    plt.hist(dpos_errs[:,1], 5, density=True, facecolor='g', alpha=0.75)
+    plt.subplot(144)
+    plt.hist(dpos_errs[:,2], 5, density=True, facecolor='g', alpha=0.75)
+    
+    print(f"Mean {np.mean(dpos_errs, axis=0)}")
+
+
+    print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
     
 def plot_loops_error(poses, loops, nodes):
     _loops_data = []
@@ -493,12 +584,7 @@ def plot_loops_error(poses, loops, nodes):
         posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
         yawa_gt = poses[loop["id_a"]]["ypr_func"](loop["ts_a"])[0]
         yawb_gt = poses[loop["id_b"]]["ypr_func"](loop["ts_b"])[0]
-        dyaw_gt = yawb_gt - yawa_gt
-        dpos_gt = np.array(posb_gt - posa_gt)
-        dpos_gt = np.transpose([dpos_gt])
-        Re = rotation_matrix(-yawa_gt, [0, 0, 1])[0:3, 0:3]
-        dpos_gt = np.dot(Re, dpos_gt)
-        dpos_gt = dpos_gt.flatten()
+        dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         dpos_loop = np.array(loop["dpos"])
         _loops_data.append({
             "dpos_loop": dpos_loop,
@@ -508,9 +594,9 @@ def plot_loops_error(poses, loops, nodes):
         dpos_loops.append(dpos_loop)
         dpos_gts.append(dpos_gt)
         dpos_errs.append(dpos_gt - dpos_loop)    
-        dpos_gt_norms.append(np.linalg.norm(dpos_gt))
-        dpos_loop_norms.append(np.linalg.norm(dpos_loop))
-        dpos_errs_norm.append(np.linalg.norm(dpos_gt - dpos_loop))
+        dpos_gt_norms.append(norm(dpos_gt))
+        dpos_loop_norms.append(norm(dpos_loop))
+        dpos_errs_norm.append(norm(dpos_gt - dpos_loop))
         posa_gts.append(posa_gt)
         dyaws.append(loop["dyaw"])
         dyaw_gts.append(yawb_gt-yawa_gt)
