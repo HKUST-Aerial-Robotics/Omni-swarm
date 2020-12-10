@@ -30,7 +30,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_LOOPS
 // #define DEBUG_OUTPUT_COV
 // #define DEBUG_OUTPUT_NEW_KF
-#define DEBUG_OUTPUT_DETS
+// #define DEBUG_OUTPUT_DETS
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -57,7 +57,6 @@ using namespace std::chrono;
 
 #define RANDOM_DELETE_KF 
 
-#define ENABLE_DEPTH true
 
 
 float VO_DRIFT_METER;
@@ -79,7 +78,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
-            enable_distance(_params.enable_distance)
+            enable_distance(_params.enable_distance),
+            enable_detection_depth(_params.enable_detection_depth)
     {
     }
 
@@ -548,7 +548,7 @@ std::pair<bool, Swarm::Pose> SwarmLocalizationSolver::get_estimated_pose(int _id
         return std::make_pair(false, Swarm::Pose());
     }
 
-    return std::make_pair(true, Swarm::Pose(est_poses_idts.at(_id).at(ts)));
+    return std::make_pair(true, Swarm::Pose(est_poses_idts.at(_id).at(ts), true));
 }
 
 
@@ -1225,7 +1225,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         return false;
     }
 
-    det_ret = Swarm::DroneDetection(_det, ENABLE_DEPTH);
+    det_ret = Swarm::DroneDetection(_det, enable_detection_depth);
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);
     if (!success) {
@@ -1255,22 +1255,24 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
 #ifdef DEBUG_OUTPUT_DETS
 
-    // printf("SELF POSE A:");
-    // _nf_a.self_pose.print();
-    // printf("SELF POSE B:");
-    // _nf_b.self_pose.print();
     // printf("SELF POSE Ad:");
     // det_ret.self_pose_a.print();
     // printf("SELF POSE Bd:");
     // det_ret.self_pose_b.print();
 
-    // printf("DPOSE A");
-    // dpose_self_a.print();
-    // printf("DPOSE B");
-    // dpose_self_b.print();
-
-    printf("Det [TS%d]%d->%d\n", TSShort(ts.toNSec()), _ida, 
+    printf("\nDet [TS%d]%d->%d\n", TSShort(ts.toNSec()), _ida, 
         _idb);
+
+    printf("SELF POSE A:");
+    _nf_a.self_pose.print();
+    printf("SELF POSE B:");
+    _nf_b.self_pose.print();
+
+    printf("DPOSE A");
+    dpose_self_a.print();
+    printf("DPOSE B");
+    dpose_self_b.print();
+
 
     auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
     auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
@@ -1278,14 +1280,20 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     if (reta.first && retb.first) {
         Pose posea = reta.second * dpose_self_a;
         Pose poseb = retb.second * dpose_self_b;
+        printf("EST POSE A: ");
+        posea.print();
+        printf("EST POSE B: ");
+        poseb.print();
+
         Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        printf("EST DPOS: ");
+        est_rel_pose.print();
         Eigen::Vector3d est_dpos = est_rel_pose.pos();
         double est_inv_dep = 1/est_dpos.norm();
         est_dpos.normalize();
         std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
         std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
     }
-    return false;
 #endif
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
     return true;
