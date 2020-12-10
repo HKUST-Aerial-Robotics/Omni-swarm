@@ -176,6 +176,16 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     
     fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
     yaw_offset = (poses[main_id]["ypr"][0] - poses_fused[main_id]["ypr"][0])[0]
+
+    print("Yaw Offset, ", yaw_offset*57.3, "Fused Offset", fused_offset)
+
+    yaw_offset = 0
+
+    #Pvicon = DP Ppose
+    #DP = PviconPpose^-1
+    #DP = (PPose^-1 Pvicon)^-1
+    #PVicon = DYaw * Pos
+    #YawVicon = DYaw + Yaw
     for i in nodes:
         poses_fused[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_fused[i]["pos"]) + fused_offset
         poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset, 0, 0])
@@ -392,15 +402,11 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
             #dp_vo = posb_vo - posa_vo
             for i in range(len(yawa_fused)):
                 yaw = yawa_fused[i]
-                _dp_fused = np.transpose(dp_fused[i])
-                Re = rotation_matrix(-yaw, [0, 0, 1])[0:3, 0:3]
-                dp_fused[i] = np.transpose(np.dot(Re, _dp_fused))
+                dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
 
             for i in range(len(yawa_fused)):
                 yaw = yawa_gt[i]
-                _dp_gt = np.transpose(dp_gt[i])
-                Re = rotation_matrix(-yaw, [0, 0, 1])[0:3, 0:3]
-                dp_gt[i] = np.transpose(np.dot(Re, _dp_gt))
+                dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
                 
             ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
             ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
@@ -489,8 +495,7 @@ def plot_detection_error(poses, poses_vo, detections,  nodes):
     self_pos_b = []
     print("Total detection", len(detections))
     for det in detections:
-        if det["id_a"] == 2:
-            continue
+        #print(det["id_a"])
         posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
         posb_gt = poses[det["id_b"]]["pos_func"](det["ts"])
         yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
@@ -498,7 +503,7 @@ def plot_detection_error(poses, poses_vo, detections,  nodes):
         inv_dep_gt = 1/norm(dpos_gt)
         dpos_gt = dpos_gt * inv_dep_gt
         
-        dpos_det = np.array(det["dpos"]) - np.array([0.02, 0, 0.05])
+        dpos_det = np.array(det["dpos"]) - np.array([0.02, 0, 0.065])
         inv_dep_det = det["inv_dep"]
         _dets_data.append({
             "dpos_det": dpos_det,
