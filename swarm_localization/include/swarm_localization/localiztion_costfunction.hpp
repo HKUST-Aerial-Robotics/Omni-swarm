@@ -71,7 +71,7 @@ inline void unit_position_error(const T *posea, const T *poseb, const T inv_dep,
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
-    error[2] = inv_dep - _inv_dep;
+    error[2] = (inv_dep - _inv_dep)*ERROR_NORMLIZED / (T)(DETECTION_INV_DEP_COV);
 
     // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
     // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
@@ -196,8 +196,7 @@ struct SwarmLoopError {
             pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
             res_count = res_count + 4;
         } else {
-            ROS_ERROR("Loop not found in residual.");
-            exit(-1);
+            // ROS_WARN("Loop not found in residual.");
         }
         return res_count;
     }
@@ -243,8 +242,8 @@ struct SwarmLoopError {
             }
 
         } else {
-            ROS_ERROR("Detection not found in residual.");
-            exit(-1);
+            // ROS_WARN("Detection not found in residual.");
+            // exit(-1);
         }
         return res_count;
     }
@@ -259,8 +258,8 @@ struct SwarmLoopError {
             if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
                 res_count = res_count + loc->res_count;
             } else {
-                ROS_ERROR("Loop not found in residual count.");
-                exit(-1);
+                ROS_WARN("Loop or detection not found in residual count.");
+                // exit(-1);
             }
         }
         return res_count;

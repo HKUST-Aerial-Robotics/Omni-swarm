@@ -68,6 +68,7 @@ struct swarm_localization_solver_params{
     bool enable_detection;
     bool enable_loop;
     bool enable_distance;
+    bool enable_detection_depth;
 };
 
 class SwarmLocalizationSolver {
@@ -125,7 +126,7 @@ class SwarmLocalizationSolver {
 
     std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const;
 
-    bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b) const;
+    bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const;
 
     bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
 
@@ -161,7 +162,7 @@ class SwarmLocalizationSolver {
     
     bool solve_with_multiple_init(int max_number = 10);
     
-   
+    std::pair<bool, Swarm::Pose> get_estimated_pose(int _int, int64_t ts) const;
 
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;
@@ -194,6 +195,7 @@ public:
     bool enable_detection;
     bool enable_loop;
     bool enable_distance;
+    bool enable_detection_depth;
 
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;

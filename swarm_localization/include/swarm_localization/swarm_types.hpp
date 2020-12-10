@@ -241,7 +241,8 @@ public:
         self_pose_b = Pose(nd.local_pose_remote);
 
         inv_dep = nd.inv_dep;
-        p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);
+        //Here hacked
+        p = Eigen::Vector3d(nd.dpos.x - 0.02, nd.dpos.y, nd.dpos.z - 0.05);
         p.normalize();
         meaturement_type = Detection;
 
