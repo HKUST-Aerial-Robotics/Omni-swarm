@@ -406,6 +406,7 @@ class LocalProxy {
 
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
                         //TODO: handle node detected
+                        parse_node_detected(msg, _id);
                         break;
                     }
 
