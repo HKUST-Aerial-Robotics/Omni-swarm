@@ -1224,7 +1224,6 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         ROS_WARN("Can't find loop No sld win");
         return false;
     }
-
     det_ret = Swarm::DroneDetection(_det, enable_detection_depth);
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);

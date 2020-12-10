@@ -242,7 +242,7 @@ public:
 
         inv_dep = nd.inv_dep;
         //Here hacked
-        p = Eigen::Vector3d(nd.dpos.x - 0.02, nd.dpos.y, nd.dpos.z - 0.05);
+        p = Eigen::Vector3d(nd.dpos.x - 0.02, nd.dpos.y, nd.dpos.z - 0.065);
         p.normalize();
         meaturement_type = Detection;
 
