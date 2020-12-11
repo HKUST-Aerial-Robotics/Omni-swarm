@@ -32,6 +32,7 @@
             detection_sphere_cov: 0.1
             detection_inv_dep_cov: 0.5
             publish_full_path: false
+            is_pc_replay: true
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
