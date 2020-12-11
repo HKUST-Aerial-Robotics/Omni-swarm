@@ -69,6 +69,7 @@ struct swarm_localization_solver_params{
     bool enable_loop;
     bool enable_distance;
     bool enable_detection_depth;
+    bool kf_use_all_nodes;
 };
 
 class SwarmLocalizationSolver {
@@ -196,6 +197,8 @@ public:
     bool enable_loop;
     bool enable_distance;
     bool enable_detection_depth;
+
+    bool kf_use_all_nodes;
 
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
