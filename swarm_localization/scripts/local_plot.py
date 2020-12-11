@@ -284,7 +284,8 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Vicon Traj{i}")
         ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Traj{i}")
         #ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
-        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        # ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
 
         plt.grid()
         plt.legend()
@@ -303,15 +304,18 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
 
         ax1.plot(t_, pos_gt[:,0], label="$x_{gt}^" + _i + "$")
         ax1.plot(t_, pos_fused[:,0], label="$x_{fused}^" + _i + "$")
-        ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
+        # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
+        ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], label=f"Fused Offline Traj{i}")
 
         ax2.plot(t_, pos_gt[:,1], label="$y_{gt}^" + _i + "$")
         ax2.plot(t_, pos_fused[:,1], label="$y_{fused}^" + _i + "$")
-        ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        # ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
 
         ax3.plot(t_, pos_gt[:,2], label="$z_{gt}^" + _i + "$")
         ax3.plot(t_, pos_fused[:,2], label="$z_{fused}^" + _i + "$")
-        ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
+        # ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
+        ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
 
     ax1.legend()
     ax2.legend()
@@ -621,7 +625,6 @@ def plot_detection_error(poses, poses_vo, detections,  nodes):
     plt.hist(dpos_errs[:,2], 5, density=True, facecolor='g', alpha=0.75)
     
     print(f"Mean {np.mean(dpos_errs, axis=0)}")
-
 
     print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
     
