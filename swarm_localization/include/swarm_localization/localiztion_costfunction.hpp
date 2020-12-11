@@ -184,20 +184,15 @@ struct SwarmLoopError {
         int _idb = loc->id_b;
         int64_t _tsa = loc->ts_a;
         int64_t _tsb = loc->ts_b;
+        Pose _rel_pose = loc->relative_pose;
+        T rel_pose[4];
+        _rel_pose.to_vector_xyzyaw(rel_pose);
 
-        if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
-            Pose _rel_pose = loc->relative_pose;
-            T rel_pose[4];
-            _rel_pose.to_vector_xyzyaw(rel_pose);
+        T relpose_est[4];
+        estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
 
-            T relpose_est[4];
-            estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
-
-            pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
-            res_count = res_count + 4;
-        } else {
-            // ROS_WARN("Loop not found in residual.");
-        }
+        pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
+        res_count = res_count + 4;
         return res_count;
     }
 
@@ -207,43 +202,36 @@ struct SwarmLoopError {
         int _idb = det->id_b;
         int64_t _tsa = det->ts_a;
         int64_t _tsb = det->ts_b;
-        if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
-            // std::cout << "Residual of detection " << _ida << "->" << _idb << std::endl;
-            T relpose_est[4];
+        T relpose_est[4];
 
-            T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
-            get_pose(_ida, _tsa, _poses, posea);
-            get_pose(_idb, _tsb, _poses, poseb);
+        T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
+        get_pose(_ida, _tsa, _poses, posea);
+        get_pose(_idb, _tsb, _poses, poseb);
 
-            det->dpose_self_a.to_vector_xyzyaw(dposea);
-            det->dpose_self_b.to_vector_xyzyaw(dposeb);
+        det->dpose_self_a.to_vector_xyzyaw(dposea);
+        det->dpose_self_b.to_vector_xyzyaw(dposeb);
 
-            PoseMulti(posea, dposea, _posea);
-            PoseMulti(poseb, dposeb, _poseb);
-            // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
-            // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
+        PoseMulti(posea, dposea, _posea);
+        PoseMulti(poseb, dposeb, _poseb);
+        // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
+        // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
 
-            DeltaPose(_posea, _poseb, relpose_est);
+        DeltaPose(_posea, _poseb, relpose_est);
 
-            T inv_dep = (T)det->inv_dep;
-            T rel_p[3];
-            rel_p[0] = T(det->p.x());
-            rel_p[1] = T(det->p.y());
-            rel_p[2] = T(det->p.z());
+        T inv_dep = (T)det->inv_dep;
+        T rel_p[3];
+        rel_p[0] = T(det->p.x());
+        rel_p[1] = T(det->p.y());
+        rel_p[2] = T(det->p.z());
 
-            const double * tan_base = det->detect_tan_base.data();
+        const double * tan_base = det->detect_tan_base.data();
 
-            if (det->enable_depth) {
-                unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual + res_count);
-                res_count = res_count + 3;
-            } else {
-                unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
-                res_count = res_count + 2;
-            }
-
+        if (det->enable_depth) {
+            unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual + res_count);
+            res_count = res_count + 3;
         } else {
-            // ROS_WARN("Detection not found in residual.");
-            // exit(-1);
+            unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
+            res_count = res_count + 2;
         }
         return res_count;
     }
@@ -258,8 +246,11 @@ struct SwarmLoopError {
             if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
                 res_count = res_count + loc->res_count;
             } else {
-                ROS_WARN("Loop or detection not found in residual count.");
-                // exit(-1);
+                if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop)
+                    ROS_WARN("Loop %d(TS %d)->%d(TS %d) not found in residual count.", _ida, TSShort(_tsa), _idb, TSShort(_tsb));
+                else
+                    ROS_WARN("Detection %d(TS %d)->%d(TS %d) not found in residual count.", _ida, TSShort(_tsa), _idb, TSShort(_tsb));
+                exit(-1);
             }
         }
         return res_count;
