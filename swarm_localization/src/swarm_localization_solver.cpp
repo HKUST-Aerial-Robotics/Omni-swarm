@@ -81,10 +81,15 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
             enable_detection_depth(_params.enable_detection_depth),
-            kf_use_all_nodes(_params.kf_use_all_nodes)
+            kf_use_all_nodes(_params.kf_use_all_nodes),
+            generate_full_path(_params.generate_full_path)
     {
     }
 
+
+Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only) {
+    return est_pose_ref * Pose::DeltaPose(vo_ref, vo_now, is_yaw_only);
+}
 
 int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
     auto _ids = sf.node_id_list;
@@ -232,7 +237,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
                 delete _p;
                 _p = est_poses_tsid[last_ts_4node][_id];
             } else {
-                Pose predict_now = est_last * dpose;
+                Pose predict_now = Predict_By_VO(now_vo, last_vo, est_last);
                 predict_now.to_vector_xyzyaw(_p);
             }
             // ROS_INFO("Init ID %d at %d with predict value", _nf.id, TSShort(ts));
@@ -429,7 +434,7 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
                 if (vo_pathes.find(_id) == vo_pathes.end()) {
                     vo_pathes[_id] = Swarm::Path(0);
                 }
-                vo_pathes[_id].push_back(std::make_pair(nf.ts,nf.pose()));
+                vo_pathes[_id].push_back(std::make_pair(sf.ts,nf.pose()));
             }
         }
     }
@@ -480,6 +485,7 @@ bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Ei
                 Pose last_vo = all_sf.at(_ts).id2nodeframe.at(_id).pose();
                 Pose now_vo = nf.pose();
 
+                _pose = Predict_By_VO(now_vo, last_vo, est_last);
 
                 _pose = est_last * Pose::DeltaPose(last_vo, now_vo, true);
                 cov = Eigen::Matrix4d::Zero();
@@ -761,8 +767,34 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
 
     if (generate_full_path) {
         for (auto & it : kf_pathes) {
-            int _id = it.first;
+            int id = it.first;
             auto & _kf_path = it.second;
+            int index = 0;
+            full_pathes[id] = Swarm::Path(0);
+
+            int count = 0;
+            for (auto it : vo_pathes[id]) {
+
+                int64_t ts_vo = it.first;
+                int64_t ts_kf = _kf_path[index].first;
+                //Found closest KF Pose
+                if (count % 10 == 0 && _kf_path.size() > 0) {
+                    if (_kf_path.size() > 1) {
+                        while (llabs(ts_vo - _kf_path[index].first) > llabs(ts_vo - _kf_path[index + 1].first) && index+1<_kf_path.size()) {
+                            index ++;
+                        }
+                        ts_kf = _kf_path[index].first;
+                    }
+
+                    Pose pose_ref = _kf_path[index].second;
+                    Pose vo_ref = all_sf[ts_kf].id2nodeframe[id].pose();
+                    Pose est_ref = _kf_path[index].second;
+                    Pose pose = Predict_By_VO(it.second, vo_ref, est_ref);
+                    full_pathes[id].push_back(std::make_pair(ts_vo, pose));
+                }
+                count ++;
+            }
+            ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
         }
     }
 
@@ -1201,7 +1233,7 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
     double min_ts_err_a = 10000;
     double min_ts_err_b = 10000;
 
-        for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
+    for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         //Find suitable timestamp for tsa
         //If the first frame is older than tsa, than useless
 

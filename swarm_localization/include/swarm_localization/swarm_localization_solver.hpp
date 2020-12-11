@@ -37,6 +37,9 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
     );
 }
 
+
+Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only = true);
+
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, 7> LoopCost;
@@ -70,6 +73,7 @@ struct swarm_localization_solver_params{
     bool enable_distance;
     bool enable_detection_depth;
     bool kf_use_all_nodes;
+    bool generate_full_path;
 };
 
 class SwarmLocalizationSolver {

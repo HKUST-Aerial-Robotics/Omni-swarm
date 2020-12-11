@@ -449,7 +449,9 @@ public:
         nh.param<bool>("enable_loop", solver_params.enable_loop, true);
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);
         nh.param<bool>("enable_detection_depth", solver_params.enable_detection_depth, true);
-        nh.param<bool>("publish_full_path", publish_full_path, true);
+        nh.param<bool>("publish_full_path", publish_full_path, false);
+        nh.param<bool>("publish_full_path", solver_params.generate_full_path, false);
+
         nh.param<bool>("kf_use_all_nodes", solver_params.kf_use_all_nodes, false);
         nh.param<bool>("is_pc_replay", is_pc_replay, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
