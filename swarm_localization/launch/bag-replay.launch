@@ -1,8 +1,11 @@
 <launch>
     <arg name="show" default="false" />
     <arg name="drone_id" default="1" />
-    <include file="$(find swarm_localization)/launch/loop-5-pc.launch" />
-    <include file="$(find localization_proxy)/launch/uwb_comm.launch" />
+    <arg name="viz" default="true" />
+    <include file="$(find swarm_localization)/launch/loop-5-pc.launch" >
+        <arg name="viz" value="$(arg viz)" />
+    </include>
+    <!-- <include file="$(find localization_proxy)/launch/uwb_comm.launch" /> -->
     <include file="$(find swarm_detector)/launch/detector.launch" >
         <arg name="show" value="$(arg show)" />
         <arg name="drone_id" value="$(arg drone_id)" />
