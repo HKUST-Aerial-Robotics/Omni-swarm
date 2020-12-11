@@ -80,7 +80,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
-            enable_detection_depth(_params.enable_detection_depth)
+            enable_detection_depth(_params.enable_detection_depth),
+            kf_use_all_nodes(_params.kf_use_all_nodes)
     {
     }
 
@@ -111,15 +112,32 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         return 0;
     }
 
-    const NodeFrame & self_nf = sf.id2nodeframe.at(self_id);
-    Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
+    if (kf_use_all_nodes) {
+        for (auto _id : _ids) {
+            const NodeFrame & self_nf = sf.id2nodeframe.at(_id);
+            if (self_nf.vo_available && last_sf.has_node(_id) && last_sf.has_odometry(_id)) {
+                Eigen::Vector3d _diff = sf.position(_id) - last_sf.position(_id);
 
-    //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-    if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
-        ret.push_back(self_id);
-        node_kf_count[self_id] += 1;
-        ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), self_id, _diff.norm());
-        return 1;
+                //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
+                if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+                    ret.push_back(_id);
+                    node_kf_count[_id] += 1;
+                    ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), _id, _diff.norm());
+                    return 1;
+                }
+            }
+        }
+    } else {
+        const NodeFrame & self_nf = sf.id2nodeframe.at(self_id);
+        if (self_nf.vo_available && last_sf.has_node(self_id) && last_sf.has_odometry(self_id)) {
+            Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
+            if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+                ret.push_back(self_id);
+                node_kf_count[self_id] += 1;
+                ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), self_id, _diff.norm());
+                return 1;
+            }
+        }
     }
 
     for (auto _id : _ids) {
