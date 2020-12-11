@@ -172,20 +172,21 @@ protected:
             // ROS_INFO("Try to solve");
             cost.data = this->swarm_localization_solver->solve();
             t_last = t_now;
-            if (cost.data > 0)
+            if (cost.data >= 0) {
                 solving_cost_pub.publish(cost);
             pub_full_path();
         }
     }
+    }
 
     void pub_full_path() {
-        auto path = &(swarm_localization_solver->kf_pathes);
+        auto pathes = &(swarm_localization_solver->kf_pathes);
 
         if (publish_full_path) {
-            path = &(swarm_localization_solver->full_pathes);
+            pathes = &(swarm_localization_solver->full_pathes);
         }
 
-        for (auto & it: *path) {
+        for (auto & it: *pathes) {
             auto id = it.first;
             auto & path = it.second;
 
@@ -196,6 +197,7 @@ protected:
                 auto & pose = pose_stamped.second;
                 geometry_msgs::PoseStamped _pose_stamped;
                 _pose_stamped.header.stamp.fromNSec(pose_stamped.first);
+                _pose_stamped.header.frame_id = "world";
                 _path.header.stamp = _pose_stamped.header.stamp;
                 _pose_stamped.pose = pose.to_ros_pose();
                 _path.poses.push_back(_pose_stamped);
@@ -203,7 +205,11 @@ protected:
 
             if (pathes_pubs.find(id) == pathes_pubs.end()) {
                 char name[100] = {0};
-                sprintf(name, "/swarm_drones/est_drone_%d_path", id);
+                if (is_pc_replay) {
+                    sprintf(name, "/swarm_drones/est_drone_%d_path_pc", id);
+                } else {
+                    sprintf(name, "/swarm_drones/est_drone_%d_path", id);
+                }
                 pathes_pubs[id] = nh.advertise<nav_msgs::Path>(name, 1);
             }
 
@@ -230,7 +236,11 @@ protected:
     void pub_odom_id(unsigned int id, const Odometry &odom) {
         if (remote_drone_odom_pubs.find(id) == remote_drone_odom_pubs.end()) {
             char name[100] = {0};
-            sprintf(name, "/swarm_drones/est_drone_%d_odom", id);
+            if (is_pc_replay) {
+                sprintf(name, "/swarm_drones/est_drone_%d_odom_pc", id);
+            } else {
+                sprintf(name, "/swarm_drones/est_drone_%d_odom", id);
+            }
             remote_drone_odom_pubs[id] = nh.advertise<Odometry>(name, 1);
         }
 
@@ -265,6 +275,7 @@ private:
 
     bool pub_swarm_odom = false;
     bool publish_full_path = false;
+    bool is_pc_replay = false;
 
 
     int self_id = -1;
@@ -439,6 +450,7 @@ public:
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);
         nh.param<bool>("enable_detection_depth", solver_params.enable_detection_depth, true);
         nh.param<bool>("publish_full_path", publish_full_path, true);
+        nh.param<bool>("is_pc_replay", is_pc_replay, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
 
 

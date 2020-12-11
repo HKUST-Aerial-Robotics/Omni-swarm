@@ -644,7 +644,7 @@ double SwarmLocalizationSolver::solve() {
         return -1;
 
     if (!has_new_keyframe)
-        return cost_now;
+        return -1;
 
     estimate_observability();
 
@@ -712,8 +712,6 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             if (kf_pathes.find(_nf.id) == kf_pathes.end()) {
                 kf_pathes[_nf.id] = Swarm::Path(0);
             }
-
-           
 
             if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
                 est_poses_tsid_saved[sf.ts] = std::map<int,double*>();
@@ -958,11 +956,7 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
                 nf_win.push_back(_nf);
                 ts2poseindex[ts] = nf_win.size() - 1;
             }
-
-            // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
-            
         } 
-
     }
 
     if (_id == self_id) {

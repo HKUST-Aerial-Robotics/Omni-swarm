@@ -89,15 +89,12 @@ def read_pose(bag, topic, t0):
     print("Trajectory total length ", poses_length(ret))
     return ret, t0
 
-def read_path(bag, topic, t0):
-    path = None
+
+def parse_path(path, t0):
     pos = []
     ypr = []
     ts = []
     
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        path = msg
-
     for msg in path.poses:
         p = msg.pose.position
         q = msg.pose.orientation
@@ -105,7 +102,7 @@ def read_path(bag, topic, t0):
         y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
         ypr.append([y, p, r])
         ts.append(msg.header.stamp.to_sec() - t0)
-        
+          
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
@@ -113,6 +110,18 @@ def read_path(bag, topic, t0):
     }
 
     return ret
+
+def read_path_all(bag, topic, t0):
+    pathes = []
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        pathes.append(parse_path(msg, t0))
+    return pathes
+
+def read_path(bag, topic, t0):
+    path = None
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        path = msg
+    return parse_path(path, t0)
 
 def poses_length(poses):
     dp = np.diff(poses["pos"], axis=0)
@@ -162,7 +171,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses[i], t0 =  read_pose(bag, f"/SwarmNode{i}/pose", t0)
         if is_pc:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
         else:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
