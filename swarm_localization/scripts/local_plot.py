@@ -57,8 +57,10 @@ def read_pose_swarm_frame(bag, topic, _id, t0):
                 ypr.append([node.yaw, 0, 0])
     ret = {
         "t": np.array(ts),
-        "pos": np.array(pos),
-        "ypr": np.array(ypr),
+        "pos_raw": np.array(pos),
+        "pos_raw_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
+        "ypr_raw": np.array(ypr),
+        "ypr_raw_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
     }
     return ret
 
@@ -143,7 +145,7 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
             "dyaw":msg.dyaw
         }
         loops.append(loop)
-    return loops
+    return loops 
 
 def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
     dets = []
@@ -205,10 +207,10 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
 
     for i in nodes:
-        vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos"][0]
-        yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr"][0])[0]
-        poses_vo[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_vo[i]["pos"]) + vo_offset
-        poses_vo[i]["ypr"] = poses_vo[i]["ypr"] + np.array([yaw_offset, 0, 0])
+        vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
+        yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
+        poses_vo[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
+        poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     
@@ -372,13 +374,13 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
         rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
         
         label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
-        ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], "+", label=label)
+        ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], ".", label=label)
 
         label = f"$Path erry_{i}$ RMSE{i}:{rmse_vo_y:3.3f}"
-        ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], "+",label=label)
+        ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], ".",label=label)
         
         label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
-        ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], "+", label=label)
+        ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], ".", label=label)
     
         print(f"RMSE Fused Online {i} is {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
         print(f"RMSE Fused Offline Path {i} is {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
@@ -490,7 +492,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     ax1.legend()
     ax2.legend() 
 
-def plot_detection_error(poses, poses_vo, detections,  nodes):
+def plot_detections_error(poses, poses_vo, detections,  nodes):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -516,7 +518,7 @@ def plot_detection_error(poses, poses_vo, detections,  nodes):
         inv_dep_gt = 1/norm(dpos_gt)
         dpos_gt = dpos_gt * inv_dep_gt
         
-        dpos_det = np.array(det["dpos"]) - np.array([0.02, 0, 0.065])
+        dpos_det = np.array(det["dpos"]) - np.array([0.04, 0, 0.05])
         inv_dep_det = det["inv_dep"]
         _dets_data.append({
             "dpos_det": dpos_det,
@@ -584,32 +586,32 @@ def plot_detection_error(poses, poses_vo, detections,  nodes):
     plt.figure("INV DEPS")
     plt.plot(ts_a, inv_deps)
 
-    # plt.figure("Self Pose Plot")
-    # plt.subplot(311)
-    # plt.title("VO X")
-    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,0], label="VO1")
-    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,0], label="VO2")
-    # plt.plot(ts_a, self_pos_a[:,0], 'o')
-    # plt.plot(ts_a, self_pos_b[:,0], '+')
-    # plt.legend()
-    # plt.grid()
+    plt.figure("Self Pose Plot")
+    plt.subplot(311)
+    plt.title("VO X")
+    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,0], label="VO1")
+    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,0], label="VO2")
+    plt.plot(ts_a, self_pos_a[:,0], 'o')
+    plt.plot(ts_a, self_pos_b[:,0], '+')
+    plt.legend()
+    plt.grid()
     
-    # plt.subplot(312)
-    # plt.title("VO Y")
-    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,1], label="VO1")
-    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,1], label="VO2")
-    # plt.plot(ts_a, self_pos_a[:,1], 'o')
-    # plt.plot(ts_a, self_pos_b[:,1], '+')
+    plt.subplot(312)
+    plt.title("VO Y")
+    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,1], label="VO1")
+    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,1], label="VO2")
+    plt.plot(ts_a, self_pos_a[:,1], 'o')
+    plt.plot(ts_a, self_pos_b[:,1], '+')
 
-    # plt.legend()
-    # plt.grid()
+    plt.legend()
+    plt.grid()
     
-    # plt.subplot(313)
-    # plt.title("VO Z")
-    # plt.plot(poses_vo[1]["t"], poses_vo[1]["pos"][:,2], label="VO1")
-    # plt.plot(poses_vo[2]["t"], poses_vo[2]["pos"][:,2], label="VO2")
-    # plt.plot(ts_a, self_pos_a[:,2], 'o')
-    # plt.plot(ts_a, self_pos_b[:,2], '+')
+    plt.subplot(313)
+    plt.title("VO Z")
+    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,2], label="VO1")
+    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,2], label="VO2")
+    plt.plot(ts_a, self_pos_a[:,2], 'o')
+    plt.plot(ts_a, self_pos_b[:,2], '+')
 
 
     # plt.legend()
@@ -665,7 +667,10 @@ def plot_loops_error(poses, loops, nodes):
         posa_gts.append(posa_gt)
         dyaws.append(loop["dyaw"])
         dyaw_gts.append(yawb_gt-yawa_gt)
-        ts_a.append(loop["ts_a"])
+        if loop["ts_a"] > loop["ts_b"]:
+            ts_a.append(loop["ts_a"])
+        else:
+            ts_a.append(loop["ts_b"])
         yawa_gts.append(yawa_gt)
         yawb_gts.append(yawb_gt)
         dyaw_errs.append(yawb_gt-yawa_gt-loop["dyaw"])
@@ -678,10 +683,10 @@ def plot_loops_error(poses, loops, nodes):
     fig = plt.figure()
 
     plt.subplot(311)
-    plt.plot(ts_a, dpos_errs_norm, '.', label="Loop Error")
-    plt.plot(ts_a, np.abs(dpos_errs[:,0]), '+', label="Loop Error X")
-    plt.plot(ts_a, np.abs(dpos_errs[:,1]), '+', label="Loop Error Y")
-    plt.plot(ts_a, dpos_errs[:,2], '+', label="Loop Error Z")
+    plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
+    plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
+    plt.plot(ts_a, dpos_errs[:,1], '2', label="Loop Error Y")
+    plt.plot(ts_a, dpos_errs[:,2], '3', label="Loop Error Z")
     plt.title("Error Pos Loop vs Vicon")
     plt.grid(which="both")
     plt.legend()
@@ -689,10 +694,8 @@ def plot_loops_error(poses, loops, nodes):
     plt.subplot(312)
     plt.plot(ts_a, dyaws, '.', label="DYaw Gt")
     plt.plot(ts_a, dyaw_gts, '+', label="DYaw Loop")
-    plt.plot(ts_a, yawa_gts, "*", label="Vicon Yaw A")
     plt.plot(ts_a, np.abs(dyaw_errs), "x", label="DYaw Error")
-
-    #plt.plot(ts_a, yawb_gts, "*", label="Vicon Yaw B")
+    
     plt.title("Error Yaw Loop vs Vicon")
     plt.grid(which="both")
     plt.legend()

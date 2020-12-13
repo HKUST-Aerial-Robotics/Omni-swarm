@@ -22,7 +22,8 @@ extern float LOOP_YAWCOV;
 extern float DETECTION_SPHERE_COV;
 extern float DETECTION_INV_DEP_COV;
 
-#define ERROR_NORMLIZED 0.01
+// #define ERROR_NORMLIZED 0.01
+#define ERROR_NORMLIZED 1.0
 #define UNIDENTIFIED_MIN_ID 1000
 #define NO_ANNETAPOS
 #define ENABLE_DETECTION
@@ -242,7 +243,7 @@ public:
 
         inv_dep = nd.inv_dep;
         //Here hacked
-        p = Eigen::Vector3d(nd.dpos.x - 0.02, nd.dpos.y, nd.dpos.z - 0.065);
+        p = Eigen::Vector3d(nd.dpos.x - 0.04, nd.dpos.y, nd.dpos.z - 0.05);
         p.normalize();
         meaturement_type = Detection;
 
