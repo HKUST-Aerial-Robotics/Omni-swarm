@@ -901,7 +901,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
     }
     int res_num = 0;
-    auto loss_function = new ceres::HuberLoss(0.1);
+    auto loss_function = new ceres::HuberLoss(1.0);
     CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
 
     if (cost != nullptr) {
@@ -998,7 +998,8 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
-        problem.AddResidualBlock(cf , nullptr, pose_win);
+        auto loss_function = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(cf , loss_function, pose_win);
     } else {
         ROS_WARN("Emptry swarm fram horizon error");
     }
