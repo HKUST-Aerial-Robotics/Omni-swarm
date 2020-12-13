@@ -1344,6 +1344,14 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     }
 #endif
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
+
+    if (dpose_self_a.pos().norm() > 0.3 || dpose_self_b.pos().norm() > 0.3) {
+        ROS_WARN("Det %d->%d @ %d too big dpos %f %f", _ida, _idb, TSShort(ts.toNSec()),
+            dpose_self_a.pos().norm(),
+            dpose_self_b.pos().norm()
+        );
+        return false;
+    }
     return true;
 }
 
