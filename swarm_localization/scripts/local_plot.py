@@ -43,6 +43,8 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
         "ypr": np.array(ypr),
     }
     return ret
+
+# def read_distance_swarm_frame(bag, topic, _id, to)
 def read_pose_swarm_frame(bag, topic, _id, t0):
     pos = []
     ypr = []
@@ -198,18 +200,19 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     #PVicon = DYaw * Pos
     #YawVicon = DYaw + Yaw
     for i in nodes:
-        poses_fused[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_fused[i]["pos"]) + fused_offset
+        poses_fused[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_fused[i]["pos"]) + fused_offset
         poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset, 0, 0])
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
-        poses_path[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_path[i]["pos"]) + fused_offset
+        poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_path[i]["pos"]) + fused_offset
         poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
+        poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
     for i in nodes:
         vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
         yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
-        poses_vo[i]["pos"] = yaw_rotate_vec(-yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
+        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
         poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
@@ -269,9 +272,9 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
         ax.set_title(f"Traj {i}, length: {poses_length(poses[i]):3.3f}")
         ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Vicon Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
+        #ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
         ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VO{i}")
-        #ax.scatter(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}", color="red")
+        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}", color="red")
         
         plt.legend()
         ax.set_xlabel('$X$')
@@ -284,21 +287,19 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1)
         ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Vicon Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Traj{i}")
-        #ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
+        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Traj{i}")
+        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
         # ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
         ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
 
         plt.grid()
         plt.legend()
-    
-def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
-    t_calib = 0
-    fig = plt.figure("Fused Vs GT 1D")
-    fig.suptitle("Fused Vs GT 1D")
-    ax1, ax2, ax3 = fig.subplots(3, 1)
 
     for i in nodes:
+        fig = plt.figure(f"Drone {i} fused Vs GT 1D")
+        fig.suptitle(f"Drone {i} fused Vs GT 1D")
+        ax1, ax2, ax3 = fig.subplots(3, 1)
+
         t_ = poses_fused[i]["t"]
         pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"])
         pos_fused = poses_fused[i]["pos"]
@@ -308,16 +309,21 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
         ax1.plot(t_, pos_fused[:,0], label="$x_{fused}^" + _i + "$")
         # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
         ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], label=f"Fused Offline Traj{i}")
+        ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
 
         ax2.plot(t_, pos_gt[:,1], label="$y_{gt}^" + _i + "$")
         ax2.plot(t_, pos_fused[:,1], label="$y_{fused}^" + _i + "$")
-        # ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
         ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
+        ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
 
         ax3.plot(t_, pos_gt[:,2], label="$z_{gt}^" + _i + "$")
         ax3.plot(t_, pos_fused[:,2], label="$z_{fused}^" + _i + "$")
-        # ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
+        #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
+        #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
         ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
+        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VO Traj{i}")
 
     ax1.legend()
     ax2.legend()
@@ -325,12 +331,16 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     ax1.grid()
     ax2.grid()
     ax3.grid()
+    
+def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
+    t_calib = 0
 
     #Plot Fused Vs GT absolute error
-    fig = plt.figure("Fused Absolute Error")
-    fig.suptitle("Fused Absolute Error")
-    ax1, ax2, ax3 = fig.subplots(3, 1)
+
     for i in nodes:
+        fig = plt.figure(f"Fused Absolute Error {i}")
+        fig.suptitle(f"Fused Absolute Error {i}")
+        ax1, ax2, ax3 = fig.subplots(3, 1)
         t_ = poses_fused[i]["t"]
         t0 =t_[0]
         pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"]+t_calib)
@@ -343,13 +353,13 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
         rmse_z = RMSE(pos_gt[:,2] , pos_fused[:,2])
         
         label = f"$errx_{i}$ RMSE{i}:{rmse_x:3.3f}"
-        ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
+        #ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
 
         label = f"$erry_{i}$ RMSE{i}:{rmse_y:3.3f}"
-        ax2.plot(t_, pos_gt[:,1]  - pos_fused[:,1], label=label)
+        #ax2.plot(t_, pos_gt[:,1]  - pos_fused[:,1], label=label)
 
         label = f"$erry_{i}$ RMSE{i}:{rmse_z:3.3f}"
-        ax3.plot(t_,  pos_gt[:,1]  - pos_fused[:,1], label=label)
+        #ax3.plot(t_,  pos_gt[:,1]  - pos_fused[:,1], label=label)
 
         pos_gt =  poses[i]["pos_func"](poses_vo[i]["t"]+t_calib)
         
@@ -374,24 +384,22 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
         rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
         
         label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
-        ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], ".", label=label)
+        ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
 
         label = f"$Path erry_{i}$ RMSE{i}:{rmse_vo_y:3.3f}"
-        ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], ".",label=label)
+        ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], label=label)
         
         label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
-        ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], ".", label=label)
+        ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
     
         print(f"RMSE Fused Online {i} is {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
         print(f"RMSE Fused Offline Path {i} is {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
         print(f"RMSE VO {i} is {rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}")
 
-    # ax1.legend()
-    # ax2.legend()
-    ax3.legend()
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
+        ax3.legend()
+        ax1.grid()
+        ax2.grid()
+        ax3.grid()
 
     fig = plt.figure("Relative Pose")
     fig.suptitle("Relative Pose")

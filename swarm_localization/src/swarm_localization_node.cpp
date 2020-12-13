@@ -413,7 +413,7 @@ private:
 public:
     SwarmLocalizationNode(ros::NodeHandle &_nh) :
             nh(_nh) {
-        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 10,
+        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 1000,
                                           &SwarmLocalizationNode::on_swarmframe_recv, this,
                                           ros::TransportHints().tcpNoDelay());
         
