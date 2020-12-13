@@ -2,6 +2,10 @@
     <arg name="show" default="false" />
     <arg name="drone_id" default="1" />
     <arg name="viz" default="true" />
+    <arg name="vins" default="false" />
+    <arg name="loop" default="false" />
+    <arg name="config_file" default="/home/xuhao/Dropbox/data/TRO2020-SwarmLocal/tro2020-bags/Configs/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
+
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" >
         <arg name="viz" value="$(arg viz)" />
         <arg name="output" value="screen" />
@@ -16,7 +20,14 @@
         <arg name="drone_id" value="$(arg drone_id)" />
         <arg name="detect_duration" value="0.0" />
         <arg name="output" value="log" />
-        <arg name="extrinsic_path" 
-            value="/home/xuhao/Dropbox/data/TRO2020-SwarmLocal/tro2020-bags/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
+        <arg name="extrinsic_path" value="$(arg config_file)" />
+    </include>
+
+    <include file="$(find vins)/launch/fisheye.launch" if="$(arg vins)">
+        <arg name="config_file" value="$(arg config_file)" />
+        <arg name="output" value="log" />
+    </include>
+
+    <include file="$(find swarm_loop)/launch/loop-nodelet-pc.launch" if="$(arg loop)">
     </include>
 </launch>
