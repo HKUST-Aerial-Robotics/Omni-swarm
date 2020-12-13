@@ -841,69 +841,47 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
     
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex  _id_ts_poseindex) const {
-    auto sle = new SwarmLoopError(loops, _id_ts_poseindex);
-    auto cost_function = new LoopCost(sle);
-    int res_num = sle->residual_count();
-    cost_function->SetNumResiduals(res_num);
-    std::set<int> all_index;
-    for (auto it : _id_ts_poseindex) {
-        for (auto it2 : it.second) {
-            if (all_index.find(it2.second) == all_index.end() ) {
-                cost_function->AddParameterBlock(4);
-                all_index.insert(it2.second);
-            }
-        }
+SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loc) const {
+    if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
+        auto sle = new SwarmLoopError(loc);
+        auto cost_function = new LoopCost(sle);
+        int res_num = sle->residual_count();
+        cost_function->AddParameterBlock(4);
+        cost_function->AddParameterBlock(4);
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    } else if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection) {
+        auto sle = new SwarmDetectionError(loc);
+        auto cost_function = new DetectionCost(sle);
+        int res_num = sle->residual_count();
+        cost_function->AddParameterBlock(4);
+        cost_function->AddParameterBlock(4);
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
     }
-
-    return cost_function;
+    return nullptr;
 }
     
 void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
-
-    std::vector<double*> pose_state; // For involved poses
-    std::map<double*, int> added_poses;
-
-    if (good_2drone_measurements.size() == 0) {
-        // ROS_INFO("No loop; Return");
-        return;
-    }
-    // ROS_INFO("Find %ld good loops", good_2drone_measurements.size());
-    IDTSIndex  _id_ts_poseindex;
-
     for (auto loc : good_2drone_measurements) {
-         if (_id_ts_poseindex.find(loc->id_a) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc->id_a] = std::map<int64_t, int>();
-        }
-
-        if (_id_ts_poseindex.find(loc->id_b) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc->id_b] = std::map<int64_t, int>();
-        }
-
+        std::vector<double*> pose_state; // For involved poses
         double * posea = est_poses_idts.at(loc->id_a).at(loc->ts_a);
-        if (added_poses.find(posea) == added_poses.end()) {
-            pose_state.push_back(posea);
-            _id_ts_poseindex[loc->id_a][loc->ts_a] = pose_state.size() - 1;
-            added_poses[posea] = pose_state.size() - 1;
-        } else {
-            _id_ts_poseindex[loc->id_a][loc->ts_a] = added_poses[posea];
-        }
-
         double * poseb = est_poses_idts.at(loc->id_b).at(loc->ts_b);
-        if (added_poses.find(poseb) == added_poses.end()) {
-            pose_state.push_back(poseb);
-            _id_ts_poseindex[loc->id_b][loc->ts_b] = pose_state.size() - 1;
-            added_poses[poseb] = pose_state.size() - 1;
-        } else {
-            _id_ts_poseindex[loc->id_b][loc->ts_b] = added_poses[poseb];
+        if (posea == poseb) {
+            if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
+                ROS_WARN("Duplicate parameter blocks of loop %d(%d)->%d(%d) skip...", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
+            } else {
+                ROS_WARN("Duplicate parameter blocks of det %d(%d)->%d(%d). You may detected your self!!!", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
+            }
+            continue;
         }
+        pose_state.push_back(posea);
+        pose_state.push_back(poseb);
+        CostFunction * cost = _setup_cost_function_by_loop(loc);
+        ceres::LossFunction *loss_function;
+        loss_function = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(cost, loss_function, pose_state);
     }
-
-    CostFunction * cost = _setup_cost_function_by_loop(good_2drone_measurements, _id_ts_poseindex);
-    ceres::LossFunction *loss_function;
-    loss_function = new ceres::HuberLoss(0.1);
-    //loss_function = new ceres::HuberLoss(0.5);
-    problem.AddResidualBlock(cost, loss_function, pose_state);
 }
     
 

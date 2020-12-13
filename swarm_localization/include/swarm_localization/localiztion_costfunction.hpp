@@ -137,76 +137,109 @@ inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan
     tan_base[5] = T(_tan_base(1, 2));
 }
 
+class GeneralMeasurement2DronesError {
+protected:
+    const Swarm::GeneralMeasurement2Drones * loc;
+    GeneralMeasurement2DronesError(const Swarm::GeneralMeasurement2Drones* _loc): 
+    loc(_loc){
 
-struct SwarmLoopError {
-    std::vector<Swarm::GeneralMeasurement2Drones*> locs;
-    std::map<int, std::map<int64_t, int>> id_ts_poseindex;
-
-    SwarmLoopError(std::vector<Swarm::GeneralMeasurement2Drones*> _locs, std::map<int, std::map<int64_t, int>>  _id_ts_poseindex) :
-        locs(_locs), id_ts_poseindex(_id_ts_poseindex) {
-
+    }
+    
+    template<typename T>
+    inline void get_pose_a(T const *const *_poses, T * t_pose) const {
+        t_pose[0] =  _poses[0][0];
+        t_pose[1] =  _poses[0][1];
+        t_pose[2] =  _poses[0][2];
+        t_pose[3] =  _poses[0][3];
     }
 
     template<typename T>
-    inline void get_pose(int _id, int64_t ts, T const *const *_poses, T * t_pose) const {
-        if (has_id_ts(_id, ts)) {
-                int index = id_ts_poseindex.at(_id).at(ts);
-                t_pose[0] =  _poses[index][0];
-                t_pose[1] =  _poses[index][1];
-                t_pose[2] =  _poses[index][2];
-                t_pose[3] =  _poses[index][3];
-        } else {
-            ROS_ERROR("No pose of ID %d ts %d in Loop error;exit;", _id, TSShort(ts));
-            exit(-1);
-        }
+    inline void get_pose_b(T const *const *_poses, T * t_pose) const {
+        t_pose[0] =  _poses[1][0];
+        t_pose[1] =  _poses[1][1];
+        t_pose[2] =  _poses[1][2];
+        t_pose[3] =  _poses[1][3];
     }
 
     template<typename T>
-    inline void estimate_relpose(int ida, int64_t tsa, int idb, int64_t tsb, T const *const *_poses, T *relpose) const {
+    inline void estimate_relpose(T const *const *_poses, T *relpose) const {
         T posea[4] , poseb[4];
-        get_pose(ida, tsa, _poses, posea);
-        get_pose(idb, tsb, _poses, poseb);
+        get_pose_a(_poses, posea);
+        get_pose_b(_poses, poseb);
         DeltaPose(posea, poseb, relpose);
     }
 
-    bool has_id_ts(int _id, int64_t ts) const {
-        if (id_ts_poseindex.find(_id) != id_ts_poseindex.end()) {
-            if(id_ts_poseindex.at(_id).find(ts) != id_ts_poseindex.at(_id).end()) {
-                return true;
-            }
-        }
-        return false;
+public:
+    virtual int residual_count() {
+        return 0;
+    }
+};
+class SwarmLoopError : public GeneralMeasurement2DronesError {
+    const Swarm::LoopConnection* loop;
+public:
+    SwarmLoopError(const Swarm::GeneralMeasurement2Drones* _loc) :
+        GeneralMeasurement2DronesError(_loc){
+        loop = static_cast<const Swarm::LoopConnection*>(loc);
+    }
+
+    virtual int residual_count() override { 
+        return 4;
     }
 
     template<typename T>
-    inline int loop_relpose_residual(const Swarm::LoopConnection * loc, T const *const *_poses, T *_residual, int res_count) const {
-        int _ida = loc->id_a;
-        int _idb = loc->id_b;
-        int64_t _tsa = loc->ts_a;
-        int64_t _tsb = loc->ts_b;
-        Pose _rel_pose = loc->relative_pose;
+    bool operator()(T const *const *_poses, T *_residual) const {
+        int res_count = loop_relpose_residual(_poses, _residual);
+        // std::cout << "LOOP RES COUNT " << res_count << std::endl;
+        return true;
+    }
+
+protected:
+    template<typename T>
+    inline int loop_relpose_residual(T const *const *_poses, T *_residual) const {
+        Pose _rel_pose = loop->relative_pose;
         T rel_pose[4];
         _rel_pose.to_vector_xyzyaw(rel_pose);
 
         T relpose_est[4];
-        estimate_relpose(_ida, _tsa, _idb, _tsb, _poses, relpose_est);
+        estimate_relpose(_poses, relpose_est);
 
-        pose_error(relpose_est, rel_pose, _residual + res_count, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loc->avg_count, LOOP_YAWCOV/loc->avg_count);
-        res_count = res_count + 4;
-        return res_count;
+        pose_error(relpose_est, rel_pose, _residual, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loop->avg_count, LOOP_YAWCOV/loop->avg_count);
+        return 4;
+    }
+};
+
+class SwarmDetectionError : public GeneralMeasurement2DronesError{
+    bool enable_depth;
+    const Swarm::DroneDetection* det;
+public:
+    SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
+        GeneralMeasurement2DronesError(_loc) {
+        det = static_cast<const Swarm::DroneDetection*>(loc);
+        enable_depth = det->enable_depth;
     }
 
     template<typename T>
-    inline int detection_residual(const Swarm::DroneDetection * det, T const *const *_poses, T *_residual, int res_count) const {
-        int _ida = det->id_a;
-        int _idb = det->id_b;
-        int64_t _tsa = det->ts_a;
-        int64_t _tsb = det->ts_b;
+    bool operator()(T const *const *_poses, T *_residual) const {
+        int res_count = detection_residual( _poses, _residual);
+        return true;
+    }
+
+    virtual int residual_count() override{
+        if (enable_depth) {
+            return 3;
+        } else {
+            return 2;
+        }
+    }
+
+protected:
+    template<typename T>
+    inline int detection_residual(T const *const *_poses, T *_residual) const {
         T relpose_est[4];
 
         T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
-        get_pose(_ida, _tsa, _poses, posea);
-        get_pose(_idb, _tsb, _poses, poseb);
+        get_pose_a(_poses, posea);
+        get_pose_b(_poses, poseb);
 
         det->dpose_self_a.to_vector_xyzyaw(dposea);
         det->dpose_self_b.to_vector_xyzyaw(dposeb);
@@ -227,48 +260,12 @@ struct SwarmLoopError {
         const double * tan_base = det->detect_tan_base.data();
 
         if (det->enable_depth) {
-            unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual + res_count);
-            res_count = res_count + 3;
+            unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual);
+            return 3;
         } else {
-            unit_position_error(relpose_est, rel_p, tan_base, _residual + res_count);
-            res_count = res_count + 2;
+            unit_position_error(relpose_est, rel_p, tan_base, _residual);
+            return 2;
         }
-        return res_count;
-    }
-
-    int residual_count() {
-        int res_count = 0;
-        for (auto & loc : locs) {
-            int _ida = loc->id_a;
-            int _idb = loc->id_b;
-            int64_t _tsa = loc->ts_a;
-            int64_t _tsb = loc->ts_b;
-            if (has_id_ts(_ida, _tsa) && has_id_ts(_idb, _tsb)) {
-                res_count = res_count + loc->res_count;
-            } else {
-                if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop)
-                    ROS_WARN("Loop %d(TS %d)->%d(TS %d) not found in residual count.", _ida, TSShort(_tsa), _idb, TSShort(_tsb));
-                else
-                    ROS_WARN("Detection %d(TS %d)->%d(TS %d) not found in residual count.", _ida, TSShort(_tsa), _idb, TSShort(_tsb));
-                exit(-1);
-            }
-        }
-        return res_count;
-    }
-
-    template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-        int res_count = 0;
-        for (auto & loc : locs) {
-            if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
-                res_count = loop_relpose_residual(static_cast<Swarm::LoopConnection*>(loc), _poses, _residual, res_count);
-            } else if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection) {
-                res_count = detection_residual(static_cast<Swarm::DroneDetection*>(loc), _poses, _residual, res_count);
-            }
-        }
-
-        // std::cout << "LOOP RES COUNT " << res_count << std::endl;
-        return true;
     }
 };
 
@@ -305,8 +302,8 @@ struct SwarmFrameError {
     template<typename T>
     inline void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
         T posea[4] , poseb[4];
-        get_pose(ida, _poses, posea);
-        get_pose(idb, _poses, poseb);
+        get_pose_a(ida, _poses, posea);
+        get_pose_b(idb, _poses, poseb);
         DeltaPose(posea, poseb, relpose);
     }
 
@@ -537,3 +534,8 @@ struct SwarmHorizonError {
         return true;
     }
 };
+
+typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
+typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
+typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, 7> LoopCost;
+typedef ceres::DynamicAutoDiffCostFunction<SwarmDetectionError, 7> DetectionCost;
