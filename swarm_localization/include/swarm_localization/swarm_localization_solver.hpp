@@ -40,9 +40,6 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
 
 Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only = true);
 
-typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, 7> LoopCost;
 
 //Poses is dict of timestamp and then id;
 //state<ts,id>
@@ -150,7 +147,7 @@ class SwarmLocalizationSolver {
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
     CostFunction *
-    _setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex _id_ts_poseindex) const;
+    _setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loops) const;
 
     void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
     
