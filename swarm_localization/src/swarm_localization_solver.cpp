@@ -36,7 +36,7 @@ using namespace std::chrono;
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 // #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 0.5
+#define MAX_SOLVER_TIME 10000
 
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
