@@ -30,5 +30,9 @@
 
     <include file="$(find swarm_loop)/launch/loop-only-nodelet-pc.launch" if="$(arg loop)">
         <arg name="show" value="true" />
+        <arg name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_rtx3080_fp16.trt" />
+        <arg name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_rtx3080_fp16.trt" />
+        <arg name="camera_config_path" value="/home/xuhao/swarm_ws/src/VINS-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
+        <arg name="self_id" value="$(arg drone_id)" />
     </include>
 </launch>
