@@ -338,7 +338,6 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     t_calib = 0
 
     #Plot Fused Vs GT absolute error
-
     for i in nodes:
         fig = plt.figure(f"Fused Absolute Error {i}")
         fig.suptitle(f"Fused Absolute Error {i}")
@@ -350,6 +349,8 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
         pos_vo = poses_vo[i]["pos"]
         pos_path = poses_path[i]["pos"]
         _i = str(i) 
+
+
         rmse_x = RMSE(pos_gt[:,0] , pos_fused[:,0])
         rmse_y = RMSE(pos_gt[:,1] , pos_fused[:,1])
         rmse_z = RMSE(pos_gt[:,2] , pos_fused[:,2])
