@@ -28,6 +28,7 @@
         <arg name="output" value="log" />
     </include>
 
-    <include file="$(find swarm_loop)/launch/loop-nodelet-pc.launch" if="$(arg loop)">
+    <include file="$(find swarm_loop)/launch/loop-only-nodelet-pc.launch" if="$(arg loop)">
+        <arg name="show" value="true" />
     </include>
 </launch>
