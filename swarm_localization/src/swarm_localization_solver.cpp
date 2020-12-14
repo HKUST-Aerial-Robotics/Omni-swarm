@@ -36,7 +36,7 @@ using namespace std::chrono;
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 // #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 10000
+#define MAX_SOLVER_TIME 0.05
 
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
@@ -74,6 +74,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
+            det_dpos_thres(_params.det_dpos_thres),
             cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
             loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
             loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
@@ -136,11 +137,14 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         const NodeFrame & self_nf = sf.id2nodeframe.at(self_id);
         if (self_nf.vo_available && last_sf.has_node(self_id) && last_sf.has_odometry(self_id)) {
             Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
-            if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+            double dt = (sf.ts - last_sf.ts)/1e9;
+            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/3 && dt > 0.1)) { //here shall be some one see him or he see someone
                 ret.push_back(self_id);
                 node_kf_count[self_id] += 1;
                 ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), self_id, _diff.norm());
                 return 1;
+            } else {
+                ROS_WARN("Drone %d distance %f dt %f", _diff.norm(), dt);
             }
         }
     }
@@ -1150,9 +1154,6 @@ void SwarmLocalizationSolver::estimate_observability() {
             //Can't deal with machines power on later than movement
             pos_observability[_id] = true;
         }
-
-        ROS_INFO("Solve with enough movement");
-
     }
 
     std::set<int> _loop_observable_set = loop_observable_set(loop_edges);
@@ -1325,10 +1326,10 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
     if (dpose_self_a.pos().norm() > det_dpos_thres || dpose_self_b.pos().norm() > det_dpos_thres) {
-        ROS_WARN("Det %d->%d @ %d too big dpos %f %f", _ida, _idb, TSShort(ts.toNSec()),
-            dpose_self_a.pos().norm(),
-            dpose_self_b.pos().norm()
-        );
+        // ROS_WARN("Det %d->%d @ %d too big dpos %f %f", _ida, _idb, TSShort(ts.toNSec()),
+        //     dpose_self_a.pos().norm(),
+        //     dpose_self_b.pos().norm()
+        // );
         return false;
     }
     return true;
@@ -1576,7 +1577,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     std::cout << summary.message << std::endl;
-    std::cout << summary.FullReport() << std::endl;
+    //std::cout << summary.FullReport() << std::endl;
 #ifdef DEBUG_OUTPUT_SLD_WIN
     for (auto & sf: sf_sld_win) {
         print_frame(sf);
