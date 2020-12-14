@@ -277,50 +277,24 @@ struct SwarmFrameError {
     bool detection_no_scale = false;
 
     template<typename T>
-    inline void get_pose(int _id, T const *const *_poses, T * t_pose) const {
-//        printf("%d", _id);
-        if (id2poseindex.find(_id) != id2poseindex.end()) {
-            int index = id2poseindex.at(_id);
-            t_pose[0] =  _poses[index][0];
-            t_pose[1] =  _poses[index][1];
-            t_pose[2] =  _poses[index][2];
-            if (yaw_observability.at(_id)) {
-                t_pose[3] =  _poses[index][3];
-            } else {
-                t_pose[3] = T(yaw_init.at(_id));
-            }
-
-        } else {
-            ROS_ERROR("No pose of ID %d in SF %d error;exit; SF Has only %ld id ", _id, TSShort(sf.ts), sf.id2nodeframe.size());
-            for (auto it : id2poseindex) {
-                ROS_ERROR("id %d", it.first);
-            }
-            exit(-1);
-        }
-    }
-
-    template<typename T>
-    inline void estimate_relpose(int ida, int idb, T const *const *_poses, T *relpose) const {
-        T posea[4] , poseb[4];
-        get_pose_a(ida, _poses, posea);
-        get_pose_b(idb, _poses, poseb);
-        DeltaPose(posea, poseb, relpose);
+    inline void get_pos(int _id, T const *const *_poses, T * t_pose) const {
+        int index = id2poseindex.at(_id);
+        t_pose[0] =  _poses[index][0];
+        t_pose[1] =  _poses[index][1];
+        t_pose[2] =  _poses[index][2];
     }
 
     //Need add anntena position here!
     template<typename T>
     inline T node_distance(int idi, int idj, T const *const *_poses) const {
         //If consider bias here?
-        T posea[4] , poseb[4];
-        get_pose(idi, _poses, posea);
-        get_pose(idj, _poses, poseb);
-
-
+        T posea[3] , poseb[3];
+        get_pos(idi, _poses, posea);
+        get_pos(idj, _poses, poseb);
 
         return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
                     + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
                     + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
-
     }
 
     inline bool has_id(const int _id) const {
@@ -379,9 +353,7 @@ struct SwarmFrameError {
             }
 
         }
-
         return true;
-
     }
 
 
@@ -495,7 +467,7 @@ struct SwarmHorizonError {
     }
 };
 
-#define AUTODIFF_STRIDE 1
+#define AUTODIFF_STRIDE 4
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, AUTODIFF_STRIDE>  SFErrorCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, AUTODIFF_STRIDE> HorizonCost;
 typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, AUTODIFF_STRIDE> LoopCost;

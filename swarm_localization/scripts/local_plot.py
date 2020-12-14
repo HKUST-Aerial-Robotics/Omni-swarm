@@ -255,12 +255,14 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     # c = (c.ravel() - c.min()) / c.ptp()
     # c = np.concatenate((c, np.repeat(c, 2)))
     # c = plt.cm.hsv(c)
-    
-    ax.quiver(quivers[:,0], quivers[:,1], quivers[:,2], quivers[:,3], quivers[:,4], quivers[:,5], 
-        arrow_length_ratio=0.1, color="gray",linewidths=0.5)
 
-    ax.quiver(quivers_det[:,0], quivers_det[:,1], quivers_det[:,2], quivers_det[:,3], quivers_det[:,4], quivers_det[:,5], 
-        arrow_length_ratio=0.1, color="red",linewidths=1.0)
+    if len(quivers) > 0:   
+        ax.quiver(quivers[:,0], quivers[:,1], quivers[:,2], quivers[:,3], quivers[:,4], quivers[:,5], 
+            arrow_length_ratio=0.1, color="gray",linewidths=0.5)
+
+    if len(quivers_det) > 0:   
+        ax.quiver(quivers_det[:,0], quivers_det[:,1], quivers_det[:,2], quivers_det[:,3], quivers_det[:,4], quivers_det[:,5], 
+            arrow_length_ratio=0.1, color="red",linewidths=1.0)
 
     plt.legend()
 
