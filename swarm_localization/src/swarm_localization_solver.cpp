@@ -1324,7 +1324,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 #endif
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
-    if (dpose_self_a.pos().norm() > 0.3 || dpose_self_b.pos().norm() > 0.3) {
+    if (dpose_self_a.pos().norm() > det_dpos_thres || dpose_self_b.pos().norm() > det_dpos_thres) {
         ROS_WARN("Det %d->%d @ %d too big dpos %f %f", _ida, _idb, TSShort(ts.toNSec()),
             dpose_self_a.pos().norm(),
             dpose_self_b.pos().norm()
@@ -1540,7 +1540,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //SPARSE NORMAL 21
     //DENSE NORM DOGLEG 49.31ms
     options.max_num_iterations = 1000;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = CGNR;//SPARSE_NORMAL_CHOLESKY;
+    // options.trust_region_strategy_type = ceres::DOGLEG;
+
     if (finish_init) {
         options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
         options.max_num_iterations = 1000;
@@ -1549,7 +1551,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     options.num_threads = thread_num;
     Solver::Summary summary;
 
-    options.trust_region_strategy_type = ceres::DOGLEG;
     
     ros::Time t2 = ros::Time::now();
 
@@ -1575,7 +1576,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     std::cout << summary.message << std::endl;
-
+    std::cout << summary.FullReport() << std::endl;
 #ifdef DEBUG_OUTPUT_SLD_WIN
     for (auto & sf: sf_sld_win) {
         print_frame(sf);
