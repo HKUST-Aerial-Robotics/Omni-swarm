@@ -3,8 +3,9 @@
 
 using namespace nvinfer1;
 uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims);
-TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
-    m_InputBlobName(input_blob_name) {
+
+TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name, int _width, int _height):
+    m_InputBlobName(input_blob_name), width(_width), height(_height){
 
 }
 

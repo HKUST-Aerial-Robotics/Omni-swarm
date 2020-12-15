@@ -7,8 +7,8 @@ void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& 
             int border, int dist_thresh, int img_width, int img_height);
 
 
-SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, float _thres, bool _enable_perf):
-    TensorRTInferenceGeneric("image"), thres(_thres), enable_perf(_enable_perf) {
+SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, int _width, int _height, float _thres, bool _enable_perf):
+    TensorRTInferenceGeneric("image", _width, _height), thres(_thres), enable_perf(_enable_perf) {
     at::set_num_threads(1);
     TensorInfo outputTensorSemi, outputTensorDesc;
     outputTensorSemi.blobName = "semi";
@@ -29,7 +29,7 @@ void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2
     local_descriptors.clear();
     assert(input.rows == height && input.cols == width && "Input image must have same size with network");
     if (input.rows != height || input.cols != width) {
-        cv::resize(input, _input, cv::Size(400, 208));
+        cv::resize(input, _input, cv::Size(width, height));
         _input.convertTo(_input, CV_32F, 1/255.0);
     } else {
         input.convertTo(_input, CV_32F, 1/255.0);
