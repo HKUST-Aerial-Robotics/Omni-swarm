@@ -3,6 +3,7 @@
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
     <arg name="cgraph" default="true" />
+    <arg name="cgraph_path" default="$(env HOME)/graph.dot" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
@@ -37,7 +38,7 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
+        <param name="cgraph_path" value="$(arg cgraph_path)" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
         <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />
     </node>
