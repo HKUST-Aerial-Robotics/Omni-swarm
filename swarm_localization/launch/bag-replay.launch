@@ -14,7 +14,7 @@
     <arg name="config_file" default="$(env HOME)/bags/swarm_local_2020_12/Configs/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" >
-        <arg name="output" value="screen" />
+        <arg name="output" value="log" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
     </include>
@@ -35,10 +35,9 @@
 
     <include file="$(find swarm_loop)/launch/loop-only-pc.launch" if="$(arg loop)">
         <arg name="output" value="screen" />
-        <arg name="show" value="false" />
+        <arg name="show" value="true" />
         <arg name="width" value="$(arg width)" />
         <arg name="height" value="$(arg height)" />
-    
         <arg name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_rtx3080_$(arg height)x$(arg width)_fp16.trt" />
         <arg name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_$(arg height)x$(arg width)_rtx3080_fp16.trt" />
         <arg name="camera_config_path" value="$(find swarm_loop)/config/front-$(arg width).yaml" />
@@ -54,6 +53,8 @@
         <include file="$(find inf_uwb_ros)/launch/uwb_node.launch"> 
             <arg name="self_id" default="$(arg drone_id)" />
             <arg name="output" value="log" />
+            <arg name="sim_latency" value="true" />
+            <arg name="latency_buffer_size" value="30" />
         </include>
         <include file="$(find swarm_pilot)/launch/swarm_pilot.launch"> 
             <arg name="drone_id" default="$(arg drone_id)" />

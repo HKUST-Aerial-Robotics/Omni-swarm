@@ -82,6 +82,8 @@ extern double TRIANGLE_THRES;
 
 extern bool ENABLE_LK_LOOP_DETECTION; 
 
+extern bool IS_PC_REPLAY;
+
 class TicToc
 {
   public:

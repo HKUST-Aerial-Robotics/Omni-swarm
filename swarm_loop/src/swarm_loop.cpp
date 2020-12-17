@@ -167,6 +167,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);
     nh.param<bool>("enable_sub_remote_frame", enable_sub_remote_frame, false);
     nh.param<bool>("send_img", send_img, false);
+    nh.param<bool>("is_pc_replay", IS_PC_REPLAY, false);
     nh.param<bool>("send_whole_img_desc", send_whole_img_desc, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
     nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);

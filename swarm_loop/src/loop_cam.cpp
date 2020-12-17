@@ -190,13 +190,22 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
 
 FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
     FisheyeFrameDescriptor_t frame_desc;
-    imgs.resize(3);
+    
+    if (msg.up_cams[3].width > 0) {
+        imgs.resize(4);
+    } else {
+        imgs.resize(3);
+    }
+
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1));
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2));
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
-    // Not use back now
-    // frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 3));
-    frame_desc.images.push_back(generate_null_img_desc());
+    
+    if (msg.up_cams[3].width > 0) {
+        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4));
+    } else {
+        frame_desc.images.push_back(generate_null_img_desc());
+    }
     
     frame_desc.image_num = 4;
     frame_desc.timestamp = frame_desc.images[0].timestamp;
@@ -429,6 +438,8 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
 
 
     auto cv_ptr = cv_bridge::toCvCopy(msg);
+    cv::Mat roi = cv_ptr->image(cv::Rect(0, cv_ptr->image.rows*3/4, cv_ptr->image.cols, cv_ptr->image.rows/4));
+    roi.setTo(cv::Scalar(0, 0, 0));
     // std::cout << "Image size" << cv_ptr->image.size() << std::endl;
 #ifdef USE_TENSORRT
     std::vector<cv::Point2f> features;

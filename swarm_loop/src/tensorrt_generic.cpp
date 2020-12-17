@@ -39,7 +39,7 @@ void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {
     //This function is very slow event on i7, we need to optimize it
     //But not now.
     doInference(input.data, 1);
-    printf("doInference %fms\n", inference.toc());
+    //printf("doInference %fms\n", inference.toc());
 }
 
 

@@ -686,8 +686,8 @@ def plot_loops_error(poses, loops, nodes):
         yawb_gts.append(yawb_gt)
         dyaw_errs.append(yawb_gt-yawa_gt-loop["dyaw"])
         
-        if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
-            print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
+        # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
+        #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
         
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)

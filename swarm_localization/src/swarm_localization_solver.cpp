@@ -1231,7 +1231,7 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
     dt_err = min_ts_err_a + min_ts_err_b;
 
     if (_index_a < 0 || _index_b < 0) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        // ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
         return false;
     }
     return true;
@@ -1389,8 +1389,8 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
         if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
-            ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Give up this loop", 
-                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
+            // ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Give up this loop", 
+                // _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
             return false;
         }
     }
