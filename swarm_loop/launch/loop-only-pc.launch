@@ -32,8 +32,10 @@
             accept_min_3d_pts: 100
             match_index_dist: 5
             recv_msg_duration: 0.5
-            superpoint_thres: 0.012
+            superpoint_thres: 0.1
             triangle_thres: 0.008
+            min_direction_loop: 3
+            is_pc_replay: false
         </rosparam>
         <param name="superpoint_model_path" value="$(arg superpoint_model_path)" type="string" />
         <param name="netvlad_model_path" value="$(arg netvlad_model_path)" type="string" />

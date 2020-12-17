@@ -29,6 +29,13 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
 
+
+    if (IS_PC_REPLAY) {
+        ROS_INFO("Sending IMG DES Size %d with %d landmarks in PC replay mode.local feature size %d", img_des.getEncodedSize(), img_des.landmark_num, img_des.feature_descriptor_size);
+        lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
+        return;
+    }
+    
     int feature_num = 0;
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         if (img_des.landmarks_flag[i] > 0) {
@@ -74,6 +81,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             lcm.publish("VIOKF_LANDMARKS", &lm);
         }
     }
+
 
     if (send_img || send_whole_img_desc) {
         if (!send_whole_img_desc) {
@@ -167,7 +175,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
     recv_lock.lock();
 
-    ROS_INFO("Image descriptor header from drone (%d) : %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
+    ROS_INFO("Image descriptor header from drone (%d): msg_id: %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
     update_recv_img_desc_ts(msg->msg_id, true);
 
     if (received_images.find(msg->msg_id) == received_images.end()) {
