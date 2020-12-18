@@ -201,7 +201,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2));
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
     
-    if (msg.up_cams[3].width > 0) {
+    if (msg.up_cams[4].width > 0) {
         frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4));
     } else {
         frame_desc.images.push_back(generate_null_img_desc());
