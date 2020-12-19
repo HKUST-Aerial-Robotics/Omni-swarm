@@ -455,6 +455,7 @@ public:
         nh.param<bool>("kf_use_all_nodes", solver_params.kf_use_all_nodes, false);
         nh.param<bool>("is_pc_replay", is_pc_replay, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
+        nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
 
 
         nh.param<float>("vo_drift_meter", VO_DRIFT_METER, 0.01f);

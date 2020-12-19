@@ -296,34 +296,41 @@ class LocalProxy {
     void on_node_detcted_xyzyaw_recv(node_detected_xyzyaw nd) {
         ros::Time ts = nd.header.stamp;
         int s_index = find_sf_swarm_detected(ts);
-        ROS_INFO_THROTTLE(1.0, "ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
-            nd.self_drone_id,
-            nd.remote_drone_id,
-            (ts - this->tsstart).toSec()*1000, 
-            (ros::Time::now() - this->tsstart).toSec()*1000, 
-            s_index, sf_queue.size());
+        // ROS_INFO("ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
+        //     nd.self_drone_id,
+        //     nd.remote_drone_id,
+        //     (ts - this->tsstart).toSec(), 
+        //     (ros::Time::now() - this->tsstart).toSec(), 
+        //     s_index, sf_queue.size(), 
+        //     (ts - sf_queue.front().header.stamp).toSec(),
+        //     (ts - sf_queue.back().header.stamp).toSec()
+        //     );
 
         if (s_index >= 0) {
             auto & sf = sf_queue[s_index];
             for (node_frame & nf : sf.node_frames) {
-                if (nf.id == nd.remote_drone_id && nf.vo_available) {
-                    nd.local_pose_remote.position.x = nf.position.x;
-                    nd.local_pose_remote.position.y = nf.position.y;
-                    nd.local_pose_remote.position.z = nf.position.z;
+                if (nf.id == nd.remote_drone_id) {
+                    if (nf.vo_available) {
+                        nd.local_pose_remote.position.x = nf.position.x;
+                        nd.local_pose_remote.position.y = nf.position.y;
+                        nd.local_pose_remote.position.z = nf.position.z;
 
-                    Eigen::Quaterniond quat(Eigen::AngleAxisd(nf.yaw, Eigen::Vector3d::UnitZ()));
-                    nd.local_pose_remote.orientation.w = quat.w();
-                    nd.local_pose_remote.orientation.x = quat.x();
-                    nd.local_pose_remote.orientation.y = quat.y();
-                    nd.local_pose_remote.orientation.z = quat.z();
+                        Eigen::Quaterniond quat(Eigen::AngleAxisd(nf.yaw, Eigen::Vector3d::UnitZ()));
+                        nd.local_pose_remote.orientation.w = quat.w();
+                        nd.local_pose_remote.orientation.x = quat.x();
+                        nd.local_pose_remote.orientation.y = quat.y();
+                        nd.local_pose_remote.orientation.z = quat.z();
 
-                    swarm_detect_pub.publish(nd);
-                    return;
-                }
+                        swarm_detect_pub.publish(nd);
+                        return;
+                    } else {
+                        ROS_WARN("Failed to publish, remote %d VO is unavailable now.", nd.remote_drone_id, s_index);
+                    }
+            }
             }
         }
 
-        printf("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
+        ROS_WARN("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
     }
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {
