@@ -192,8 +192,6 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
 
     print("Yaw Offset, ", yaw_offset*57.3, "Fused Offset", fused_offset)
 
-    yaw_offset = 0
-
     #Pvicon = DP Ppose
     #DP = PviconPpose^-1
     #DP = (PPose^-1 Pvicon)^-1
@@ -205,6 +203,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
+        poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset, 0, 0])
         poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_path[i]["pos"]) + fused_offset
         poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
         poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
@@ -274,7 +273,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
         ax.set_title(f"Traj {i}, length: {poses_length(poses[i]):3.3f}")
         ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Vicon Traj{i}")
-        #ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
         ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VO{i}")
         ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}", color="red")
         
@@ -503,7 +502,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1):
     ax1.legend()
     ax2.legend() 
 
-def plot_detections_error(poses, poses_vo, detections,  nodes):
+def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -519,17 +518,28 @@ def plot_detections_error(poses, poses_vo, detections,  nodes):
     yawa_gts = []
     self_pos_a = []
     self_pos_b = []
+    inv_deps_gt = []
     print("Total detection", len(detections))
     for det in detections:
-        #print(det["id_a"])
-        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
-        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"])
+        #if det["id_a"] == main_id:
+        #    continue
         yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
+        yawb_gt = poses[det["id_b"]]["ypr_func"](det["ts"])[0]
+
+        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
+        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"]) + yaw_rotate_vec(yawb_gt, np.array([-0.066, 0, 0.02]))
+
+        posa_vo = poses_vo[det["id_a"]]["pos_raw_func"](det["ts"])
+        yawa_vo = poses_vo[det["id_a"]]["ypr_raw_func"](det["ts"])[0]
+        
+        posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
+        #print("Cam GT", posa_gt,"Cam Extrinsic" ,yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
+        
         dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         inv_dep_gt = 1/norm(dpos_gt)
         dpos_gt = dpos_gt * inv_dep_gt
         
-        dpos_det = np.array(det["dpos"]) - np.array([0.04, 0, 0.05])
+        dpos_det = np.array(det["dpos"])
         inv_dep_det = det["inv_dep"]
         _dets_data.append({
             "dpos_det": dpos_det,
@@ -543,6 +553,7 @@ def plot_detections_error(poses, poses_vo, detections,  nodes):
         self_pos_b.append(det["pos_b"])
 
         inv_dep_errs.append(inv_dep_gt - inv_dep_det)
+        inv_deps_gt.append(inv_dep_gt)
         dpos_dets.append(dpos_det)
         dpos_gts.append(dpos_gt)
         dpos_errs.append(dpos_gt - dpos_det)    
@@ -595,7 +606,10 @@ def plot_detections_error(poses, poses_vo, detections,  nodes):
     plt.legend()
 
     plt.figure("INV DEPS")
-    plt.plot(ts_a, inv_deps)
+    plt.plot(ts_a, inv_deps, "+", label="INV DEP DET")
+    plt.plot(ts_a, inv_deps_gt, "x", label="INV DEP GT")
+    plt.legend()
+    plt.grid()
 
     plt.figure("Self Pose Plot")
     plt.subplot(311)

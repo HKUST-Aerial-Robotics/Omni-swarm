@@ -14,18 +14,20 @@
     <arg name="config_file" default="$(env HOME)/bags/swarm_local_2020_12/Configs/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" >
-        <arg name="output" value="log" />
+        <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
     </include>
 
     <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
-        <arg name="show" value="$(arg show)" />
+        <arg name="output" value="log" />
+        <arg name="show" value="false" />
         <arg name="drone_id" value="$(arg drone_id)" />
         <arg name="detect_duration" value="0.0" />
-        <arg name="output" value="log" />
         <arg name="extrinsic_path" value="$(arg config_file)"/>
         <arg name="width" value="$(arg width)" />
+        <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
+        <arg name="swarm_fused_relative" value="/swarm_drones/swarm_drone_fused_relative_pc"/>
     </include>
 
     <include file="$(find vins)/launch/fisheye_node.launch" if="$(arg vins)">
@@ -34,8 +36,8 @@
     </include>
 
     <include file="$(find swarm_loop)/launch/loop-only-pc.launch" if="$(arg loop)">
-        <arg name="output" value="screen" />
-        <arg name="show" value="true" />
+        <arg name="output" value="log" />
+        <arg name="show" value="$(arg show)" />
         <arg name="width" value="$(arg width)" />
         <arg name="height" value="$(arg height)" />
         <arg name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_rtx3080_$(arg height)x$(arg width)_fp16.trt" />
@@ -54,7 +56,7 @@
             <arg name="self_id" default="$(arg drone_id)" />
             <arg name="output" value="log" />
             <arg name="sim_latency" value="true" />
-            <arg name="latency_buffer_size" value="30" />
+            <arg name="latency_buffer_size" value="5" />
         </include>
         <include file="$(find swarm_pilot)/launch/swarm_pilot.launch"> 
             <arg name="drone_id" default="$(arg drone_id)" />

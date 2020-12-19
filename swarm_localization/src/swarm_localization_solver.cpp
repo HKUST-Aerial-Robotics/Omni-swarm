@@ -78,6 +78,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
             loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
             loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
+            detection_outlier_thres(_params.detection_outlier_thres),
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
@@ -883,7 +884,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
         pose_state.push_back(poseb);
         CostFunction * cost = _setup_cost_function_by_loop(loc);
         ceres::LossFunction *loss_function;
-        loss_function = new ceres::HuberLoss(1.0);
+        loss_function = new ceres::HuberLoss(0.5);
         problem.AddResidualBlock(cost, loss_function, pose_state);
     }
 }
@@ -1257,7 +1258,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);
     if (!success) {
-        ROS_WARN("Detection find failed");
+        // ROS_WARN("Detection find failed");
         return false;
     } else {
     }
@@ -1280,6 +1281,34 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     det_ret.ts_b = _nf_b.ts;
     //det_ret.self_pose_a = _nf_a.pose();
     //det_ret.self_pose_b = _nf_b.pose();
+
+    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
+    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
+
+    if (reta.first && retb.first) {
+        Pose posea = reta.second * dpose_self_a;
+        Pose poseb = retb.second * dpose_self_b;
+        // printf("EST POSE A: ");
+        // posea.print();
+        // printf("EST POSE B: ");
+        // poseb.print();
+
+        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        // printf("EST DPOS: ");
+        // est_rel_pose.print();
+        Eigen::Vector3d est_dpos = est_rel_pose.pos();
+        double est_inv_dep = 1/est_dpos.norm();
+        est_dpos.normalize();
+        auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
+        if (err.norm() > detection_outlier_thres) {
+            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
+            std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+            std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+            std::cout << "Error" << err << std::endl;
+            return false;
+        }
+    }
+
 #ifdef DEBUG_OUTPUT_DETS
     printf("\nDet [TS%d]%d->%d\n", TSShort(ts.toNSec()), _ida, 
         _idb);
@@ -1302,26 +1331,6 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     dpose_self_b.print();
 
 
-    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
-    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
-
-    if (reta.first && retb.first) {
-        Pose posea = reta.second * dpose_self_a;
-        Pose poseb = retb.second * dpose_self_b;
-        printf("EST POSE A: ");
-        posea.print();
-        printf("EST POSE B: ");
-        poseb.print();
-
-        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
-        printf("EST DPOS: ");
-        est_rel_pose.print();
-        Eigen::Vector3d est_dpos = est_rel_pose.pos();
-        double est_inv_dep = 1/est_dpos.norm();
-        est_dpos.normalize();
-        std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
-        std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
-    }
 #endif
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 

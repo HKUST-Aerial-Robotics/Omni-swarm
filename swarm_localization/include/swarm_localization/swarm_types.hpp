@@ -239,11 +239,11 @@ public:
         probaility = nd.probaility;
 
         self_pose_a = Pose(nd.local_pose_self);
-        self_pose_b = Pose(nd.local_pose_remote);
+        self_pose_b = Pose(nd.local_pose_remote)*Pose(Eigen::Vector3d(-0.066, 0, 0.02), Eigen::Quaterniond::Identity());
 
         inv_dep = nd.inv_dep;
         //Here hacked
-        p = Eigen::Vector3d(nd.dpos.x - 0.04, nd.dpos.y, nd.dpos.z - 0.05);
+        p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);
         p.normalize();
         meaturement_type = Detection;
 
