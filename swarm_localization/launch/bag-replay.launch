@@ -49,7 +49,7 @@
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
             <arg name="output" value="log" />
-            <arg name="sf_queue_max_size" value="50" />
+            <arg name="sf_queue_max_size" value="20" />
         </include>
 
         <include file="$(find inf_uwb_ros)/launch/uwb_node.launch"> 

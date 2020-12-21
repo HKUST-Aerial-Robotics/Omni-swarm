@@ -79,6 +79,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
             loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
             detection_outlier_thres(_params.detection_outlier_thres),
+            detection_inv_dep_outlier_thres(_params.detection_inv_dep_outlier_thres),
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
@@ -1300,11 +1301,12 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         double est_inv_dep = 1/est_dpos.norm();
         est_dpos.normalize();
         auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
-        if (err.norm() > detection_outlier_thres) {
+        auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
+        if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
             ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
             std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
             std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
-            std::cout << "Error" << err << std::endl;
+            std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
             return false;
         }
     }

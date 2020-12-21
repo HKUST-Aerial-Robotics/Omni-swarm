@@ -311,9 +311,9 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         double err = triangulatePoint(pose_up.att(), pose_up.pos(), pose_down.att(), pose_down.pos(),
                         pt_up_norm, pt_down_norm, point_3d);
 
-        // std::cout << "Pt: " << i << "Pos " << point_3d.transpose() << " err " << err << std::endl;
+        auto pt_cam = pose_up.att().inverse() * (point_3d - pose_up.pos());
 
-        if (err > TRIANGLE_THRES) {
+        if (err > TRIANGLE_THRES || pt_cam.z() < 0) {
             continue;
         }
 
