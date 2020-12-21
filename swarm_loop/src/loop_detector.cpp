@@ -235,12 +235,12 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
     if (img_desc.drone_id == self_id) {
         //Then this is self drone
         int _id = query_from_database(img_desc, remote_index, true, thres, 1, distance);
-        if (_id != -1) {
-            return _id;
-        } else if(!nonkeyframe){
+        if(!nonkeyframe){
             int _id = query_from_database(img_desc, local_index, false, thres, MATCH_INDEX_DIST, distance);
             return _id;
-        }
+        } else if (_id != -1) {
+            return _id;
+        } 
     } else {
         int _id = query_from_database(img_desc, local_index, false, thres, 1, distance);
         return _id;

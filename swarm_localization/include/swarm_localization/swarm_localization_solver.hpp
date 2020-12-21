@@ -67,6 +67,7 @@ struct swarm_localization_solver_params{
     float loop_outlier_threshold_yaw = 1.0;
     float det_dpos_thres = 1.0;
     float detection_outlier_thres;
+    float detection_inv_dep_outlier_thres;
     bool enable_detection;
     bool enable_loop;
     bool enable_distance;
@@ -195,6 +196,7 @@ public:
     float init_z_movement = 1.0;
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
+    float detection_inv_dep_outlier_thres;
     
     float detection_outlier_thres;
 
