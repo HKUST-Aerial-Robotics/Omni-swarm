@@ -861,8 +861,8 @@ def plot_loops_error(poses, loops, nodes):
     plt.hist(dpos_errs[:,2], 5, density=True, facecolor='g', alpha=0.75)
 
 
-    print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
-    print("Yaw cov", np.cov(dyaw_errs))
+    print(f"Pos cov {np.cov(dpos_errs[:,0]):3.3f}, {np.cov(dpos_errs[:,1]):3.3f}, {np.cov(dpos_errs[:,2]):3.3f}")
+    print(f"Yaw cov {np.cov(dyaw_errs)*57.3:3.3f}")
 
 
     # plt.figure()

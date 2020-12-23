@@ -12,6 +12,7 @@
 #include <mutex>
 
 int MIN_DIRECTION_LOOP;
+double DETECTOR_MATCH_THRES;
 
 using namespace std::chrono; 
 
@@ -175,6 +176,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("max_freq", max_freq, 1.0);
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
+    nh.param<double>("detector_match_thres", DETECTOR_MATCH_THRES, 0.9);
+
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
     nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
     nh.param<int>("width", width, 400);

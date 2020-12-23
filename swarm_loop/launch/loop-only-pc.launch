@@ -36,6 +36,7 @@
             triangle_thres: 0.008
             min_direction_loop: 3
             is_pc_replay: false
+            detector_match_thres: 0.7
         </rosparam>
         <param name="superpoint_model_path" value="$(arg superpoint_model_path)" type="string" />
         <param name="netvlad_model_path" value="$(arg netvlad_model_path)" type="string" />

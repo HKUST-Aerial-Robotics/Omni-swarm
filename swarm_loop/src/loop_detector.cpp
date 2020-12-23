@@ -602,7 +602,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
     for (auto match : _matches) {
-        if (match.distance < 0.9) {
+        if (match.distance < DETECTOR_MATCH_THRES) {
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
 
