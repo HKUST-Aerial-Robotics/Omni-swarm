@@ -32,6 +32,8 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_NEW_KF
 // #define DEBUG_OUTPUT_DETS
 // #define DEBUG_OUTPUT_SLD_WIN
+// #define DEBUG_OUTPUT_DETECTION_OUTLIER
+// #define DEBUG_OUTPUT_LOOP_OUTLIER
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -875,7 +877,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
         double * poseb = est_poses_idts.at(loc->id_b).at(loc->ts_b);
         if (posea == poseb) {
             if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
-                ROS_WARN("Duplicate parameter blocks of loop %d(%d)->%d(%d) skip...", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
+                // ROS_WARN("Duplicate parameter blocks of loop %d(%d)->%d(%d) skip...", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
             } else {
                 ROS_WARN("Duplicate parameter blocks of det %d(%d)->%d(%d). You may detected your self!!!", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
             }
@@ -1303,10 +1305,12 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
         auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
         if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
+#ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
             ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
             std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
             std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
             std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
+#endif
             return false;
         }
     }
@@ -1365,7 +1369,9 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+#ifdef DEBUG_OUTPUT_LOOP_OUTLIER
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found because of DT", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+#endif
         return false;
     }
 
