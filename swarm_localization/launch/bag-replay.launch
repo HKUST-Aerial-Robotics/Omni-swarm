@@ -1,5 +1,5 @@
 <launch>
-    <arg name="show" default="false" />
+    <arg name="show" default="true" />
     <arg name="drone_id" default="1" />
     <arg name="viz" default="true" />
     <arg name="vins" default="false" />
@@ -21,7 +21,7 @@
 
     <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
         <arg name="output" value="log" />
-        <arg name="show" value="false" />
+        <arg name="show" value="$(arg show)" />
         <arg name="drone_id" value="$(arg drone_id)" />
         <arg name="detect_duration" value="0.0" />
         <arg name="extrinsic_path" value="$(arg config_file)"/>
