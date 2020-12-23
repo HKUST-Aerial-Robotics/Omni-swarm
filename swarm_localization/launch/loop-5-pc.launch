@@ -9,7 +9,7 @@
         <rosparam>
             force_freq: 10
             max_accept_cost: 100
-            max_keyframe_num: 20
+            max_keyframe_num: 2000000
             min_keyframe_num: 1
             thread_num: 1
             min_kf_movement : 0.5
@@ -25,7 +25,7 @@
             vo_drift_meter: 0.01
             vo_drift_meter_z: 0.01
             vo_drift_angle: 0.001
-            distance_measurement_error: 0.15
+            distance_measurement_error: 0.3
             loop_cov_xy: 0.5
             loop_cov_z: 0.2
             loop_cov_yaw: 0.05

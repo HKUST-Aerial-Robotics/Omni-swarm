@@ -45,6 +45,45 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
     return ret
 
 # def read_distance_swarm_frame(bag, topic, _id, to)
+def read_distances_swarm_frame(bag, topic, t0, main_id):
+    distances = {
+    }
+    ts = []
+    print(f"Read poses from topic {topic}")
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        for node in msg.node_frames:
+            if node.id == main_id:
+                for i in range(len(node.dismap_ids)):
+                    _id = node.dismap_ids[i]
+                    _dis = node.dismap_dists[i]
+                    if not (_id in distances):
+                        distances[_id] = {
+                            "t" : [],
+                            "dis" : []
+                        }
+                    distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
+                    distances[_id]["dis"].append(_dis)
+    return distances
+
+def read_distances_remote_nodes(bag, topic, t0, main_id):
+    distances = {
+    }
+    ts = []
+    print(f"Read poses from topic {topic}")
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        for i in range(len(msg.node_ids)):
+            if msg.active[i]:
+                _id = msg.node_ids[i]
+                _dis = msg.node_dis[i]
+                if not (_id in distances):
+                    distances[_id] = {
+                        "t" : [],
+                        "dis" : []
+                    }
+                distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
+                distances[_id]["dis"].append(_dis)
+    return distances
+
 def read_pose_swarm_frame(bag, topic, _id, t0):
     pos = []
     ypr = []
@@ -184,7 +223,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     detections = read_detections(bag, t0, "/swarm_drones/node_detected")
-
+    distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     bag.close()
     
     fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
@@ -216,7 +255,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     
-    return poses, poses_fused, poses_vo, poses_path, loops, detections
+    return poses, poses_fused, poses_vo, poses_path, loops, detections, distances
     
 
 def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, t_calib = {1:0, 2:0}):
@@ -393,6 +432,53 @@ def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0
         
         print(f"Best RMSE for node {i} p {rmse_best_dt_pos}: {rmse_min_pos} v {rmse_best_dt_vel}: {rmse_min_vel}")
 
+def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes,  t_calib = {1:0, 2:0}):
+
+    for i in nodes:
+        if i == main_id:
+            continue
+        fig = plt.figure(f"Distance {i}")
+        fig.suptitle(f"Distance {i}")
+        ax1, ax2, ax3 = fig.subplots(3, 1)
+        t_ = np.array(distances[i]["t"])
+        pos_gt = poses[i]["pos_func"](t_+t_calib[i])
+        pos_fused = poses_fused[i]["pos_func"](t_)
+
+        main_pos_gt = poses[main_id]["pos_func"](t_+t_calib[main_id])
+        main_pos_fused = poses_fused[main_id]["pos_func"](t_)
+
+        #pos_vo = poses_vo[i]["pos"]
+        #pos_path = poses_path[i]["pos"](t_)
+        
+        dis_raw = distances[i]["dis"]
+        dis_gt = norm(pos_gt  - main_pos_gt, axis=1)
+        dis_fused = norm(pos_fused  - main_pos_fused, axis=1)
+        #dis_vo = norm(pos_path  - main_pos_path, axis=0)
+
+        ax1.plot(t_, dis_gt, label="Distance GT")
+        ax1.plot(t_, dis_fused,label="Distance Fused")
+        ax1.plot(t_, dis_raw, ".", label="Distance UWB")
+
+
+        ax2.plot(t_, dis_gt-dis_raw, ".", label="Distance Error of UWB")
+        ax2.plot(t_, dis_gt-dis_fused, label="Distance Error of Fused")
+
+        ax3.plot(dis_gt, dis_raw,'+',label="GT VS UWB")
+
+        print(f"Distce RMSE {RMSE(dis_raw, dis_gt)}")
+        z = np.polyfit(dis_gt, dis_raw, 1)
+        print(f"Fit {z[0]}, {z[1]}")
+        ax1.legend()
+        ax1.grid()
+        
+        ax2.legend()
+        ax2.grid()
+        
+        ax3.legend()
+        ax3.grid()
+    
+
+
 def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t_calib = {1:0, 2:0}):
     #Plot Fused Vs GT absolute error
     for i in nodes:
@@ -412,13 +498,13 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         rmse_z = RMSE(pos_gt[:,2] , pos_fused[:,2])
         
         label = f"$errx_{i}$ RMSE{i}:{rmse_x:3.3f}"
-        #ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
+        ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
 
         label = f"$erry_{i}$ RMSE{i}:{rmse_y:3.3f}"
-        #ax2.plot(t_, pos_gt[:,1]  - pos_fused[:,1], label=label)
+        ax2.plot(t_, pos_gt[:,1]  - pos_fused[:,1], label=label)
 
         label = f"$erry_{i}$ RMSE{i}:{rmse_z:3.3f}"
-        #ax3.plot(t_,  pos_gt[:,1]  - pos_fused[:,1], label=label)
+        ax3.plot(t_,  pos_gt[:,1]  - pos_fused[:,1], label=label)
 
         pos_gt =  poses[i]["pos_func"](poses_vo[i]["t"]+t_calib[i])
         
@@ -442,14 +528,14 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         rmse_path_y = RMSE(pos_path[:,1] , pos_gt[:,1])
         rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
         
-        label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
-        ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
+        # label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
+        # ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
 
-        label = f"$Path erry_{i}$ RMSE{i}:{rmse_vo_y:3.3f}"
-        ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], label=label)
+        # label = f"$Path erry_{i}$ RMSE{i}:{rmse_vo_y:3.3f}"
+        # ax2.plot(poses_path[i]["t"], pos_gt[:,1]  - pos_path[:,1], label=label)
         
-        label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
-        ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
+        # label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
+        # ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
     
         print(f"RMSE Fused Online {i} is {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
         print(f"RMSE Fused Offline Path {i} is {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
@@ -785,6 +871,7 @@ def plot_loops_error(poses, loops, nodes):
     dyaw_errs = []
     print("Total loops", len(loops))
     for loop in loops:
+        # print(loop["id_a"], "->", loop["id_b"])
         posa_gt = poses[loop["id_a"]]["pos_func"](loop["ts_a"])
         posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
         yawa_gt = poses[loop["id_a"]]["ypr_func"](loop["ts_a"])[0]

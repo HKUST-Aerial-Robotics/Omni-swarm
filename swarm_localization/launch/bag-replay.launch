@@ -1,5 +1,5 @@
 <launch>
-    <arg name="show" default="true" />
+    <arg name="show" default="false" />
     <arg name="drone_id" default="1" />
     <arg name="viz" default="true" />
     <arg name="vins" default="false" />
