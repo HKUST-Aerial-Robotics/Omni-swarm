@@ -673,6 +673,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
             ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
             ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
             print(f"RMSE {main_id}->{i} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
+            print(f"MEAN {main_id}->{i} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
             
     ax1.legend()
     ax2.legend()
@@ -703,7 +704,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
     ax1.legend()
     ax2.legend() 
 
-def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
+def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -722,18 +723,19 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     inv_deps_gt = []
     print("Total detection", len(detections))
     for det in detections:
+        if det["id_a"] != main_id:
+            continue
         yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
         yawb_gt = poses[det["id_b"]]["ypr_func"](det["ts"])[0]
 
-        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
-        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"]) + yaw_rotate_vec(yawb_gt, np.array([-0.066, 0, 0.02]))
+        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"] + t_calib[det["id_b"]])
+        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"] + t_calib[det["id_b"]]) + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
 
         posa_vo = poses_vo[det["id_a"]]["pos_raw_func"](det["ts"])
         yawa_vo = poses_vo[det["id_a"]]["ypr_raw_func"](det["ts"])[0]
         
         posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
-        #print("Cam GT", posa_gt,"Cam Extrinsic" ,yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
-        
+        # posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, np.array([-0.0616, -0.02, 0.11]))
         dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         inv_dep_gt = 1/norm(dpos_gt)
         dpos_gt = dpos_gt * inv_dep_gt
@@ -784,6 +786,7 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     plt.plot(ts_a, np.abs(dpos_errs[:,0]), '+', label="ERR X")
     plt.plot(ts_a, np.abs(dpos_errs[:,1]), '+', label="ERR Y")
     plt.plot(ts_a, dpos_errs[:,2], '+', label="ERR Z")
+    plt.ylim((-0.2, 0.2))
     plt.title("Error Pos Detection vs Vicon")
     plt.grid(which="both")
     plt.legend()
@@ -815,8 +818,8 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     plt.title("VO X")
     plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,0], label="VO1")
     plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,0], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,0], 'o')
-    plt.plot(ts_a, self_pos_b[:,0], '+')
+    plt.plot(ts_a, self_pos_a[:,0], 'o', label="SelfPose1")
+    plt.plot(ts_a, self_pos_b[:,0], '+', label="SelfPose2")
     plt.legend()
     plt.grid()
     
@@ -824,8 +827,8 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     plt.title("VO Y")
     plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,1], label="VO1")
     plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,1], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,1], 'o')
-    plt.plot(ts_a, self_pos_b[:,1], '+')
+    plt.plot(ts_a, self_pos_a[:,1], 'o', label="SelfPose1")
+    plt.plot(ts_a, self_pos_b[:,1], '+', label="SelfPose2")
 
     plt.legend()
     plt.grid()
@@ -834,23 +837,28 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id):
     plt.title("VO Z")
     plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,2], label="VO1")
     plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,2], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,2], 'o')
-    plt.plot(ts_a, self_pos_b[:,2], '+')
+    plt.plot(ts_a, self_pos_a[:,2], 'o', label="SelfPose1")
+    plt.plot(ts_a, self_pos_b[:,2], '+', label="SelfPose2")
+
+    plt.figure("Yaw")
+    plt.plot(ts_a, yawa_gts)
 
 
     # plt.legend()
     # plt.grid()
     plt.figure("Hist")
-    plt.subplot(141)
-    plt.hist(inv_dep_errs, 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(142)
-    plt.hist(dpos_errs[:,0], 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(143)
-    plt.hist(dpos_errs[:,1], 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(144)
-    plt.hist(dpos_errs[:,2], 5, density=True, facecolor='g', alpha=0.75)
+    plt.subplot(131)
+    plt.hist(inv_dep_errs, 10, (-0.2, 0.2), density=True, facecolor='g', alpha=0.75)
+    plt.subplot(132)
+    plt.hist(dpos_errs[:,0], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    # plt.subplot(143)
+    # plt.hist(dpos_errs[:,1], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    plt.subplot(133)
+    plt.hist(dpos_errs[:,2], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
     
-    print(f"Mean {np.mean(dpos_errs, axis=0)}")
+
+    filter_dpos = np.array(dpos_errs_norm) < 0.2
+    print(f"Mean {np.mean(dpos_errs[filter_dpos], axis=0)}")
 
     print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
     
