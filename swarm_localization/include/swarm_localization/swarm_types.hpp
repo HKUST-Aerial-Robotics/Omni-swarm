@@ -21,6 +21,7 @@ extern float LOOP_COV_Z;
 extern float LOOP_YAWCOV;
 extern float DETECTION_SPHERE_COV;
 extern float DETECTION_INV_DEP_COV;
+extern Eigen::Vector3d CG;
 
 // #define ERROR_NORMLIZED 0.01
 #define ERROR_NORMLIZED 1.0
@@ -239,8 +240,7 @@ public:
         probaility = nd.probaility;
 
         self_pose_a = Pose(nd.local_pose_self);
-        self_pose_b = Pose(nd.local_pose_remote)*Pose(Eigen::Vector3d(-0.066, 0, 0.02), Eigen::Quaterniond::Identity());
-
+        self_pose_b = Pose(nd.local_pose_remote)*Pose(-CG, Eigen::Quaterniond::Identity());
         inv_dep = nd.inv_dep;
         //Here hacked
         p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);

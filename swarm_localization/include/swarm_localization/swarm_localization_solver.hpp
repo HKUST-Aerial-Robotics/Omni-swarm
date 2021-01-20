@@ -74,6 +74,7 @@ struct swarm_localization_solver_params{
     bool enable_detection_depth;
     bool kf_use_all_nodes;
     bool generate_full_path;
+    float max_solver_time;
 };
 
 class SwarmLocalizationSolver {
@@ -101,6 +102,8 @@ class SwarmLocalizationSolver {
     unsigned int max_frame_number = 100;
     unsigned int min_frame_number = 5;
     unsigned int dense_frame_number = 20;
+    
+    float max_solver_time;
 
     std::set<int> all_nodes;
 

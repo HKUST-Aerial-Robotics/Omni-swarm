@@ -339,7 +339,6 @@ class LocalProxy {
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        ROS_INFO("SD size %ld", sd.detected_nodes_xyz_yaw.size());
         if (sd.detected_nodes_xyz_yaw.size() == 0) {
             return;
         }

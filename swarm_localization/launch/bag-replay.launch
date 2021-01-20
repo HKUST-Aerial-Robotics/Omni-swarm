@@ -28,6 +28,7 @@
         <arg name="width" value="$(arg width)" />
         <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
         <arg name="swarm_fused_relative" value="/swarm_drones/swarm_drone_fused_relative_pc"/>
+        <arg name="enable_rear" value="true" />
     </include>
 
     <include file="$(find vins)/launch/fisheye_node.launch" if="$(arg vins)">
@@ -48,7 +49,7 @@
 
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="log" />
+            <arg name="output" value="screen" />
             <arg name="sf_queue_max_size" value="20" />
         </include>
 

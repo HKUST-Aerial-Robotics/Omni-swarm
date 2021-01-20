@@ -457,6 +457,7 @@ public:
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
         nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
         nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
+        nh.param<float>("max_solver_time", solver_params.max_solver_time, 0.05f);
 
 
         nh.param<float>("vo_drift_meter", VO_DRIFT_METER, 0.01f);
@@ -468,6 +469,9 @@ public:
         nh.param<float>("loop_cov_yaw", LOOP_YAWCOV, 0.5f);
         nh.param<float>("detection_sphere_cov", DETECTION_SPHERE_COV, 0.1f);
         nh.param<float>("detection_inv_dep_cov", DETECTION_INV_DEP_COV, 0.5f);
+        nh.param<double>("cg/x", CG.x(), 0);
+        nh.param<double>("cg/y", CG.y(), 0);
+        nh.param<double>("cg/z", CG.z(), 0);
 
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");

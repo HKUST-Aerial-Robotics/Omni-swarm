@@ -38,7 +38,6 @@ using namespace std::chrono;
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 // #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 0.05
 
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
@@ -61,7 +60,6 @@ using namespace std::chrono;
 #define RANDOM_DELETE_KF 
 
 
-
 float VO_DRIFT_METER;
 float VO_DRIFT_METER_Z;
 float VO_ERROR_ANGLE;
@@ -71,6 +69,7 @@ float LOOP_COV_Z;
 float LOOP_YAWCOV;
 float DETECTION_SPHERE_COV;
 float DETECTION_INV_DEP_COV;
+Eigen::Vector3d CG;
 
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
@@ -87,7 +86,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_distance(_params.enable_distance),
             enable_detection_depth(_params.enable_detection_depth),
             kf_use_all_nodes(_params.kf_use_all_nodes),
-            generate_full_path(_params.generate_full_path)
+            generate_full_path(_params.generate_full_path),
+            max_solver_time(_params.max_solver_time)
     {
     }
 
@@ -802,7 +802,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 }
                 count ++;
             }
-            ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
+            // ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
         }
     }
 
@@ -887,7 +887,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
         pose_state.push_back(poseb);
         CostFunction * cost = _setup_cost_function_by_loop(loc);
         ceres::LossFunction *loss_function;
-        loss_function = new ceres::HuberLoss(0.5);
+        loss_function = new ceres::HuberLoss(1.0);
         problem.AddResidualBlock(cost, loss_function, pose_state);
     }
 }
@@ -1282,8 +1282,10 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     det_ret.ts_a = _nf_a.ts;
     det_ret.ts_b = _nf_b.ts;
-    //det_ret.self_pose_a = _nf_a.pose();
-    //det_ret.self_pose_b = _nf_b.pose();
+    
+    // if (_nf_a.id != self_id) {
+    //     return false;
+    // }
 
     auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
     auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
@@ -1562,7 +1564,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     // options.trust_region_strategy_type = ceres::DOGLEG;
 
     if (finish_init) {
-        options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
+        options.max_solver_time_in_seconds = max_solver_time;
         options.max_num_iterations = 1000;
     }
     
