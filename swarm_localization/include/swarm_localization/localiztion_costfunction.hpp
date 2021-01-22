@@ -211,11 +211,13 @@ protected:
 class SwarmDetectionError : public GeneralMeasurement2DronesError{
     bool enable_depth;
     const Swarm::DroneDetection* det;
+    bool enable_dpose;
 public:
     SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
-        GeneralMeasurement2DronesError(_loc) {
+        GeneralMeasurement2DronesError(_loc){
         det = static_cast<const Swarm::DroneDetection*>(loc);
         enable_depth = det->enable_depth;
+        enable_dpose = det->enable_dpose;
     }
 
     template<typename T>
@@ -237,20 +239,30 @@ protected:
     inline int detection_residual(T const *const *_poses, T *_residual) const {
         T relpose_est[4];
 
-        T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
-        get_pose_a(_poses, posea);
-        get_pose_b(_poses, poseb);
+        if (enable_dpose) {
+            T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
+            get_pose_a(_poses, posea);
+            get_pose_b(_poses, poseb);
 
-        det->dpose_self_a.to_vector_xyzyaw(dposea);
-        det->dpose_self_b.to_vector_xyzyaw(dposeb);
+            det->dpose_self_a.to_vector_xyzyaw(dposea);
+            det->dpose_self_b.to_vector_xyzyaw(dposeb);
 
-        PoseMulti(posea, dposea, _posea);
-        PoseMulti(poseb, dposeb, _poseb);
-        // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
-        // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
+            PoseMulti(posea, dposea, _posea);
+            PoseMulti(poseb, dposeb, _poseb);
+            // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
+            // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
 
-        DeltaPose(_posea, _poseb, relpose_est);
+            DeltaPose(_posea, _poseb, relpose_est);
+        } else {
+            T relpose_est[4];
+            T posea[4] , poseb[4];
+            get_pose_a(_poses, posea);
+            get_pose_b(_poses, poseb);
 
+            DeltaPose(posea, poseb, relpose_est);
+
+        }
+        
         T inv_dep = (T)det->inv_dep;
         T rel_p[3];
         rel_p[0] = T(det->p.x());
@@ -266,6 +278,7 @@ protected:
             unit_position_error(relpose_est, rel_p, tan_base, _residual);
             return 2;
         }
+    
     }
 };
 

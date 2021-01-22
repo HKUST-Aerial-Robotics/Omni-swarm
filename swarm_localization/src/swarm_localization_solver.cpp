@@ -900,7 +900,34 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
     }
 }
     
-
+bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, const NodeFrame & _nf_b, const DroneDetection & det_ret) const {
+    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
+    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
+    if(reta.first && retb.first) {
+        auto posea = reta.second;
+        auto poseb = retb.second;
+        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        // printf("EST DPOS: ");
+        // est_rel_pose.print();
+        Eigen::Vector3d est_dpos = est_rel_pose.pos();
+        double est_inv_dep = 1/est_dpos.norm();
+        est_dpos.normalize();
+        auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
+        auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
+        if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
+    #ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
+            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
+            std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+            std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+            std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
+    #endif
+            return false;
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
 
 void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
     //TODO: Deal with static object in this function!!!
@@ -945,6 +972,31 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         }
     }
 
+
+    for (auto it: sf.id2nodeframe) {
+        //Add detection residual attached to the frame
+        int _id = it.first;
+        auto & nfa = it.second;
+        double * posea = swarm_est_poses.at(ts).at(_id);
+        for (auto it2: nfa.detected_nodes) {
+            int _idb = it2.first;
+            auto & det = it2.second;
+            if (swarm_est_poses.at(ts).find(_idb) != swarm_est_poses.at(ts).end() &&
+                sf.id2nodeframe.find(it2.first) != sf.id2nodeframe.end()) {
+                double * poseb = swarm_est_poses.at(ts).at(_idb);
+                auto & nfb = sf.id2nodeframe.at(it2.first);
+                if (check_outlier_detection(nfa, nfb, det)) {
+                    auto cost = _setup_cost_function_by_loop(&det);
+                    std::vector<double*> pose_state;
+                    pose_state.push_back(posea);
+                    pose_state.push_back(poseb);
+                    ceres::LossFunction *loss_function;
+                    loss_function = new ceres::HuberLoss(1.0);
+                    problem.AddResidualBlock(cost, loss_function, pose_state);
+                }
+            }
+        }
+    }
 }
 
 CostFunction *

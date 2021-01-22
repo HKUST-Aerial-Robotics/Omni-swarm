@@ -224,6 +224,7 @@ public:
     double probaility = 0;
 
     bool enable_depth = false;
+    bool enable_dpose = true;
     
     Pose dpose_self_a;
     Pose dpose_self_b;
@@ -311,6 +312,7 @@ class NodeFrame {
         double yaw_cov_to_last = VO_ERROR_ANGLE;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
+        std::map<int, DroneDetection> detected_nodes;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
 
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;
