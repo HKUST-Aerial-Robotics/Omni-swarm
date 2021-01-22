@@ -132,6 +132,7 @@ class SwarmLocalizationSolver {
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
+
     std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const;
 
     bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const;
@@ -139,6 +140,8 @@ class SwarmLocalizationSolver {
     bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
 
     bool detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _loc, Swarm::DroneDetection & loc_ret, double & dt_err, double & dpos) const;
+
+    bool check_outlier_detection(const NodeFrame & _nf_a, const NodeFrame & _nf_b, const DroneDetection & det_ret) const;
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
@@ -233,7 +236,6 @@ public:
 
     bool PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const;
     bool NodeCooridnateOffset(int _id, Pose & _pose, Eigen::Matrix4d & cov) const;
-
     bool CanPredictSwarm() {
         return finish_init;
     }

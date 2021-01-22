@@ -64,7 +64,6 @@ class SwarmLocalizationNode {
     }
 
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) const {
-
         //TODO: Deal with global pose
         if (!nodedef_has_id(_nf.id)) {
             ROS_ERROR("No such node %d", _nf.id);
@@ -99,6 +98,11 @@ class SwarmLocalizationNode {
                 // ROS_WARN("Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
+        }
+
+        for (auto nd_xyzyaw: _nf.detected_xyzyaws) {
+            DroneDetection dobj(nd_xyzyaw);
+            nf.detected_nodes[nd_xyzyaw.remote_drone_id] = dobj;
         }
 
         return nf;
