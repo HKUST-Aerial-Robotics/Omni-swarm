@@ -34,6 +34,7 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_SLD_WIN
 // #define DEBUG_OUTPUT_DETECTION_OUTLIER
 // #define DEBUG_OUTPUT_LOOP_OUTLIER
+// #define DEBUG_LOOP_ONLY_INIT
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -403,8 +404,15 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
     if (enable_loop) {
+#ifndef DEBUG_LOOP_ONLY_INIT
         all_loops.push_back(loop_con);
         has_new_keyframe = true;
+#else
+        if (!finish_init) {
+            all_loops.push_back(loop_con);
+            has_new_keyframe = true;
+        }
+#endif
     }
 }
 
