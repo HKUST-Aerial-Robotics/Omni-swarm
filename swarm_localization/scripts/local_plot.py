@@ -546,7 +546,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         ax2.grid()
         ax3.grid()
 
-    poses_fused = poses_path
+    # poses_fused = poses_path
     ts = poses_fused[main_id]["t"]
     posa_gt =  poses[main_id]["pos_func"](ts)
     posa_fused = poses_fused[main_id]["pos_func"](ts)

@@ -229,7 +229,9 @@ public:
     Pose dpose_self_a;
     Pose dpose_self_b;
     
-    DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_depth = true) {
+    DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_dpose, bool _enable_depth = true):
+        enable_dpose(_enable_dpose)
+    {
         id_a = nd.self_drone_id;
         id_b = nd.remote_drone_id;
         ts_a = nd.header.stamp.toNSec();
@@ -337,6 +339,14 @@ class NodeFrame {
 
         bool has_odometry() const {
             return vo_available;
+        }
+
+        bool has_detection() const {
+            return detected_nodes.size() > 0;
+        }
+
+        int detections() const {
+            return detected_nodes.size();
         }
 
         Pose pose() const {

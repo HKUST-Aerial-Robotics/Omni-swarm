@@ -31,6 +31,8 @@ using namespace  swarmcomm_msgs;
 #define INVAILD_DISTANCE 65535
 #define YAW_UNAVAIL 32767
 
+#define SWARM_DETECTION_ON_FRAME
+
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -305,7 +307,27 @@ class LocalProxy {
         //     (ts - sf_queue.front().header.stamp).toSec(),
         //     (ts - sf_queue.back().header.stamp).toSec()
         //     );
+#ifdef SWARM_DETECTION_ON_FRAME
+        int sd_self_id = nd.self_drone_id;
+        if (sd_self_id < 0) {
+            sd_self_id = self_id;
+        }
+        if (s_index < 0) {
+            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
+            return;
+        }
+        swarm_frame &_sf = sf_queue[s_index];
 
+        // ROS_INFO("SF node size %ld", _sf.node_frames.size());
+        for (int j = 0; j < _sf.node_frames.size(); j++) {
+            // ROS_INFO("NF id %d", _sf.node_frames[j].id);
+            if (_sf.node_frames[j].id == sd_self_id) {
+                _sf.node_frames[j].detected_xyzyaws.push_back(nd);
+                // ROS_INFO("SF BUF %d got detection", j);
+                break;
+            }
+        }
+#else
         if (s_index >= 0) {
             auto & sf = sf_queue[s_index];
             for (node_frame & nf : sf.node_frames) {
@@ -326,11 +348,11 @@ class LocalProxy {
                     } else {
                         ROS_WARN("Failed to publish, remote %d VO is unavailable now.", nd.remote_drone_id, s_index);
                     }
-            }
+                }
             }
         }
-
         ROS_WARN("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
+#endif
     }
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {

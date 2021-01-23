@@ -32,9 +32,9 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_NEW_KF
 // #define DEBUG_OUTPUT_DETS
 // #define DEBUG_OUTPUT_SLD_WIN
-// #define DEBUG_OUTPUT_DETECTION_OUTLIER
 // #define DEBUG_OUTPUT_LOOP_OUTLIER
 // #define DEBUG_LOOP_ONLY_INIT
+#define DEBUG_OUTPUT_DETECTION_OUTLIER
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -130,10 +130,11 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
                 Eigen::Vector3d _diff = sf.position(_id) - last_sf.position(_id);
 
                 //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-                if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+                if (_diff.norm() > min_accept_keyframe_movement || 
+                    _diff.norm() > min_accept_keyframe_movement/3 && self_nf.has_detection() ) { //here shall be some one see him or he see someone
                     ret.push_back(_id);
                     node_kf_count[_id] += 1;
-                    ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), _id, _diff.norm());
+                    ROS_INFO("SF %d is kf of %d: DIFF %3.2f  Detection %d", TSShort(sf.ts), _id, _diff.norm(), self_nf.detections());
                     return 1;
                 }
             }
@@ -143,10 +144,12 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         if (self_nf.vo_available && last_sf.has_node(self_id) && last_sf.has_odometry(self_id)) {
             Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
             double dt = (sf.ts - last_sf.ts)/1e9;
-            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/3 && dt > 0.1)) { //here shall be some one see him or he see someone
+            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/2 && dt > 0.2) ||
+                _diff.norm() > min_accept_keyframe_movement/3 && self_nf.has_detection()  //here shall be some one see him or he see someone
+            ) {
                 ret.push_back(self_id);
                 node_kf_count[self_id] += 1;
-                ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), self_id, _diff.norm());
+                ROS_INFO("SF %d is kf of %d: DIFF %3.2f Detection %d", TSShort(sf.ts), self_id, _diff.norm(), self_nf.has_detection());
                 return 1;
             } else {
                 ROS_WARN("Drone %d distance %f dt %f", _diff.norm(), dt);
@@ -858,10 +861,13 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
     
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loc) const {
+    int res_num = -1;
+    int ida = loc->id_a;
+    int idb = loc->id_b;
     if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
         auto sle = new SwarmLoopError(loc);
         auto cost_function = new LoopCost(sle);
-        int res_num = sle->residual_count();
+        res_num = sle->residual_count();
         cost_function->AddParameterBlock(4);
         cost_function->AddParameterBlock(4);
         cost_function->SetNumResiduals(res_num);
@@ -869,13 +875,21 @@ SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasur
     } else if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection) {
         auto sle = new SwarmDetectionError(loc);
         auto cost_function = new DetectionCost(sle);
-        int res_num = sle->residual_count();
-        cost_function->AddParameterBlock(4);
-        cost_function->AddParameterBlock(4);
+        res_num = sle->residual_count();
+        if (!yaw_observability.at(ida)) {
+            cost_function->AddParameterBlock(3);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
+
+        if (!yaw_observability.at(idb)) {
+            cost_function->AddParameterBlock(3);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
         cost_function->SetNumResiduals(res_num);
         return cost_function;
     }
-    return nullptr;
 }
     
 void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
@@ -916,7 +930,7 @@ bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, c
         auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
         if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
     #ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
-            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
+            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(det_ret.ts_a));
             std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
             std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
             std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
@@ -993,6 +1007,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
                     ceres::LossFunction *loss_function;
                     loss_function = new ceres::HuberLoss(1.0);
                     problem.AddResidualBlock(cost, loss_function, pose_state);
+                    ROS_WARN("Swarm detection in frame added");
                 }
             }
         }
@@ -1185,7 +1200,7 @@ std::set<int> SwarmLocalizationSolver::loop_observable_set(const std::map<int, s
     for (auto _id : observerable_set) {
         printf("%d, ", _id);
     }
-    printf("\n");
+    printf(".");
     return observerable_set;
 }
 
