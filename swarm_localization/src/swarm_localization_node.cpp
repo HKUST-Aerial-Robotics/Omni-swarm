@@ -101,7 +101,7 @@ class SwarmLocalizationNode {
         }
 
         for (auto nd_xyzyaw: _nf.detected_xyzyaws) {
-            DroneDetection dobj(nd_xyzyaw);
+            DroneDetection dobj(nd_xyzyaw, false);
             nf.detected_nodes[nd_xyzyaw.remote_drone_id] = dobj;
         }
 

@@ -23,7 +23,7 @@
         <arg name="output" value="log" />
         <arg name="show" value="$(arg show)" />
         <arg name="drone_id" value="$(arg drone_id)" />
-        <arg name="detect_duration" value="0.5" />
+        <arg name="detect_duration" value="0.0" />
         <arg name="extrinsic_path" value="$(arg config_file)"/>
         <arg name="width" value="$(arg width)" />
         <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
@@ -49,7 +49,7 @@
 
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="screen" />
+            <arg name="output" value="log" />
             <arg name="sf_queue_max_size" value="20" />
         </include>
 
