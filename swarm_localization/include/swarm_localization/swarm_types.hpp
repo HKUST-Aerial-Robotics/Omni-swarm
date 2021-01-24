@@ -224,7 +224,7 @@ public:
     double probaility = 0;
 
     bool enable_depth = false;
-    bool enable_dpose = true;
+    bool enable_dpose = false;
     
     Pose dpose_self_a;
     Pose dpose_self_b;

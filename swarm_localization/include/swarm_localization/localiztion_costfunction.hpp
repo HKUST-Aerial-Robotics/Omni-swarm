@@ -210,14 +210,20 @@ protected:
 
 class SwarmDetectionError : public GeneralMeasurement2DronesError{
     bool enable_depth;
-    const Swarm::DroneDetection* det;
+    Swarm::DroneDetection det;
     bool enable_dpose;
+    Eigen::Vector3d dir;
+    double inv_dep;
 public:
     SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
         GeneralMeasurement2DronesError(_loc){
-        det = static_cast<const Swarm::DroneDetection*>(loc);
-        enable_depth = det->enable_depth;
-        enable_dpose = det->enable_dpose;
+        det = *(static_cast<const Swarm::DroneDetection*>(loc));
+        enable_depth = det.enable_depth;
+        enable_dpose = det.enable_dpose;
+        dir = det.p;
+        inv_dep = det.inv_dep;
+        // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
+        // std::cout << "rel_p" << det.p << std::endl;
     }
 
     template<typename T>
@@ -237,42 +243,39 @@ public:
 protected:
     template<typename T>
     inline int detection_residual(T const *const *_poses, T *_residual) const {
-        T relpose_est[4];
+        T relpose_est[4], posea[4], poseb[4];
+        get_pose_a(_poses, posea);
+        get_pose_b(_poses, poseb);
 
         if (enable_dpose) {
-            T posea[4] , poseb[4], _posea[4], _poseb[4], dposea[4], dposeb[4];
-            get_pose_a(_poses, posea);
-            get_pose_b(_poses, poseb);
-
-            det->dpose_self_a.to_vector_xyzyaw(dposea);
-            det->dpose_self_b.to_vector_xyzyaw(dposeb);
+            T _posea[4], _poseb[4], dposea[4], dposeb[4];
+            
+            det.dpose_self_a.to_vector_xyzyaw(dposea);
+            det.dpose_self_b.to_vector_xyzyaw(dposeb);
 
             PoseMulti(posea, dposea, _posea);
             PoseMulti(poseb, dposeb, _poseb);
-            // std::cout << "_posea " << _posea[0]  << " " << _posea[1] << " " << _posea[2] << std::endl;
-            // std::cout << "_poseb " << _poseb[0]  << " " << _poseb[1] << " " << _poseb[2] << std::endl;
-
             DeltaPose(_posea, _poseb, relpose_est);
         } else {
-            T relpose_est[4];
-            T posea[4] , poseb[4];
-            get_pose_a(_poses, posea);
-            get_pose_b(_poses, poseb);
-
+            // std::cout << "posea " << posea[0]  << " " << posea[1] << " " << posea[2] << std::endl;
+            // std::cout << "poseb " << poseb[0]  << " " << poseb[1] << " " << poseb[2] << std::endl;
             DeltaPose(posea, poseb, relpose_est);
-
+            // std::cout << "relpose_est " << relpose_est[0]  << " " << relpose_est[1] << " " << relpose_est[2] << std::endl;
         }
         
-        T inv_dep = (T)det->inv_dep;
+        
+        T inv_dep = (T)(this->inv_dep);
         T rel_p[3];
-        rel_p[0] = T(det->p.x());
-        rel_p[1] = T(det->p.y());
-        rel_p[2] = T(det->p.z());
+        rel_p[0] = T(dir.x());
+        rel_p[1] = T(dir.y());
+        rel_p[2] = T(dir.z());
 
-        const double * tan_base = det->detect_tan_base.data();
+        const double * tan_base = det.detect_tan_base.data();
 
-        if (det->enable_depth) {
+        if (enable_depth) {
+            // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
             unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual);
+            // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
             return 3;
         } else {
             unit_position_error(relpose_est, rel_p, tan_base, _residual);
