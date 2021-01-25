@@ -462,6 +462,8 @@ public:
         nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
         nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
         nh.param<float>("max_solver_time", solver_params.max_solver_time, 0.05f);
+        nh.param<float>("distance_outlier_threshold", solver_params.distance_outlier_threshold, 0.3f);
+        nh.param<float>("distance_height_outlier_threshold", solver_params.distance_height_outlier_threshold, 0.5f);
 
 
         nh.param<float>("vo_drift_meter", VO_DRIFT_METER, 0.01f);
