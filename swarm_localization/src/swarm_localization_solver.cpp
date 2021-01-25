@@ -88,7 +88,9 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_detection_depth(_params.enable_detection_depth),
             kf_use_all_nodes(_params.kf_use_all_nodes),
             generate_full_path(_params.generate_full_path),
-            max_solver_time(_params.max_solver_time)
+            max_solver_time(_params.max_solver_time),
+            distance_outlier_threshold(_params.distance_outlier_threshold),
+            distance_height_outlier_threshold(_params.distance_height_outlier_threshold)
     {
     }
 
@@ -225,7 +227,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
     }
 }
 
-void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
+void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, const NodeFrame &_nf) {
     int _id = _nf.id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
@@ -277,7 +279,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
 }
 
 
-void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
+void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf) {
     int _id = _nf.id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
@@ -303,14 +305,13 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
     est_poses[ts][_id] = _p;
     est_poses2[_id][ts] = _p;
 }
-
-void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
-    if (!finish_init) {
+void SwarmLocalizationSolver::print_frame(const SwarmFrame& sf) const {
+       if (!finish_init) {
         return;
     }
     
     printf("\n");
-    ROS_INFO("=================================================\nKF %d details", TSShort(sf.ts));
+    ROS_INFO("=========================KF %d details========================\n", TSShort(sf.ts));
 
     const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
 
@@ -368,16 +369,86 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
         }
 
         printf("--------------------------------------------------------------------\n\n");
+    }     
+}
+
+void SwarmLocalizationSolver::outlier_rejection_frame(SwarmFrame & sf) const {
+    if (!finish_init) {
+        return;
+    }
+    
+    printf("\n");
+    ROS_INFO("========================New KF %d details=========================\n", TSShort(sf.ts));
+
+    const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
+
+    for (auto &it : sf.id2nodeframe) {
+        auto id = it.first;
+        auto & _nf = it.second;
+        printf("ID %d \n", id);
+        if (est_poses_idts.at(id).find(last_kf_ts) == est_poses_idts.at(id).end() ) {
+            ROS_INFO("Can't find id in last KF %d", TSShort(last_kf_ts));
+            continue;
+        }
+        double* pose_last = est_poses_idts.at(id).at(last_kf_ts);
+        if (!last_sf.has_node(id) || !last_sf.id2nodeframe.at(id).vo_available) 
+            return;
+        Pose pose_vo_last = last_sf .id2nodeframe.at(id).pose();
+        int64_t ts =  sf.ts;
+        double * pose = est_poses_idts.at(id).at(ts);
+        auto pose_vo = sf.id2nodeframe.at(id).pose();
+        auto poseest = Pose(pose, true);
+        printf("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
+                pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
+        printf("POSEST     %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
+                poseest.pos().x(), poseest.pos().y(), poseest.pos().z(), pose_vo.yaw()*57.3);
+        Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
+        Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
+        Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
+        double ang_err = ERRVOEST.yaw()*1000;
+        
+        printf("ERRVOEST(mm)       %6.5f %6.5f %6.5f ANG  %3.2f\n",
+                ERRVOEST.pos().x()*1000, ERRVOEST.pos().y()*1000, ERRVOEST.pos().z()*1000, ang_err);
+
+        printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
+                DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
+
+        printf("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
+                DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z(), DposeEST.yaw()*57.3);
+
+        if (_nf.dis_map.size() > 0) {
+            printf("DISTANCES ");
+            for (auto itj : _nf.dis_map) {
+                int _idj = itj.first;
+                double dis = itj.second;
+                if (sf.has_node(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                    if (est_poses_idts.find(_idj) == est_poses_idts.end() || est_poses_idts.at(_idj).find(ts) == est_poses_idts.at(_idj).end()) {
+                        printf("Can't find %d at %d\n", _idj, TSShort(ts));
+                        continue;
+                    }
+
+                    Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
+                    double est_dis = (posj_est.pos() - poseest.pos()).norm();
+                    printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
+                    if (fabs(dis - est_dis) > distance_outlier_threshold || fabs(posj_est.pos().z() - poseest.pos().z()) > distance_height_outlier_threshold) {
+                        printf("is outlier");
+                        _nf.outlier_distance[_idj] = true;
+                    } else {
+                        _nf.outlier_distance[_idj] = false;
+                    }
+                }
+            }
+            printf("\n");
+        }
+
+        printf("--------------------------------------------------------------------\n\n");
     }    
 }
 
-void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
+void SwarmLocalizationSolver::add_as_keyframe(SwarmFrame sf) {
     // if (sf_sld_win.size() > 0) {
         // last_kf_ts = sf_sld_win.back().ts;
     // }
-
-    sf_sld_win.push_back(sf);
-    all_sf[sf.ts] = sf;
     ROS_INFO("New keyframe %d found, size %ld/%d", TSShort(sf.ts), sf_sld_win.size(), max_frame_number);
     for (auto it : sf.id2nodeframe) {
         if (it.second.is_static) {
@@ -391,9 +462,10 @@ void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
         }
     }
 
-#ifdef DEBUG_OUTPUT_NEW_KF
-    print_frame(sf);
-#endif
+    outlier_rejection_frame(sf);
+    sf_sld_win.push_back(sf);
+    all_sf[sf.ts] = sf;
+
     last_kf_ts = sf.ts;
     has_new_keyframe = true;
 }
@@ -947,8 +1019,9 @@ bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, c
     return false;
 }
 
-void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
+int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
     //TODO: Deal with static object in this function!!!
+    int _dets = detection_in_keyframes;
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
     std::vector<int> _id_list;
@@ -1012,12 +1085,14 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
                         ceres::LossFunction *loss_function;
                         loss_function = new ceres::HuberLoss(1.0);
                         problem.AddResidualBlock(cost, loss_function, pose_state);
-                        ROS_WARN("Swarm detection %d->%d in frame added", _id, _idb);
+                        _dets += 1;
+                        // ROS_WARN("Swarm detection %d->%d in frame added", _id, _idb);
                     }
                 }
             }
         }
     }
+    return _dets;
 }
 
 CostFunction *
@@ -1607,14 +1682,14 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop and detections %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_2drone_measurements.size());
     has_new_keyframe = false;
+    detection_in_keyframes = 0;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
-        this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
+        detection_in_keyframes = this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
     }
 
     int num_res_blks_sf = problem.NumResidualBlocks();
@@ -1634,6 +1709,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     ROS_INFO("Loop residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
     num_res_sf = problem.NumResiduals();
 
+    printf("TICK: %d sliding_window_size: %d swarm_est_poses: %d detection_in_keyframes: %d good_2drone_measurements: %ld\n", 
+        solve_count, sliding_window_size(), swarm_est_poses.size(), detection_in_keyframes, good_2drone_measurements.size());
 
     ceres::Solver::Options options;
 
@@ -1678,11 +1755,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     std::cout << summary.message << std::endl;
     //std::cout << summary.FullReport() << std::endl;
-#ifdef DEBUG_OUTPUT_SLD_WIN
-    for (auto & sf: sf_sld_win) {
-        print_frame(sf);
-    }
-#endif
+    // for (auto & sf: sf_sld_win) {
+        // print_frame(sf);
+    // }
 
 #ifdef DEBUG_OUTPUT_POSES
     //if (finish_init) 

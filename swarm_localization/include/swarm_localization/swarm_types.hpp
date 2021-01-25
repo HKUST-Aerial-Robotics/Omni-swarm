@@ -314,6 +314,7 @@ class NodeFrame {
         double yaw_cov_to_last = VO_ERROR_ANGLE;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
+        std::map<int, bool> outlier_distance;
         std::map<int, DroneDetection> detected_nodes;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
 
@@ -347,6 +348,19 @@ class NodeFrame {
 
         int detections() const {
             return detected_nodes.size();
+        }
+
+        bool distance_is_outlier(int idj) const {
+            //If distance not exist or is outlier, return true
+            if (outlier_distance.find(idj) != outlier_distance.end() && outlier_distance.at(idj)) {
+                return true;
+            }
+
+            if (dis_map.find(idj) == dis_map.end()) {
+                return true;
+            }
+            
+            return false;
         }
 
         Pose pose() const {

@@ -75,6 +75,8 @@ struct swarm_localization_solver_params{
     bool kf_use_all_nodes;
     bool generate_full_path;
     float max_solver_time;
+    float distance_outlier_threshold;
+    float distance_height_outlier_threshold;
 };
 
 class SwarmLocalizationSolver {
@@ -89,9 +91,10 @@ class SwarmLocalizationSolver {
 
     unsigned int solve_count = 0;
 
+
     swarm_localization_solver_params params;
 
-
+    int detection_in_keyframes = 0;
     std::vector<swarm_msgs::LoopConnection> all_loops;
     std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
 
@@ -126,9 +129,9 @@ class SwarmLocalizationSolver {
 
     void random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts);
 
-    void init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+    void init_dynamic_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
 
-    void init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+    void init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
@@ -147,7 +150,7 @@ class SwarmLocalizationSolver {
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
 
 
-    void
+    int
     setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
     CostFunction *
@@ -167,7 +170,8 @@ class SwarmLocalizationSolver {
     
     int judge_is_key_frame(const SwarmFrame &sf);
 
-    void add_as_keyframe(const SwarmFrame &sf);
+    void add_as_keyframe(SwarmFrame sf);
+    void outlier_rejection_frame(SwarmFrame & sf) const;
     void print_frame(const SwarmFrame & sf) const;
     void replace_last_kf(const SwarmFrame & sf);
     
@@ -203,7 +207,8 @@ public:
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
     float detection_inv_dep_outlier_thres;
-    
+    float distance_outlier_threshold;
+    float distance_height_outlier_threshold;
     float detection_outlier_thres;
 
     float det_dpos_thres;
