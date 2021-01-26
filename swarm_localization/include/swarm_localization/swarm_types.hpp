@@ -226,9 +226,14 @@ public:
     bool enable_depth = false;
     bool enable_dpose = false;
     
+
+    //If disable dpose, this will act the extrinsic
     Pose dpose_self_a;
     Pose dpose_self_b;
-    
+
+    Eigen::Vector3d extrinsic;
+    Eigen::Vector3d centr_of_detection_position;
+
     DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_dpose, bool _enable_depth = true):
         enable_dpose(_enable_dpose)
     {
@@ -263,7 +268,8 @@ public:
     }
 
 
-    DroneDetection(const DroneDetection & dronedet) {
+    DroneDetection(const DroneDetection & dronedet):
+        extrinsic(0, 0.0, 0.1), centr_of_detection_position(0, 0, 0.02) {
         id_a = dronedet.id_a;
         id_b = dronedet.id_b;
         ts_a = dronedet.ts_a;
