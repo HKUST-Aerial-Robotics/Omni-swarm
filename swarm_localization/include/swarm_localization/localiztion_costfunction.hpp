@@ -109,12 +109,35 @@ inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
 }
 
 
+template<typename T>
+inline void DeltaPose_Naive(const T *posea, const T *poseb, T *dpose) {
+    T tmp[3];
+    tmp[0] = poseb[0] - posea[0];
+    tmp[1] = poseb[1] - posea[1];
+    tmp[2] = poseb[2] - posea[2];
+
+    YawRotatePoint(-posea[3], tmp, dpose);
+}
+
+
 //dpose = a.b
 template<typename T>
 inline void PoseMulti(const T *posea, const T *poseb, T *pose) {
     pose[3] = wrap_angle(poseb[3] + posea[3]);
     T tmp[3];
     YawRotatePoint(posea[3], poseb, tmp);
+    pose[0] = tmp[0] + posea[0];
+    pose[1] = tmp[1] + posea[1];
+    pose[2] = tmp[2] + posea[2];
+}
+
+
+//dpose = a.b
+template<typename T>
+inline void PoseMulti_2(const T *posea, const T *posb, T *pose) {
+    pose[3] = posea[3];
+    T tmp[3];
+    YawRotatePoint(posea[3], posb, tmp);
     pose[0] = tmp[0] + posea[0];
     pose[1] = tmp[1] + posea[1];
     pose[2] = tmp[2] + posea[2];
@@ -243,7 +266,7 @@ public:
 protected:
     template<typename T>
     inline int detection_residual(T const *const *_poses, T *_residual) const {
-        T relpose_est[4], posea[4], poseb[4];
+        T relpose_est[3], posea[4], poseb[4];
         get_pose_a(_poses, posea);
         get_pose_b(_poses, poseb);
 
@@ -255,12 +278,15 @@ protected:
 
             PoseMulti(posea, dposea, _posea);
             PoseMulti(poseb, dposeb, _poseb);
-            DeltaPose(_posea, _poseb, relpose_est);
+            DeltaPose_Naive(_posea, _poseb, relpose_est);
         } else {
-            // std::cout << "posea " << posea[0]  << " " << posea[1] << " " << posea[2] << std::endl;
-            // std::cout << "poseb " << poseb[0]  << " " << poseb[1] << " " << poseb[2] << std::endl;
-            DeltaPose(posea, poseb, relpose_est);
-            // std::cout << "relpose_est " << relpose_est[0]  << " " << relpose_est[1] << " " << relpose_est[2] << std::endl;
+            // T extrinsic[3], _posea[3];
+            // extrinsic[0] = T(det.extrinsic.x());
+            // extrinsic[1] = T(det.extrinsic.y());
+            // extrinsic[2] = T(det.extrinsic.z());
+            // PoseMulti_2(posea, extrinsic, _posea);
+            posea[2] = posea[2] + T(det.extrinsic.z());
+            DeltaPose_Naive(posea, poseb, relpose_est);
         }
         
         
@@ -327,9 +353,6 @@ struct SwarmFrameError {
                 _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_MEASURE_ERROR))*ERROR_NORMLIZED;
                 res_count++;
             } else {
-                if (_nf.outlier_distance[_idj]) {
-                    // ROS_WARN("%d<->%d distance outlier", _nf.id, _idj);
-                }
             }
         }
         return res_count;
