@@ -246,7 +246,8 @@ public:
         stamp_b = nd.header.stamp;
 
         probaility = nd.probaility;
-
+        
+        extrinsic = Pose(nd.camera_extrinsic).pos();
         self_pose_a = Pose(nd.local_pose_self);
         self_pose_b = Pose(nd.local_pose_remote)*Pose(-CG, Eigen::Quaterniond::Identity());
         inv_dep = nd.inv_dep;

@@ -29,6 +29,7 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
     pos = []
     ypr = []
     ts = []
+    quat = []
     print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for i in range(len(msg.ids)):
@@ -37,10 +38,38 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
                 ts.append(msg.header.stamp.to_sec() - t0)
                 pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
                 ypr.append([msg.local_drone_yaw[i], 0, 0])
+                quat.append(quaternion_from_euler(0, 0, msg.local_drone_yaw[i]))
+
     ret = {
         "t": np.array(ts) ,
         "pos": np.array(pos),
         "ypr": np.array(ypr),
+        "quat": np.array(quat)
+    }
+    return ret
+
+def read_pose_swarm_frame(bag, topic, _id, t0):
+    pos = []
+    ypr = []
+    ts = []
+    quat = []
+    print(f"Read poses from topic {topic}")
+    for topic, msg, t in bag.read_messages(topics=[topic]):
+        for node in msg.node_frames:
+            _i = node.id
+            if _i == _id:
+                ts.append(node.header.stamp.to_sec() - t0)
+                pos.append([node.position.x, node.position.y, node.position.z])
+                ypr.append([node.yaw, 0, 0])
+                quat.append(quaternion_from_euler(0, 0, node.yaw))
+    ret = {
+        "t": np.array(ts),
+        "pos_raw": np.array(pos),
+        "pos": np.array(pos),
+        "quat": np.array(quat),
+        "pos_raw_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
+        "ypr_raw": np.array(ypr),
+        "ypr_raw_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
     }
     return ret
 
@@ -84,31 +113,12 @@ def read_distances_remote_nodes(bag, topic, t0, main_id):
                 distances[_id]["dis"].append(_dis)
     return distances
 
-def read_pose_swarm_frame(bag, topic, _id, t0):
-    pos = []
-    ypr = []
-    ts = []
-    print(f"Read poses from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        for node in msg.node_frames:
-            _i = node.id
-            if _i == _id:
-                ts.append(node.header.stamp.to_sec() - t0)
-                pos.append([node.position.x, node.position.y, node.position.z])
-                ypr.append([node.yaw, 0, 0])
-    ret = {
-        "t": np.array(ts),
-        "pos_raw": np.array(pos),
-        "pos_raw_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "ypr_raw": np.array(ypr),
-        "ypr_raw_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
-    }
-    return ret
 
 def read_pose(bag, topic, t0):
     pos = []
     ypr = []
     ts = []
+    quat = []
     print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t0 == 0:
@@ -118,15 +128,17 @@ def read_pose(bag, topic, t0):
         q = msg.pose.orientation
         pos.append([p.x, p.y, p.z])
         y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
+        quat.append([q.w, q.x, q.y, q.z])
         ypr.append([y, p, r])
         ts.append(msg.header.stamp.to_sec() - t0)
         
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
-       "pos_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
+        "pos_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
         "ypr": np.array(ypr),
-        "ypr_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate")
+        "ypr_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
+        "quat": np.array(quat)
     }
     
     print("Trajectory total length ", poses_length(ret))
@@ -203,6 +215,41 @@ def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
         dets.append(det)
     return dets
 
+def output_pose_to_csv(filename, poses, skip = 1):
+    with open(filename, 'w') as writer:
+        for i in range(len(poses["t"])):
+            if i % skip == 0:
+                ts = poses["t"][i]
+                t = poses["pos"][i]
+                q = poses["quat"][i]
+                writer.write(f"{ts} {t[0]} {t[1]} {t[2]} {q[1]} {q[2]} {q[3]} {q[0]}\n")
+
+
+def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, trial = 0):
+    bag = rosbag.Bag(bagname)
+    poses = {}
+    poses_fused = {}
+    poses_vo = {}
+    poses_path = {}
+    t0 = 0
+    plat = "pc"
+    for i in nodes:
+        poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+        output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_groundtruth.txt", poses[i])
+        output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_groundtruth.txt", poses[i])
+        if is_pc:
+            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
+            output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_traj_estimate{trial}.txt", poses_fused[i])
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
+        else:
+            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
+            output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_traj_estimate{trial}.txt", poses_fused[i])
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+
+        poses_fused[i]["t"] = poses_fused[i]["t"]
+        poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
+        output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
+
 def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     bag = rosbag.Bag(bagname)
     poses = {}
@@ -210,8 +257,9 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     poses_vo = {}
     poses_path = {}
     t0 = 0
+    plat = "pc"
     for i in nodes:
-        poses[i], t0 =  read_pose(bag, f"/SwarmNode{i}/pose", t0)
+        poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
         if is_pc:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
@@ -221,6 +269,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
 
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
+
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     detections = read_detections(bag, t0, "/swarm_drones/node_detected")
     distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
@@ -259,18 +308,18 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     
 
 def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, t_calib = {1:0, 2:0}):
-    fig = plt.figure("Ground Truth3d")
-    fig.suptitle("Ground Truth3d")
+    fig = plt.figure("Traj2", figsize=(6, 6))
+    # fig.suptitle("Trajectories of two drones")
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
     
     for i in nodes:
-        ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Vicon Traj{i}")
-        #ax.scatter(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
+        # ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f" Traj{i}")
+        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Estimate {i}")
     
     ax.set_xlabel('$X$')
     ax.set_ylabel('$Y$')
-    ax.set_ylabel('$Z$')
+    ax.set_zlabel('$Z$')
     
     #Plot Loops
     quivers = []
@@ -303,24 +352,25 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             arrow_length_ratio=0.1, color="red",linewidths=1.0)
 
     plt.legend()
+    plt.savefig("/home/xuhao/output/Traj2.png")
 
     #Plot Fused Vs GT 3D
-    fig = plt.figure("Fused Vs GT 3D")
-    fig.suptitle("Fused Vs GT 3D")
+    fig = plt.figure("FusedVsGT3D")
+    # fig.suptitle("Fused Vs GT 3D")
     for k in range(len(nodes)):
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
         ax.set_title(f"Traj {i}, length: {poses_length(poses[i]):3.3f}")
-        ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Vicon Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
-        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VO{i}")
-        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}", color="red")
+        ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Ground Truth ${i}$")
+        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
+        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
+        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Estimate ${i}$")
         
         plt.legend()
         ax.set_xlabel('$X$')
         ax.set_ylabel('$Y$')
-        ax.set_ylabel('$Z$')
-    
+        ax.set_zlabel('$Z$')
+    plt.savefig("/home/xuhao/output/FusedVsGT3D.png")
     fig = plt.figure("Fused Vs GT 2D")
     fig.suptitle("Fused Vs GT 2D")
     for k in range(len(nodes)):
@@ -337,7 +387,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
 
     for i in nodes:
         fig = plt.figure(f"Drone {i} fused Vs GT 1D")
-        fig.suptitle(f"Drone {i} fused Vs GT 1D")
+        #fig.suptitle(f"Drone {i} fused Vs GT 1D")
         ax1, ax2, ax3 = fig.subplots(3, 1)
 
         t_ = poses_fused[i]["t"]
@@ -346,30 +396,38 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         _i = str(i) 
 
         ax1.plot(t_, pos_gt[:,0], label="$x_{gt}^" + _i + "$")
-        ax1.plot(t_, pos_fused[:,0], label="$x_{fused}^" + _i + "$")
+        #ax1.plot(t_, pos_fused[:,0], label="$x_{fused}^" + _i + "$")
         # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
-        ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], label=f"Fused Offline Traj{i}")
         ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
+        ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], label=f"Fused Offline Traj{i}")
+        ax1.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
+        ax1.set_ylabel("x")
 
         ax2.plot(t_, pos_gt[:,1], label="$y_{gt}^" + _i + "$")
-        ax2.plot(t_, pos_fused[:,1], label="$y_{fused}^" + _i + "$")
+        #ax2.plot(t_, pos_fused[:,1], label="$y_{fused}^" + _i + "$")
         #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
         #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
-        ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
         ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
+        ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
+        ax2.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
+        ax2.set_ylabel("y")
 
-        ax3.plot(t_, pos_gt[:,2], label="$z_{gt}^" + _i + "$")
-        ax3.plot(t_, pos_fused[:,2], label="$z_{fused}^" + _i + "$")
+        ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
+        # ax3.plot(t_, pos_fused[:,2], label="$z_{fused}^" + _i + "$")
         #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
         #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
-        ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
-        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VO Traj{i}")
-        ax1.legend()
-        ax2.legend()
+        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
+        ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Estimate {i}")
+        ax3.set_ylabel("z")
+        ax3.set_xlabel("t")
+
+        # ax1.legend()
+        # ax2.legend()
         ax3.legend()
         ax1.grid()
         ax2.grid()
         ax3.grid()
+        plt.savefig(f"/home/xuhao/output/est_by_t{i}.png")
 
 def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0, 2:0}):
     for i in nodes:
