@@ -322,7 +322,7 @@ class NodeFrame {
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
         std::map<int, bool> outlier_distance;
-        std::map<int, DroneDetection> detected_nodes;
+        std::vector<DroneDetection> detected_nodes;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
 
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;

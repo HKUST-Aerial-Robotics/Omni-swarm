@@ -1069,14 +1069,13 @@ int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & sw
             int _id = it.first;
             auto & nfa = it.second;
             double * posea = swarm_est_poses.at(ts).at(_id);
-            for (auto it2: nfa.detected_nodes) {
-                int _idb = it2.first;
-                auto & det = it2.second;
+            for (auto & det: nfa.detected_nodes) {
+                int _idb = det.id_b;
                 det.enable_depth = enable_detection_depth;
                 if (swarm_est_poses.at(ts).find(_idb) != swarm_est_poses.at(ts).end() &&
-                    sf.id2nodeframe.find(it2.first) != sf.id2nodeframe.end()) {
+                    sf.id2nodeframe.find(_idb) != sf.id2nodeframe.end()) {
                     double * poseb = swarm_est_poses.at(ts).at(_idb);
-                    auto & nfb = sf.id2nodeframe.at(it2.first);
+                    auto & nfb = sf.id2nodeframe.at(_idb);
                     if (check_outlier_detection(nfa, nfb, det)) {
                         auto cost = _setup_cost_function_by_loop(&det);
                         std::vector<double*> pose_state;
@@ -1086,7 +1085,7 @@ int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & sw
                         loss_function = new ceres::HuberLoss(1.0);
                         problem.AddResidualBlock(cost, loss_function, pose_state);
                         _dets += 1;
-                        // ROS_WARN("Swarm detection %d->%d in frame added", _id, _idb);
+                        ROS_WARN("Swarm detection %d->%d in frame %d added", _id, _idb, TSShort(sf.ts));
                     }
                 }
             }
