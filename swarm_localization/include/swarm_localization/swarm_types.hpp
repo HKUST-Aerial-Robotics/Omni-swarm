@@ -12,15 +12,16 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/node_detected_xyzyaw.h>
 
-extern float VO_DRIFT_METER;
-extern float VO_DRIFT_METER_Z;
-extern float VO_ERROR_ANGLE;
-extern float DISTANCE_MEASURE_ERROR;
-extern float LOOP_COV_XY;
-extern float LOOP_COV_Z;
-extern float LOOP_YAWCOV;
-extern float DETECTION_SPHERE_COV;
-extern float DETECTION_INV_DEP_COV;
+extern float VO_METER_STD_TRANSLATION;
+extern float VO_METER_STD_Z;
+extern float VO_METER_STD_ANGLE;
+extern float DISTANCE_STD;
+extern float LOOP_XY_STD;
+extern float LOOP_Z_STD;
+extern float LOOP_YAW_STD;
+extern float DETECTION_SPHERE_STD;
+extern float DETECTION_INV_DEP_STD;
+extern float DETECTION_DEP_STD;
 extern Eigen::Vector3d CG;
 
 // #define ERROR_NORMLIZED 0.01
@@ -31,7 +32,7 @@ extern Eigen::Vector3d CG;
 #define ENABLE_LOOP
 // pixel error/focal length
 
-#define VO_DRIFT_XYZ (Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z))
+#define VO_DRIFT_XYZ (Eigen::Vector3d(VO_METER_STD_TRANSLATION, VO_METER_STD_TRANSLATION, VO_METER_STD_Z))
 
 using namespace Swarm;
 
@@ -225,6 +226,7 @@ public:
 
     bool enable_depth = false;
     bool enable_dpose = false;
+    bool use_inv_dep;
     
 
     //If disable dpose, this will act the extrinsic
@@ -317,8 +319,8 @@ class NodeFrame {
         Pose self_pose;
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
-        Eigen::Vector3d position_cov_to_last = VO_DRIFT_XYZ;
-        double yaw_cov_to_last = VO_ERROR_ANGLE;
+        Eigen::Vector3d position_std_to_last = VO_DRIFT_XYZ;
+        double yaw_std_to_last = VO_METER_STD_ANGLE;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
         std::map<int, bool> outlier_distance;

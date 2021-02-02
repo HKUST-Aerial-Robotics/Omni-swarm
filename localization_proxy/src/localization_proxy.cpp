@@ -256,9 +256,9 @@ class LocalProxy {
         }
 
         //Update with swarm detection should be same
-        nd.dpos_cov.x = 0.02;
-        nd.dpos_cov.y = 0.01;   
-        nd.dpos_cov.z = 0.01;
+        nd.dpos_std.x = 0.02;
+        nd.dpos_std.y = 0.01;   
+        nd.dpos_std.z = 0.01;
 
         nd.dyaw_cov = 10/57.3;
         nd.is_yaw_valid = false;                    

@@ -7,6 +7,7 @@ from scipy.interpolate import interp1d
 from transformations import * 
 import argparse
 from numpy.linalg import norm
+import scipy.stats as stats
 
 plt.rc('figure', figsize=(10,5))
 #plt.rc('figure', figsize=(20,15))
@@ -215,6 +216,22 @@ def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
         dets.append(det)
     return dets
 
+def read_detections_raw(bag, t0, topic="/swarm_detection/swarm_detected_raw"):
+    dets = []
+    for topic, _msg, t in bag.read_messages(topics=[topic]):
+        for msg in _msg.detected_nodes_xyz_yaw:
+            det = {
+                "ts": msg.header.stamp.to_sec() - t0,
+                "id_a":msg.self_drone_id,
+                "id_b":msg.remote_drone_id,
+                "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
+                "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
+                "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
+                "inv_dep":msg.inv_dep
+            }
+            dets.append(det)
+    return dets
+
 def output_pose_to_csv(filename, poses, skip = 1):
     with open(filename, 'w') as writer:
         for i in range(len(poses["t"])):
@@ -271,7 +288,8 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
 
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
-    detections = read_detections(bag, t0, "/swarm_drones/node_detected")
+    # detections = read_detections(bag, t0, "/swarm_drones/node_detected")
+    detections = read_detections_raw(bag, t0)
     distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     bag.close()
     
@@ -764,7 +782,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
     ax1.legend()
     ax2.legend() 
 
-def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib):
+def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, enable_dpose):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -789,13 +807,14 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib):
         yawb_gt = poses[det["id_b"]]["ypr_func"](det["ts"])[0]
 
         posa_gt = poses[det["id_a"]]["pos_func"](det["ts"] + t_calib[det["id_b"]])
-        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"] + t_calib[det["id_b"]]) + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
+        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"] + t_calib[det["id_b"]])# + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
 
         posa_vo = poses_vo[det["id_a"]]["pos_raw_func"](det["ts"])
         yawa_vo = poses_vo[det["id_a"]]["ypr_raw_func"](det["ts"])[0]
         
-        posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
-        # posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, np.array([-0.0616, -0.02, 0.11]))
+        if enable_dpose:
+            posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
+
         dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         inv_dep_gt = 1/norm(dpos_gt)
         dpos_gt = dpos_gt * inv_dep_gt
@@ -868,11 +887,62 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib):
     plt.legend()
 
     plt.figure("INV DEPS")
+    plt.title("INV DEPS")
     plt.plot(ts_a, np.array(inv_deps), "+", label="INV DEP DET")
     plt.plot(ts_a, np.array(inv_deps_gt), "x", label="INV DEP GT")
     plt.legend()
     plt.grid()
 
+    plt.figure("INV DEPS ERR")
+    plt.title("INV DEPS ERR")
+    plt.plot(ts_a, np.array(inv_deps) - np.array(inv_deps_gt), "+", label="INV DEP DET")
+    plt.legend()
+    plt.grid()
+
+    plt.figure("INV DEPS ERR HIST")
+    plt.hist(np.array(inv_deps) - np.array(inv_deps_gt), 50, (-0.3, 0.3), density=True, facecolor='g', alpha=0.75)
+    mu, std = stats.norm.fit(np.array(inv_deps) - np.array(inv_deps_gt))
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "INV DEPS ERR  Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    print("INV DEPS ERR Variance", np.mean((np.array(inv_deps) - np.array(inv_deps_gt))**2))
+
+    plt.title(title)
+
+
+    plt.legend()
+    plt.grid()
+
+    plt.figure("DEPS")
+    plt.title("DEPS")
+    plt.plot(ts_a, 1/np.array(inv_deps), "+", label="DEP DET")
+    plt.plot(ts_a, 1/np.array(inv_deps_gt), "x", label="DEP GT")
+    plt.legend()
+    plt.grid()
+
+
+    plt.figure("DEPS ERR")
+    plt.plot(ts_a, 1/np.array(inv_deps) - 1/np.array(inv_deps_gt), "+", label="DEP ERR")
+    plt.legend()
+    plt.grid()
+
+    plt.figure("DEPS ERR HIST")
+    mu, std = stats.norm.fit(1/np.array(inv_deps) - 1/np.array(inv_deps_gt))
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.hist(1/np.array(inv_deps) - 1/np.array(inv_deps_gt), 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "DEPS ERR Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+    plt.legend()
+    plt.grid()
+    print("Dep ERR MEAN", np.mean(1/np.array(inv_deps_gt) - 1/np.array(inv_deps)))
+    print("DEPS ERR Variance", np.mean((1/np.array(inv_deps) - 1/np.array(inv_deps_gt))**2))
+
+    
     plt.figure("Self Pose Plot")
     plt.subplot(311)
     plt.title("VO X")
@@ -1005,16 +1075,41 @@ def plot_loops_error(poses, loops, nodes):
     plt.grid(which="both")
     plt.legend()
 
-    plt.figure()
-    plt.subplot(141)
-    plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(142)
-    plt.hist(dpos_errs[:,0], 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(143)
-    plt.hist(dpos_errs[:,1], 5, density=True, facecolor='g', alpha=0.75)
-    plt.subplot(144)
-    plt.hist(dpos_errs[:,2], 5, density=True, facecolor='g', alpha=0.75)
+    # plt.figure()
+    # plt.subplot(141)
+    # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
 
+ 
+    plt.subplot(131)
+    plt.hist(dpos_errs[:,0], 50, density=True, facecolor='g', alpha=0.75)
+
+    mu, std = stats.norm.fit(dpos_errs[:,0])
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    plt.subplot(132)
+    plt.hist(dpos_errs[:,1], 50, density=True, facecolor='g', alpha=0.75)
+    mu, std = stats.norm.fit(dpos_errs[:,1])
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    plt.subplot(133)
+    plt.hist(dpos_errs[:,2], 50, density=True, facecolor='g', alpha=0.75)
+    mu, std = stats.norm.fit(dpos_errs[:,2])
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
 
     print(f"Pos cov {np.cov(dpos_errs[:,0]):3.3f}, {np.cov(dpos_errs[:,1]):3.3f}, {np.cov(dpos_errs[:,2]):3.3f}")
     print(f"Yaw cov {np.cov(dyaw_errs)*57.3:3.3f}")
