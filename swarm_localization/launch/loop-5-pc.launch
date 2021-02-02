@@ -29,7 +29,7 @@
             loop_cov_xy: 0.5
             loop_cov_z: 0.2
             loop_cov_yaw: 0.05
-            detection_sphere_cov: 0.03
+            detection_sphere_cov: 0.01
             detection_inv_dep_cov: 0.3
             publish_full_path: true
             is_pc_replay: true
