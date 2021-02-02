@@ -524,7 +524,8 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
         ax3.plot(dis_gt, dis_raw,'+',label="GT VS UWB")
 
         print(f"Distce RMSE {RMSE(dis_raw, dis_gt)}")
-        z = np.polyfit(dis_gt, dis_raw, 1)
+        # z = np.polyfit(dis_gt, dis_raw, 1)
+        z = np.polyfit(dis_raw, dis_gt, 1)
         print(f"Fit {z[0]}, {z[1]}")
         ax1.legend()
         ax1.grid()
