@@ -61,15 +61,16 @@ using namespace std::chrono;
 #define RANDOM_DELETE_KF 
 
 
-float VO_DRIFT_METER;
-float VO_DRIFT_METER_Z;
-float VO_ERROR_ANGLE;
-float DISTANCE_MEASURE_ERROR;
-float LOOP_COV_XY;
-float LOOP_COV_Z;
-float LOOP_YAWCOV;
-float DETECTION_SPHERE_COV;
-float DETECTION_INV_DEP_COV;
+float VO_METER_STD_TRANSLATION;
+float VO_METER_STD_Z;
+float VO_METER_STD_ANGLE;
+float DISTANCE_STD;
+float LOOP_XY_STD;
+float LOOP_Z_STD;
+float LOOP_YAW_STD;
+float DETECTION_SPHERE_STD;
+float DETECTION_INV_DEP_STD;
+float DETECTION_DEP_STD;
 Eigen::Vector3d CG;
 
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
@@ -178,8 +179,8 @@ void SwarmLocalizationSolver::delete_frame_i(int i) {
             auto &_node = it.second;
             if(delete_sf.has_node(_id) && delete_sf.has_odometry(_id)) {
                 //Than make this cov bigger
-                _node.position_cov_to_last = _node.position_cov_to_last + VO_DRIFT_XYZ;
-                _node.yaw_cov_to_last = _node.yaw_cov_to_last + VO_ERROR_ANGLE;
+                _node.position_std_to_last = _node.position_std_to_last + VO_METER_STD_TRANSLATION;
+                _node.yaw_std_to_last = _node.yaw_std_to_last + VO_METER_STD_ANGLE;
             }
         }
 
@@ -1787,10 +1788,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
                     Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
                     Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
                     Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
-                    double ang_err = ERRVOEST.yaw()/ VO_ERROR_ANGLE;
+                    double ang_err = ERRVOEST.yaw()/ VO_METER_STD_ANGLE;
                     
                     printf("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f\n",
-                            ERRVOEST.pos().x()/VO_DRIFT_METER, ERRVOEST.pos().y()/VO_DRIFT_METER, ERRVOEST.pos().z()/VO_DRIFT_METER, ang_err);
+                            ERRVOEST.pos().x()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().y()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().z()/VO_METER_STD_TRANSLATION, ang_err);
 
                     printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
                             DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);

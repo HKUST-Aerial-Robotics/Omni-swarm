@@ -32,20 +32,20 @@ typedef std::map<int64_t, std::map<int, int>> IDStampPose;
 
 template<typename T>
 inline void pose_error(const T *posea, const T *poseb, T *error,
-                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.01, 0.01, 0.01),
-                       double ang_cov = 0.01) {
-    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_cov.x();
-    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
-    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
-    error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_cov;
+                       Eigen::Vector3d pos_std = Eigen::Vector3d(0.01, 0.01, 0.01),
+                       double ang_std = 0.01) {
+    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_std.x();
+    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_std.y();
+    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_std.z();
+    error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_std;
 }
 
 template<typename T>
 inline void position_error(const T *posea, const T *poseb, T *error,
-                       Eigen::Vector3d pos_cov = Eigen::Vector3d(0.01, 0.01, 0.01)) {
-    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_cov.x();
-    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_cov.y();
-    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_cov.z();
+                       Eigen::Vector3d pos_std = Eigen::Vector3d(0.01, 0.01, 0.01)) {
+    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_std.x();
+    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_std.y();
+    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_std.z();
 }
 
 
@@ -57,21 +57,21 @@ inline void unit_position_error(const T *posea, const T *poseb, const double * t
     const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
     const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
 
-    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
-    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
 }
 
 template<typename T>
-inline void unit_position_error(const T *posea, const T *poseb, const T inv_dep, const double * tangent_base, T *error) {
+inline void unit_position_error_inv_dep(const T *posea, const T *poseb, const T inv_dep, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
     const T _inv_dep = 1.0/sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
     const T err0 = ERROR_NORMLIZED*(posea[0]*_inv_dep - poseb[0]);
     const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
     const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
 
-    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_COV);
-    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_COV);
-    error[2] = (inv_dep - _inv_dep)*ERROR_NORMLIZED / (T)(DETECTION_INV_DEP_COV);
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
+    error[2] = (inv_dep - _inv_dep)*ERROR_NORMLIZED / (T)(DETECTION_INV_DEP_STD);
 
     // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
     // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
@@ -79,6 +79,23 @@ inline void unit_position_error(const T *posea, const T *poseb, const T inv_dep,
     // std::cout << "Error" << error[0] << " " << error[1] << " " << error[2] << std::endl;
 }
 
+template<typename T>
+inline void unit_position_error(const T *posea, const T *poseb, const T dep, const double * tangent_base, T *error) {
+    //For this residual; we assume poseb a unit vector
+    const T _dep = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
+    const T err0 = ERROR_NORMLIZED*(posea[0]/_dep - poseb[0]);
+    const T err1 = ERROR_NORMLIZED*(posea[1]/_dep - poseb[1]);
+    const T err2 = ERROR_NORMLIZED*(posea[2]/_dep - poseb[2]);
+
+    error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
+    error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
+    error[2] = (_dep - dep)*ERROR_NORMLIZED / (T)(DETECTION_DEP_STD);
+
+    // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
+    // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
+    // std::cout << "err" << err0 << " " << err1 << " " << err2 << std::endl;
+    // std::cout << "Error" << error[0] << " " << error[1] << " " << error[2] << std::endl;
+}
 template<typename T>
 inline void YawRotatePoint(T yaw, const T * vec, T * ret) {
     ret[0] = cos(yaw) * vec[0] - sin(yaw)*vec[1];
@@ -226,7 +243,7 @@ protected:
         T relpose_est[4];
         estimate_relpose(_poses, relpose_est);
 
-        pose_error(relpose_est, rel_pose, _residual, Eigen::Vector3d(LOOP_COV_XY, LOOP_COV_XY, LOOP_COV_Z)/loop->avg_count, LOOP_YAWCOV/loop->avg_count);
+        pose_error(relpose_est, rel_pose, _residual, Eigen::Vector3d(LOOP_XY_STD, LOOP_XY_STD, LOOP_Z_STD)/loop->avg_count, LOOP_YAW_STD/loop->avg_count);
         return 4;
     }
 };
@@ -237,6 +254,8 @@ class SwarmDetectionError : public GeneralMeasurement2DronesError{
     bool enable_dpose;
     Eigen::Vector3d dir;
     double inv_dep;
+    double dep;
+    bool use_inv_dep = false;
 public:
     SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
         GeneralMeasurement2DronesError(_loc){
@@ -245,6 +264,7 @@ public:
         enable_dpose = det.enable_dpose;
         dir = det.p;
         inv_dep = det.inv_dep;
+        dep = 1/inv_dep;
         // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
         // std::cout << "rel_p" << det.p << std::endl;
     }
@@ -290,7 +310,6 @@ protected:
         }
         
         
-        T inv_dep = (T)(this->inv_dep);
         T rel_p[3];
         rel_p[0] = T(dir.x());
         rel_p[1] = T(dir.y());
@@ -300,7 +319,13 @@ protected:
 
         if (enable_depth) {
             // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
-            unit_position_error(relpose_est, rel_p, inv_dep, tan_base, _residual);
+            if (use_inv_dep) {
+                T inv_dep = (T)(this->inv_dep);
+                unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
+            } else {
+                T dep = (T)(this->dep);
+                unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
+            }
             // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
             return 3;
         } else {
@@ -350,7 +375,7 @@ struct SwarmFrameError {
             if (has_id(_idj) && _nf.enabled_distance.at(_idj) && !_nf.distance_is_outlier(_idj)) {
                 T _dis = T(it.second);
                 //Less accuracy on distance
-                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_MEASURE_ERROR))*ERROR_NORMLIZED;
+                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_STD))*ERROR_NORMLIZED;
                 res_count++;
             } else {
             }
@@ -424,8 +449,8 @@ struct SwarmHorizonError {
     std::vector<double> yaw_init;
 
     std::vector<Pose> delta_poses;
-    std::vector<Eigen::Vector3d> delta_pose_covs;
-    std::vector<double> delta_ang_covs;
+    std::vector<Eigen::Vector3d> delta_pose_stds;
+    std::vector<double> delta_ang_stds;
     int _id = -1;
 
     SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
@@ -437,8 +462,8 @@ struct SwarmHorizonError {
         for (unsigned int i = 1; i< _nf_win.size(); i++) {
             auto _nf = _nf_win[i];
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
-            delta_pose_covs.push_back(_nf_win[i].position_cov_to_last);
-            delta_ang_covs.push_back(_nf_win[i].yaw_cov_to_last);
+            delta_pose_stds.push_back(_nf_win[i].position_std_to_last);
+            delta_ang_stds.push_back(_nf_win[i].yaw_std_to_last);
             ts2nfindex[_nf.ts] = i;
         }
 
@@ -467,8 +492,8 @@ struct SwarmHorizonError {
         return (nf_windows.size()-1)*4;
     }
 
-    Eigen::Vector3d pos_cov = Eigen::Vector3d::Ones() * VO_DRIFT_METER;
-    double ang_cov = VO_ERROR_ANGLE;
+    Eigen::Vector3d pos_std = Eigen::Vector3d::Ones() * VO_METER_STD_TRANSLATION;
+    double ang_std = VO_METER_STD_ANGLE;
 
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
@@ -491,7 +516,7 @@ struct SwarmHorizonError {
             DeltaPose(est_posea, est_poseb, est_dpose);
 
 
-            pose_error(est_dpose, mea_dpose, _residual + res_count, delta_pose_covs[i], delta_ang_covs[i]);
+            pose_error(est_dpose, mea_dpose, _residual + res_count, delta_pose_stds[i], delta_ang_stds[i]);
 
 
             /*
