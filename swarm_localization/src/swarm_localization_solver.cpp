@@ -179,7 +179,7 @@ void SwarmLocalizationSolver::delete_frame_i(int i) {
             auto &_node = it.second;
             if(delete_sf.has_node(_id) && delete_sf.has_odometry(_id)) {
                 //Than make this cov bigger
-                _node.position_std_to_last = _node.position_std_to_last + VO_METER_STD_TRANSLATION;
+                _node.position_std_to_last = _node.position_std_to_last + Eigen::Vector3d::Ones() * VO_METER_STD_TRANSLATION;
                 _node.yaw_std_to_last = _node.yaw_std_to_last + VO_METER_STD_ANGLE;
             }
         }
@@ -1086,7 +1086,7 @@ int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & sw
                         loss_function = new ceres::HuberLoss(1.0);
                         problem.AddResidualBlock(cost, loss_function, pose_state);
                         _dets += 1;
-                        ROS_WARN("Swarm detection %d->%d in frame %d added", _id, _idb, TSShort(sf.ts));
+                        // ROS_WARN("Swarm detection %d->%d in frame %d added", _id, _idb, TSShort(sf.ts));
                     }
                 }
             }

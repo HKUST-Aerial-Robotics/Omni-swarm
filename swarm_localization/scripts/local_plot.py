@@ -976,16 +976,39 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
 
     # plt.legend()
     # plt.grid()
-    plt.figure("Hist")
+    plt.figure("Direction Errr hist")
     plt.subplot(131)
-    plt.hist(inv_dep_errs, 10, (-0.2, 0.2), density=True, facecolor='g', alpha=0.75)
-    plt.subplot(132)
     plt.hist(dpos_errs[:,0], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
-    # plt.subplot(143)
-    # plt.hist(dpos_errs[:,1], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+    
+    mu, std = stats.norm.fit(dpos_errs[:,0])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "X mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    plt.subplot(132)
+    plt.hist(dpos_errs[:,1], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+
+    mu, std = stats.norm.fit(dpos_errs[:,1])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Y mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
     plt.subplot(133)
     plt.hist(dpos_errs[:,2], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
     
+    mu, std = stats.norm.fit(dpos_errs[:,2])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Z mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
 
     filter_dpos = np.array(dpos_errs_norm) < 0.2
     print(f"Mean {np.mean(dpos_errs[filter_dpos], axis=0)}")
