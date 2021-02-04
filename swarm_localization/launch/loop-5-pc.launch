@@ -19,7 +19,7 @@
             loop_outlier_threshold_pos: 0.5
             loop_outlier_threshold_yaw: 0.5
             enable_detection: true
-            enable_detection_depth: true
+            enable_detection_depth: false
             enable_loop: true
             enable_distance: true
             VO_METER_STD_TRANSLATION: 0.015
