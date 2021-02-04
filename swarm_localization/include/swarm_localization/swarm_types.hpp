@@ -237,7 +237,7 @@ public:
     Eigen::Vector3d centr_of_detection_position;
 
     DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_dpose, bool _enable_depth = true):
-        enable_dpose(_enable_dpose)
+        enable_dpose(_enable_dpose), centr_of_detection_position(0, 0, 0.02)
     {
         id_a = nd.self_drone_id;
         id_b = nd.remote_drone_id;
