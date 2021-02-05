@@ -14,7 +14,7 @@
     <arg name="config_file" default="$(env HOME)/bags/swarm_local_2020_12/Configs/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" >
-        <arg name="output" value="log" />
+        <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
     </include>

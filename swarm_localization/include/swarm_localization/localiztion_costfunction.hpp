@@ -463,6 +463,7 @@ struct SwarmHorizonError {
             auto _nf = _nf_win[i];
             delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
             delta_pose_stds.push_back(_nf_win[i].position_std_to_last);
+            // std::cout << "Delta Pos"<< delta_poses.back().pos() << "Pose STD to last" << _nf_win[i].position_std_to_last << std::endl;
             delta_ang_stds.push_back(_nf_win[i].yaw_std_to_last);
             ts2nfindex[_nf.ts] = i;
         }

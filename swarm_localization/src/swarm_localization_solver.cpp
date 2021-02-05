@@ -179,8 +179,8 @@ void SwarmLocalizationSolver::delete_frame_i(int i) {
             auto &_node = it.second;
             if(delete_sf.has_node(_id) && delete_sf.has_odometry(_id)) {
                 //Than make this cov bigger
-                _node.position_std_to_last = _node.position_std_to_last + Eigen::Vector3d::Ones() * VO_METER_STD_TRANSLATION;
-                _node.yaw_std_to_last = _node.yaw_std_to_last + VO_METER_STD_ANGLE;
+                _node.position_std_to_last = _node.position_std_to_last + delete_sf.id2nodeframe[_id].position_std_to_last;
+                _node.yaw_std_to_last = _node.yaw_std_to_last + delete_sf.id2nodeframe[_id].yaw_std_to_last;
             }
         }
 
@@ -228,7 +228,7 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, E
     }
 }
 
-void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, const NodeFrame &_nf) {
+void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
     int _id = _nf.id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
@@ -246,6 +246,8 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, const Node
             Pose now_vo = _nf.pose();
 
             Pose dpose = Pose::DeltaPose(last_vo, now_vo, true);
+
+            _nf.position_std_to_last = dpose.pos().norm() * VO_DRIFT_XYZ;
 
             if ( dpose.pos().norm() < NOT_MOVING_THRES && fabs(dpose.yaw()) < NOT_MOVING_YAW ) {
                 //NOT MOVING; Merging pose
@@ -451,12 +453,12 @@ void SwarmLocalizationSolver::add_as_keyframe(SwarmFrame sf) {
         // last_kf_ts = sf_sld_win.back().ts;
     // }
     ROS_INFO("New keyframe %d found, size %ld/%d", TSShort(sf.ts), sf_sld_win.size(), max_frame_number);
-    for (auto it : sf.id2nodeframe) {
+    for (auto & it : sf.id2nodeframe) {
         if (it.second.is_static) {
             ROS_INFO("Is static");
             this->init_static_nf_in_keyframe(sf.ts, it.second);
         } else {
-            auto _nf = it.second;
+            auto & _nf = it.second;
             double _pose[4];
             _nf.pose().to_vector_xyzyaw(_pose);
             this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
