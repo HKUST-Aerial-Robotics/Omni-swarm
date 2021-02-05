@@ -129,7 +129,7 @@ class SwarmLocalizationSolver {
 
     void random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts);
 
-    void init_dynamic_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
+    void init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
 
     void init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
 

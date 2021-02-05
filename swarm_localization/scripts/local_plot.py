@@ -611,7 +611,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         ax2.plot(t_, pos_gt[:,1]  - pos_fused[:,1], label=label)
 
         label = f"$erry_{i}$ RMSE{i}:{rmse_z:3.3f}"
-        ax3.plot(t_,  pos_gt[:,1]  - pos_fused[:,1], label=label)
+        ax3.plot(t_,  pos_gt[:,2]  - pos_fused[:,2], label=label)
 
         pos_gt =  poses[i]["pos_func"](poses_vo[i]["t"]+t_calib[i])
         
