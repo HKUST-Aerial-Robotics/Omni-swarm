@@ -25,14 +25,14 @@
             VO_METER_STD_TRANSLATION: 0.015
             VO_METER_STD_Z: 0.015
             VO_METER_STD_ANGLE: 0.003
-            DISTANCE_STD: 0.3
+            DISTANCE_STD: 0.07
             LOOP_XY_STD: 0.4
             LOOP_Z_STD: 0.12
             LOOP_YAW_STD: 0.05
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
-            publish_full_path: true
+            publish_full_path: false
             is_pc_replay: true
             kf_use_all_nodes: true
             det_dpos_thres: 0.2

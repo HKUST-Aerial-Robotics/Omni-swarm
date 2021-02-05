@@ -283,7 +283,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     for topic, msg, t in bag.read_messages(topics=["/swarm_drones/swarm_frame"]):
         if len(msg.node_frames) >= len(nodes):
             t0 = msg.header.stamp.to_sec()
-            print(t0, msg)
+            # print(t0, msg)
             break
 
     for i in nodes:
@@ -347,7 +347,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     
     for i in nodes:
         # ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f" Traj{i}")
-        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Estimate {i}")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate {i}")
     
     ax.set_xlabel('$X$')
     ax.set_ylabel('$Y$')
@@ -375,12 +375,15 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     # c = np.concatenate((c, np.repeat(c, 2)))
     # c = plt.cm.hsv(c)
 
+    step = 2
     if len(quivers) > 0:   
-        ax.quiver(quivers[:,0], quivers[:,1], quivers[:,2], quivers[:,3], quivers[:,4], quivers[:,5], 
-            arrow_length_ratio=0.1, color="gray",linewidths=0.5)
+        ax.quiver(quivers[::step,0], quivers[::step,1], quivers[::step,2], quivers[::step,3], quivers[::step,4], quivers[::step,5], 
+            arrow_length_ratio=0.1, color="green",linewidths=1.0)
 
+    step_det = 10
     if len(quivers_det) > 0:   
-        ax.quiver(quivers_det[:,0], quivers_det[:,1], quivers_det[:,2], quivers_det[:,3], quivers_det[:,4], quivers_det[:,5], 
+        ax.quiver(quivers_det[::step_det,0], quivers_det[::step_det,1], quivers_det[::step_det,2], quivers_det[::step_det,3],
+            quivers_det[::step_det,4], quivers_det[::step_det,5], 
             arrow_length_ratio=0.1, color="red",linewidths=1.0)
 
     plt.legend()
@@ -402,7 +405,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax.set_xlabel('$X$')
         ax.set_ylabel('$Y$')
         ax.set_zlabel('$Z$')
-    plt.savefig("/home/xuhao/output/FusedVsGT3D.png")
+    plt.savefig("/home/xuhao/output/FusedVsGT3D.pdf")
     fig = plt.figure("Fused Vs GT 2D")
     fig.suptitle("Fused Vs GT 2D")
     for k in range(len(nodes)):
@@ -427,29 +430,24 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         pos_fused = poses_fused[i]["pos"]
         _i = str(i) 
 
-        ax1.plot(t_, pos_gt[:,0], label="$x_{gt}^" + _i + "$")
-        #ax1.plot(t_, pos_fused[:,0], label="$x_{fused}^" + _i + "$")
+        ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${i}$")
         # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
-        ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
-        ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], label=f"Fused Offline Traj{i}")
+        # ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
+        ax1.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,0], label=f"Estimate {i}")
         ax1.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax1.set_ylabel("x")
 
-        ax2.plot(t_, pos_gt[:,1], label="$y_{gt}^" + _i + "$")
-        #ax2.plot(t_, pos_fused[:,1], label="$y_{fused}^" + _i + "$")
+        ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${i}$")
         #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
-        #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
-        ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
-        ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
+        # ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
+        ax2.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
         ax2.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax2.set_ylabel("y")
 
         ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
-        # ax3.plot(t_, pos_fused[:,2], label="$z_{fused}^" + _i + "$")
         #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
-        #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Fused Offline Traj{i}")
-        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
-        ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], label=f"Estimate {i}")
+        # ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
+        ax3.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,2], label=f"Estimate {i}")
         ax3.set_ylabel("z")
         ax3.set_xlabel("t")
 
@@ -567,6 +565,24 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
         
         ax3.legend()
         ax3.grid()
+        plt.show()
+
+        dis_calibed = 0.257+0.734*np.array(dis_raw)
+
+        err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
+        err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
+
+        plt.figure(f"Dist Hist {i}")
+        plt.hist(err_calibed, 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
+        mu, std = stats.norm.fit(err_calibed)
+        xmin, xmax = plt.xlim()
+        x = np.linspace(xmin, xmax, 100)
+        p = stats.norm.pdf(x, mu, std)
+        plt.plot(x, p, 'k', linewidth=2)
+        title = "mu = %.2f,  std = %.2f" % (mu, std)
+        plt.title(title)
+        plt.show()
+
     
 
 
@@ -900,6 +916,46 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     plt.grid(which="both")
     plt.legend()
 
+    plt.figure("Direction Err hist")
+    plt.subplot(131)
+    plt.hist(dpos_errs[:,0], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+    
+    mu, std = stats.norm.fit(dpos_errs[:,0])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "X mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    plt.subplot(132)
+    plt.hist(dpos_errs[:,1], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+
+    mu, std = stats.norm.fit(dpos_errs[:,1])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Y mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    plt.subplot(133)
+    plt.hist(dpos_errs[:,2], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
+    xmin, xmax = plt.xlim()
+    
+    mu, std = stats.norm.fit(dpos_errs[:,2])
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "Z mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+
+    filter_dpos = np.array(dpos_errs_norm) < 0.2
+    print(f"Mean {np.mean(dpos_errs[filter_dpos], axis=0)}")
+
+    print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
+
+
     plt.figure("INV DEPS")
     plt.title("INV DEPS")
     plt.plot(ts_a, np.array(inv_deps), "+", label="INV DEP DET")
@@ -988,47 +1044,7 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     plt.plot(ts_a, yawa_gts)
 
 
-    # plt.legend()
-    # plt.grid()
-    plt.figure("Direction Errr hist")
-    plt.subplot(131)
-    plt.hist(dpos_errs[:,0], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
-    xmin, xmax = plt.xlim()
-    
-    mu, std = stats.norm.fit(dpos_errs[:,0])
-    x = np.linspace(xmin, xmax, 100)
-    p = stats.norm.pdf(x, mu, std)
-    plt.plot(x, p, 'k', linewidth=2)
-    title = "X mu = %.2f,  std = %.2f" % (mu, std)
-    plt.title(title)
 
-    plt.subplot(132)
-    plt.hist(dpos_errs[:,1], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
-    xmin, xmax = plt.xlim()
-
-    mu, std = stats.norm.fit(dpos_errs[:,1])
-    x = np.linspace(xmin, xmax, 100)
-    p = stats.norm.pdf(x, mu, std)
-    plt.plot(x, p, 'k', linewidth=2)
-    title = "Y mu = %.2f,  std = %.2f" % (mu, std)
-    plt.title(title)
-
-    plt.subplot(133)
-    plt.hist(dpos_errs[:,2], 50, (-0.1, 0.1), density=True, facecolor='g', alpha=0.75)
-    xmin, xmax = plt.xlim()
-    
-    mu, std = stats.norm.fit(dpos_errs[:,2])
-    x = np.linspace(xmin, xmax, 100)
-    p = stats.norm.pdf(x, mu, std)
-    plt.plot(x, p, 'k', linewidth=2)
-    title = "Z mu = %.2f,  std = %.2f" % (mu, std)
-    plt.title(title)
-
-    filter_dpos = np.array(dpos_errs_norm) < 0.2
-    print(f"Mean {np.mean(dpos_errs[filter_dpos], axis=0)}")
-
-    print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
-    
 def plot_loops_error(poses, loops, nodes):
     _loops_data = []
     dpos_loops = []
@@ -1080,8 +1096,7 @@ def plot_loops_error(poses, loops, nodes):
         
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
-    fig = plt.figure()
-
+    fig = plt.figure("Loop Error")
     plt.subplot(311)
     plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
     plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
@@ -1116,7 +1131,7 @@ def plot_loops_error(poses, loops, nodes):
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
 
- 
+    plt.figure("Loop Hist")
     plt.subplot(131)
     plt.hist(dpos_errs[:,0], 50, density=True, facecolor='g', alpha=0.75)
 
@@ -1135,7 +1150,7 @@ def plot_loops_error(poses, loops, nodes):
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    title = "mu = %.2f,  std = %.2f" % (mu, std)
     plt.title(title)
 
     plt.subplot(133)
