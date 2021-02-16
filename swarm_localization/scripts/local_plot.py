@@ -22,6 +22,12 @@ def quat2eulers(w, x, y ,z):
 def RMSE(predictions, targets):
     return np.sqrt(np.mean((predictions-targets)**2))
 
+def ATE_POS(predictions, targets):
+    err = predictions-targets
+    norm2 = err[:,0]*err[:,0]+err[:,1]*err[:,1]+err[:,2]*err[:,2]
+    print(norm2)
+    return np.sqrt(np.mean(norm2))
+
 def yaw_rotate_vec(yaw, vec):
     Re = rotation_matrix(yaw, [0, 0, 1])[0:3, 0:3]
     return np.transpose(np.dot(Re, np.transpose(vec)))
@@ -585,6 +591,120 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
 
     
 
+def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_calib = {1:0, 2:0}):
+    ts = poses_fused[main_id]["t"]
+    posa_gt =  poses[main_id]["pos_func"](ts)
+    posa_vo =  poses_vo[main_id]["pos_func"](ts)
+    posa_fused = poses_fused[main_id]["pos_func"](ts)
+    posa_vo =  poses[main_id]["pos_func"](ts)
+    yawa_fused = poses_fused[main_id]["ypr_func"](ts)[:,0]
+    yawa_gt = poses[main_id]["ypr_func"](ts)[:,0]
+    yawa_vo = poses_vo[main_id]["ypr_func"](ts)[:,0]
+
+    posb_gt =  poses[target_id]["pos_func"](ts+t_calib[target_id])
+    posb_vo =  poses_vo[target_id]["pos_func"](ts+t_calib[target_id])
+    yawb_gt = poses[target_id]["ypr_func"](ts+t_calib[target_id])[:,0]
+    posb_fused = poses_fused[target_id]["pos_func"](ts)
+    yawb_fused = poses_fused[target_id]["ypr_func"](ts)[:, 0]
+    yawb_vo = poses_vo[target_id]["ypr_func"](ts)[:, 0]
+
+    dp_gt = posb_gt - posa_gt
+    dp_fused = posb_fused - posa_fused
+    dp_vo = posb_vo - posa_vo
+
+    for i in range(len(yawa_fused)):
+        yaw = yawa_fused[i]
+        dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
+
+    for i in range(len(yawa_fused)):
+        yaw = yawa_gt[i]
+        dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
+
+    for i in range(len(yawa_vo)):
+        yaw = yawa_vo[i]
+        dp_vo[i] = yaw_rotate_vec(-yaw, dp_vo[i])
+
+    fig = plt.figure(f"Relative Pose 2D {main_id}->{i}")
+
+    plt.plot(dp_gt[:, 0], dp_gt[:, 1], label="Relative Pose GT")
+    plt.plot(dp_fused[:, 0], dp_fused[:, 1], label="Relative Pose EST")
+    plt.legend()
+    plt.grid()
+
+    fig = plt.figure("Relative Pose Polar")
+    fig.suptitle("Relative Pose Polar")
+    ax1, ax2 = fig.subplots(2, 1)
+
+    ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label="Relative Pose Angular GT")
+    ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label="Relative Pose Angular Fused")
+
+    ax2.plot(ts, norm(dp_gt, axis=1), label="Relative Pose Length GT")
+    ax2.plot(ts, norm(dp_fused, axis=1), label="Relative Pose Length Fused")
+
+    ax1.legend()
+    ax1.grid()
+    ax2.legend()
+    ax2.grid()
+
+    fig = plt.figure("Relative Pose")
+    fig.suptitle("Relative Pose")
+    ax1, ax2, ax3 = fig.subplots(3, 1)
+
+    ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
+    ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
+    ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(i) + "$")
+
+    ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(i) + "$")
+    ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(i) + "$")
+    ax3.plot(ts, dp_fused[:,2], label="$Z_{fused}^" + str(i) + "$")
+    
+    ax1.legend()
+    ax2.legend()
+    ax3.legend()
+    ax1.grid()
+    ax2.grid()
+    ax3.grid()
+        
+    fig = plt.figure("Fused Relative Error")
+    fig.suptitle("Fused Relative Error")
+    ax1, ax2, ax3 = fig.subplots(3, 1)
+
+    rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
+    rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
+    rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
+    rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
+
+
+    rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
+    rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
+    rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
+
+    ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(i) + f"$ RMSE:{rmse_x:3.3f}")
+    ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
+    ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
+    print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+    print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
+    print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
+
+
+    rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
+    rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
+    rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
+    rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
+
+    print(f"VO RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+    print(f"VO BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
+    
+    ax1.legend()
+    ax2.legend()
+    ax3.legend()
+    ax1.grid()
+    ax2.grid()
+    ax3.grid()
+    plt.show()
+    
+    
+
 
 def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t_calib = {1:0, 2:0}):
     #Plot Fused Vs GT absolute error
@@ -595,15 +715,21 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         t_ = poses_fused[i]["t"]
         pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"]+t_calib[i])
         pos_fused = poses_fused[i]["pos"]
+        yaw_fused = poses_fused[i]["ypr"][:,0]
         pos_vo = poses_vo[i]["pos"]
         pos_path = poses_path[i]["pos"]
+        yaw_gt = poses[i]["ypr_func"](poses_fused[i]["t"]+t_calib[i])[:,0]
+        yaw_vo = poses_vo[i]["ypr"][:,0]
         _i = str(i) 
 
 
         rmse_x = RMSE(pos_gt[:,0] , pos_fused[:,0])
         rmse_y = RMSE(pos_gt[:,1] , pos_fused[:,1])
         rmse_z = RMSE(pos_gt[:,2] , pos_fused[:,2])
-        
+
+        ate_fused = ATE_POS(pos_fused, pos_gt)
+        rmse_yaw_fused = RMSE(yaw_gt, yaw_fused)
+
         label = f"$errx_{i}$ RMSE{i}:{rmse_x:3.3f}"
         ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
 
@@ -614,6 +740,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         ax3.plot(t_,  pos_gt[:,2]  - pos_fused[:,2], label=label)
 
         pos_gt =  poses[i]["pos_func"](poses_vo[i]["t"]+t_calib[i])
+        yaw_gt =  poses[i]["ypr_func"](poses_vo[i]["t"]+t_calib[i])[:,0]
         
         rmse_vo_x = RMSE(pos_vo[:,0] , pos_gt[:,0])
         rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt[:,1])
@@ -627,6 +754,8 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         
         label = f"$VO errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
         ax3.plot(poses_vo[i]["t"], pos_gt[:,2]  - pos_vo[:,2], label=label)
+        ate_vo = ATE_POS(pos_vo, pos_gt)
+        rmse_yaw_vo = RMSE(yaw_gt, yaw_vo)
 
 
         pos_gt =  poses[i]["pos_func"](poses_path[i]["t"]+t_calib[i])
@@ -643,153 +772,18 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         
         # label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
         # ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
-    
-        print(f"RMSE Fused Online {i} is {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
-        print(f"RMSE Fused Offline Path {i} is {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
-        print(f"RMSE VO {i} is {rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}")
+        print(f"Drone {i} estimated by {main_id}")
+        print(f"ATE Fused Pos{ate_fused:3.3f} Yaw {rmse_yaw_fused*180/pi:3.3f} deg RMSE Fused Online {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
+        print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
+        print(f"ATE VO {ate_vo:3.3f}  Yaw {rmse_yaw_vo*180/pi:3.3f} deg RMSE VO {rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}")
 
         ax3.legend()
         ax1.grid()
         ax2.grid()
         ax3.grid()
 
-    # poses_fused = poses_path
-    ts = poses_fused[main_id]["t"]
-    posa_gt =  poses[main_id]["pos_func"](ts)
-    posa_fused = poses_fused[main_id]["pos_func"](ts)
-    posa_vo =  poses[main_id]["pos_func"](ts)
-    yawa_fused = poses_fused[main_id]["ypr_func"](ts)[:,0]
-    yawa_gt = poses[main_id]["ypr_func"](ts)[:,0]
-    
-    fig = plt.figure("Relative Pose 2D")
-    for i in nodes:
-        if i!= main_id:
-            posb_gt =  poses[i]["pos_func"](ts+t_calib[i])
-            yaw_gt = poses[i]["ypr_func"](ts+t_calib[i])[:,0]
-            
-            posb_fused = poses_fused[i]["pos_func"](ts)
-            
-            dp_gt = posb_gt - posa_gt
-            dp_fused = posb_fused - posa_fused
-            for i in range(len(yawa_fused)):
-                yaw = yawa_fused[i]
-                dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
-
-            for i in range(len(yawa_fused)):
-                yaw = yawa_gt[i]
-                dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
-            
-            plt.plot(dp_gt[:, 0], dp_gt[:, 1], label="Relative Pose GT")
-            plt.plot(dp_fused[:, 0], dp_fused[:, 1], label="Relative Pose EST")
-            plt.legend()
-            plt.grid()
-    
-    fig = plt.figure("Relative Pose Polar")
-    fig.suptitle("Relative Pose Polar")
-    ax1, ax2 = fig.subplots(2, 1)
-    for i in nodes:
-        if i!= main_id:
-            posb_gt =  poses[i]["pos_func"](ts+t_calib[i])
-            yaw_gt = poses[i]["ypr_func"](ts+t_calib[i])[:,0]
-            posb_fused = poses_fused[i]["pos_func"](ts)
-            
-            dp_gt = posb_gt - posa_gt
-            dp_fused = posb_fused - posa_fused
-            for i in range(len(yawa_fused)):
-                yaw = yawa_fused[i]
-                dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
-
-            for i in range(len(yawa_fused)):
-                yaw = yawa_gt[i]
-                dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
-            
-            ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label="Relative Pose Angular GT")
-            ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label="Relative Pose Angular Fused")
-
-            ax2.plot(ts, norm(dp_gt, axis=1), label="Relative Pose Length GT")
-            ax2.plot(ts, norm(dp_fused, axis=1), label="Relative Pose Length Fused")
-
-            ax1.legend()
-            ax1.grid()
-
-            ax2.legend()
-            ax2.grid()
-
-    fig = plt.figure("Relative Pose")
-    fig.suptitle("Relative Pose")
-    ax1, ax2, ax3 = fig.subplots(3, 1)
-    
-    
-    for i in nodes:
-        if i!= main_id:
-            posb_gt =  poses[i]["pos_func"](ts+t_calib[i])
-            yaw_gt = poses[i]["ypr_func"](ts+t_calib[i])[:,0]
-            
-            posb_fused = poses_fused[i]["pos_func"](ts)
-            #posb_vo = poses_fused[i]["pos"]
-            
-            dp_gt = posb_gt - posa_gt
-            dp_fused = posb_fused - posa_fused
-            #dp_vo = posb_vo - posa_vo
-            for i in range(len(yawa_fused)):
-                yaw = yawa_fused[i]
-                dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
-
-            for i in range(len(yawa_fused)):
-                yaw = yawa_gt[i]
-                dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
-                
-            ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
-            ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
-            ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(i) + "$")
-
-            ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(i) + "$")
-            ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(i) + "$")
-            ax3.plot(ts, dp_fused[:,2], label="$Z_{fused}^" + str(i) + "$")
-            
-    ax1.legend()
-    ax2.legend()
-    ax3.legend()
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
-        
-    fig = plt.figure("Fused Relative Error")
-    fig.suptitle("Fused Relative Error")
-    ax1, ax2, ax3 = fig.subplots(3, 1)
-    for i in nodes:
-        if i!= main_id:
-            posb_gt =  poses[i]["pos_func"](ts+t_calib[i])
-            yaw_gt = poses[i]["ypr_func"](ts+t_calib[i])[:,0]
-            
-            posb_fused = poses_fused[i]["pos_func"](ts)
-            
-            dp_gt = posb_gt - posa_gt
-            dp_fused = posb_fused - posa_fused
-
-            rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
-            rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
-            rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
 
 
-            rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
-            rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
-            rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
-
-            ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(i) + f"$ RMSE:{rmse_x:3.3f}")
-            ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
-            ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
-            print(f"RMSE {main_id}->{i} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
-            print(f"BIAS {main_id}->{i} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
-            print(f"RMSE NO BIAS {main_id}->{i} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
-            
-    ax1.legend()
-    ax2.legend()
-    ax3.legend()
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
-    plt.show()
     
     fig = plt.figure("Yaw")
     plt.title("yaw")
