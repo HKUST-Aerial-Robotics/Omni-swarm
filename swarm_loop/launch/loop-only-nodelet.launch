@@ -30,7 +30,6 @@
             recv_msg_duration: 0.5
             superpoint_thres: 0.012
             triangle_thres: 0.008
-            min_direction_loop: 3
         </rosparam>
         <param name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_tx2_fp16.trt" type="string" />
         <param name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" type="string" />

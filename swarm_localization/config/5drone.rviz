@@ -628,8 +628,8 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
+      Line Style: Billboards
+      Line Width: 0.019999999552965164
       Name: Path1PC
       Offset:
         X: 0
@@ -651,8 +651,8 @@ Visualization Manager:
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
-      Line Style: Lines
-      Line Width: 0.029999999329447746
+      Line Style: Billboards
+      Line Width: 0.019999999552965164
       Name: Path2PC
       Offset:
         X: 0
@@ -694,25 +694,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 11.039363861083984
+      Distance: 5.825824737548828
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.559852361679077
-        Y: 0.7349355220794678
-        Z: 6.734459020663053e-6
+        X: 0.9967138767242432
+        Y: -1.4139703512191772
+        Z: 7.211296178866178e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.15979795157909393
+      Pitch: 0.23479795455932617
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.364891529083252
+      Yaw: 3.3248908519744873
     Saved: ~
 Window Geometry:
   Displays:
@@ -730,5 +730,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 134
-  Y: 55
+  X: 1335
+  Y: 165

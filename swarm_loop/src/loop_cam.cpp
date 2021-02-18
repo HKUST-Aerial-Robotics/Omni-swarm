@@ -12,11 +12,11 @@ using namespace std::chrono;
 double TRIANGLE_THRES;
 
 LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
-    const std::string & netvlad_model, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
+    const std::string & netvlad_model, int width, int height, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
     self_id(_self_id),
 #ifdef USE_TENSORRT
-    superpoint_net(superpoint_model, thres), 
-    netvlad_net(netvlad_model), 
+    superpoint_net(superpoint_model, width, height, thres), 
+    netvlad_net(netvlad_model, width, height), 
 #endif
     send_img(_send_img)
 {
@@ -190,13 +190,22 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
 
 FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
     FisheyeFrameDescriptor_t frame_desc;
-    imgs.resize(3);
+    
+    if (msg.up_cams[3].width > 0) {
+        imgs.resize(4);
+    } else {
+        imgs.resize(3);
+    }
+
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1));
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2));
     frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
-    // Not use back now
-    // frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 3));
-    frame_desc.images.push_back(generate_null_img_desc());
+    
+    if (msg.up_cams[4].width > 0) {
+        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4));
+    } else {
+        frame_desc.images.push_back(generate_null_img_desc());
+    }
     
     frame_desc.image_num = 4;
     frame_desc.timestamp = frame_desc.images[0].timestamp;
@@ -302,9 +311,9 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         double err = triangulatePoint(pose_up.att(), pose_up.pos(), pose_down.att(), pose_down.pos(),
                         pt_up_norm, pt_down_norm, point_3d);
 
-        // std::cout << "Pt: " << i << "Pos " << point_3d.transpose() << " err " << err << std::endl;
+        auto pt_cam = pose_up.att().inverse() * (point_3d - pose_up.pos());
 
-        if (err > TRIANGLE_THRES) {
+        if (err > TRIANGLE_THRES || pt_cam.z() < 0) {
             continue;
         }
 
@@ -429,6 +438,8 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
 
 
     auto cv_ptr = cv_bridge::toCvCopy(msg);
+    cv::Mat roi = cv_ptr->image(cv::Rect(0, cv_ptr->image.rows*3/4, cv_ptr->image.cols, cv_ptr->image.rows/4));
+    roi.setTo(cv::Scalar(0, 0, 0));
     // std::cout << "Image size" << cv_ptr->image.size() << std::endl;
 #ifdef USE_TENSORRT
     std::vector<cv::Point2f> features;
