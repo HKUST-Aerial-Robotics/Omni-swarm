@@ -64,7 +64,6 @@ class SwarmLocalizationNode {
     }
 
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) const {
-
         //TODO: Deal with global pose
         if (!nodedef_has_id(_nf.id)) {
             ROS_ERROR("No such node %d", _nf.id);
@@ -99,6 +98,11 @@ class SwarmLocalizationNode {
                 // ROS_WARN("Node %d invalid: No vo now", _nf.id);
             }
             nf.is_valid = false;
+        }
+
+        for (auto nd_xyzyaw: _nf.detected_xyzyaws) {
+            DroneDetection dobj(nd_xyzyaw, false);
+            nf.detected_nodes.push_back(dobj);
         }
 
         return nf;
@@ -413,7 +417,7 @@ private:
 public:
     SwarmLocalizationNode(ros::NodeHandle &_nh) :
             nh(_nh) {
-        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 10,
+        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 1000,
                                           &SwarmLocalizationNode::on_swarmframe_recv, this,
                                           ros::TransportHints().tcpNoDelay());
         
@@ -451,21 +455,30 @@ public:
         nh.param<bool>("enable_detection_depth", solver_params.enable_detection_depth, true);
         nh.param<bool>("publish_full_path", publish_full_path, false);
         nh.param<bool>("publish_full_path", solver_params.generate_full_path, false);
-
+        nh.param<float>("det_dpos_thres", solver_params.det_dpos_thres, 0.2f);
         nh.param<bool>("kf_use_all_nodes", solver_params.kf_use_all_nodes, false);
         nh.param<bool>("is_pc_replay", is_pc_replay, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/dji/cgraph.dot");
+        nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
+        nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
+        nh.param<float>("max_solver_time", solver_params.max_solver_time, 0.05f);
+        nh.param<float>("distance_outlier_threshold", solver_params.distance_outlier_threshold, 0.3f);
+        nh.param<float>("distance_height_outlier_threshold", solver_params.distance_height_outlier_threshold, 0.5f);
 
 
-        nh.param<float>("vo_drift_meter", VO_DRIFT_METER, 0.01f);
-        nh.param<float>("vo_drift_meter_z", VO_DRIFT_METER_Z, 0.02f);
-        nh.param<float>("vo_drift_angle", VO_ERROR_ANGLE, 0.01f);
-        nh.param<float>("distance_measurement_error", DISTANCE_MEASURE_ERROR, 0.2f);
-        nh.param<float>("loop_cov_xy", LOOP_COV_XY, 0.5f);
-        nh.param<float>("loop_cov_z", LOOP_COV_Z, 0.5f);
-        nh.param<float>("loop_cov_yaw", LOOP_YAWCOV, 0.5f);
-        nh.param<float>("detection_sphere_cov", DETECTION_SPHERE_COV, 0.1f);
-        nh.param<float>("detection_inv_dep_cov", DETECTION_INV_DEP_COV, 0.5f);
+        nh.param<float>("VO_METER_STD_TRANSLATION", VO_METER_STD_TRANSLATION, 0.01f);
+        nh.param<float>("VO_METER_STD_Z", VO_METER_STD_Z, 0.02f);
+        nh.param<float>("VO_METER_STD_ANGLE", VO_METER_STD_ANGLE, 0.01f);
+        nh.param<float>("DISTANCE_STD", DISTANCE_STD, 0.2f);
+        nh.param<float>("LOOP_XY_STD", LOOP_XY_STD, 0.5f);
+        nh.param<float>("LOOP_Z_STD", LOOP_Z_STD, 0.5f);
+        nh.param<float>("LOOP_YAW_STD", LOOP_YAW_STD, 0.5f);
+        nh.param<float>("DETECTION_SPHERE_STD", DETECTION_SPHERE_STD, 0.1f);
+        nh.param<float>("DETECTION_INV_DEP_STD", DETECTION_INV_DEP_STD, 0.5f);
+        nh.param<float>("DETECTION_DEP_STD", DETECTION_DEP_STD, 0.5f);
+        nh.param<double>("cg/x", CG.x(), 0);
+        nh.param<double>("cg/y", CG.y(), 0);
+        nh.param<double>("cg/z", CG.z(), 0);
 
 
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_pkgs/swarm_localization/config/swarm_nodes5.yaml");

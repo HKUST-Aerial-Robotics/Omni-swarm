@@ -28,8 +28,10 @@ protected:
     std::vector<TensorInfo> m_OutputTensors;
     int m_BatchSize = 1;
     const std::string m_InputBlobName;
+    int width = 400;
+    int height = 208;
 public:
-    TensorRTInferenceGeneric(std::string input_blob_name);
+    TensorRTInferenceGeneric(std::string input_blob_name, int _width, int _height);
 
     virtual void doInference(const unsigned char* input, const uint32_t batchSize);
 

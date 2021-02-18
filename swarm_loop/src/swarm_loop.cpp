@@ -12,6 +12,7 @@
 #include <mutex>
 
 int MIN_DIRECTION_LOOP;
+double DETECTOR_MATCH_THRES;
 
 using namespace std::chrono; 
 
@@ -148,6 +149,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string camera_config_path = "";
     std::string superpoint_model_path = "";
     std::string netvlad_model_path = "";
+    int width;
+    int height;
     nh.param<int>("self_id", self_id, -1);
     nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
@@ -165,6 +168,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);
     nh.param<bool>("enable_sub_remote_frame", enable_sub_remote_frame, false);
     nh.param<bool>("send_img", send_img, false);
+    nh.param<bool>("is_pc_replay", IS_PC_REPLAY, false);
     nh.param<bool>("send_whole_img_desc", send_whole_img_desc, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
     nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
@@ -172,8 +176,12 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("max_freq", max_freq, 1.0);
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
+    nh.param<double>("detector_match_thres", DETECTOR_MATCH_THRES, 0.9);
+
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
     nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
+    nh.param<int>("width", width, 400);
+    nh.param<int>("height", height, 208);
 
     nh.param<std::string>("camera_config_path",camera_config_path, 
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
@@ -183,7 +191,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("debug_image", debug_image, false);
     
     loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
-    loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, self_id, send_img, nh);
+    loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, width, height, self_id, send_img, nh);
     loop_cam->show = debug_image; 
     loop_detector = new LoopDetector();
     loop_detector->self_id = self_id;

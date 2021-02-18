@@ -70,7 +70,8 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                     if (img_des.image.size() != 0) {
                         imgs[i] = decode_image(img_des);
                     } else {
-                        imgs[i] = cv::Mat(208, 400, CV_8UC3, cv::Scalar(255, 255, 255));
+                        // imgs[i] = cv::Mat(208, 400, CV_8UC3, cv::Scalar(255, 255, 255));
+                        imgs[i] = cv::Mat(312, 600, CV_8UC3, cv::Scalar(255, 255, 255));
                     }
                 }
             }
@@ -234,12 +235,12 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
     if (img_desc.drone_id == self_id) {
         //Then this is self drone
         int _id = query_from_database(img_desc, remote_index, true, thres, 1, distance);
-        if (_id != -1) {
-            return _id;
-        } else if(!nonkeyframe){
+        if(!nonkeyframe){
             int _id = query_from_database(img_desc, local_index, false, thres, MATCH_INDEX_DIST, distance);
             return _id;
-        }
+        } else if (_id != -1) {
+            return _id;
+        } 
     } else {
         int _id = query_from_database(img_desc, local_index, false, thres, 1, distance);
         return _id;
@@ -583,10 +584,16 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
 
     std::vector<float> landmark_desc_now;
     for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
-        landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
+        if (new_img_desc.landmarks_flag[i]) {
+            landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
+        }
     }
 
-    cv::Mat desc_now( new_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F, landmark_desc_now.data());
+    ROS_INFO("Raw size %ld 3d pts %ld", new_img_desc.landmarks_flag.size(), _now_norm_2d.size());
+
+    assert(landmark_desc_now.size() == _now_norm_2d.size()*256 && "landmark_desc_now must equal to _now_norm_2d size * 256");
+
+    cv::Mat desc_now( _now_norm_2d.size(), LOCAL_DESC_LEN, CV_32F, landmark_desc_now.data());
 
     cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
@@ -595,7 +602,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
     for (auto match : _matches) {
-        if (match.distance < 0.9) {
+        if (match.distance < DETECTOR_MATCH_THRES) {
             int now_id = match.queryIdx;
             int old_id = match.trainIdx;
 

@@ -31,6 +31,8 @@ using namespace  swarmcomm_msgs;
 #define INVAILD_DISTANCE 65535
 #define YAW_UNAVAIL 32767
 
+#define SWARM_DETECTION_ON_FRAME
+
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -254,9 +256,9 @@ class LocalProxy {
         }
 
         //Update with swarm detection should be same
-        nd.dpos_cov.x = 0.02;
-        nd.dpos_cov.y = 0.01;   
-        nd.dpos_cov.z = 0.01;
+        nd.dpos_std.x = 0.02;
+        nd.dpos_std.y = 0.01;   
+        nd.dpos_std.z = 0.01;
 
         nd.dyaw_cov = 10/57.3;
         nd.is_yaw_valid = false;                    
@@ -296,34 +298,61 @@ class LocalProxy {
     void on_node_detcted_xyzyaw_recv(node_detected_xyzyaw nd) {
         ros::Time ts = nd.header.stamp;
         int s_index = find_sf_swarm_detected(ts);
-        ROS_INFO_THROTTLE(1.0, "ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld", 
-            nd.self_drone_id,
-            nd.remote_drone_id,
-            (ts - this->tsstart).toSec()*1000, 
-            (ros::Time::now() - this->tsstart).toSec()*1000, 
-            s_index, sf_queue.size());
+        // ROS_INFO("ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
+        //     nd.self_drone_id,
+        //     nd.remote_drone_id,
+        //     (ts - this->tsstart).toSec(), 
+        //     (ros::Time::now() - this->tsstart).toSec(), 
+        //     s_index, sf_queue.size(), 
+        //     (ts - sf_queue.front().header.stamp).toSec(),
+        //     (ts - sf_queue.back().header.stamp).toSec()
+        //     );
+#ifdef SWARM_DETECTION_ON_FRAME
+        int sd_self_id = nd.self_drone_id;
+        if (sd_self_id < 0) {
+            sd_self_id = self_id;
+        }
+        if (s_index < 0) {
+            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
+            return;
+        }
+        swarm_frame &_sf = sf_queue[s_index];
 
+        // ROS_INFO("SF node size %ld", _sf.node_frames.size());
+        for (int j = 0; j < _sf.node_frames.size(); j++) {
+            // ROS_INFO("NF id %d", _sf.node_frames[j].id);
+            if (_sf.node_frames[j].id == sd_self_id) {
+                _sf.node_frames[j].detected_xyzyaws.push_back(nd);
+                // ROS_INFO("SF BUF %d got detection", j);
+                break;
+            }
+        }
+#else
         if (s_index >= 0) {
             auto & sf = sf_queue[s_index];
             for (node_frame & nf : sf.node_frames) {
-                if (nf.id == nd.remote_drone_id && nf.vo_available) {
-                    nd.local_pose_remote.position.x = nf.position.x;
-                    nd.local_pose_remote.position.y = nf.position.y;
-                    nd.local_pose_remote.position.z = nf.position.z;
+                if (nf.id == nd.remote_drone_id) {
+                    if (nf.vo_available) {
+                        nd.local_pose_remote.position.x = nf.position.x;
+                        nd.local_pose_remote.position.y = nf.position.y;
+                        nd.local_pose_remote.position.z = nf.position.z;
 
-                    Eigen::Quaterniond quat(Eigen::AngleAxisd(nf.yaw, Eigen::Vector3d::UnitZ()));
-                    nd.local_pose_remote.orientation.w = quat.w();
-                    nd.local_pose_remote.orientation.x = quat.x();
-                    nd.local_pose_remote.orientation.y = quat.y();
-                    nd.local_pose_remote.orientation.z = quat.z();
+                        Eigen::Quaterniond quat(Eigen::AngleAxisd(nf.yaw, Eigen::Vector3d::UnitZ()));
+                        nd.local_pose_remote.orientation.w = quat.w();
+                        nd.local_pose_remote.orientation.x = quat.x();
+                        nd.local_pose_remote.orientation.y = quat.y();
+                        nd.local_pose_remote.orientation.z = quat.z();
 
-                    swarm_detect_pub.publish(nd);
-                    return;
+                        swarm_detect_pub.publish(nd);
+                        return;
+                    } else {
+                        ROS_WARN("Failed to publish, remote %d VO is unavailable now.", nd.remote_drone_id, s_index);
+                    }
                 }
             }
         }
-
-        printf("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
+        ROS_WARN("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
+#endif
     }
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {
@@ -332,7 +361,6 @@ class LocalProxy {
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        ROS_INFO("SD size %ld", sd.detected_nodes_xyz_yaw.size());
         if (sd.detected_nodes_xyz_yaw.size() == 0) {
             return;
         }

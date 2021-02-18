@@ -12,24 +12,27 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/node_detected_xyzyaw.h>
 
-extern float VO_DRIFT_METER;
-extern float VO_DRIFT_METER_Z;
-extern float VO_ERROR_ANGLE;
-extern float DISTANCE_MEASURE_ERROR;
-extern float LOOP_COV_XY;
-extern float LOOP_COV_Z;
-extern float LOOP_YAWCOV;
-extern float DETECTION_SPHERE_COV;
-extern float DETECTION_INV_DEP_COV;
+extern float VO_METER_STD_TRANSLATION;
+extern float VO_METER_STD_Z;
+extern float VO_METER_STD_ANGLE;
+extern float DISTANCE_STD;
+extern float LOOP_XY_STD;
+extern float LOOP_Z_STD;
+extern float LOOP_YAW_STD;
+extern float DETECTION_SPHERE_STD;
+extern float DETECTION_INV_DEP_STD;
+extern float DETECTION_DEP_STD;
+extern Eigen::Vector3d CG;
 
-#define ERROR_NORMLIZED 0.01
+// #define ERROR_NORMLIZED 0.01
+#define ERROR_NORMLIZED 1.0
 #define UNIDENTIFIED_MIN_ID 1000
 #define NO_ANNETAPOS
 #define ENABLE_DETECTION
 #define ENABLE_LOOP
 // pixel error/focal length
 
-#define VO_DRIFT_XYZ (Eigen::Vector3d(VO_DRIFT_METER, VO_DRIFT_METER, VO_DRIFT_METER_Z))
+#define VO_DRIFT_XYZ (Eigen::Vector3d(VO_METER_STD_TRANSLATION, VO_METER_STD_TRANSLATION, VO_METER_STD_Z))
 
 using namespace Swarm;
 
@@ -222,11 +225,20 @@ public:
     double probaility = 0;
 
     bool enable_depth = false;
+    bool enable_dpose = false;
+    bool use_inv_dep;
     
+
+    //If disable dpose, this will act the extrinsic
     Pose dpose_self_a;
     Pose dpose_self_b;
-    
-    DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_depth = true) {
+
+    Eigen::Vector3d extrinsic;
+    Eigen::Vector3d centr_of_detection_position;
+
+    DroneDetection(const swarm_msgs::node_detected_xyzyaw & nd, bool _enable_dpose, bool _enable_depth = true):
+        enable_dpose(_enable_dpose), centr_of_detection_position(0, 0, 0.02)
+    {
         id_a = nd.self_drone_id;
         id_b = nd.remote_drone_id;
         ts_a = nd.header.stamp.toNSec();
@@ -236,13 +248,13 @@ public:
         stamp_b = nd.header.stamp;
 
         probaility = nd.probaility;
-
+        
+        extrinsic = Pose(nd.camera_extrinsic).pos();
         self_pose_a = Pose(nd.local_pose_self);
-        self_pose_b = Pose(nd.local_pose_remote);
-
+        self_pose_b = Pose(nd.local_pose_remote)*Pose(-CG, Eigen::Quaterniond::Identity());
         inv_dep = nd.inv_dep;
         //Here hacked
-        p = Eigen::Vector3d(nd.dpos.x - 0.02, nd.dpos.y, nd.dpos.z - 0.065);
+        p = Eigen::Vector3d(nd.dpos.x, nd.dpos.y, nd.dpos.z);
         p.normalize();
         meaturement_type = Detection;
 
@@ -259,7 +271,8 @@ public:
     }
 
 
-    DroneDetection(const DroneDetection & dronedet) {
+    DroneDetection(const DroneDetection & dronedet):
+        extrinsic(0, 0.0, 0.1), centr_of_detection_position(0, 0, 0.02) {
         id_a = dronedet.id_a;
         id_b = dronedet.id_b;
         ts_a = dronedet.ts_a;
@@ -306,10 +319,12 @@ class NodeFrame {
         Pose self_pose;
         Eigen::Vector3d self_vel = Eigen::Vector3d(0, 0, 0);
         Eigen::Vector3d global_vel = Eigen::Vector3d(0, 0, 0);
-        Eigen::Vector3d position_cov_to_last = VO_DRIFT_XYZ;
-        double yaw_cov_to_last = VO_ERROR_ANGLE;
+        Eigen::Vector3d position_std_to_last = VO_DRIFT_XYZ;
+        double yaw_std_to_last = VO_METER_STD_ANGLE;
         std::map<int, bool> enabled_detection;
         std::map<int, bool> enabled_distance;
+        std::map<int, bool> outlier_distance;
+        std::vector<DroneDetection> detected_nodes;
         std::map<int, Eigen::Matrix<double, 2, 3>> detect_tan_base;
 
         std::map<int, Eigen::Vector3d> detected_nodes_posvar;
@@ -334,6 +349,27 @@ class NodeFrame {
 
         bool has_odometry() const {
             return vo_available;
+        }
+
+        bool has_detection() const {
+            return detected_nodes.size() > 0;
+        }
+
+        int detections() const {
+            return detected_nodes.size();
+        }
+
+        bool distance_is_outlier(int idj) const {
+            //If distance not exist or is outlier, return true
+            if (outlier_distance.find(idj) != outlier_distance.end() && outlier_distance.at(idj)) {
+                return true;
+            }
+
+            if (dis_map.find(idj) == dis_map.end()) {
+                return true;
+            }
+            
+            return false;
         }
 
         Pose pose() const {
