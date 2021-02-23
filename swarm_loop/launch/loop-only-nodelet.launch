@@ -6,9 +6,8 @@
     <arg name="send_whole_img_desc"     default="false"/>
     <arg name="self_id"     default="1"/>
     <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
-    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager --no-bond" output="screen"  />
     <node pkg="nodelet" type="nodelet" name="swarm_loop" 
-        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager)" output="screen" >
+        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager) --no-bond" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
