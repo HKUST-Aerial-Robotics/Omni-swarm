@@ -3,15 +3,18 @@ from __future__ import print_function
 import rospy
 import rosbag
 import sys
+from rosgraph_msgs.msg import Clock
+import time
 
 class SyncBagPlayer:
     def __init__(self, bag_path, play_t0_sys=None):
         self.bag = rosbag.Bag(bag_path)
         self.prepare_publishers()
-        self.play_t0_sys = rospy.Time.from_sec(play_t0_sys)
+        self.play_t0_sys = play_t0_sys
         self.play_t0_bag = None
         self.r = rospy.Rate(10000)
         self.total_time = self.bag.get_end_time() - self.bag.get_start_time()
+        print("Start sys time", play_t0_sys, "Now time", time.time())
         
     def prepare_publishers(self):
         bag = self.bag
@@ -25,6 +28,7 @@ class SyncBagPlayer:
                 break
         print("Pubs", publishers.keys())
         self.publishers = publishers
+        self.clock_pub = rospy.Publisher("/clock", Clock, queue_size=10)
     
     def play(self):
         count = 0
@@ -34,14 +38,18 @@ class SyncBagPlayer:
                     print("Rospy shut down")
                     break
                 if self.play_t0_sys is None:
-                    self.play_t0_sys = rospy.get_rostime()
+                    self.play_t0_sys = time.time()
                 if self.play_t0_bag is None:
                     self.play_t0_bag = t
-                while rospy.get_rostime() - self.play_t0_sys < t - self.play_t0_bag:
-                    self.r.sleep()
+                while time.time() - self.play_t0_sys < (t - self.play_t0_bag).to_sec():
+                    #print(time.time() - self.play_t0_sys, (t - self.play_t0_bag).to_sec())
+                    time.sleep(0.0001)
                 self.publishers[topic].publish(msg)
+                sim_clock = Clock()
+                sim_clock.clock = t
+                self.clock_pub.publish(sim_clock)
                 if count % 100 == 0:
-                    t_ = (rospy.get_rostime() - self.play_t0_sys).to_sec()
+                    t_ = (time.time()- self.play_t0_sys)
                     progress = t_ / self.total_time * 100
                     print("Time {:5.2f}/{:5.2f} Progress {:3.2f}% Count {}".format(t_, self.total_time, progress, count), end="\r")
                     sys.stdout.flush()

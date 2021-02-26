@@ -25,7 +25,6 @@ def RMSE(predictions, targets):
 def ATE_POS(predictions, targets):
     err = predictions-targets
     norm2 = err[:,0]*err[:,0]+err[:,1]*err[:,1]+err[:,2]*err[:,2]
-    print(norm2)
     return np.sqrt(np.mean(norm2))
 
 def yaw_rotate_vec(yaw, vec):
@@ -206,7 +205,8 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
             "id_a":msg.id_a,
             "id_b":msg.id_b,
             "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
-            "dyaw":msg.dyaw
+            "dyaw":msg.dyaw,
+            "pnp_inlier_num": msg.pnp_inlier_num
         }
         loops.append(loop)
     return loops 
@@ -1054,6 +1054,9 @@ def plot_loops_error(poses, loops, nodes):
     yawa_gts = []
     yawb_gts = []
     dyaw_errs = []
+    pnp_inlier_nums = []
+    idas = []
+    idbs = []
     print("Total loops", len(loops))
     for loop in loops:
         # print(loop["id_a"], "->", loop["id_b"])
@@ -1084,14 +1087,17 @@ def plot_loops_error(poses, loops, nodes):
         yawa_gts.append(yawa_gt)
         yawb_gts.append(yawb_gt)
         dyaw_errs.append(yawb_gt-yawa_gt-loop["dyaw"])
-        
+        pnp_inlier_nums.append(loop["pnp_inlier_num"])
+        idas.append(loop["id_a"])
+        idbs.append(loop["id_b"])
+
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
         
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
     fig = plt.figure("Loop Error")
-    plt.subplot(311)
+    plt.subplot(411)
     plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
     plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
     plt.plot(ts_a, dpos_errs[:,1], '2', label="Loop Error Y")
@@ -1100,7 +1106,7 @@ def plot_loops_error(poses, loops, nodes):
     plt.grid(which="both")
     plt.legend()
 
-    plt.subplot(312)
+    plt.subplot(412)
     plt.plot(ts_a, dyaws, '.', label="DYaw Gt")
     plt.plot(ts_a, dyaw_gts, '+', label="DYaw Loop")
     plt.plot(ts_a, np.abs(dyaw_errs), "x", label="DYaw Error")
@@ -1109,8 +1115,12 @@ def plot_loops_error(poses, loops, nodes):
     plt.grid(which="both")
     plt.legend()
 
+    plt.subplot(413)
+    plt.plot(ts_a, pnp_inlier_nums, "x", label="pnp_inlier_nums")
+    plt.grid()
 
-    plt.subplot(313)
+
+    plt.subplot(414)
     plt.plot(ts_a, posa_gts[:,0], '+', label="Vicon X")
     plt.plot(ts_a, posa_gts[:,1], '+', label="Vicon Y")
     plt.plot(ts_a, posa_gts[:,2], '+', label="Vicon Z")
@@ -1121,6 +1131,12 @@ def plot_loops_error(poses, loops, nodes):
     plt.grid(which="both")
     plt.legend()
 
+    plt.figure("InliersVSErr")
+    plt.title("InliersVSErr")
+    plt.plot(pnp_inlier_nums, dpos_errs_norm, "x", label="")
+    plt.grid(which="both")
+    for i in range(len(pnp_inlier_nums)):
+        plt.text(pnp_inlier_nums[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)

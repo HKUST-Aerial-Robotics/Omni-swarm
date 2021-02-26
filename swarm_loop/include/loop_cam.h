@@ -47,7 +47,7 @@ public:
     
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg, bool superpoint_mode=false);
     
-    ImageDescriptor_t generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id);
+    ImageDescriptor_t generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
     
     FisheyeFrameDescriptor_t on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs);
 

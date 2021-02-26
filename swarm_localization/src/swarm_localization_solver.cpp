@@ -1511,7 +1511,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 }
 
 
-bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
+int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1525,21 +1525,21 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     //Give up if first timestamp is bigger than 1 sec than tsa
     if (sf_sld_win.empty()) {
         ROS_WARN("Can't find loop No sld win");
-        return false;
+        return 0;
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
 #ifdef DEBUG_OUTPUT_LOOP_OUTLIER
         ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found because of DT", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
 #endif
-        return false;
+        return 0;
     }
 
     loc_ret = Swarm::LoopConnection(_loc);
 
     bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
     if (!success) {
-        return false;
+        return 0;
     }
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
@@ -1566,15 +1566,15 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
         if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
-            // ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Give up this loop", 
-                // _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
-            return false;
+            ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Delete this loop", 
+                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
+            return -1;
         }
     }
 
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
-    return true;
+    return 1;
 }
 
 std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopConnection> good_2drone_measurements) {
@@ -1612,17 +1612,19 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
     return ret;
 }
 
-std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const {
+std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) {
     loop_edges.clear();
     std::vector<Swarm::LoopConnection> good_loops;
     std::vector<Swarm::DroneDetection> good_detections;
     std::vector<GeneralMeasurement2Drones*> ret;
-
-    for (auto _loc : all_loops) {
+    std::vector<int> outlier_loops;
+    for (int i = 0; i < all_loops.size(); i++) {
+        auto _loc = all_loops[i];
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
         double dpos;
-        if(loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos)) {
+        int ret = loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos);
+        if( ret == 1) {
 #ifdef DEBUG_OUTPUT_LOOPS) 
             ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
                 loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
@@ -1639,6 +1641,13 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[loc_ret.id_a].insert(loc_ret.id_b);
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
+        if (ret == -1) {
+            outlier_loops.push_back(i);
+        }
+    }
+
+    for (int i = outlier_loops.size() - 1; i >= 0; i--) {
+        all_loops.erase(all_loops.begin() + outlier_loops[i]);
     }
 
     auto ret_loops = average_same_loop(good_loops);

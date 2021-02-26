@@ -114,10 +114,11 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                     ROS_INFO("Adding success matched drone %d to database", flatten_desc.drone_id);
                     success_loop_nodes.insert(flatten_desc.drone_id);
 
-                    ROS_INFO("\n Loop Detected %d->%d DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg. Will publish\n",
+                    ROS_INFO("\n Loop Detected %d->%d DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
                         ret.id_a, ret.id_b,
                         ret.dpos.x, ret.dpos.y, ret.dpos.z,
-                        ret.dyaw*57.3
+                        ret.dyaw*57.3,
+                        ret.pnp_inlier_num
                     );
 
                     on_loop_connection(ret);
@@ -737,12 +738,18 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
          if (success) {
             sprintf(title, "SUCCESS LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
-        } else {
+           } else {
             sprintf(title, "FAILED LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
         }
 
         // cv::resize(show, show, cv::Size(), 2, 2);
+        static int loop_match_count = 0;
+        loop_match_count ++;
+        char PATH[100] = {0};
+        sprintf(PATH, "loop-match%d.png", loop_match_count);
+        cv::imwrite(OUTPUT_PATH+PATH, show);
+        
         cv::imshow("Matches", show);
         cv::waitKey(10);
     }
@@ -763,6 +770,8 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
         ret.self_pose_a = toROSPose(old_frame_desc.pose_drone);
         ret.self_pose_b = toROSPose(new_frame_desc.pose_drone);
+
+        ret.pnp_inlier_num = inlier_num;
 
         return true;
     }

@@ -189,6 +189,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
 
     nh.param<bool>("debug_image", debug_image, false);
+    nh.param<std::string>("output_path", OUTPUT_PATH, "");
     
     loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
     loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, width, height, self_id, send_img, nh);
