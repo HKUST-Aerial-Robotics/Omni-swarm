@@ -62,7 +62,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
 
     // ROS_INFO("Sending landmarks num: %d, local desc size %d", img_des.landmark_num, img_des.local_descriptors_size);
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
-        if (img_des.landmarks_flag[i] > 0) {
+        if (img_des.landmarks_flag[i] > 0 || SEND_ALL_FEATURES) {
             LandmarkDescriptor_t lm;
             lm.landmark_id = i;
             lm.landmark_2d_norm = img_des.landmarks_2d_norm[i];
