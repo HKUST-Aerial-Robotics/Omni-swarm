@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <vector>
+#include <string>
 
 #define LOOP_BOW_THRES 0.015
 // #define MATCH_INDEX_DIST 1
@@ -86,6 +87,7 @@ extern bool ENABLE_LK_LOOP_DETECTION;
 
 extern bool IS_PC_REPLAY;
 
+extern std::string OUTPUT_PATH;
 class TicToc
 {
   public:

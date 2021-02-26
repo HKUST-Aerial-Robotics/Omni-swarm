@@ -197,12 +197,16 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
         imgs.resize(3);
     }
 
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1));
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2));
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3));
+    cv::Mat _show, tmp;
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1, _show));
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2, tmp));
+    cv::hconcat(_show, tmp, _show);
+    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3, tmp));
+    cv::hconcat(_show, tmp, _show);
     
     if (msg.up_cams[4].width > 0) {
-        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4));
+        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4, tmp));
+        cv::hconcat(_show, tmp, _show);
     } else {
         frame_desc.images.push_back(generate_null_img_desc());
     }
@@ -224,10 +228,22 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
         frame_desc.landmark_num += frame.landmark_num;
     }
     frame_desc.drone_id = self_id;
+
+    if (show) {
+        static int count = 0;
+        count ++;
+        char text[100] = {0};
+        char PATH[100] = {0};
+        sprintf(text, "FEATURES@Drone%d", self_id);
+        sprintf(PATH, "features%d.png", count);
+        cv::imshow(text, _show);
+        cv::imwrite(OUTPUT_PATH+PATH, _show);
+        cv::waitKey(10);
+    }
     return frame_desc;
 }
 
-ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id)
+ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id, cv::Mat & _show)
 {
     if (vcam_id > msg.up_cams.size()) {
         ROS_WARN("Flatten images too few");
@@ -264,7 +280,7 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
     std::vector<int> ids;
 
-    if (pts_down.size() < ACCEPT_MIN_3D_PTS) {
+    if (ides.landmarks_2d.size() > ACCEPT_MIN_3D_PTS) {
         pts_up = toCV(ides.landmarks_2d);
         auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], true);
         pts_down = toCV(ides_down.landmarks_2d);
@@ -319,7 +335,6 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
         pts_3d.push_back(point_3d);
 
-
         Point2d_t pt2d;
         pt2d.x = pt_up.x;
         pt2d.y = pt_up.y;
@@ -363,7 +378,6 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         img_up.copyTo(img);
         encode_image(img_up, ides);
 
-        cv::Mat show;
         cv::cvtColor(img_up, img_up, cv::COLOR_GRAY2BGR);
         cv::cvtColor(img_down, img_down, cv::COLOR_GRAY2BGR);
 
@@ -377,30 +391,24 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
             cv::circle(img_up, pt, 3, cv::Scalar(0, 0, 255), 1);
         }
 
-        cv::hconcat(img_up, img_down, show);
 
-        char text[100] = {0};
-
-        // cv::resize(show, show, cv::Size(0, 0), 2, 2);
-
-        for (unsigned int i = 0; i < pts_up.size(); i++) {
-            cv::arrowedLine(show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
-        }
-
-        // cv::resize(show, show, cv::Size(), 2, 2);
-
+        cv::vconcat(img_up, img_down, _show);
         for (unsigned int i = 0; i < pts_up.size(); i++)
         {
-            char title[100] = {0};
-            auto pt = pts_up[i];
-            sprintf(title, "%d", i);
-            cv::putText(show, title, pt + cv::Point2f(0, 10), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
-        }
+            int idx = ids[i];
+            if (ides.landmarks_flag[idx]) {
+                char title[100] = {0};
+                auto pt = pts_up[i];
+                auto pt3d = ides.landmarks_3d[idx];
+                Eigen::Vector3d point3d(pt3d.x, pt3d.y, pt3d.z);
+                auto pt_cam = pose_up.att().inverse() * (point3d - pose_up.pos());
+                sprintf(title, "[%3.1f,%3.1f,%3.1f]", pt_cam.x(), pt_cam.y(), pt_cam.z());
 
-        sprintf(text, "FEATURE CAM %d", vcam_id);
-        
-        cv::imshow(text, show);
-        cv::waitKey(10);
+                cv::circle(_show, pt, 3, cv::Scalar(0, 255, 0), 1);
+                cv::arrowedLine(_show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
+                cv::putText(_show, title, pt + cv::Point2f(0, 5), CV_FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
+            }
+        }
     }
     return ides;
 }
