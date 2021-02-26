@@ -572,29 +572,29 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     auto _now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
     auto _now_3d = toCV(new_img_desc.landmarks_3d);
 
-    std::vector<int> ids;
-    for (size_t i = 0; i < new_img_desc.landmarks_3d.size(); i++) {
-        ids.push_back(i);
-    }
-
+    // std::vector<int> ids;
+    // for (size_t i = 0; i < new_img_desc.landmarks_3d.size(); i++) {
+    //     ids.push_back(i);
+    // }
 
     //Only reserve 3d points for new
-    reduceVector(_now_norm_2d, new_img_desc.landmarks_flag);
-    reduceVector(_now_3d, new_img_desc.landmarks_flag);
-    reduceVector(ids, new_img_desc.landmarks_flag);
+    // reduceVector(_now_norm_2d, new_img_desc.landmarks_flag);
+    // reduceVector(_now_3d, new_img_desc.landmarks_flag);
+    // reduceVector(ids, new_img_desc.landmarks_flag);
 
-    std::vector<float> landmark_desc_now;
-    for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
-        if (new_img_desc.landmarks_flag[i]) {
-            landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
-        }
-    }
+    // std::vector<float> landmark_desc_now;
+    // for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
+    //     if (new_img_desc.landmarks_flag[i]) {
+    //         landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
+    //     }
+    // }
 
     ROS_INFO("Raw size %ld 3d pts %ld", new_img_desc.landmarks_flag.size(), _now_norm_2d.size());
 
-    assert(landmark_desc_now.size() == _now_norm_2d.size()*256 && "landmark_desc_now must equal to _now_norm_2d size * 256");
+    // assert(landmark_desc_now.size() == _now_norm_2d.size()*256 && "landmark_desc_now must equal to _now_norm_2d size * 256");
 
-    cv::Mat desc_now( _now_norm_2d.size(), LOCAL_DESC_LEN, CV_32F, landmark_desc_now.data());
+    cv::Mat desc_now( _now_norm_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
 
     cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
@@ -603,11 +603,11 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     std::vector<cv::DMatch> _matches;
     bfmatcher.match(desc_now, desc_old, _matches);
     for (auto match : _matches) {
-        if (match.distance < DETECTOR_MATCH_THRES) {
-            int now_id = match.queryIdx;
-            int old_id = match.trainIdx;
+        int now_id = match.queryIdx;
+        int old_id = match.trainIdx;
+        if (match.distance < DETECTOR_MATCH_THRES && new_img_desc.landmarks_flag[now_id]) {
 
-            new_idx.push_back(ids[now_id]);
+            new_idx.push_back(now_id);
             old_idx.push_back(old_id);
 
             new_3d.push_back(_now_3d[now_id]);

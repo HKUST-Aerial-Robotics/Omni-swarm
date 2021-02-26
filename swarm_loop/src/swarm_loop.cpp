@@ -170,6 +170,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("send_img", send_img, false);
     nh.param<bool>("is_pc_replay", IS_PC_REPLAY, false);
     nh.param<bool>("send_whole_img_desc", send_whole_img_desc, false);
+    nh.param<bool>("send_all_features", SEND_ALL_FEATURES, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
     nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
     nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);

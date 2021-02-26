@@ -87,6 +87,8 @@ extern bool ENABLE_LK_LOOP_DETECTION;
 
 extern bool IS_PC_REPLAY;
 
+extern bool SEND_ALL_FEATURES;
+
 extern std::string OUTPUT_PATH;
 class TicToc
 {
