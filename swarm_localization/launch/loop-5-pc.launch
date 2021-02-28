@@ -16,7 +16,7 @@
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
-            enable_detection: true
+            enable_detection: false
             enable_detection_depth: true
             enable_loop: true
             enable_distance: false

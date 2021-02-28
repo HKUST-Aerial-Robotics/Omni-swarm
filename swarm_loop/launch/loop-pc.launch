@@ -32,7 +32,7 @@
             match_index_dist: 5
             recv_msg_duration: 0.5
             superpoint_thres: 0.02
-            triangle_thres: 0.008
+            triangle_thres: 0.012
             min_direction_loop: 3
             is_pc_replay: false
             detector_match_thres: 0.7
