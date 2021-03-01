@@ -27,10 +27,10 @@
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12
             
-            LOOP_POS_STD_0: 0.32
+            LOOP_POS_STD_0: 0.6
             LOOP_POS_STD_SLOPE: 0.5
-            LOOP_YAW_STD_0: 0.03
-            LOOP_YAW_STD_SLOPE: 0.09
+            LOOP_YAW_STD_0: 0.05
+            LOOP_YAW_STD_SLOPE: 0.1
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
