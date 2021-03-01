@@ -1528,6 +1528,7 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     int _index_b = -1;
     double min_ts_err_a = 10000;
     double min_ts_err_b = 10000;
+    double distance = 0;
 
     //Give up if first timestamp is bigger than 1 sec than tsa
     if (sf_sld_win.empty()) {
@@ -1543,6 +1544,7 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     }
 
     loc_ret = Swarm::LoopConnection(_loc);
+    distance = loc_ret.relative_pose.pos().norm();
 
     bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
     if (!success) {
@@ -1572,7 +1574,7 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         auto poseb_est = Pose(poseb, true);
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
-        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
+        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw|| distance > loop_outlier_threshold_distance) {
             ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Delete this loop", 
                 _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
             return -1;
