@@ -65,9 +65,12 @@ float VO_METER_STD_TRANSLATION;
 float VO_METER_STD_Z;
 float VO_METER_STD_ANGLE;
 float DISTANCE_STD;
-float LOOP_XY_STD;
-float LOOP_Z_STD;
-float LOOP_YAW_STD;
+
+float LOOP_POS_STD_0;
+float LOOP_YAW_STD_0;
+float LOOP_POS_STD_SLOPE;
+float LOOP_YAW_STD_SLOPE;
+
 float DETECTION_SPHERE_STD;
 float DETECTION_INV_DEP_STD;
 float DETECTION_DEP_STD;
@@ -91,7 +94,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             generate_full_path(_params.generate_full_path),
             max_solver_time(_params.max_solver_time),
             distance_outlier_threshold(_params.distance_outlier_threshold),
-            distance_height_outlier_threshold(_params.distance_height_outlier_threshold)
+            distance_height_outlier_threshold(_params.distance_height_outlier_threshold),
+            loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance)
     {
     }
 

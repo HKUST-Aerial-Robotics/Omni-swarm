@@ -217,9 +217,15 @@ public:
 class SwarmLoopError : public GeneralMeasurement2DronesError {
     const Swarm::LoopConnection* loop;
 public:
+    Eigen::Vector3d loop_std;
+    double yaw_std;
     SwarmLoopError(const Swarm::GeneralMeasurement2Drones* _loc) :
         GeneralMeasurement2DronesError(_loc){
         loop = static_cast<const Swarm::LoopConnection*>(loc);
+        double loop_xy_std = LOOP_POS_STD_0 + LOOP_POS_STD_SLOPE * loop->relative_pose.pos().norm();
+        double loop_yaw_std = LOOP_YAW_STD_0 + LOOP_YAW_STD_SLOPE * loop->relative_pose.pos().norm();
+        loop_std = Eigen::Vector3d(loop_xy_std, loop_xy_std, loop_xy_std)/loop->avg_count;
+        yaw_std = loop_yaw_std/loop->avg_count;
     }
 
     virtual int residual_count() override { 
@@ -242,8 +248,7 @@ protected:
 
         T relpose_est[4];
         estimate_relpose(_poses, relpose_est);
-
-        pose_error(relpose_est, rel_pose, _residual, Eigen::Vector3d(LOOP_XY_STD, LOOP_XY_STD, LOOP_Z_STD)/loop->avg_count, LOOP_YAW_STD/loop->avg_count);
+        pose_error(relpose_est, rel_pose, _residual, loop_std, yaw_std);
         return 4;
     }
 };

@@ -27,10 +27,11 @@
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12
             
-            LOOP_XY_STD: 1.0
-            LOOP_Z_STD: 0.5
+            LOOP_POS_STD_0: 0.32
+            LOOP_POS_STD_SLOPE: 0.5
+            LOOP_YAW_STD_0: 0.03
+            LOOP_YAW_STD_SLOPE: 0.09
             
-            LOOP_YAW_STD: 0.05
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
@@ -45,6 +46,7 @@
             distance_outlier_threshold: 1.0
             distance_height_outlier_threshold: 1.0
             loop_outlier_threshold_pos: 0.5
+            loop_outlier_threshold_distance: 1.8
             loop_outlier_threshold_yaw: 0.5
 
             max_solver_time: 0.5

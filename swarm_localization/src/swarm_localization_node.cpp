@@ -445,6 +445,7 @@ public:
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
         nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
+        nh.param<float>("loop_outlier_threshold_distance", solver_params.loop_outlier_threshold_distance, 2.0f);
         nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
@@ -470,9 +471,12 @@ public:
         nh.param<float>("VO_METER_STD_Z", VO_METER_STD_Z, 0.02f);
         nh.param<float>("VO_METER_STD_ANGLE", VO_METER_STD_ANGLE, 0.01f);
         nh.param<float>("DISTANCE_STD", DISTANCE_STD, 0.2f);
-        nh.param<float>("LOOP_XY_STD", LOOP_XY_STD, 0.5f);
-        nh.param<float>("LOOP_Z_STD", LOOP_Z_STD, 0.5f);
-        nh.param<float>("LOOP_YAW_STD", LOOP_YAW_STD, 0.5f);
+
+        nh.param<float>("LOOP_POS_STD_0", LOOP_POS_STD_0, 0.5f);
+        nh.param<float>("LOOP_YAW_STD_0", LOOP_YAW_STD_0, 0.5f);
+        nh.param<float>("LOOP_POS_STD_SLOPE", LOOP_POS_STD_SLOPE, 0.5f);
+        nh.param<float>("LOOP_YAW_STD_SLOPE", LOOP_YAW_STD_SLOPE, 0.5f);
+
         nh.param<float>("DETECTION_SPHERE_STD", DETECTION_SPHERE_STD, 0.1f);
         nh.param<float>("DETECTION_INV_DEP_STD", DETECTION_INV_DEP_STD, 0.5f);
         nh.param<float>("DETECTION_DEP_STD", DETECTION_DEP_STD, 0.5f);
