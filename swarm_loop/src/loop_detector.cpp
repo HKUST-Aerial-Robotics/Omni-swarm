@@ -577,17 +577,17 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     //     ids.push_back(i);
     // }
 
-    //Only reserve 3d points for new
+    // Only reserve 3d points for new
     // reduceVector(_now_norm_2d, new_img_desc.landmarks_flag);
     // reduceVector(_now_3d, new_img_desc.landmarks_flag);
     // reduceVector(ids, new_img_desc.landmarks_flag);
-
     // std::vector<float> landmark_desc_now;
     // for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
     //     if (new_img_desc.landmarks_flag[i]) {
     //         landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
     //     }
     // }
+    // memcpy(desc_now.data, landmark_desc_now.data(), landmark_desc_now.size()*sizeof(float));
 
     ROS_INFO("Raw size %ld 3d pts %ld", new_img_desc.landmarks_flag.size(), _now_norm_2d.size());
 
