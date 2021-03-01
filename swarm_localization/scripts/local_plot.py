@@ -1091,13 +1091,14 @@ def plot_loops_error(poses, loops, nodes):
         pnp_inlier_nums.append(loop["pnp_inlier_num"])
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
-        distances.append(norm(dpos_loop))
 
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
         
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
+    dyaw_errs = np.array(dyaw_errs)
+    distances = np.array(distances)
     fig = plt.figure("Loop Error")
     plt.subplot(411)
     plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
@@ -1145,7 +1146,7 @@ def plot_loops_error(poses, loops, nodes):
 
     plt.figure("DistanceVSErr")
     plt.title("DistancVSErr")
-    plt.plot(distances, dpos_errs_norm, "x", label="")
+    plt.plot(dpos_loop_norms, dpos_errs_norm, "x", label="")
     plt.grid(which="both")
     # for i in range(len(pnp_inlier_nums)):
     #     plt.text(distances[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
@@ -1185,7 +1186,57 @@ def plot_loops_error(poses, loops, nodes):
     print(f"Pos cov {np.cov(dpos_errs[:,0]):3.3f}, {np.cov(dpos_errs[:,1]):3.3f}, {np.cov(dpos_errs[:,2]):3.3f}")
     print(f"Yaw cov {np.cov(dyaw_errs)*57.3:3.3f}")
 
+    _cov_distances = np.linspace(0.2,1.8,20)
+    _cov_pos = []
+    _cov_yaw = []
+    for _mid in _cov_distances:
+        thres_low = _mid - 0.2
+        thres_high = _mid + 0.2
+        mask = np.where((dpos_loop_norms > thres_low) & (dpos_loop_norms < thres_high), True, False)
+        _dpos_err = dpos_errs[mask,:]
+        _dyaw_err = dyaw_errs[mask]
 
+        # mu, std = stats.norm.fit(_dpos_err[:,0])
+        # xmin, xmax = plt.xlim()
+        # x = np.linspace(xmin, xmax, 100)
+        # p = stats.norm.pdf(x, mu, std)
+        # plt.plot(x, p, 'k', linewidth=2)
+        # title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+        # plt.title(title)
+
+        # plt.subplot(132)
+        # plt.hist(_dpos_err[:,1], 50, density=True, facecolor='g', alpha=0.75)
+        # mu, std = stats.norm.fit(_dpos_err[:,1])
+        # xmin, xmax = plt.xlim()
+        # x = np.linspace(xmin, xmax, 100)
+        # p = stats.norm.pdf(x, mu, std)
+        # plt.plot(x, p, 'k', linewidth=2)
+        # title = "mu = %.2f,  std = %.2f" % (mu, std)
+        # plt.title(title)
+
+        # plt.subplot(133)
+        # plt.hist(_dpos_err[:,2], 50, density=True, facecolor='g', alpha=0.75)
+        # mu, std = stats.norm.fit(_dpos_err[:,2])
+        # xmin, xmax = plt.xlim()
+        # x = np.linspace(xmin, xmax, 100)
+        # p = stats.norm.pdf(x, mu, std)
+        # plt.plot(x, p, 'k', linewidth=2)
+        # title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+        # plt.title(title)
+        cov = [np.cov(_dpos_err[:,0]), np.cov(_dpos_err[:,1]), np.cov(_dpos_err[:,2])]
+        _cov_pos.append(sqrt(norm(cov)))
+        _cov_yaw.append(sqrt(np.cov(_dyaw_err)))
+        print(f"{_mid} Pos cov {(cov)}, std {sqrt(norm(cov)):3.3f} Yaw cov {sqrt(np.cov(_dyaw_err)):3.3f}")
+    
+    plt.figure()
+    plt.subplot(211)
+    plt.title("PosStd by Distance")
+    plt.plot(_cov_distances, _cov_pos, "+")
+    plt.grid()
+    plt.subplot(212)
+    plt.title("PosStd by Distance")
+    plt.plot(_cov_distances, _cov_yaw, "+")
+    plt.grid()
     # plt.figure()
     # plt.subplot(211)
     # plt.plot(dpos_gt_norms, dpos_errs_norm, 'o', label="GtDistance vs Error")
