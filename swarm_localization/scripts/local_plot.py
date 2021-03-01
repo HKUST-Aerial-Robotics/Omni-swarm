@@ -526,7 +526,7 @@ def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0
         
         print(f"Best RMSE for node {i} p {rmse_best_dt_pos}: {rmse_min_pos} v {rmse_best_dt_vel}: {rmse_min_vel}")
 
-def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes,  t_calib = {1:0, 2:0}):
+def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes,  t_calib = {1:0, 2:0, 5:0}):
 
     for i in nodes:
         if i == main_id:
@@ -624,7 +624,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
         yaw = yawa_vo[i]
         dp_vo[i] = yaw_rotate_vec(-yaw, dp_vo[i])
 
-    fig = plt.figure(f"Relative Pose 2D {main_id}->{i}")
+    fig = plt.figure(f"Relative Pose 2D {main_id}->{target_id}")
 
     plt.plot(dp_gt[:, 0], dp_gt[:, 1], label="Relative Pose GT")
     plt.plot(dp_fused[:, 0], dp_fused[:, 1], label="Relative Pose EST")
@@ -1048,6 +1048,7 @@ def plot_loops_error(poses, loops, nodes):
     dpos_errs = []
     dpos_errs_norm = []
     posa_gts = []
+    distances = []
     ts_a = []
     dyaws = []
     dyaw_gts = []
@@ -1090,6 +1091,7 @@ def plot_loops_error(poses, loops, nodes):
         pnp_inlier_nums.append(loop["pnp_inlier_num"])
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
+        distances.append(norm(dpos_loop))
 
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
@@ -1140,6 +1142,13 @@ def plot_loops_error(poses, loops, nodes):
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
+
+    plt.figure("DistanceVSErr")
+    plt.title("DistancVSErr")
+    plt.plot(distances, dpos_errs_norm, "x", label="")
+    plt.grid(which="both")
+    # for i in range(len(pnp_inlier_nums)):
+    #     plt.text(distances[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
 
     plt.figure("Loop Hist")
     plt.subplot(131)
