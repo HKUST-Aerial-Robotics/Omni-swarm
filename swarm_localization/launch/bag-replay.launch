@@ -37,8 +37,8 @@
     </include>
 
     <include file="$(find swarm_loop)/launch/loop-pc.launch" if="$(arg loop)">
-        <arg name="output" value="screen" />
-        <arg name="show" value="false" />
+        <arg name="output" value="log" />
+        <arg name="show" value="true" />
         <arg name="width" value="$(arg width)" />
         <arg name="height" value="$(arg height)" />
         <arg name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_rtx3080_$(arg height)x$(arg width)_fp16.trt" />

@@ -59,8 +59,8 @@ public:
 
     void encode_image(const cv::Mat & _img, ImageDescriptor_t & _img_desc);
     
-    std::vector<int> match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
-        const cv::Mat & up, const cv::Mat & down);
+    void match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down, 
+        std::vector<int> & ids_up, std::vector<int> & ids_down);
 
     CameraPtr cam;
     cv::Mat cameraMatrix;

@@ -89,6 +89,8 @@ extern bool IS_PC_REPLAY;
 
 extern bool SEND_ALL_FEATURES;
 
+extern bool LOWER_CAM_AS_MAIN;
+
 extern std::string OUTPUT_PATH;
 class TicToc
 {

@@ -137,8 +137,8 @@ cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2
     return _show;
 }
 
-std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down,
-        const cv::Mat & up, const cv::Mat & down) {
+void LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down, 
+        std::vector<int> & ids_up, std::vector<int> & ids_down) {
     printf("match_HFNet_local_features %ld %ld: ", pts_up.size(), pts_down.size());
     cv::Mat desc_up( _desc_up.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_up.data());
     cv::Mat desc_down( _desc_down.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_down.data());
@@ -157,7 +157,8 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
             int old_id = match.trainIdx;
             _pts_up.push_back(pts_up[now_id]);
             _pts_down.push_back(pts_down[old_id]);
-            ids.push_back(now_id);
+            ids_up.push_back(now_id);
+            ids_down.push_back(old_id);
         } else {
             std::cout << "Giveup match dis" << match.distance << std::endl;
         }
@@ -183,7 +184,6 @@ std::vector<int> LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & 
 
     pts_up = std::vector<cv::Point2f>(_pts_up);
     pts_down = std::vector<cv::Point2f>(_pts_down);
-    return ids;
 }
 
 
@@ -252,8 +252,10 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         return ides;
     }
     
-    auto ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id]);
-    if (ides.image_desc_size == 0)
+    ImageDescriptor_t ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id], LOWER_CAM_AS_MAIN);
+    ImageDescriptor_t ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], !LOWER_CAM_AS_MAIN);
+
+    if (ides.image_desc_size == 0 && ides_down.image_desc_size == 0)
     {
         ROS_WARN("Failed on deepnet;");
         cv::Mat _img;
@@ -272,31 +274,25 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
     ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.image_size = 0;
+
+    ides_down.timestamp = toLCMTime(msg.header.stamp);
+    ides_down.drone_id = self_id; // -1 is self drone;
+    ides_down.camera_extrinsic = fromROSPose(msg.extrinsic_down_cams[vcam_id]);
+    ides_down.pose_drone = fromROSPose(msg.pose_drone);
+    ides_down.image_size = 0;
+
     auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
     auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
 
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
 
-    std::vector<int> ids;
+    std::vector<int> ids_up, ids_down;
 
     if (ides.landmarks_2d.size() > ACCEPT_MIN_3D_PTS) {
         pts_up = toCV(ides.landmarks_2d);
-        auto ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], true);
         pts_down = toCV(ides_down.landmarks_2d);
-
-        cv::Mat _img = cv_ptr->image;
-        cv::Mat _img2 = cv_ptr2->image;
-
-        if (show) {
-            cv::Mat img_show;
-            cv::cvtColor(_img, img_show, cv::COLOR_GRAY2BGR);
-            for (auto pt : pts_up) {
-                cv::circle(img_show, pt, 1, cv::Scalar(255, 0, 0), -1);
-            }
-        }
-
-        ids = match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, _img, _img2);
+        match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, ids_up, ids_down);
     }
     
     // ides.landmarks_2d.clear();
@@ -344,11 +340,15 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         pt3d.y = point_3d.y();
         pt3d.z = point_3d.z();
 
-        int idx = ids[i];
+        int idx = ids_up[i];
+        int idx_down = ids_down[i];
         // ides.landmarks_2d.push_back(pt2d);
         // ides.landmarks_2d_norm.push_back(pt2d_norm);
         ides.landmarks_3d[idx] = pt3d;
         ides.landmarks_flag[idx] = 1;
+
+        ides_down.landmarks_3d[idx_down] = pt3d;
+        ides_down.landmarks_flag[idx_down] = 1;
 
         // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
@@ -368,7 +368,11 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
     // ides.landmark_num = ides.landmarks_2d.size();
 
     if (send_img) {
-        encode_image(cv_ptr->image, ides);
+        if (LOWER_CAM_AS_MAIN) {
+            encode_image(cv_ptr2->image, ides_down);
+        } else {
+            encode_image(cv_ptr->image, ides);
+        }
     }
 
     if (show) {
@@ -376,7 +380,10 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         cv::Mat img_down = cv_ptr2->image;
 
         img_up.copyTo(img);
-        encode_image(img_up, ides);
+        if (!send_img) {
+            encode_image(img_up, ides);
+            encode_image(img_down, ides_down);
+        }
 
         cv::cvtColor(img_up, img_up, cv::COLOR_GRAY2BGR);
         cv::cvtColor(img_down, img_down, cv::COLOR_GRAY2BGR);
@@ -391,26 +398,31 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
             cv::circle(img_up, pt, 3, cv::Scalar(0, 0, 255), 1);
         }
 
-
         cv::vconcat(img_up, img_down, _show);
         for (unsigned int i = 0; i < pts_up.size(); i++)
         {
-            int idx = ids[i];
+            int idx = ids_up[i];
             if (ides.landmarks_flag[idx]) {
                 char title[100] = {0};
                 auto pt = pts_up[i];
                 auto pt3d = ides.landmarks_3d[idx];
                 Eigen::Vector3d point3d(pt3d.x, pt3d.y, pt3d.z);
                 auto pt_cam = pose_up.att().inverse() * (point3d - pose_up.pos());
-                sprintf(title, "[%3.1f,%3.1f,%3.1f]", pt_cam.x(), pt_cam.y(), pt_cam.z());
-
                 cv::circle(_show, pt, 3, cv::Scalar(0, 255, 0), 1);
                 cv::arrowedLine(_show, pts_up[i], pts_down[i], cv::Scalar(255, 255, 0), 1);
-                cv::putText(_show, title, pt + cv::Point2f(0, 5), CV_FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
+
+                // sprintf(title, "[%3.1f,%3.1f,%3.1f]", pt_cam.x(), pt_cam.y(), pt_cam.z());
+                // cv::putText(_show, title, pt + cv::Point2f(0, 5), CV_FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
             }
         }
     }
-    return ides;
+
+    if (LOWER_CAM_AS_MAIN) {
+        return ides_down;
+    } else {
+        return ides;
+    }
+
 }
 
 cv::Mat LoopCam::landmark_desc_compute(const cv::Mat &_img, const std::vector<geometry_msgs::Point32> &points_uv)

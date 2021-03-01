@@ -969,6 +969,9 @@ SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasur
     
 void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
     for (auto loc : good_2drone_measurements) {
+        if (!yaw_observability.at(loc->id_a) || !yaw_observability.at(loc->id_b)) {
+            continue;
+        }
         std::vector<double*> pose_state; // For involved poses
         double * posea = est_poses_idts.at(loc->id_a).at(loc->ts_a);
         double * poseb = est_poses_idts.at(loc->id_b).at(loc->ts_b);
