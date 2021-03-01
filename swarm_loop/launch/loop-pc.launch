@@ -38,6 +38,7 @@
             detector_match_thres: 0.7
             output_path: /root/output/
             send_all_features: false
+            lower_cam_as_main: false
         </rosparam>
         <param name="superpoint_model_path" value="$(arg superpoint_model_path)" type="string" />
         <param name="netvlad_model_path" value="$(arg netvlad_model_path)" type="string" />

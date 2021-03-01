@@ -178,6 +178,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
     nh.param<double>("detector_match_thres", DETECTOR_MATCH_THRES, 0.9);
+    nh.param<bool>("lower_cam_as_main", LOWER_CAM_AS_MAIN, false);
 
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
     nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
