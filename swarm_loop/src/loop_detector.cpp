@@ -747,7 +747,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         static int loop_match_count = 0;
         loop_match_count ++;
         char PATH[100] = {0};
-        sprintf(PATH, "loop-match%d.png", loop_match_count);
+        sprintf(PATH, "loop/match%d.png", loop_match_count);
         cv::imwrite(OUTPUT_PATH+PATH, show);
         
         cv::imshow("Matches", show);

@@ -235,7 +235,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
         char text[100] = {0};
         char PATH[100] = {0};
         sprintf(text, "FEATURES@Drone%d", self_id);
-        sprintf(PATH, "features%d.png", count);
+        sprintf(PATH, "loop/features%d.png", count);
         cv::imshow(text, _show);
         cv::imwrite(OUTPUT_PATH+PATH, _show);
         cv::waitKey(10);
