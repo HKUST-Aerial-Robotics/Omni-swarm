@@ -407,6 +407,13 @@ class LocalProxy {
             if (s_index >= 0) {
                 ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, eul, vel, ts, _dis);
+            } else {
+                ROS_WARN("add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
+                    _id, 
+                    (sf_queue.front().header.stamp - ts).toSec(),
+                    (sf_queue.back().header.stamp - ts).toSec(),
+                    sf_queue.size()
+                );
             }
         }
     }
