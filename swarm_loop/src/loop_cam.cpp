@@ -293,6 +293,8 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
         pts_up = toCV(ides.landmarks_2d);
         pts_down = toCV(ides_down.landmarks_2d);
         match_HFNet_local_features(pts_up, pts_down, ides.feature_descriptor, ides_down.feature_descriptor, ids_up, ids_down);
+    } else {
+        return ides;
     }
     
     // ides.landmarks_2d.clear();
