@@ -10,7 +10,7 @@ docker run --name swarm$1 --gpus all --rm -it \
     -v/home/xuhao/source/:/home/xuhao/source/ \
     -v/home/xuhao/bags:/root/bags/ \
     -v/home/xuhao/Dropbox/data/TRO2020-SwarmLocal/tro2020-bags/:/root/bags2/ \
-    -v/home/xuhao/bags/swarm_local_2021-3-1/Configs/SwarmConfig$1:/root/SwarmConfig/ \
+    -v/home/xuhao/bags/swarm_local_2021-3-2/Configs/SwarmConfig$1:/root/SwarmConfig/ \
     -v/home/xuhao/output/output$1/$2:/root/output/ \
     --env="DISPLAY" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \

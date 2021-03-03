@@ -7,6 +7,7 @@
 using namespace std::chrono; 
 
 #define ESTIMATE_AFFINE3D
+#define USE_FUNDMENTAL
 
 void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto pts = toCV(img_des.landmarks_2d);
@@ -567,9 +568,11 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
     auto _old_norm_2d = toCV(old_img_desc.landmarks_2d_norm);
+    auto _old_2d = toCV(old_img_desc.landmarks_2d);
     auto _old_3d = toCV(old_img_desc.landmarks_3d);
     
     auto _now_norm_2d = toCV(new_img_desc.landmarks_2d_norm);
+    auto _now_2d = toCV(new_img_desc.landmarks_2d);
     auto _now_3d = toCV(new_img_desc.landmarks_3d);
 
     // std::vector<int> ids;
@@ -601,7 +604,40 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     
     cv::BFMatcher bfmatcher(cv::NORM_L2, true);
     std::vector<cv::DMatch> _matches;
+    std::vector<unsigned char> mask;
     bfmatcher.match(desc_now, desc_old, _matches);
+
+#ifdef USE_FUNDMENTAL
+    std::vector<cv::Point2f> old_2d, new_2d;
+    for (auto match : _matches) {
+        int now_id = match.queryIdx;
+        int old_id = match.trainIdx;
+        if (new_img_desc.landmarks_flag[now_id]) {
+            new_2d.push_back(_now_2d[now_id]);
+            old_2d.push_back(_old_2d[old_id]);
+
+            new_idx.push_back(now_id);
+            old_idx.push_back(old_id);
+
+            new_3d.push_back(_now_3d[now_id]);
+            new_norm_2d.push_back(_now_norm_2d[now_id]);
+
+            old_3d.push_back(_old_3d[old_id]);
+            old_norm_2d.push_back(_old_norm_2d[old_id]);
+        }
+    }
+
+    cv::findHomography(old_2d, new_2d, CV_RANSAC, 3, mask);
+
+    reduceVector(new_idx, mask);
+    reduceVector(old_idx, mask);
+
+    reduceVector(new_3d, mask);
+    reduceVector(new_norm_2d, mask);
+
+    reduceVector(old_3d, mask);
+    reduceVector(old_norm_2d, mask);
+#else
     for (auto match : _matches) {
         int now_id = match.queryIdx;
         int old_id = match.trainIdx;
@@ -619,7 +655,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
             // printf("Give up distance too high %f\n", match.distance);
         }
     }
-
+#endif
     return true;
 }
 

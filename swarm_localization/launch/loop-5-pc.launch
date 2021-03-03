@@ -48,6 +48,7 @@
             loop_outlier_threshold_pos: 0.5
             loop_outlier_threshold_distance: 1.8
             loop_outlier_threshold_yaw: 0.5
+            max_solver_time: 0.15
 
             max_solver_time: 0.5
             cg:

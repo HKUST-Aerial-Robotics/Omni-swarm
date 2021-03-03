@@ -1094,7 +1094,9 @@ def plot_loops_error(poses, loops, nodes):
 
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
-        
+    outlier_num = (np.array(dpos_errs_norm)>0.5).sum()
+    total_loops = len(dpos_errs_norm)
+    print(f"Outlier rate {outlier_num/total_loops*100:3.2f}% total loops {total_loops} outlier_num {outlier_num}")
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
     dyaw_errs = np.array(dyaw_errs)
