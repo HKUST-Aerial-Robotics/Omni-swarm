@@ -538,8 +538,14 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     }
 
     if (is_kf == 1) {
+        int num = all_nodes.size();
         for (int _id : _ids) {
             all_nodes.insert(_id);
+        }
+
+        if (all_nodes.size() > num) {
+            finish_init = false;
+            enable_to_init = false;
         }
 
         add_as_keyframe(sf);
@@ -1927,6 +1933,25 @@ void SwarmLocalizationSolver::generate_cgraph() {
             } 
         }
     }
+    
+    for (const SwarmFrame & sf : sf_sld_win) {
+        auto ts = sf.ts;
+        for (auto & it : sf.id2nodeframe) {
+            auto & nf = it.second;
+            for (auto & detected: nf.detected_nodes) {
+                auto _ida = detected.id_a;
+                auto _idb = detected.id_b;
+                auto node1 = AGNodes[ts][_ida];
+                auto node2 = AGNodes[ts][_idb];
+
+                auto edge = agedge(g, node1, node2, "Det",1);
+                agattrsym (edge, "label");
+                sprintf(edgename, "Detected");
+                agset(edge, "label", edgename);
+            }
+        }
+    }
+
 
     //
     int count = 0;

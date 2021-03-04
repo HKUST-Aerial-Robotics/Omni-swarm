@@ -141,7 +141,6 @@ def read_pose(bag, topic, t0):
         quat.append([q.w, q.x, q.y, q.z])
         ypr.append([y, p, r])
         ts.append(msg.header.stamp.to_sec() - t0)
-        
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
@@ -277,7 +276,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True):
     bag = rosbag.Bag(bagname)
     poses = {}
     poses_fused = {}
@@ -291,9 +290,10 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
             t0 = msg.header.stamp.to_sec()
             # print(t0, msg)
             break
-
+    
     for i in nodes:
-        poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+        if groundtruth:
+            poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
         if is_pc:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
@@ -309,11 +309,13 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
     detections = read_detections_raw(bag, t0)
     distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     bag.close()
-    
-    fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
-    yaw_offset = (poses[main_id]["ypr"][0] - poses_fused[main_id]["ypr"][0])[0]
-
-    print("Yaw Offset, ", yaw_offset*57.3, "Fused Offset", fused_offset)
+    if groundtruth:
+        fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
+        yaw_offset = (poses[main_id]["ypr"][0] - poses_fused[main_id]["ypr"][0])[0]
+        print("Yaw Offset, ", yaw_offset*57.3, "Fused Offset", fused_offset)
+    else:
+        fused_offset = np.array([0, 0, 0])
+        yaw_offset = 0
 
     #Pvicon = DP Ppose
     #DP = PviconPpose^-1
@@ -332,21 +334,24 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1):
         poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
     for i in nodes:
-        vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
-        yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
-    
-        print(f"VIO Offset for {i}: {vo_offset}")
-        print(poses[i]["pos"][0], poses_vo[i]["pos_raw"][0])
-    
+        if groundtruth:
+            vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
+            yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
+            print(f"VIO Offset for {i}: {vo_offset}")
+            print(poses[i]["pos"][0], poses_vo[i]["pos_raw"][0])
+        else:    
+            vo_offset = np.array([0, 0, 0])
+            yaw_offset = 0
         poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
         poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
-        
-    return poses, poses_fused, poses_vo, poses_path, loops, detections, distances
-    
+    if groundtruth:
+        return poses, poses_fused, poses_vo, poses_path, loops, detections, distances
+    else:
+        return poses_fused, poses_vo, poses_path, loops, detections, distances
 
-def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, t_calib = {1:0, 2:0}):
+def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, t_calib = {1:0, 2:0}, groundtruth = True):
     fig = plt.figure("Traj2", figsize=(6, 6))
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
@@ -363,15 +368,18 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     quivers = []
     quivers_det = []
     for loop in loops:
-        posa_gt = poses[loop["id_a"]]["pos_func"](loop["ts_a"])
-        posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
-        quivers.append([posa_gt[0], posa_gt[1], posa_gt[2], posb_gt[0]-posa_gt[0], posb_gt[1]-posa_gt[1], posb_gt[2]-posa_gt[2]])
+        posa_ = poses_path[loop["id_a"]]["pos_func"](loop["ts_a"])
+        posb_ = poses_path[loop["id_b"]]["pos_func"](loop["ts_b"])
+        if norm(loop["dpos"]) < 2.0:
+            quivers.append([posa_[0], posa_[1], posa_[2], posb_[0]-posa_[0], posb_[1]-posa_[1], posb_[2]-posa_[2]])
+            #quivers.append([posa_[0], posa_[1], posa_[2], loop["dpos"][0], loop["dpos"][1], loop["dpos"][2]])
+
     
     for det in detections:
-        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
-        yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
-        dpos = yaw_rotate_vec(yawa_gt, det["dpos"]/det["inv_dep"])
-        quivers_det.append([posa_gt[0], posa_gt[1], posa_gt[2], dpos[0], dpos[1], dpos[2]])
+        posa_ = poses_path[det["id_a"]]["pos_func"](det["ts"])
+        yawa_ = poses_path[det["id_a"]]["ypr_func"](det["ts"])[0]
+        dpos = yaw_rotate_vec(yawa_, det["dpos"]/det["inv_dep"])
+        quivers_det.append([posa_[0], posa_[1], posa_[2], dpos[0], dpos[1], dpos[2]])
     
     quivers = np.array(quivers)
     quivers_det = np.array(quivers_det)
@@ -401,27 +409,65 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     for k in range(len(nodes)):
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
-        ax.set_title(f"Traj {i}, length: {poses_length(poses[i]):3.3f}")
-        ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Ground Truth ${i}$")
-        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Fused Traj{i}")
+        ax.set_title(f"Traj {i}, length: {poses_length(poses_fused[i]):3.3f}")
+        if groundtruth:
+            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Ground Truth ${i}$")
         ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
-        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1],poses_path[i]["pos"][:,2], label=f"Estimate ${i}$")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate ${i}$")
         
         plt.legend()
         ax.set_xlabel('$X$')
         ax.set_ylabel('$Y$')
         ax.set_zlabel('$Z$')
     plt.savefig("/home/xuhao/output/FusedVsGT3D.pdf")
+
+    fig = plt.figure("Fused Multi 2d")
+    plt.gca().set_aspect('equal')
+    
+    step_det = 1
+    qview_width = 0.9
+    if len(quivers) > 0:   
+        for i in range(0,len(quivers),step_det):
+            xs = [quivers[i,0],quivers[i,0]+quivers[i,3]]
+            ys = [quivers[i,1], quivers[i,1]+quivers[i,4]]
+            if i == 0:
+                plt.plot(xs, ys, color="black", label="Map-based edges", linewidth=qview_width)
+            else:
+                plt.plot(xs, ys, color="black", linewidth=qview_width)
+    step_det = 5
+    if len(quivers_det) > 0: 
+        for i in range(0,len(quivers_det),step_det):
+            xs = [quivers_det[i,0],quivers_det[i,0]+quivers_det[i,3]]
+            ys = [quivers_det[i,1], quivers_det[i,1]+quivers_det[i,4]]
+            if i == 0:
+                plt.plot(xs, ys, color="gray", label="Detection", linewidth=qview_width)
+            else:
+                plt.plot(xs, ys, color="gray", linewidth=qview_width)
+    for i in nodes:
+        plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation {i}")
+        #plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
+    for i in nodes:
+        plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${i}$", alpha=0.7)
+        final_vio = norm(poses_vo[i]["pos"][-1,:])
+        final_path = norm(poses_path[i]["pos"][-1,:])
+        total_len = poses_length(poses_fused[i])
+        print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}%")
+    
+    plt.legend()
+    plt.grid()
+    plt.savefig("/home/xuhao/output/fused2d.pdf")
+
     fig = plt.figure("Fused Vs GT 2D")
     fig.suptitle("Fused Vs GT 2D")
     for k in range(len(nodes)):
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1)
-        ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Vicon Traj{i}")
-        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Traj{i}")
+        if groundtruth:
+            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Vicon Traj{i}")
         ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
         # ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
         ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Omline{i}")
 
         plt.grid()
         plt.legend()
@@ -432,27 +478,30 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1, ax2, ax3 = fig.subplots(3, 1)
 
         t_ = poses_fused[i]["t"]
-        pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"] + t_calib[i])
+        if groundtruth:
+            pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"] + t_calib[i])
         pos_fused = poses_fused[i]["pos"]
         _i = str(i) 
-
-        ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${i}$")
+        if groundtruth:
+            ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${i}$")
         # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
-        # ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
+        ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
         ax1.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,0], label=f"Estimate {i}")
         ax1.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax1.set_ylabel("x")
 
-        ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${i}$")
+        if groundtruth:
+            ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${i}$")
         #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
-        # ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
+        ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
         ax2.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
         ax2.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax2.set_ylabel("y")
 
-        ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
+        if groundtruth:
+            ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
         #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
-        # ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
+        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
         ax3.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,2], label=f"Estimate {i}")
         ax3.set_ylabel("z")
         ax3.set_xlabel("t")
@@ -591,34 +640,37 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
 
     
 
-def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_calib = {1:0, 2:0}):
+def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_calib = {1:0, 2:0}, groundtruth = True):
     ts = poses_fused[main_id]["t"]
-    posa_gt =  poses[main_id]["pos_func"](ts)
     posa_vo =  poses_vo[main_id]["pos_func"](ts)
     posa_fused = poses_fused[main_id]["pos_func"](ts)
-    posa_vo =  poses[main_id]["pos_func"](ts)
     yawa_fused = poses_fused[main_id]["ypr_func"](ts)[:,0]
-    yawa_gt = poses[main_id]["ypr_func"](ts)[:,0]
     yawa_vo = poses_vo[main_id]["ypr_func"](ts)[:,0]
 
-    posb_gt =  poses[target_id]["pos_func"](ts+t_calib[target_id])
+
     posb_vo =  poses_vo[target_id]["pos_func"](ts+t_calib[target_id])
-    yawb_gt = poses[target_id]["ypr_func"](ts+t_calib[target_id])[:,0]
     posb_fused = poses_fused[target_id]["pos_func"](ts)
     yawb_fused = poses_fused[target_id]["ypr_func"](ts)[:, 0]
     yawb_vo = poses_vo[target_id]["ypr_func"](ts)[:, 0]
-
-    dp_gt = posb_gt - posa_gt
+    
     dp_fused = posb_fused - posa_fused
     dp_vo = posb_vo - posa_vo
 
+    if groundtruth:
+        posa_gt =  poses[main_id]["pos_func"](ts)
+        yawa_gt = poses[main_id]["ypr_func"](ts)[:,0]
+        posb_gt =  poses[target_id]["pos_func"](ts+t_calib[target_id])
+        yawb_gt = poses[target_id]["ypr_func"](ts+t_calib[target_id])[:,0]
+        dp_gt = posb_gt - posa_gt
+    
     for i in range(len(yawa_fused)):
         yaw = yawa_fused[i]
         dp_fused[i] = yaw_rotate_vec(-yaw, dp_fused[i])
 
-    for i in range(len(yawa_fused)):
-        yaw = yawa_gt[i]
-        dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
+    if groundtruth:
+        for i in range(len(yawa_fused)):
+            yaw = yawa_gt[i]
+            dp_gt[i] = yaw_rotate_vec(-yaw, dp_gt[i])
 
     for i in range(len(yawa_vo)):
         yaw = yawa_vo[i]
@@ -626,7 +678,8 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
 
     fig = plt.figure(f"Relative Pose 2D {main_id}->{target_id}")
 
-    plt.plot(dp_gt[:, 0], dp_gt[:, 1], label="Relative Pose GT")
+    if groundtruth:
+        plt.plot(dp_gt[:, 0], dp_gt[:, 1], label="Relative Pose GT")
     plt.plot(dp_fused[:, 0], dp_fused[:, 1], label="Relative Pose EST")
     plt.legend()
     plt.grid()
@@ -635,10 +688,12 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
     fig.suptitle("Relative Pose Polar")
     ax1, ax2 = fig.subplots(2, 1)
 
-    ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label="Relative Pose Angular GT")
+    if groundtruth:
+        ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label="Relative Pose Angular GT")
     ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label="Relative Pose Angular Fused")
 
-    ax2.plot(ts, norm(dp_gt, axis=1), label="Relative Pose Length GT")
+    if groundtruth:
+        ax2.plot(ts, norm(dp_gt, axis=1), label="Relative Pose Length GT")
     ax2.plot(ts, norm(dp_fused, axis=1), label="Relative Pose Length Fused")
 
     ax1.legend()
@@ -650,9 +705,10 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
     fig.suptitle("Relative Pose")
     ax1, ax2, ax3 = fig.subplots(3, 1)
 
-    ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
-    ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
-    ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(i) + "$")
+    if groundtruth:
+        ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
+        ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
+        ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(i) + "$")
 
     ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(i) + "$")
     ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(i) + "$")
@@ -669,38 +725,39 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
     fig.suptitle("Fused Relative Error")
     ax1, ax2, ax3 = fig.subplots(3, 1)
 
-    rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
-    rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
-    rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
-    rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
+    if groundtruth:
+        rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
+        rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
+        rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
+        rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
 
 
-    rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
-    rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
-    rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
+        rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
+        rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
+        rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
 
-    ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(i) + f"$ RMSE:{rmse_x:3.3f}")
-    ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
-    ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
-    print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
-    print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
-    print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
+        ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(i) + f"$ RMSE:{rmse_x:3.3f}")
+        ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
+        ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
+        print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+        print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
+        print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
 
 
-    rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
-    rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
-    rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
-    rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
+        rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
+        rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
+        rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
+        rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
 
-    print(f"VO RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
-    print(f"VO BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
-    
-    ax1.legend()
-    ax2.legend()
-    ax3.legend()
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
+        print(f"VO RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+        print(f"VO BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
+        
+        ax1.legend()
+        ax2.legend()
+        ax3.legend()
+        ax1.grid()
+        ax2.grid()
+        ax3.grid()
     plt.show()
     
     
