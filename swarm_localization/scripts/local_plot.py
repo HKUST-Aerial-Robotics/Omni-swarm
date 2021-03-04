@@ -20,7 +20,9 @@ def quat2eulers(w, x, y ,z):
     return y, p, r
 
 def RMSE(predictions, targets):
-    return np.sqrt(np.mean((predictions-targets)**2))
+    err_sq = (predictions-targets)**2
+    err_sq = err_sq[~numpy.isnan(err_sq)]
+    return np.sqrt(np.mean(err_sq))
 
 def ATE_POS(predictions, targets):
     err = predictions-targets
@@ -370,7 +372,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     for loop in loops:
         posa_ = poses_path[loop["id_a"]]["pos_func"](loop["ts_a"])
         posb_ = poses_path[loop["id_b"]]["pos_func"](loop["ts_b"])
-        if norm(loop["dpos"]) < 2.0:
+        if norm(loop["dpos"]) < 2.0 and norm(posb_-posa_) < 2.0:
             quivers.append([posa_[0], posa_[1], posa_[2], posb_[0]-posa_[0], posb_[1]-posa_[1], posb_[2]-posa_[2]])
             #quivers.append([posa_[0], posa_[1], posa_[2], loop["dpos"][0], loop["dpos"][1], loop["dpos"][2]])
 
@@ -424,7 +426,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     fig = plt.figure("Fused Multi 2d")
     plt.gca().set_aspect('equal')
     
-    step_det = 1
+    step_det = 10
     qview_width = 0.9
     if len(quivers) > 0:   
         for i in range(0,len(quivers),step_det):
@@ -434,7 +436,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
                 plt.plot(xs, ys, color="black", label="Map-based edges", linewidth=qview_width)
             else:
                 plt.plot(xs, ys, color="black", linewidth=qview_width)
-    step_det = 5
+    step_det = 10
     if len(quivers_det) > 0: 
         for i in range(0,len(quivers_det),step_det):
             xs = [quivers_det[i,0],quivers_det[i,0]+quivers_det[i,3]]
@@ -447,10 +449,12 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation {i}")
         #plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
     for i in nodes:
-        plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${i}$", alpha=0.7)
+        # plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${i}$", alpha=0.7)
         final_vio = norm(poses_vo[i]["pos"][-1,:])
         final_path = norm(poses_path[i]["pos"][-1,:])
         total_len = poses_length(poses_fused[i])
+        plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {i}")
+        
         print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}%")
     
     plt.legend()
@@ -463,15 +467,15 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         i = nodes[k]
         ax = fig.add_subplot(1, len(nodes), k+1)
         if groundtruth:
-            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Vicon Traj{i}")
-        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
+            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {i}")
+        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {i}")
         # ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
-        ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Fused Offline Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Omline{i}")
-
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimation {i}")
+        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Oline{i}")
         plt.grid()
         plt.legend()
 
+    plt.savefig("/home/xuhao/output/fusedvsgt2d.pdf")
     for i in nodes:
         fig = plt.figure(f"Drone {i} fused Vs GT 1D")
         #fig.suptitle(f"Drone {i} fused Vs GT 1D")
@@ -623,7 +627,7 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
         plt.show()
 
         dis_calibed = 0.257+0.734*np.array(dis_raw)
-
+        dis_calibed = np.array(dis_raw) - 0.257
         err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
         err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
 
@@ -655,7 +659,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
     
     dp_fused = posb_fused - posa_fused
     dp_vo = posb_vo - posa_vo
-
     if groundtruth:
         posa_gt =  poses[main_id]["pos_func"](ts)
         yawa_gt = poses[main_id]["ypr_func"](ts)[:,0]
@@ -742,7 +745,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_c
         print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
         print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
         print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
-
 
         rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
         rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
