@@ -33,7 +33,11 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_DETS
 // #define DEBUG_OUTPUT_SLD_WIN
 // #define DEBUG_OUTPUT_LOOP_OUTLIER
+
 // #define DEBUG_LOOP_ONLY_INIT
+// #define DEBUG_NO_RELOCALIZATION
+#define RANDOM_DELETE_KF 
+
 #define DEBUG_OUTPUT_DETECTION_OUTLIER
 
 #define SMALL_MOVEMENT_SPD 0.1
@@ -58,7 +62,6 @@ using namespace std::chrono;
 
 #define SINGLE_DRONE_SFS_THRES 3
 
-#define RANDOM_DELETE_KF 
 
 
 float VO_METER_STD_TRANSLATION;
@@ -1168,6 +1171,12 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
     if (_id == self_id) {
         problem.SetParameterBlockConstant(pose_win[0]);
+
+#ifdef DEBUG_NO_RELOCALIZATION
+        for (int i = 0; i < pose_win.size(); i ++) {
+            problem.SetParameterBlockConstant(pose_win[i]);
+        }
+#endif
     }
 
     if (nfs.size() < 2) {

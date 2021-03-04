@@ -2,14 +2,14 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph" default="true" />
+    <arg name="cgraph" default="false" />
     <arg name="cgraph_path" default="$(env HOME)/graph.dot" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
             force_freq: 10
             max_accept_cost: 100
-            max_keyframe_num: 100
+            max_keyframe_num: 20
             min_keyframe_num: 1
             thread_num: 1
             min_kf_movement : 0.5
@@ -35,7 +35,7 @@
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
-            publish_full_path: false
+            publish_full_path: true
             is_pc_replay: true
             kf_use_all_nodes: true
 
