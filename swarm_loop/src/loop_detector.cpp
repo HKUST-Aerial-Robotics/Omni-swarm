@@ -627,16 +627,21 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
         }
     }
 
-    cv::findHomography(old_2d, new_2d, CV_RANSAC, 3, mask);
+    if (old_2d.size() >= 4) {
+        cv::findHomography(old_2d, new_2d, CV_RANSAC, 3, mask);
+        reduceVector(new_idx, mask);
+        reduceVector(old_idx, mask);
 
-    reduceVector(new_idx, mask);
-    reduceVector(old_idx, mask);
+        reduceVector(new_3d, mask);
+        reduceVector(new_norm_2d, mask);
 
-    reduceVector(new_3d, mask);
-    reduceVector(new_norm_2d, mask);
+        reduceVector(old_3d, mask);
+        reduceVector(old_norm_2d, mask);
+    } else {
+        return false;
+    }
 
-    reduceVector(old_3d, mask);
-    reduceVector(old_norm_2d, mask);
+    return true;
 #else
     for (auto match : _matches) {
         int now_id = match.queryIdx;
@@ -655,8 +660,8 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
             // printf("Give up distance too high %f\n", match.distance);
         }
     }
-#endif
     return true;
+#endif
 }
 
 //Require 3d points of new frame and 2d point of old frame
