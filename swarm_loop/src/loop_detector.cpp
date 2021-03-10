@@ -23,7 +23,10 @@ void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
 
 void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, std::vector<cv::Mat> imgs) {
     auto start = high_resolution_clock::now();
-    assert(flatten_desc.images.size() > 0 && "FlattenDesc must carry more than zero images");
+    if (flatten_desc.images.size() == 0) {
+        ROS_WARN("FlattenDesc must carry more than zero images");
+        return;
+    }
 
     int drone_id = flatten_desc.drone_id;
     int images_num = flatten_desc.images.size();
