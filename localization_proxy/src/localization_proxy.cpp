@@ -889,7 +889,7 @@ class LocalProxy {
 
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
-        ROS_INFO("Start SWARM Drone Proxy");
+        ROS_INFO("Start SWARM Drone Proxy. Mavlink channels %d", MAVLINK_COMM_NUM_BUFFERS);
         // bigger than 3 is ok
         nh.param<int>("sf_queue_max_size", sf_queue_max_size, 10);
         ROS_INFO("sf_queue_max_size %d", sf_queue_max_size);
