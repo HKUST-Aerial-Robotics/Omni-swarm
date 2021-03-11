@@ -305,7 +305,7 @@ class LocalProxy {
             sd_self_id = self_id;
         }
         if (s_index < 0) {
-            ROS_INFO("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
+            ROS_WARN("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
                 nd.self_drone_id,
                 nd.remote_drone_id,
                 (ts - this->tsstart).toSec(), 
@@ -314,7 +314,6 @@ class LocalProxy {
                 (ts - sf_queue.front().header.stamp).toSec(),
                 (ts - sf_queue.back().header.stamp).toSec()
             );
-            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
             return;
         }
         swarm_frame &_sf = sf_queue[s_index];
