@@ -8,7 +8,7 @@
        <param name="sf_queue_max_size" value="$(arg sf_queue_max_size)" type="int" />
        <rosparam>
             send_fused_freq: 0.0
-            send_fused_basecoor_freq: 30.0
+            send_fused_basecoor_freq: 3.0
             self_id: 0
        </rosparam>
     </node>
