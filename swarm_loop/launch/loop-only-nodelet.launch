@@ -13,7 +13,7 @@
             loop_image_downsample: 1.0
             init_loop_min_feature_num: 8
             init_loop_min_feature_num_l2: 8
-            min_loop_feature_num: 8
+            min_loop_feature_num: 12
             jpg_quality: 75
             
             query_thres: 100
@@ -27,9 +27,9 @@
             match_index_dist: 5
             recv_msg_duration: 0.5
             superpoint_thres: 0.02
-            #triangle_thres: 0.012
-            triangle_thres: 0.008
-            min_direction_loop: 2
+            triangle_thres: 0.012
+            #triangle_thres: 0.008
+            min_direction_loop: 3
             is_pc_replay: false
             detector_match_thres: 0.7
             output_path: /root/output/
