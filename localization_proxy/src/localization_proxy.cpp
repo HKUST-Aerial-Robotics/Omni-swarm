@@ -298,21 +298,22 @@ class LocalProxy {
     void on_node_detcted_xyzyaw_recv(node_detected_xyzyaw nd) {
         ros::Time ts = nd.header.stamp;
         int s_index = find_sf_swarm_detected(ts);
-        // ROS_INFO("ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
-        //     nd.self_drone_id,
-        //     nd.remote_drone_id,
-        //     (ts - this->tsstart).toSec(), 
-        //     (ros::Time::now() - this->tsstart).toSec(), 
-        //     s_index, sf_queue.size(), 
-        //     (ts - sf_queue.front().header.stamp).toSec(),
-        //     (ts - sf_queue.back().header.stamp).toSec()
-        //     );
+
 #ifdef SWARM_DETECTION_ON_FRAME
         int sd_self_id = nd.self_drone_id;
         if (sd_self_id < 0) {
             sd_self_id = self_id;
         }
         if (s_index < 0) {
+            ROS_INFO("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
+                nd.self_drone_id,
+                nd.remote_drone_id,
+                (ts - this->tsstart).toSec(), 
+                (ros::Time::now() - this->tsstart).toSec(), 
+                s_index, sf_queue.size(), 
+                (ts - sf_queue.front().header.stamp).toSec(),
+                (ts - sf_queue.back().header.stamp).toSec()
+            );
             ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
             return;
         }
