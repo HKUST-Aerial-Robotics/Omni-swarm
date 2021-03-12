@@ -134,7 +134,9 @@ void SwarmLoop::VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyfra
 
 void SwarmLoop::on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc) {
     // ROS_INFO("Remote");
-    this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
+    if (recived_image) {
+        this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
+    }
 }
 
 void SwarmLoop::on_remote_image(const FisheyeFrameDescriptor_t & frame_desc) {
@@ -206,11 +208,12 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     };
 
     loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & frame_desc) {
-        if (enable_pub_remote_frame) {
-            remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
+        if (recived_image) {
+            if (enable_pub_remote_frame) {
+                remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
+            }
+            this->on_remote_image(frame_desc);
         }
-
-        this->on_remote_image(frame_desc);
     };
 
     loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
