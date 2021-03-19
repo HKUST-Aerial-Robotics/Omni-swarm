@@ -777,8 +777,13 @@ double SwarmLocalizationSolver::solve() {
 
     if (!has_new_keyframe)
         return -1;
-
+    enable_to_init = false;
     estimate_observability();
+
+    if (finish_init && !enable_to_init) {
+        printf("Observability not meet. set finish init false");
+        finish_init = false;
+    }
 
     // if (!finish_init) {
     //     //Use da initer to initial the system
