@@ -58,6 +58,8 @@
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
         <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
+        <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />
+        <remap from="/swarm_drones/swarm_drone_fused_relative" to="/swarm_drones/swarm_drone_fused_relative_pc" />
     </node>
     <group if="$(arg viz)">
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
