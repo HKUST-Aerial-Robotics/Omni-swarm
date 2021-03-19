@@ -88,7 +88,7 @@ def read_distances_swarm_frame(bag, topic, t0, main_id):
     distances = {
     }
     ts = []
-    print(f"Read poses from topic {topic}")
+    print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for node in msg.node_frames:
             if node.id == main_id:
@@ -108,7 +108,7 @@ def read_distances_remote_nodes(bag, topic, t0, main_id):
     distances = {
     }
     ts = []
-    print(f"Read poses from topic {topic}")
+    print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for i in range(len(msg.node_ids)):
             if msg.active[i]:
@@ -187,7 +187,9 @@ def read_path(bag, topic, t0):
     path = None
     for topic, msg, t in bag.read_messages(topics=[topic]):
         path = msg
-    return parse_path(path, t0)
+    if path is not None:
+        return parse_path(path, t0)
+    return None
 
 def poses_length(poses):
     dp = np.diff(poses["pos"], axis=0)
@@ -306,10 +308,13 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
 
+        if poses_path[i] is None:
+            poses_path[i] = poses_fused[i]
+
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     # detections = read_detections(bag, t0, "/swarm_drones/node_detected")
     detections = read_detections_raw(bag, t0)
-    distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
+    distances = read_distances_swarm_frame(bag, "/swarm_drones/swarm_frame", t0, main_id)
     bag.close()
     if groundtruth:
         fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
@@ -579,7 +584,7 @@ def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0
         
         print(f"Best RMSE for node {i} p {rmse_best_dt_pos}: {rmse_min_pos} v {rmse_best_dt_vel}: {rmse_min_vel}")
 
-def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes,  t_calib = {1:0, 2:0, 5:0}):
+def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes):
 
     for i in nodes:
         if i == main_id:
@@ -588,10 +593,10 @@ def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_
         fig.suptitle(f"Distance {i}")
         ax1, ax2, ax3 = fig.subplots(3, 1)
         t_ = np.array(distances[i]["t"])
-        pos_gt = poses[i]["pos_func"](t_+t_calib[i])
+        pos_gt = poses[i]["pos_func"](t_)
         pos_fused = poses_fused[i]["pos_func"](t_)
 
-        main_pos_gt = poses[main_id]["pos_func"](t_+t_calib[main_id])
+        main_pos_gt = poses[main_id]["pos_func"](t_)
         main_pos_fused = poses_fused[main_id]["pos_func"](t_)
 
         #pos_vo = poses_vo[i]["pos"]
