@@ -375,6 +375,13 @@ class NodeFrame {
             return false;
         }
 
+        bool has_distance_to(int idj) const {
+            if (dis_map.find(idj) != dis_map.end()) {
+                return true;
+            }
+            return false;
+        }
+
         Pose pose() const {
             //If has vo, return vo position
             if (!is_static) {
