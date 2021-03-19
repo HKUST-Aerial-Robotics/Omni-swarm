@@ -781,7 +781,7 @@ double SwarmLocalizationSolver::solve() {
     estimate_observability();
 
     if (finish_init && !enable_to_init) {
-        printf("Observability not meet. set finish init false");
+        ROS_WARN("Observability not meet now. set finish init to false!!!");
         finish_init = false;
     }
 
