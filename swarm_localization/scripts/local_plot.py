@@ -88,7 +88,7 @@ def read_distances_swarm_frame(bag, topic, t0):
     distances = {
     }
     ts = []
-    print(f"Read poses from topic {topic}")
+    print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for node in msg.node_frames:
             _ida = node.id
@@ -110,7 +110,7 @@ def read_distances_remote_nodes(bag, topic, t0, main_id):
     distances = {
     }
     ts = []
-    print(f"Read poses from topic {topic}")
+    print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for i in range(len(msg.node_ids)):
             if msg.active[i]:
@@ -189,7 +189,9 @@ def read_path(bag, topic, t0):
     path = None
     for topic, msg, t in bag.read_messages(topics=[topic]):
         path = msg
-    return parse_path(path, t0)
+    if path is not None:
+        return parse_path(path, t0)
+    return None
 
 def poses_length(poses):
     dp = np.diff(poses["pos"], axis=0)
@@ -307,6 +309,9 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
 
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
+
+        if poses_path[i] is None:
+            poses_path[i] = poses_fused[i]
 
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     # detections = read_detections(bag, t0, "/swarm_drones/node_detected")

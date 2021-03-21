@@ -56,7 +56,7 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
+        <param name="cgraph_path" value="/home/dji/swarm_log_latest/graph.dot" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
     </node>
     <group if="$(arg viz)">
