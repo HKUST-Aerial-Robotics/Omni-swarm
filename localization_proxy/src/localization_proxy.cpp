@@ -298,22 +298,22 @@ class LocalProxy {
     void on_node_detcted_xyzyaw_recv(node_detected_xyzyaw nd) {
         ros::Time ts = nd.header.stamp;
         int s_index = find_sf_swarm_detected(ts);
-        // ROS_INFO("ND %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
-        //     nd.self_drone_id,
-        //     nd.remote_drone_id,
-        //     (ts - this->tsstart).toSec(), 
-        //     (ros::Time::now() - this->tsstart).toSec(), 
-        //     s_index, sf_queue.size(), 
-        //     (ts - sf_queue.front().header.stamp).toSec(),
-        //     (ts - sf_queue.back().header.stamp).toSec()
-        //     );
+
 #ifdef SWARM_DETECTION_ON_FRAME
         int sd_self_id = nd.self_drone_id;
         if (sd_self_id < 0) {
             sd_self_id = self_id;
         }
         if (s_index < 0) {
-            ROS_WARN("Can't find id %d in swarmframe", sd_self_id);
+            ROS_WARN("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
+                nd.self_drone_id,
+                nd.remote_drone_id,
+                (ts - this->tsstart).toSec(), 
+                (ros::Time::now() - this->tsstart).toSec(), 
+                s_index, sf_queue.size(), 
+                (ts - sf_queue.front().header.stamp).toSec(),
+                (ts - sf_queue.back().header.stamp).toSec()
+            );
             return;
         }
         swarm_frame &_sf = sf_queue[s_index];
@@ -408,12 +408,14 @@ class LocalProxy {
                 ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, eul, vel, ts, _dis);
             } else {
-                ROS_WARN("add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
-                    _id, 
-                    (sf_queue.front().header.stamp - ts).toSec(),
-                    (sf_queue.back().header.stamp - ts).toSec(),
-                    sf_queue.size()
-                );
+                if (sf_queue.size() >= 2) {
+                    ROS_WARN_THROTTLE(1.0, "add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
+                        _id, 
+                        (sf_queue.front().header.stamp - ts).toSec(),
+                        (sf_queue.back().header.stamp - ts).toSec(),
+                        sf_queue.size()
+                    );
+                }
             }
         }
     }
@@ -431,7 +433,7 @@ class LocalProxy {
 
         for (uint8_t c : buf) {
             //Use different to prevent invaild parse
-            int ret = mavlink_parse_char(_id, c, &msg, &status);
+            int ret = mavlink_parse_char(0, c, &msg, &status);
             if (ret) {
                 switch (msg.msgid) {
                     case MAVLINK_MSG_ID_NODE_REALTIME_INFO: {
@@ -887,7 +889,7 @@ class LocalProxy {
 
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
-        ROS_INFO("Start SWARM Drone Proxy");
+        ROS_INFO("Start SWARM Drone Proxy. Mavlink channels %d", MAVLINK_COMM_NUM_BUFFERS);
         // bigger than 3 is ok
         nh.param<int>("sf_queue_max_size", sf_queue_max_size, 10);
         ROS_INFO("sf_queue_max_size %d", sf_queue_max_size);

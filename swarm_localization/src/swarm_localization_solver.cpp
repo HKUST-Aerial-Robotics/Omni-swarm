@@ -62,6 +62,7 @@ using namespace std::chrono;
 
 #define SINGLE_DRONE_SFS_THRES 3
 
+#define DISTANCE_CROSS_THRESS 0.15
 
 
 float VO_METER_STD_TRANSLATION;
@@ -776,8 +777,13 @@ double SwarmLocalizationSolver::solve() {
 
     if (!has_new_keyframe)
         return -1;
-
+    enable_to_init = false;
     estimate_observability();
+
+    if (finish_init && !enable_to_init) {
+        ROS_WARN("Observability not meet now. set finish init to false!!!");
+        finish_init = false;
+    }
 
     // if (!finish_init) {
     //     //Use da initer to initial the system
@@ -1244,17 +1250,25 @@ void SwarmLocalizationSolver::cutting_edges() {
                 _nf.enabled_distance[_id2] = false;
                 total_distance_count += 1;
                 if ((moved_nodes.find(_id) != moved_nodes.end() ||
-                    moved_nodes.find(_id2) != moved_nodes.end())) {                    
-                    if( sf.has_node(_id2) && 
+                    moved_nodes.find(_id2) != moved_nodes.end())) {      
+                    if (!sf.has_node(_id2) || !sf.id2nodeframe[_id2].has_distance_to(_id)) {
+                        _nf.enabled_distance[_id2] = false;
+                    } else if( sf.has_node(_id2) && 
                         (sf.id2nodeframe[_id2].enabled_distance.find(_id) == sf.id2nodeframe[_id2].enabled_distance.end() || !sf.id2nodeframe[_id2].enabled_distance[_id])) {
-                        //ROS_INFO("Merging distanc %3.2f and %3.2f to %3.2f", 
-                        //    _nf.dis_map[_id2],
-                        //    sf.id2nodeframe[_id2].dis_map[_id],
-                        //    (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0
-                        //);
-                        _nf.dis_map[_id2] = (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0;
-                        _nf.enabled_distance[_id2] = true;
-                        distance_count += 1;
+                        double dis1 = _nf.dis_map[_id2];
+                        double dis2 = sf.id2nodeframe[_id2].dis_map[_id];
+                        
+                        if (fabs(dis1-dis2) > DISTANCE_CROSS_THRESS) {
+                            _nf.enabled_distance[_id2] = false;
+                        } else {
+                            // ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
+                            //     _id, _id2,
+                            //     TSShort(_nf.ts),
+                            //     dis1, dis2, (dis1+dis2)/2.0);
+                            _nf.dis_map[_id2] = (dis1+dis2)/2.0;
+                            _nf.enabled_distance[_id2] = true;
+                            distance_count += 1;
+                        }
                     }
                 }
             }
@@ -1590,8 +1604,10 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
         if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw|| distance > loop_outlier_threshold_distance) {
-            ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Delete this loop", 
-                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
+            ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f ERR P%3.2f Y%3.2f. Delete this loop", 
+                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
+                new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z(),
+                dpose_err.pos().norm(), dpose_err.yaw()*57.3);
             return -1;
         }
     }
@@ -1666,7 +1682,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
         if (ret == -1) {
-            outlier_loops.push_back(i);
+            // outlier_loops.push_back(i);
         }
     }
 
@@ -1891,7 +1907,9 @@ void SwarmLocalizationSolver::generate_cgraph() {
         //	style=filled;
         //   color=lightgrey;
         // label = "process #1";
-        sprintf(node_name, "SwarmFrame %d", TSShort(sf.ts));
+        auto t = ros::Time();
+        t.fromNSec(sf.ts);
+        sprintf(node_name, "SwarmFrame %f", t.toSec());
         agattrsym (sub_graph, "label");
         agset (sub_graph, "label", node_name);
 
@@ -1931,7 +1949,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
                             Swarm::Pose(pose_win[pose_win.size()-2], true), 
                             Swarm::Pose(pose_win.back(), true)
                         );
-                        sprintf(edgename, "VIO:DP [%3.2f,%3.2f,%3.2f] DY %4.3f", dp.pos().x(), dp.pos().y(), dp.pos().z(),
+                        sprintf(edgename, "VIO:RP:[%3.2f,%3.2f,%3.2f],%4.3fdeg", dp.pos().x(), dp.pos().y(), dp.pos().z(),
                             dp.yaw()*57.3);
                         agset(edge, "label", edgename);
 
@@ -1957,6 +1975,20 @@ void SwarmLocalizationSolver::generate_cgraph() {
                 agattrsym (edge, "label");
                 sprintf(edgename, "Detected");
                 agset(edge, "label", edgename);
+            }
+
+            for (auto & it: nf.dis_map) {
+                int _idj = it.first;
+                if(sf.node_id_list.find(_idj) != sf.node_id_list.end() && nf.enabled_distance.at(_idj) && !nf.distance_is_outlier(_idj)) {
+                    auto _ida = nf.id;
+                    auto node1 = AGNodes[ts][_ida];
+                    auto node2 = AGNodes[ts][_idj];
+
+                    auto edge = agedge(g, node1, node2, "Dis",1);
+                    agattrsym (edge, "label");
+                    sprintf(edgename, "Dis %3.2f", it.second);
+                    agset(edge, "label", edgename);
+                }
             }
         }
     }
