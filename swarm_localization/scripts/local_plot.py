@@ -84,24 +84,26 @@ def read_pose_swarm_frame(bag, topic, _id, t0):
     return ret
 
 # def read_distance_swarm_frame(bag, topic, _id, to)
-def read_distances_swarm_frame(bag, topic, t0, main_id):
+def read_distances_swarm_frame(bag, topic, t0):
     distances = {
     }
     ts = []
     print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         for node in msg.node_frames:
-            if node.id == main_id:
-                for i in range(len(node.dismap_ids)):
-                    _id = node.dismap_ids[i]
-                    _dis = node.dismap_dists[i]
-                    if not (_id in distances):
-                        distances[_id] = {
-                            "t" : [],
-                            "dis" : []
-                        }
-                    distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
-                    distances[_id]["dis"].append(_dis)
+            _ida = node.id
+            if not (_ida in distances):
+                distances[_ida] = {}
+            for i in range(len(node.dismap_ids)):
+                _id = node.dismap_ids[i]
+                _dis = node.dismap_dists[i]
+                if not (_id in distances[_ida]):
+                    distances[_ida][_id] = {
+                        "t": [],
+                        "dis": []
+                    }
+                distances[_ida][_id]["t"].append(msg.header.stamp.to_sec() - t0)
+                distances[_ida][_id]["dis"].append(_dis)
     return distances
 
 def read_distances_remote_nodes(bag, topic, t0, main_id):
@@ -301,7 +303,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
         else:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            #poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
 
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
@@ -309,7 +311,8 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     # detections = read_detections(bag, t0, "/swarm_drones/node_detected")
     detections = read_detections_raw(bag, t0)
-    distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
+    # distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
+    distances = read_distances_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
     bag.close()
     if groundtruth:
         fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
@@ -330,10 +333,11 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
-        poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset, 0, 0])
-        poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_path[i]["pos"]) + fused_offset
-        poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
-        poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
+        if i in poses_path:
+            poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset, 0, 0])
+            poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_path[i]["pos"]) + fused_offset
+            poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
+            poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
     for i in nodes:
         if groundtruth:
@@ -349,18 +353,22 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     if groundtruth:
-        return poses, poses_fused, poses_vo, poses_path, loops, detections, distances
+        return poses, poses_fused, poses_vo, poses_path, loops, detections, distances, t0
     else:
-        return poses_fused, poses_vo, poses_path, loops, detections, distances
+        return poses_fused, poses_vo, poses_path, loops, detections, distances, t0
 
-def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, t_calib = {1:0, 2:0}, groundtruth = True):
+def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, groundtruth = True, use_offline=False, output_path="/home/xuhao/output/", id_map = None):
     fig = plt.figure("Traj2", figsize=(6, 6))
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
-    
+    if id_map is None:
+        id_map = {}
+        for i in nodes:
+            id_map[i] = i
+
     for i in nodes:
         # ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f" Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate {i}")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate {id_map[i]}")
     
     ax.set_xlabel('$X$')
     ax.set_ylabel('$Y$')
@@ -370,16 +378,16 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     quivers = []
     quivers_det = []
     for loop in loops:
-        posa_ = poses_path[loop["id_a"]]["pos_func"](loop["ts_a"])
-        posb_ = poses_path[loop["id_b"]]["pos_func"](loop["ts_b"])
+        posa_ = poses_fused[loop["id_a"]]["pos_func"](loop["ts_a"])
+        posb_ = poses_fused[loop["id_b"]]["pos_func"](loop["ts_b"])
         if norm(loop["dpos"]) < 2.0 and norm(posb_-posa_) < 2.0:
             quivers.append([posa_[0], posa_[1], posa_[2], posb_[0]-posa_[0], posb_[1]-posa_[1], posb_[2]-posa_[2]])
             #quivers.append([posa_[0], posa_[1], posa_[2], loop["dpos"][0], loop["dpos"][1], loop["dpos"][2]])
 
     
     for det in detections:
-        posa_ = poses_path[det["id_a"]]["pos_func"](det["ts"])
-        yawa_ = poses_path[det["id_a"]]["ypr_func"](det["ts"])[0]
+        posa_ = poses_fused[det["id_a"]]["pos_func"](det["ts"])
+        yawa_ = poses_fused[det["id_a"]]["ypr_func"](det["ts"])[0]
         dpos = yaw_rotate_vec(yawa_, det["dpos"]/det["inv_dep"])
         quivers_det.append([posa_[0], posa_[1], posa_[2], dpos[0], dpos[1], dpos[2]])
     
@@ -391,42 +399,44 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     # c = np.concatenate((c, np.repeat(c, 2)))
     # c = plt.cm.hsv(c)
 
-    step = 2
+    step = 10
     if len(quivers) > 0:   
         ax.quiver(quivers[::step,0], quivers[::step,1], quivers[::step,2], quivers[::step,3], quivers[::step,4], quivers[::step,5], 
-            arrow_length_ratio=0.1, color="green",linewidths=1.0)
+            arrow_length_ratio=0.1, color="black",linewidths=1.0, label="Map-based edges")
 
-    step_det = 10
+    step_det = 20
     if len(quivers_det) > 0:   
         ax.quiver(quivers_det[::step_det,0], quivers_det[::step_det,1], quivers_det[::step_det,2], quivers_det[::step_det,3],
             quivers_det[::step_det,4], quivers_det[::step_det,5], 
-            arrow_length_ratio=0.1, color="red",linewidths=1.0)
+            arrow_length_ratio=0.1, color="gray",linewidths=1.0, label="Visual detection edges")
 
     plt.legend()
-    plt.savefig("/home/xuhao/output/Traj2.png")
+    plt.savefig(output_path+"Traj2.pdf")
 
     #Plot Fused Vs GT 3D
     fig = plt.figure("FusedVsGT3D")
     # fig.suptitle("Fused Vs GT 3D")
     for k in range(len(nodes)):
         i = nodes[k]
+        _id = id_map[i]
+
         ax = fig.add_subplot(1, len(nodes), k+1, projection='3d')
-        ax.set_title(f"Traj {i}, length: {poses_length(poses_fused[i]):3.3f}")
+        ax.set_title(f"Traj {_id}, length: {poses_length(poses_fused[i]):3.3f}")
         if groundtruth:
-            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Ground Truth ${i}$")
-        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate ${i}$")
+            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1],poses[i]["pos"][:,2], label=f"Ground Truth ${_id}$")
+        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1],poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${_id}$")
+        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1],poses_fused[i]["pos"][:,2], label=f"Estimate ${_id}$")
         
         plt.legend()
         ax.set_xlabel('$X$')
         ax.set_ylabel('$Y$')
         ax.set_zlabel('$Z$')
-    plt.savefig("/home/xuhao/output/FusedVsGT3D.pdf")
+    plt.savefig(output_path+"FusedVsGT3D.pdf")
 
-    fig = plt.figure("Fused Multi 2d")
+    fig = plt.figure("Fused Multi 2d", figsize=(6, 6))
     plt.gca().set_aspect('equal')
     
-    step_det = 10
+    step_det = 1
     qview_width = 0.9
     if len(quivers) > 0:   
         for i in range(0,len(quivers),step_det):
@@ -436,77 +446,95 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
                 plt.plot(xs, ys, color="black", label="Map-based edges", linewidth=qview_width)
             else:
                 plt.plot(xs, ys, color="black", linewidth=qview_width)
-    step_det = 10
+    step_det = 5
     if len(quivers_det) > 0: 
         for i in range(0,len(quivers_det),step_det):
             xs = [quivers_det[i,0],quivers_det[i,0]+quivers_det[i,3]]
             ys = [quivers_det[i,1], quivers_det[i,1]+quivers_det[i,4]]
             if i == 0:
-                plt.plot(xs, ys, color="gray", label="Detection", linewidth=qview_width)
+                plt.plot(xs, ys, color="gray", label="Visual detection edges", linewidth=qview_width)
             else:
                 plt.plot(xs, ys, color="gray", linewidth=qview_width)
     for i in nodes:
-        plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation {i}")
-        #plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
+        _id = id_map[i]
+
+        if use_offline:
+            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline{_id}")
+        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Online {_id}")
     for i in nodes:
-        # plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${i}$", alpha=0.7)
+        _id = id_map[i]
+        
+        plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${_id}$", alpha=0.7)
         final_vio = norm(poses_vo[i]["pos"][-1,:])
-        final_path = norm(poses_path[i]["pos"][-1,:])
+        if use_offline:
+            final_path = norm(poses_path[i]["pos"][-1,:])
+        else:
+            final_path = norm(poses_fused[i]["pos"][-1,:])
+            
         total_len = poses_length(poses_fused[i])
-        plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {i}")
+        if groundtruth:
+            plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {_id}")
         
         print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}%")
     
     plt.legend()
     plt.grid()
-    plt.savefig("/home/xuhao/output/fused2d.pdf")
+    plt.savefig(output_path+"fused2d.pdf")
 
-    fig = plt.figure("Fused Vs GT 2D")
-    fig.suptitle("Fused Vs GT 2D")
     for k in range(len(nodes)):
+        # fig.suptitle("Fused Vs GT 2D")
         i = nodes[k]
-        ax = fig.add_subplot(1, len(nodes), k+1)
+        _id = id_map[i]
+
+        fig = plt.figure(f"Fused Vs GT 2D {i}", figsize=(6, 6))
+        plt.gca().set_aspect('equal')
+
         if groundtruth:
-            ax.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {i}")
-        ax.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {i}")
-        # ax.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
-        ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimation {i}")
-        # ax.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Fused Oline{i}")
+            plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {_id}")
+        plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {_id}")
+        # plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
+        if i in poses_path:
+            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline {_id}")
+        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimation {_id}")
         plt.grid()
+        plt.ylabel('$Y$')
+        plt.xlabel('$X$')
         plt.legend()
 
-    plt.savefig("/home/xuhao/output/fusedvsgt2d.pdf")
+        plt.savefig(output_path+f"fusedvsgt2d_{i}.pdf")
+
     for i in nodes:
+        _id = id_map[i]
         fig = plt.figure(f"Drone {i} fused Vs GT 1D")
         #fig.suptitle(f"Drone {i} fused Vs GT 1D")
         ax1, ax2, ax3 = fig.subplots(3, 1)
 
         t_ = poses_fused[i]["t"]
         if groundtruth:
-            pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"] + t_calib[i])
+            pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"])
         pos_fused = poses_fused[i]["pos"]
         _i = str(i) 
         if groundtruth:
             ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${i}$")
         # ax1.plot(poses_path[i]["t"], poses_path[i]["pos"][:,0], '.', label=f"Fused Offline Traj{i}")
-        ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{i}")
-        ax1.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,0], label=f"Estimate {i}")
+        ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{_id}")
+        ax1.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,0], label=f"Estimate {_id}")
         ax1.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax1.set_ylabel("x")
 
         if groundtruth:
             ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${i}$")
         #ax2.plot(poses_path[i]["t"], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
-        ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{i}")
-        ax2.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,1], label=f"Estimate {i}")
+        ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{_id}")
+        ax2.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,1], label=f"Estimate {_id}")
         ax2.tick_params( axis='x', which='both', bottom=False, top=False, labelbottom=False) 
         ax2.set_ylabel("y")
 
         if groundtruth:
             ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
         #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
-        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${i}$")
-        ax3.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,2], label=f"Estimate {i}")
+        ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${_id}$")
+        ax3.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,2], label=f"Estimate {_id}")
         ax3.set_ylabel("z")
         ax3.set_xlabel("t")
 
@@ -516,7 +544,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1.grid()
         ax2.grid()
         ax3.grid()
-        plt.savefig(f"/home/xuhao/output/est_by_t{i}.png")
+        plt.savefig(output_path+f"est_by_t{i}.png")
 
 def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0, 2:0}):
     for i in nodes:
@@ -579,70 +607,74 @@ def plot_fused_diff(poses, poses_fused, poses_vo, nodes = [1, 2], t_calib = {1:0
         
         print(f"Best RMSE for node {i} p {rmse_best_dt_pos}: {rmse_min_pos} v {rmse_best_dt_vel}: {rmse_min_vel}")
 
-def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, main_id, nodes,  t_calib = {1:0, 2:0, 5:0}):
+def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, nodes, is_show=False, t_calib = {1:0, 2:0, 5:0}):
+    for main_id in nodes:
+        for i in nodes:
+            if i == main_id:
+                continue
+            t_ = np.array(distances[i][main_id]["t"])
+            pos_gt = poses[i]["pos_func"](t_+t_calib[i])
+            pos_fused = poses_fused[i]["pos_func"](t_)
 
-    for i in nodes:
-        if i == main_id:
-            continue
-        fig = plt.figure(f"Distance {i}")
-        fig.suptitle(f"Distance {i}")
-        ax1, ax2, ax3 = fig.subplots(3, 1)
-        t_ = np.array(distances[i]["t"])
-        pos_gt = poses[i]["pos_func"](t_+t_calib[i])
-        pos_fused = poses_fused[i]["pos_func"](t_)
+            main_pos_gt = poses[main_id]["pos_func"](t_+t_calib[main_id])
+            main_pos_fused = poses_fused[main_id]["pos_func"](t_)
 
-        main_pos_gt = poses[main_id]["pos_func"](t_+t_calib[main_id])
-        main_pos_fused = poses_fused[main_id]["pos_func"](t_)
+            #pos_vo = poses_vo[i]["pos"]
+            #pos_path = poses_path[i]["pos"](t_)
+            
+            dis_raw = distances[i][main_id]["dis"]
+            dis_gt = norm(pos_gt  - main_pos_gt, axis=1)
+            dis_fused = norm(pos_fused  - main_pos_fused, axis=1)
+            #dis_vo = norm(pos_path  - main_pos_path, axis=0)
 
-        #pos_vo = poses_vo[i]["pos"]
-        #pos_path = poses_path[i]["pos"](t_)
+            if is_show:
+                fig = plt.figure(f"Distance {i}->{main_id}")
+                fig.suptitle(f"Distance {i}->{main_id}")
+                ax1, ax2, ax3 = fig.subplots(3, 1)
+
+                ax1.plot(t_, dis_gt, label="Distance GT")
+                ax1.plot(t_, dis_fused,label="Distance Fused")
+                ax1.plot(t_, dis_raw, ".", label="Distance UWB")
+
+
+                ax2.plot(t_, dis_gt-dis_raw, ".", label="Distance Error of UWB")
+                ax2.plot(t_, dis_gt-dis_fused, label="Distance Error of Fused")
+
+                ax3.plot(dis_gt, dis_raw,'+',label="GT VS UWB")
+                ax1.legend()
+                ax1.grid()
+                
+                ax2.legend()
+                ax2.grid()
+                
+                ax3.legend()
+                ax3.grid()
+                plt.show()
+
+
+            print(f"Distance {i}->{main_id} RMSE {RMSE(dis_raw, dis_gt)}")
+            # z = np.polyfit(dis_gt, dis_raw, 1)
+            z = np.polyfit(dis_raw, dis_gt, 1)
+            print(f"Fit {z[1]}, {z[0]}")
+            dis_calibed = z[1]+z[0]*np.array(dis_raw)
+            err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
+            err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
+
+            mu, std = stats.norm.fit(err_calibed)
+            title = "mu = %.2f,  std = %.2f" % (mu, std)
+            print(title)
+
+            if is_show:
+                plt.figure(f"Dist Hist {i}->{main_id}")
+                plt.hist(err_calibed, 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
+                xmin, xmax = plt.xlim()
+                x = np.linspace(xmin, xmax, 100)
+                p = stats.norm.pdf(x, mu, std)
+                plt.plot(x, p, 'k', linewidth=2)
+                plt.title(title)
+                plt.show()
+
         
-        dis_raw = distances[i]["dis"]
-        dis_gt = norm(pos_gt  - main_pos_gt, axis=1)
-        dis_fused = norm(pos_fused  - main_pos_fused, axis=1)
-        #dis_vo = norm(pos_path  - main_pos_path, axis=0)
-
-        ax1.plot(t_, dis_gt, label="Distance GT")
-        ax1.plot(t_, dis_fused,label="Distance Fused")
-        ax1.plot(t_, dis_raw, ".", label="Distance UWB")
-
-
-        ax2.plot(t_, dis_gt-dis_raw, ".", label="Distance Error of UWB")
-        ax2.plot(t_, dis_gt-dis_fused, label="Distance Error of Fused")
-
-        ax3.plot(dis_gt, dis_raw,'+',label="GT VS UWB")
-
-        print(f"Distce RMSE {RMSE(dis_raw, dis_gt)}")
-        # z = np.polyfit(dis_gt, dis_raw, 1)
-        z = np.polyfit(dis_raw, dis_gt, 1)
-        print(f"Fit {z[0]}, {z[1]}")
-        ax1.legend()
-        ax1.grid()
-        
-        ax2.legend()
-        ax2.grid()
-        
-        ax3.legend()
-        ax3.grid()
-        plt.show()
-
-        dis_calibed = 0.257+0.734*np.array(dis_raw)
-        dis_calibed = np.array(dis_raw) - 0.257
-        err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
-        err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
-
-        plt.figure(f"Dist Hist {i}")
-        plt.hist(err_calibed, 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
-        mu, std = stats.norm.fit(err_calibed)
-        xmin, xmax = plt.xlim()
-        x = np.linspace(xmin, xmax, 100)
-        p = stats.norm.pdf(x, mu, std)
-        plt.plot(x, p, 'k', linewidth=2)
-        title = "mu = %.2f,  std = %.2f" % (mu, std)
-        plt.title(title)
-        plt.show()
-
-    
 
 def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, t_calib = {1:0, 2:0}, groundtruth = True):
     ts = poses_fused[main_id]["t"]
@@ -776,7 +808,8 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         pos_fused = poses_fused[i]["pos"]
         yaw_fused = poses_fused[i]["ypr"][:,0]
         pos_vo = poses_vo[i]["pos"]
-        pos_path = poses_path[i]["pos"]
+        if i in poses_path:
+            pos_path = poses_path[i]["pos"]
         yaw_gt = poses[i]["ypr_func"](poses_fused[i]["t"]+t_calib[i])[:,0]
         yaw_vo = poses_vo[i]["ypr"][:,0]
         _i = str(i) 
@@ -817,11 +850,12 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         rmse_yaw_vo = RMSE(yaw_gt, yaw_vo)
 
 
-        pos_gt =  poses[i]["pos_func"](poses_path[i]["t"]+t_calib[i])
-        
-        rmse_path_x = RMSE(pos_path[:,0] , pos_gt[:,0])
-        rmse_path_y = RMSE(pos_path[:,1] , pos_gt[:,1])
-        rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
+        if i in poses_path:
+            pos_gt =  poses[i]["pos_func"](poses_path[i]["t"]+t_calib[i])
+            
+            rmse_path_x = RMSE(pos_path[:,0] , pos_gt[:,0])
+            rmse_path_y = RMSE(pos_path[:,1] , pos_gt[:,1])
+            rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
         
         # label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
         # ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
@@ -833,7 +867,8 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1, t
         # ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
         print(f"Drone {i} estimated by {main_id}")
         print(f"ATE Fused Pos{ate_fused:3.3f} Yaw {rmse_yaw_fused*180/pi:3.3f} deg RMSE Fused Online {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}")
-        print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
+        if i in poses_path:
+            print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
         print(f"ATE VO {ate_vo:3.3f}  Yaw {rmse_yaw_vo*180/pi:3.3f} deg RMSE VO {rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}")
 
         ax3.legend()
