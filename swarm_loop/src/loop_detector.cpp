@@ -724,10 +724,12 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             );
         } else {
             ROS_INFO("Too less common feature %ld, will give up", new_norm_2d.size());
+            success = false;
         }
     } 
     else {
         ROS_INFO("compute_correspond_features failed");
+        success = false;
     }
 
     if (enable_visualize) {

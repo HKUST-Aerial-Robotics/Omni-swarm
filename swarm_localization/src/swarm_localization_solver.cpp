@@ -1584,7 +1584,6 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
 
-
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
 
@@ -1610,8 +1609,15 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
                 dpose_err.pos().norm(), dpose_err.yaw()*57.3);
             return -1;
         }
+    } else {
+        if (distance > loop_outlier_threshold_distance) {
+                ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f. Delete this loop", 
+                    _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
+                    new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z());
+                return -1;
+        }
     }
-
+    
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
     return 1;
