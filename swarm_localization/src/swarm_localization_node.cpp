@@ -402,8 +402,8 @@ private:
                     }
                     pub_fused_relative(_sfs, sf.stamp);
                 } else {
-                    // ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
-                    ROS_WARN("Unable to predict swarm");
+                    ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
+                    //ROS_WARN("Unable to predict swarm");
                 }
                 
                 high_resolution_clock::time_point t2 = high_resolution_clock::now();
