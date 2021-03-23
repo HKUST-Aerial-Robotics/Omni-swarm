@@ -384,12 +384,35 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame& sf) const {
 }
 
 void SwarmLocalizationSolver::outlier_rejection_frame(SwarmFrame & sf) const {
+    printf("\n");
+    ROS_INFO("========================New KF %d details=========================\n", TSShort(sf.ts));
+
     if (!finish_init) {
+        for (auto &it : sf.id2nodeframe) {
+            auto id = it.first;
+            auto & _nf = it.second;
+            int64_t ts =  sf.ts;
+            printf("ID %d \n", id);
+            if (_nf.dis_map.size() > 0) {
+                printf("DISTANCES ");
+                for (auto itj : _nf.dis_map) {
+                    int _idj = itj.first;
+                    double dis = itj.second;
+                    if (sf.has_node(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                        if ( !enable_distance) {
+                            printf("is outlier or distance is disable");
+                            _nf.outlier_distance[_idj] = true;
+                        } else {
+                            _nf.outlier_distance[_idj] = false;
+                        }
+                    }
+                }
+            }
+            printf("\n");
+        }
         return;
     }
     
-    printf("\n");
-    ROS_INFO("========================New KF %d details=========================\n", TSShort(sf.ts));
 
     const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
 
@@ -807,6 +830,7 @@ double SwarmLocalizationSolver::solve() {
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
+                generate_cgraph();
                 last_drone_num = drone_num;
                 ROS_INFO("Finish init\n");
             }
@@ -1594,6 +1618,8 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     loc_ret.self_pose_a = _nf_a.pose();
     loc_ret.self_pose_b = _nf_b.pose();
     loc_ret.relative_pose = new_loop;
+
+    ROS_INFO("Loop %d(%d)->%d(%d) distance %f,%f/%f", _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), distance, new_loop.pos().norm(), loop_outlier_threshold_distance);
     
     if (finish_init) {
         const double * posea = est_poses_tsid.at(_nf_a.ts).at(_ida);
@@ -1985,7 +2011,8 @@ void SwarmLocalizationSolver::generate_cgraph() {
 
             for (auto & it: nf.dis_map) {
                 int _idj = it.first;
-                if(sf.node_id_list.find(_idj) != sf.node_id_list.end() && nf.enabled_distance.at(_idj) && !nf.distance_is_outlier(_idj)) {
+                if(sf.node_id_list.find(_idj) != sf.node_id_list.end() &&
+                    nf.distance_available(_idj)) {
                     auto _ida = nf.id;
                     auto node1 = AGNodes[ts][_ida];
                     auto node2 = AGNodes[ts][_idj];

@@ -382,6 +382,12 @@ class NodeFrame {
             return false;
         }
 
+        bool distance_available(int _idj) const {
+            return has_distance_to(_idj) && 
+                enabled_distance.find(_idj) != enabled_distance.end() 
+                && enabled_distance.at(_idj) && !distance_is_outlier(_idj);
+        }
+
         Pose pose() const {
             //If has vo, return vo position
             if (!is_static) {
