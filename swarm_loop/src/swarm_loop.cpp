@@ -163,6 +163,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
     nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
     nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
+    nh.param<int>("min_match_per_dir", MIN_MATCH_PRE_DIR, 15);
     nh.param<int>("jpg_quality", JPG_QUALITY, 50);
     nh.param<int>("accept_min_3d_pts", ACCEPT_MIN_3D_PTS, 50);
     nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);

@@ -35,6 +35,7 @@
             output_path: /root/output/
             send_all_features: false
             lower_cam_as_main: false
+            min_match_per_dir: 5
         </rosparam>
         <param name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_tx2_fp16.trt" type="string" />
         <param name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" type="string" />

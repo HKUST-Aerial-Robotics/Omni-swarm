@@ -13,6 +13,7 @@ double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as s
 double MIN_MOVEMENT_KEYFRAME;
 int MATCH_INDEX_DIST;
 int ACCEPT_MIN_3D_PTS;
+int MIN_MATCH_PRE_DIR;
 std::string OUTPUT_PATH;
 bool IS_PC_REPLAY;
 bool SEND_ALL_FEATURES;
