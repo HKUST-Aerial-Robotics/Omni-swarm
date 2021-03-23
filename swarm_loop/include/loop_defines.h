@@ -77,7 +77,7 @@ extern int ACCEPT_MIN_3D_PTS;
 
 extern int MIN_DIRECTION_LOOP;
 
-#define MIN_MATCH_PRE_DIR 1
+extern int MIN_MATCH_PRE_DIR;
 
 extern double TRIANGLE_THRES;
 
