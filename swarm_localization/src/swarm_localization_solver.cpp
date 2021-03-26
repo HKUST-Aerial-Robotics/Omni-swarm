@@ -52,7 +52,7 @@ using namespace std::chrono;
 #define RAND_INIT_XY 5
 #define RAND_INIT_Z 1
 
-#define INIT_TRIAL 5
+#define INIT_TRIAL 3
 
 #define BEGIN_MIN_LOOP_DT 100.0
 
@@ -827,6 +827,7 @@ double SwarmLocalizationSolver::solve() {
     if (!finish_init) {
         //Init procedure
         if (enable_to_init) {
+            // generate_cgraph();
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
@@ -1378,19 +1379,31 @@ void SwarmLocalizationSolver::estimate_observability() {
     }
 
     std::set<int> _loop_observable_set = loop_observable_set(loop_edges);
-    
-    if (sf_sld_win.size() > SINGLE_DRONE_SFS_THRES && all_nodes.size() == 1) {
+
+    std::set<int> _odometry_observable_set;
+
+    for (auto _id : all_nodes) {
+        for (const SwarmFrame & _sf : sf_sld_win ) {
+            if (_sf.has_node(_id) && _sf.id2nodeframe.at(_id).vo_available ) {
+                _odometry_observable_set.insert(_id);
+                break;
+            }
+        }
+    }
+
+    if (sf_sld_win.size() > SINGLE_DRONE_SFS_THRES && all_nodes.size() == 1 && _odometry_observable_set.size() == all_nodes.size()) {
         //Has 3 KF and 1 big
         enable_to_init = true;
         ROS_INFO("Solve with single drone");
     }
 
     if (!enable_to_init) {
-
-        if (_loop_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
-            ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld. Swarm Frame Sliding Window:", 
+        if (_loop_observable_set.size() < all_nodes.size() || _odometry_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
+            ROS_INFO("Can't initial with loop only, the OB/VO/ALL size %ld/%ld/%ld. Swarm Frame Sliding Window: %ld", 
                 _loop_observable_set.size(),
-                all_nodes.size()
+                _odometry_observable_set.size(),
+                all_nodes.size(),
+                sf_sld_win.size()
             );
 
             for (auto & sf : sf_sld_win) {
@@ -1399,7 +1412,12 @@ void SwarmLocalizationSolver::estimate_observability() {
             }
 
         } else {
-            ROS_INFO("Solve with loop");
+            ROS_INFO("Solve with loop OB/VO/ALL size %ld/%ld/%ld. Swarm Frame Sliding Window: %ld", 
+                _loop_observable_set.size(),
+                _odometry_observable_set.size(),
+                all_nodes.size(),
+                sf_sld_win.size()
+            );
             enable_to_init = true;
         }
     }

@@ -6,9 +6,9 @@
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
-            force_freq: 0.5
+            force_freq: 0.3
             max_accept_cost: 100
-            max_keyframe_num: 20
+            max_keyframe_num: 10
             min_keyframe_num: 1
             thread_num: 1
             min_kf_movement : 0.5
@@ -23,7 +23,7 @@
             VO_METER_STD_TRANSLATION: 0.05
             VO_METER_STD_Z: 0.05
             VO_METER_STD_ANGLE: 0.003
-            DISTANCE_STD: 0.07
+            DISTANCE_STD: 0.15
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12
             
