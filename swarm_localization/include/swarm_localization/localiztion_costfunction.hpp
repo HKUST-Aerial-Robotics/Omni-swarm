@@ -377,7 +377,7 @@ struct SwarmFrameError {
     inline int nodeframe_distance_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
         for (const auto &  it : _nf.dis_map) {
             int _idj = it.first;
-            if (has_id(_idj) && _nf.enabled_distance.at(_idj) && !_nf.distance_is_outlier(_idj)) {
+            if (has_id(_idj) && _nf.distance_available(_idj)) {
                 T _dis = T(it.second);
                 //Less accuracy on distance
                 _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_STD))*ERROR_NORMLIZED;
@@ -398,7 +398,7 @@ struct SwarmFrameError {
                 if (_nf.dists_available) {
                     // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
                     for (auto it : _nf.dis_map) {
-                        if (has_id(it.first) && _nf.enabled_distance.at(it.first) && !_nf.distance_is_outlier(it.first)) 
+                        if (has_id(it.first) && _nf.distance_available(it.first)) 
                             res_count++;
                     }
                 }

@@ -827,7 +827,7 @@ double SwarmLocalizationSolver::solve() {
     if (!finish_init) {
         //Init procedure
         if (enable_to_init) {
-            // generate_cgraph();
+            //generate_cgraph();
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
@@ -1283,13 +1283,13 @@ void SwarmLocalizationSolver::cutting_edges() {
                         double dis1 = _nf.dis_map[_id2];
                         double dis2 = sf.id2nodeframe[_id2].dis_map[_id];
                         
-                        if (fabs(dis1-dis2) > DISTANCE_CROSS_THRESS) {
+                        if (fabs(dis1-dis2) > DISTANCE_CROSS_THRESS && false) {
                             _nf.enabled_distance[_id2] = false;
                         } else {
-                            // ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
-                            //     _id, _id2,
-                            //     TSShort(_nf.ts),
-                            //     dis1, dis2, (dis1+dis2)/2.0);
+                            ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
+                                 _id, _id2,
+                                 TSShort(_nf.ts),
+                                 dis1, dis2, (dis1+dis2)/2.0);
                             _nf.dis_map[_id2] = (dis1+dis2)/2.0;
                             _nf.enabled_distance[_id2] = true;
                             distance_count += 1;
@@ -1637,8 +1637,7 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     loc_ret.self_pose_b = _nf_b.pose();
     loc_ret.relative_pose = new_loop;
 
-    ROS_INFO("Loop %d(%d)->%d(%d) distance %f,%f/%f", _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), distance, new_loop.pos().norm(), loop_outlier_threshold_distance);
-    
+    // ROS_INFO("Loop %d(%d)->%d(%d) distance %f,%f/%f", _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), distance, new_loop.pos().norm(), loop_outlier_threshold_distance);
     if (finish_init) {
         const double * posea = est_poses_tsid.at(_nf_a.ts).at(_ida);
         const double * poseb = est_poses_tsid.at(_nf_b.ts).at(_idb);
