@@ -365,6 +365,7 @@ class NodeFrame {
         bool distance_is_outlier(int idj) const {
             //If distance not exist or is outlier, return true
             if (outlier_distance.find(idj) != outlier_distance.end() && outlier_distance.at(idj)) {
+                // ROS_INFO("%d<->%d distance_i?s_outlier! %d");
                 return true;
             }
 
@@ -383,6 +384,20 @@ class NodeFrame {
         }
 
         bool distance_available(int _idj) const {
+            if (_idj == id) {
+                return false;
+            }
+            // bool enab_distance = false;
+            // if (enabled_distance.find(_idj) != enabled_distance.end()) {
+            //     enab_distance = enabled_distance.at(_idj);
+            // }
+            // ROS_INFO("%d<->%d@%d has_distance_to %d enabled_distance.find() %d enabled_distance %d !distance_is_outlier %d",
+            //     id, _idj,
+            //     TSShort(ts),
+            //     has_distance_to(_idj),
+            //     enabled_distance.find(_idj) != enabled_distance.end(),
+            //     enab_distance, !distance_is_outlier(_idj)
+            // );
             return has_distance_to(_idj) && 
                 enabled_distance.find(_idj) != enabled_distance.end() 
                 && enabled_distance.at(_idj) && !distance_is_outlier(_idj);

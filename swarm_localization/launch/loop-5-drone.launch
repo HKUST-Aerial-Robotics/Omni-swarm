@@ -36,7 +36,7 @@
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
             publish_full_path: false
-            is_pc_replay: true
+            is_pc_replay: false
             kf_use_all_nodes: true
 
             #OUTLIER REJECTION
