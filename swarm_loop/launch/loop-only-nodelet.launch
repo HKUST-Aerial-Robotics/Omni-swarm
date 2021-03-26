@@ -22,7 +22,7 @@
             min_movement_keyframe: 0.1
             enable_pub_remote_img: false
             enable_sub_remote_img: false
-            max_freq: 0.5
+            max_freq: 0.3
             accept_min_3d_pts: 30
             match_index_dist: 5
             recv_msg_duration: 0.5
