@@ -1,0 +1,6 @@
+[submodule "swarm_localization/DataAnalysis/evaluate_ate_scale"]
+	path = swarm_localization/DataAnalysis/evaluate_ate_scale
+	url = https://github.com/raulmur/evaluate_ate_scale
+[submodule "swarm_localization/DataAnalysis/rpg_trajectory_evaluation"]
+	path = swarm_localization/DataAnalysis/rpg_trajectory_evaluation
+	url = https://github.com/uzh-rpg/rpg_trajectory_evaluation

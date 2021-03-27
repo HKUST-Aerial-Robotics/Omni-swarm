@@ -3,8 +3,9 @@
 
 using namespace nvinfer1;
 uint64_t get3DTensorVolume4(nvinfer1::Dims inputDims);
-TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name):
-    m_InputBlobName(input_blob_name) {
+
+TensorRTInferenceGeneric::TensorRTInferenceGeneric(std::string input_blob_name, int _width, int _height):
+    m_InputBlobName(input_blob_name), width(_width), height(_height){
 
 }
 
@@ -38,7 +39,7 @@ void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {
     //This function is very slow event on i7, we need to optimize it
     //But not now.
     doInference(input.data, 1);
-    printf("doInference %fms\n", inference.toc());
+    //printf("doInference %fms\n", inference.toc());
 }
 
 

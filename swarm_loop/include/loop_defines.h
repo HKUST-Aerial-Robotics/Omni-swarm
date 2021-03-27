@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <vector>
+#include <string>
 
 #define LOOP_BOW_THRES 0.015
 // #define MATCH_INDEX_DIST 1
@@ -76,12 +77,21 @@ extern int ACCEPT_MIN_3D_PTS;
 
 extern int MIN_DIRECTION_LOOP;
 
-#define MIN_MATCH_PRE_DIR 1
+extern int MIN_MATCH_PRE_DIR;
 
 extern double TRIANGLE_THRES;
 
+extern double DETECTOR_MATCH_THRES;
+
 extern bool ENABLE_LK_LOOP_DETECTION; 
 
+extern bool IS_PC_REPLAY;
+
+extern bool SEND_ALL_FEATURES;
+
+extern bool LOWER_CAM_AS_MAIN;
+
+extern std::string OUTPUT_PATH;
 class TicToc
 {
   public:

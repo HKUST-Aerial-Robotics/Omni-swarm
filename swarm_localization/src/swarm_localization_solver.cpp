@@ -32,11 +32,17 @@ using namespace std::chrono;
 // #define DEBUG_OUTPUT_NEW_KF
 // #define DEBUG_OUTPUT_DETS
 // #define DEBUG_OUTPUT_SLD_WIN
+// #define DEBUG_OUTPUT_LOOP_OUTLIER
+
+// #define DEBUG_LOOP_ONLY_INIT
+// #define DEBUG_NO_RELOCALIZATION
+#define RANDOM_DELETE_KF 
+
+#define DEBUG_OUTPUT_DETECTION_OUTLIER
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
 // #define ENABLE_REPLACE
-#define MAX_SOLVER_TIME 0.5
 
 #define NOT_MOVING_THRES 0.02
 #define NOT_MOVING_YAW 0.05
@@ -46,7 +52,7 @@ using namespace std::chrono;
 #define RAND_INIT_XY 5
 #define RAND_INIT_Z 1
 
-#define INIT_TRIAL 5
+#define INIT_TRIAL 3
 
 #define BEGIN_MIN_LOOP_DT 100.0
 
@@ -56,33 +62,44 @@ using namespace std::chrono;
 
 #define SINGLE_DRONE_SFS_THRES 3
 
-#define RANDOM_DELETE_KF 
+#define DISTANCE_CROSS_THRESS 0.15
 
 
+float VO_METER_STD_TRANSLATION;
+float VO_METER_STD_Z;
+float VO_METER_STD_ANGLE;
+float DISTANCE_STD;
 
-float VO_DRIFT_METER;
-float VO_DRIFT_METER_Z;
-float VO_ERROR_ANGLE;
-float DISTANCE_MEASURE_ERROR;
-float LOOP_COV_XY;
-float LOOP_COV_Z;
-float LOOP_YAWCOV;
-float DETECTION_SPHERE_COV;
-float DETECTION_INV_DEP_COV;
+float LOOP_POS_STD_0;
+float LOOP_YAW_STD_0;
+float LOOP_POS_STD_SLOPE;
+float LOOP_YAW_STD_SLOPE;
+
+float DETECTION_SPHERE_STD;
+float DETECTION_INV_DEP_STD;
+float DETECTION_DEP_STD;
+Eigen::Vector3d CG;
 
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
             params(_params), max_frame_number(_params.max_frame_number), min_frame_number(_params.min_frame_number),
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
+            det_dpos_thres(_params.det_dpos_thres),
             cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
             loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
             loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
+            detection_outlier_thres(_params.detection_outlier_thres),
+            detection_inv_dep_outlier_thres(_params.detection_inv_dep_outlier_thres),
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
             enable_detection_depth(_params.enable_detection_depth),
             kf_use_all_nodes(_params.kf_use_all_nodes),
-            generate_full_path(_params.generate_full_path)
+            generate_full_path(_params.generate_full_path),
+            max_solver_time(_params.max_solver_time),
+            distance_outlier_threshold(_params.distance_outlier_threshold),
+            distance_height_outlier_threshold(_params.distance_height_outlier_threshold),
+            loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance)
     {
     }
 
@@ -124,10 +141,11 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
                 Eigen::Vector3d _diff = sf.position(_id) - last_sf.position(_id);
 
                 //TODO: make it set to if last dont's have some detection and this frame has, than keyframe
-                if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+                if (_diff.norm() > min_accept_keyframe_movement || 
+                    _diff.norm() > min_accept_keyframe_movement/3 && self_nf.has_detection() ) { //here shall be some one see him or he see someone
                     ret.push_back(_id);
                     node_kf_count[_id] += 1;
-                    ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), _id, _diff.norm());
+                    ROS_INFO("SF %d is kf of %d: DIFF %3.2f  Detection %d", TSShort(sf.ts), _id, _diff.norm(), self_nf.detections());
                     return 1;
                 }
             }
@@ -136,11 +154,16 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         const NodeFrame & self_nf = sf.id2nodeframe.at(self_id);
         if (self_nf.vo_available && last_sf.has_node(self_id) && last_sf.has_odometry(self_id)) {
             Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
-            if (_diff.norm() > min_accept_keyframe_movement) { //here shall be some one see him or he see someone
+            double dt = (sf.ts - last_sf.ts)/1e9;
+            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/2 && dt > 0.2) ||
+                _diff.norm() > min_accept_keyframe_movement/3 && self_nf.has_detection()  //here shall be some one see him or he see someone
+            ) {
                 ret.push_back(self_id);
                 node_kf_count[self_id] += 1;
-                ROS_INFO("SF %d is kf of %d: DIFF %3.2f", TSShort(sf.ts), self_id, _diff.norm());
+                ROS_INFO("SF %d is kf of %d: DIFF %3.2f Detection %d", TSShort(sf.ts), self_id, _diff.norm(), self_nf.has_detection());
                 return 1;
+            } else {
+                ROS_WARN("Drone %d distance %f dt %f", _diff.norm(), dt);
             }
         }
     }
@@ -164,8 +187,8 @@ void SwarmLocalizationSolver::delete_frame_i(int i) {
             auto &_node = it.second;
             if(delete_sf.has_node(_id) && delete_sf.has_odometry(_id)) {
                 //Than make this cov bigger
-                _node.position_cov_to_last = _node.position_cov_to_last + VO_DRIFT_XYZ;
-                _node.yaw_cov_to_last = _node.yaw_cov_to_last + VO_ERROR_ANGLE;
+                _node.position_std_to_last = _node.position_std_to_last + delete_sf.id2nodeframe[_id].position_std_to_last;
+                _node.yaw_std_to_last = _node.yaw_std_to_last + delete_sf.id2nodeframe[_id].yaw_std_to_last;
             }
         }
 
@@ -232,6 +255,8 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
 
             Pose dpose = Pose::DeltaPose(last_vo, now_vo, true);
 
+            _nf.position_std_to_last = dpose.pos().norm() * VO_DRIFT_XYZ;
+
             if ( dpose.pos().norm() < NOT_MOVING_THRES && fabs(dpose.yaw()) < NOT_MOVING_YAW ) {
                 //NOT MOVING; Merging pose
                 delete _p;
@@ -265,7 +290,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame 
 }
 
 
-void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf) {
+void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf) {
     int _id = _nf.id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
@@ -291,14 +316,13 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(int64_t ts, NodeFrame &
     est_poses[ts][_id] = _p;
     est_poses2[_id][ts] = _p;
 }
-
-void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
-    if (!finish_init) {
+void SwarmLocalizationSolver::print_frame(const SwarmFrame& sf) const {
+       if (!finish_init) {
         return;
     }
     
     printf("\n");
-    ROS_INFO("=================================================\nKF %d details", TSShort(sf.ts));
+    ROS_INFO("=========================KF %d details========================\n", TSShort(sf.ts));
 
     const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
 
@@ -356,32 +380,126 @@ void SwarmLocalizationSolver::print_frame(const SwarmFrame & sf) const {
         }
 
         printf("--------------------------------------------------------------------\n\n");
+    }     
+}
+
+void SwarmLocalizationSolver::outlier_rejection_frame(SwarmFrame & sf) const {
+    printf("\n");
+    ROS_INFO("========================New KF %d details=========================\n", TSShort(sf.ts));
+
+    if (!finish_init) {
+        for (auto &it : sf.id2nodeframe) {
+            auto id = it.first;
+            auto & _nf = it.second;
+            int64_t ts =  sf.ts;
+            printf("ID %d \n", id);
+            if (_nf.dis_map.size() > 0) {
+                printf("DISTANCES ");
+                for (auto itj : _nf.dis_map) {
+                    int _idj = itj.first;
+                    double dis = itj.second;
+                    if (sf.has_node(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                        if ( !enable_distance) {
+                            printf("is outlier or distance is disable");
+                            _nf.outlier_distance[_idj] = true;
+                        } else {
+                            _nf.outlier_distance[_idj] = false;
+                        }
+                    }
+                }
+            }
+            printf("\n");
+        }
+        return;
+    }
+    
+
+    const SwarmFrame & last_sf = all_sf.at(last_kf_ts);
+
+    for (auto &it : sf.id2nodeframe) {
+        auto id = it.first;
+        auto & _nf = it.second;
+        printf("ID %d \n", id);
+        if (est_poses_idts.at(id).find(last_kf_ts) == est_poses_idts.at(id).end() ) {
+            ROS_INFO("Can't find id in last KF %d", TSShort(last_kf_ts));
+            continue;
+        }
+        double* pose_last = est_poses_idts.at(id).at(last_kf_ts);
+        if (!last_sf.has_node(id) || !last_sf.id2nodeframe.at(id).vo_available) 
+            return;
+        Pose pose_vo_last = last_sf .id2nodeframe.at(id).pose();
+        int64_t ts =  sf.ts;
+        double * pose = est_poses_idts.at(id).at(ts);
+        auto pose_vo = sf.id2nodeframe.at(id).pose();
+        auto poseest = Pose(pose, true);
+        printf("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
+                pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
+        printf("POSEST     %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
+                poseest.pos().x(), poseest.pos().y(), poseest.pos().z(), pose_vo.yaw()*57.3);
+        Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
+        Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
+        Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
+        double ang_err = ERRVOEST.yaw()*1000;
+        
+        printf("ERRVOEST(mm)       %6.5f %6.5f %6.5f ANG  %3.2f\n",
+                ERRVOEST.pos().x()*1000, ERRVOEST.pos().y()*1000, ERRVOEST.pos().z()*1000, ang_err);
+
+        printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
+                DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
+
+        printf("DPOSEST        %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
+                DposeEST.pos().x(), DposeEST.pos().y(), DposeEST.pos().z(), DposeEST.yaw()*57.3);
+
+        if (_nf.dis_map.size() > 0) {
+            printf("DISTANCES ");
+            for (auto itj : _nf.dis_map) {
+                int _idj = itj.first;
+                double dis = itj.second;
+                if (sf.has_node(_idj) && sf.id2nodeframe.at(_idj).vo_available) {
+                    if (est_poses_idts.find(_idj) == est_poses_idts.end() || est_poses_idts.at(_idj).find(ts) == est_poses_idts.at(_idj).end()) {
+                        printf("Can't find %d at %d\n", _idj, TSShort(ts));
+                        continue;
+                    }
+
+                    Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
+                    double est_dis = (posj_est.pos() - poseest.pos()).norm();
+                    printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
+                    if (fabs(dis - est_dis) > distance_outlier_threshold || fabs(posj_est.pos().z() - poseest.pos().z()) > distance_height_outlier_threshold || !enable_distance) {
+                        printf("is outlier or distance is disable");
+                        _nf.outlier_distance[_idj] = true;
+                    } else {
+                        _nf.outlier_distance[_idj] = false;
+                    }
+                }
+            }
+            printf("\n");
+        }
+
+        printf("--------------------------------------------------------------------\n\n");
     }    
 }
 
-void SwarmLocalizationSolver::add_as_keyframe(const SwarmFrame &sf) {
+void SwarmLocalizationSolver::add_as_keyframe(SwarmFrame sf) {
     // if (sf_sld_win.size() > 0) {
         // last_kf_ts = sf_sld_win.back().ts;
     // }
-
-    sf_sld_win.push_back(sf);
-    all_sf[sf.ts] = sf;
     ROS_INFO("New keyframe %d found, size %ld/%d", TSShort(sf.ts), sf_sld_win.size(), max_frame_number);
-    for (auto it : sf.id2nodeframe) {
+    for (auto & it : sf.id2nodeframe) {
         if (it.second.is_static) {
             ROS_INFO("Is static");
             this->init_static_nf_in_keyframe(sf.ts, it.second);
         } else {
-            auto _nf = it.second;
+            auto & _nf = it.second;
             double _pose[4];
             _nf.pose().to_vector_xyzyaw(_pose);
             this->init_dynamic_nf_in_keyframe(sf.ts, it.second);
         }
     }
 
-#ifdef DEBUG_OUTPUT_NEW_KF
-    print_frame(sf);
-#endif
+    outlier_rejection_frame(sf);
+    sf_sld_win.push_back(sf);
+    all_sf[sf.ts] = sf;
+
     last_kf_ts = sf.ts;
     has_new_keyframe = true;
 }
@@ -395,8 +513,15 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
     if (enable_loop) {
+#ifndef DEBUG_LOOP_ONLY_INIT
         all_loops.push_back(loop_con);
         has_new_keyframe = true;
+#else
+        if (!finish_init) {
+            all_loops.push_back(loop_con);
+            has_new_keyframe = true;
+        }
+#endif
     }
 }
 
@@ -440,8 +565,14 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
     }
 
     if (is_kf == 1) {
+        int num = all_nodes.size();
         for (int _id : _ids) {
             all_nodes.insert(_id);
+        }
+
+        if (all_nodes.size() > num) {
+            finish_init = false;
+            enable_to_init = false;
         }
 
         add_as_keyframe(sf);
@@ -669,8 +800,13 @@ double SwarmLocalizationSolver::solve() {
 
     if (!has_new_keyframe)
         return -1;
-
+    enable_to_init = false;
     estimate_observability();
+
+    if (finish_init && !enable_to_init) {
+        ROS_WARN("Observability not meet now. set finish init to false!!!");
+        finish_init = false;
+    }
 
     // if (!finish_init) {
     //     //Use da initer to initial the system
@@ -691,9 +827,11 @@ double SwarmLocalizationSolver::solve() {
     if (!finish_init) {
         //Init procedure
         if (enable_to_init) {
+            //generate_cgraph();
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
+                generate_cgraph();
                 last_drone_num = drone_num;
                 ROS_INFO("Finish init\n");
             }
@@ -794,7 +932,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 }
                 count ++;
             }
-            ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
+            // ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
         }
     }
 
@@ -841,75 +979,99 @@ SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::m
 
     
 CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex  _id_ts_poseindex) const {
-    auto sle = new SwarmLoopError(loops, _id_ts_poseindex);
-    auto cost_function = new LoopCost(sle);
-    int res_num = sle->residual_count();
-    cost_function->SetNumResiduals(res_num);
-    std::set<int> all_index;
-    for (auto it : _id_ts_poseindex) {
-        for (auto it2 : it.second) {
-            if (all_index.find(it2.second) == all_index.end() ) {
-                cost_function->AddParameterBlock(4);
-                all_index.insert(it2.second);
-            }
+SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loc) const {
+    int res_num = -1;
+    int ida = loc->id_a;
+    int idb = loc->id_b;
+    if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
+        auto sle = new SwarmLoopError(loc);
+        auto cost_function = new LoopCost(sle);
+        res_num = sle->residual_count();
+        cost_function->AddParameterBlock(4);
+        cost_function->AddParameterBlock(4);
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    } else if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection) {
+        auto sle = new SwarmDetectionError(loc);
+        auto cost_function = new DetectionCost(sle);
+        res_num = sle->residual_count();
+        if (!yaw_observability.at(ida)) {
+            cost_function->AddParameterBlock(3);
+        } else {
+            cost_function->AddParameterBlock(4);
         }
-    }
 
-    return cost_function;
+        if (!yaw_observability.at(idb)) {
+            cost_function->AddParameterBlock(3);
+        } else {
+            cost_function->AddParameterBlock(4);
+        }
+        cost_function->SetNumResiduals(res_num);
+        return cost_function;
+    }
 }
     
 void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
-
-    std::vector<double*> pose_state; // For involved poses
-    std::map<double*, int> added_poses;
-
-    if (good_2drone_measurements.size() == 0) {
-        // ROS_INFO("No loop; Return");
-        return;
-    }
-    // ROS_INFO("Find %ld good loops", good_2drone_measurements.size());
-    IDTSIndex  _id_ts_poseindex;
-
     for (auto loc : good_2drone_measurements) {
-         if (_id_ts_poseindex.find(loc->id_a) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc->id_a] = std::map<int64_t, int>();
+        if (!yaw_observability.at(loc->id_a) || !yaw_observability.at(loc->id_b)) {
+            continue;
         }
-
-        if (_id_ts_poseindex.find(loc->id_b) == _id_ts_poseindex.end()) {
-            _id_ts_poseindex[loc->id_b] = std::map<int64_t, int>();
-        }
-
+        std::vector<double*> pose_state; // For involved poses
         double * posea = est_poses_idts.at(loc->id_a).at(loc->ts_a);
-        if (added_poses.find(posea) == added_poses.end()) {
-            pose_state.push_back(posea);
-            _id_ts_poseindex[loc->id_a][loc->ts_a] = pose_state.size() - 1;
-            added_poses[posea] = pose_state.size() - 1;
-        } else {
-            _id_ts_poseindex[loc->id_a][loc->ts_a] = added_poses[posea];
-        }
-
         double * poseb = est_poses_idts.at(loc->id_b).at(loc->ts_b);
-        if (added_poses.find(poseb) == added_poses.end()) {
-            pose_state.push_back(poseb);
-            _id_ts_poseindex[loc->id_b][loc->ts_b] = pose_state.size() - 1;
-            added_poses[poseb] = pose_state.size() - 1;
-        } else {
-            _id_ts_poseindex[loc->id_b][loc->ts_b] = added_poses[poseb];
+        if (posea == poseb) {
+            if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop) {
+                // ROS_WARN("Duplicate parameter blocks of loop %d(%d)->%d(%d) skip...", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
+            } else {
+                ROS_WARN("Duplicate parameter blocks of det %d(%d)->%d(%d). You may detected your self!!!", loc->id_a, loc->ts_a, loc->id_b, loc->ts_b);
+            }
+            continue;
         }
+        pose_state.push_back(posea);
+        pose_state.push_back(poseb);
+        CostFunction * cost = _setup_cost_function_by_loop(loc);
+        ceres::LossFunction *loss_function;
+        loss_function = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(cost, loss_function, pose_state);
     }
-
-    CostFunction * cost = _setup_cost_function_by_loop(good_2drone_measurements, _id_ts_poseindex);
-    ceres::LossFunction *loss_function;
-    loss_function = new ceres::HuberLoss(0.1);
-    //loss_function = new ceres::HuberLoss(0.5);
-    problem.AddResidualBlock(cost, loss_function, pose_state);
 }
     
+bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, const NodeFrame & _nf_b, const DroneDetection & det_ret) const {
+    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
+    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
+    if(reta.first && retb.first) {
+        auto posea = reta.second;
+        auto poseb = retb.second;
+        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        // printf("EST DPOS: ");
+        // est_rel_pose.print();
+        Eigen::Vector3d est_dpos = est_rel_pose.pos();
+        double est_inv_dep = 1/est_dpos.norm();
+        est_dpos.normalize();
+        auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
+        auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
+        if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
+    #ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
+            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(det_ret.ts_a));
+            std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+            std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+            std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
+    #endif
+            return false;
+        } else {
+            // ROS_INFO("%d->%d@%d detection!", det_ret.id_a, det_ret.id_b, TSShort(det_ret.ts_a));
+            // std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+            // std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+            // std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
+            return true;
+        }
+    }
+    return false;
+}
 
-
-void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
+int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & swarm_est_poses, Problem& problem, const SwarmFrame& sf, TSIDArray& param_indexs, bool is_lastest_frame) const {
     //TODO: Deal with static object in this function!!!
+    int _dets = detection_in_keyframes;
     std::vector<double*> pose_state;
     std::map<int, int> id2poseindex;
     std::vector<int> _id_list;
@@ -923,7 +1085,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         param_indexs.push_back(std::pair<int64_t, int>(ts, _id));
     }
     int res_num = 0;
-    auto loss_function = new ceres::HuberLoss(0.1);
+    auto loss_function = new ceres::HuberLoss(1.0);
     CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
 
     if (cost != nullptr) {
@@ -951,6 +1113,35 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         }
     }
 
+    if (enable_detection) {
+        for (auto it: sf.id2nodeframe) {
+            //Add detection residual attached to the frame
+            int _id = it.first;
+            auto & nfa = it.second;
+            double * posea = swarm_est_poses.at(ts).at(_id);
+            for (auto & det: nfa.detected_nodes) {
+                int _idb = det.id_b;
+                det.enable_depth = enable_detection_depth;
+                if (swarm_est_poses.at(ts).find(_idb) != swarm_est_poses.at(ts).end() &&
+                    sf.id2nodeframe.find(_idb) != sf.id2nodeframe.end()) {
+                    double * poseb = swarm_est_poses.at(ts).at(_idb);
+                    auto & nfb = sf.id2nodeframe.at(_idb);
+                    if (check_outlier_detection(nfa, nfb, det)) {
+                        auto cost = _setup_cost_function_by_loop(&det);
+                        std::vector<double*> pose_state;
+                        pose_state.push_back(posea);
+                        pose_state.push_back(poseb);
+                        ceres::LossFunction *loss_function;
+                        loss_function = new ceres::HuberLoss(1.0);
+                        problem.AddResidualBlock(cost, loss_function, pose_state);
+                        _dets += 1;
+                        // ROS_WARN("Swarm detection %d->%d in frame %d added", _id, _idb, TSShort(sf.ts));
+                    }
+                }
+            }
+        }
+    }
+    return _dets;
 }
 
 CostFunction *
@@ -1011,6 +1202,12 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
     if (_id == self_id) {
         problem.SetParameterBlockConstant(pose_win[0]);
+
+#ifdef DEBUG_NO_RELOCALIZATION
+        for (int i = 0; i < pose_win.size(); i ++) {
+            problem.SetParameterBlockConstant(pose_win[i]);
+        }
+#endif
     }
 
     if (nfs.size() < 2) {
@@ -1020,7 +1217,8 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
 
     CostFunction * cf = _setup_cost_function_by_nf_win(nf_win, ts2poseindex, _id==self_id);
     if (cf != nullptr) {
-        problem.AddResidualBlock(cf , nullptr, pose_win);
+        auto loss_function = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(cf , loss_function, pose_win);
     } else {
         ROS_WARN("Emptry swarm fram horizon error");
     }
@@ -1077,17 +1275,25 @@ void SwarmLocalizationSolver::cutting_edges() {
                 _nf.enabled_distance[_id2] = false;
                 total_distance_count += 1;
                 if ((moved_nodes.find(_id) != moved_nodes.end() ||
-                    moved_nodes.find(_id2) != moved_nodes.end())) {                    
-                    if( sf.has_node(_id2) && 
+                    moved_nodes.find(_id2) != moved_nodes.end())) {      
+                    if (!sf.has_node(_id2) || !sf.id2nodeframe[_id2].has_distance_to(_id)) {
+                        _nf.enabled_distance[_id2] = false;
+                    } else if( sf.has_node(_id2) && 
                         (sf.id2nodeframe[_id2].enabled_distance.find(_id) == sf.id2nodeframe[_id2].enabled_distance.end() || !sf.id2nodeframe[_id2].enabled_distance[_id])) {
-                        //ROS_INFO("Merging distanc %3.2f and %3.2f to %3.2f", 
-                        //    _nf.dis_map[_id2],
-                        //    sf.id2nodeframe[_id2].dis_map[_id],
-                        //    (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0
-                        //);
-                        _nf.dis_map[_id2] = (_nf.dis_map[_id2] + sf.id2nodeframe[_id2].dis_map[_id])/2.0;
-                        _nf.enabled_distance[_id2] = true;
-                        distance_count += 1;
+                        double dis1 = _nf.dis_map[_id2];
+                        double dis2 = sf.id2nodeframe[_id2].dis_map[_id];
+                        
+                        if (fabs(dis1-dis2) > DISTANCE_CROSS_THRESS && false) {
+                            _nf.enabled_distance[_id2] = false;
+                        } else {
+                            ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
+                                 _id, _id2,
+                                 TSShort(_nf.ts),
+                                 dis1, dis2, (dis1+dis2)/2.0);
+                            _nf.dis_map[_id2] = (dis1+dis2)/2.0;
+                            _nf.enabled_distance[_id2] = true;
+                            distance_count += 1;
+                        }
                     }
                 }
             }
@@ -1138,7 +1344,7 @@ std::set<int> SwarmLocalizationSolver::loop_observable_set(const std::map<int, s
     for (auto _id : observerable_set) {
         printf("%d, ", _id);
     }
-    printf("\n");
+    printf(".");
     return observerable_set;
 }
 
@@ -1171,25 +1377,34 @@ void SwarmLocalizationSolver::estimate_observability() {
             //Can't deal with machines power on later than movement
             pos_observability[_id] = true;
         }
-
-        ROS_INFO("Solve with enough movement");
-
     }
 
     std::set<int> _loop_observable_set = loop_observable_set(loop_edges);
-    
-    if (sf_sld_win.size() > SINGLE_DRONE_SFS_THRES && all_nodes.size() == 1) {
+
+    std::set<int> _odometry_observable_set;
+
+    for (auto _id : all_nodes) {
+        for (const SwarmFrame & _sf : sf_sld_win ) {
+            if (_sf.has_node(_id) && _sf.id2nodeframe.at(_id).vo_available ) {
+                _odometry_observable_set.insert(_id);
+                break;
+            }
+        }
+    }
+
+    if (sf_sld_win.size() > SINGLE_DRONE_SFS_THRES && all_nodes.size() == 1 && _odometry_observable_set.size() == all_nodes.size()) {
         //Has 3 KF and 1 big
         enable_to_init = true;
         ROS_INFO("Solve with single drone");
     }
 
     if (!enable_to_init) {
-
-        if (_loop_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
-            ROS_INFO("Can't initial with loop only, the OB/ALL size %ld/%ld. Swarm Frame Sliding Window:", 
+        if (_loop_observable_set.size() < all_nodes.size() || _odometry_observable_set.size() < all_nodes.size() || all_nodes.size() < 2) {
+            ROS_INFO("Can't initial with loop only, the OB/VO/ALL size %ld/%ld/%ld. Swarm Frame Sliding Window: %ld", 
                 _loop_observable_set.size(),
-                all_nodes.size()
+                _odometry_observable_set.size(),
+                all_nodes.size(),
+                sf_sld_win.size()
             );
 
             for (auto & sf : sf_sld_win) {
@@ -1198,7 +1413,12 @@ void SwarmLocalizationSolver::estimate_observability() {
             }
 
         } else {
-            ROS_INFO("Solve with loop");
+            ROS_INFO("Solve with loop OB/VO/ALL size %ld/%ld/%ld. Swarm Frame Sliding Window: %ld", 
+                _loop_observable_set.size(),
+                _odometry_observable_set.size(),
+                all_nodes.size(),
+                sf_sld_win.size()
+            );
             enable_to_init = true;
         }
     }
@@ -1251,7 +1471,7 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
     dt_err = min_ts_err_a + min_ts_err_b;
 
     if (_index_a < 0 || _index_b < 0) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        // ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
         return false;
     }
     return true;
@@ -1273,11 +1493,11 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
         ROS_WARN("Can't find loop No sld win");
         return false;
     }
-    det_ret = Swarm::DroneDetection(_det, enable_detection_depth);
+    det_ret = Swarm::DroneDetection(_det, true, enable_detection_depth);
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);
     if (!success) {
-        ROS_WARN("Detection find failed");
+        // ROS_WARN("Detection find failed");
         return false;
     } else {
     }
@@ -1298,8 +1518,41 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     det_ret.ts_a = _nf_a.ts;
     det_ret.ts_b = _nf_b.ts;
-    //det_ret.self_pose_a = _nf_a.pose();
-    //det_ret.self_pose_b = _nf_b.pose();
+    
+    // if (_nf_a.id != self_id) {
+    //     return false;
+    // }
+
+    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
+    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
+
+    if (reta.first && retb.first) {
+        Pose posea = reta.second * dpose_self_a;
+        Pose poseb = retb.second * dpose_self_b;
+        // printf("EST POSE A: ");
+        // posea.print();
+        // printf("EST POSE B: ");
+        // poseb.print();
+
+        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
+        // printf("EST DPOS: ");
+        // est_rel_pose.print();
+        Eigen::Vector3d est_dpos = est_rel_pose.pos();
+        double est_inv_dep = 1/est_dpos.norm();
+        est_dpos.normalize();
+        auto err = det_ret.detect_tan_base * (est_dpos - det_ret.p);
+        auto inv_dep_err = fabs(est_inv_dep - det_ret.inv_dep);
+        if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
+#ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
+            ROS_WARN("Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(_det.header.stamp.toNSec()));
+            std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
+            std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
+            std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
+#endif
+            return false;
+        }
+    }
+
 #ifdef DEBUG_OUTPUT_DETS
     printf("\nDet [TS%d]%d->%d\n", TSShort(ts.toNSec()), _ida, 
         _idb);
@@ -1322,33 +1575,21 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     dpose_self_b.print();
 
 
-    auto reta = get_estimated_pose(_nf_a.id, _nf_a.ts);
-    auto retb = get_estimated_pose(_nf_b.id, _nf_b.ts);
-
-    if (reta.first && retb.first) {
-        Pose posea = reta.second * dpose_self_a;
-        Pose poseb = retb.second * dpose_self_b;
-        printf("EST POSE A: ");
-        posea.print();
-        printf("EST POSE B: ");
-        poseb.print();
-
-        Pose est_rel_pose = Swarm::Pose::DeltaPose(posea, poseb, true);
-        printf("EST DPOS: ");
-        est_rel_pose.print();
-        Eigen::Vector3d est_dpos = est_rel_pose.pos();
-        double est_inv_dep = 1/est_dpos.norm();
-        est_dpos.normalize();
-        std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
-        std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
-    }
 #endif
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
+
+    if (dpose_self_a.pos().norm() > det_dpos_thres || dpose_self_b.pos().norm() > det_dpos_thres) {
+        // ROS_WARN("Det %d->%d @ %d too big dpos %f %f", _ida, _idb, TSShort(ts.toNSec()),
+        //     dpose_self_a.pos().norm(),
+        //     dpose_self_b.pos().norm()
+        // );
+        return false;
+    }
     return true;
 }
 
 
-bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
+int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1358,28 +1599,31 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     int _index_b = -1;
     double min_ts_err_a = 10000;
     double min_ts_err_b = 10000;
+    double distance = 0;
 
     //Give up if first timestamp is bigger than 1 sec than tsa
     if (sf_sld_win.empty()) {
         ROS_WARN("Can't find loop No sld win");
-        return false;
+        return 0;
     }
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
-        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1164", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
-        return false;
+#ifdef DEBUG_OUTPUT_LOOP_OUTLIER
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found because of DT", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+#endif
+        return 0;
     }
 
     loc_ret = Swarm::LoopConnection(_loc);
+    distance = loc_ret.relative_pose.pos().norm();
 
     bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
     if (!success) {
-        return false;
+        return 0;
     }
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
-
 
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
@@ -1392,7 +1636,8 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
     loc_ret.self_pose_a = _nf_a.pose();
     loc_ret.self_pose_b = _nf_b.pose();
     loc_ret.relative_pose = new_loop;
-    
+
+    // ROS_INFO("Loop %d(%d)->%d(%d) distance %f,%f/%f", _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), distance, new_loop.pos().norm(), loop_outlier_threshold_distance);
     if (finish_init) {
         const double * posea = est_poses_tsid.at(_nf_a.ts).at(_ida);
         const double * poseb = est_poses_tsid.at(_nf_b.ts).at(_idb);
@@ -1400,16 +1645,25 @@ bool SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Lo
         auto poseb_est = Pose(poseb, true);
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
-        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
-            ROS_WARN("Loop Error %d(%d)->%d(%d) P%3.2f Y%3.2f. Give up this loop", 
-                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), dpose_err.pos().norm(), dpose_err.yaw()*57.3);
-            return false;
+        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw|| distance > loop_outlier_threshold_distance) {
+            ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f ERR P%3.2f Y%3.2f. Delete this loop", 
+                _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
+                new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z(),
+                dpose_err.pos().norm(), dpose_err.yaw()*57.3);
+            return -1;
+        }
+    } else {
+        if (distance > loop_outlier_threshold_distance) {
+                ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f. Delete this loop", 
+                    _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
+                    new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z());
+                return -1;
         }
     }
-
+    
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
-    return true;
+    return 1;
 }
 
 std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopConnection> good_2drone_measurements) {
@@ -1447,17 +1701,19 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
     return ret;
 }
 
-std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const {
+std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) {
     loop_edges.clear();
     std::vector<Swarm::LoopConnection> good_loops;
     std::vector<Swarm::DroneDetection> good_detections;
     std::vector<GeneralMeasurement2Drones*> ret;
-
-    for (auto _loc : all_loops) {
+    std::vector<int> outlier_loops;
+    for (int i = 0; i < all_loops.size(); i++) {
+        auto _loc = all_loops[i];
         Swarm::LoopConnection loc_ret;
         double dt_err = 0;
         double dpos;
-        if(loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos)) {
+        int ret = loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos);
+        if( ret == 1) {
 #ifdef DEBUG_OUTPUT_LOOPS) 
             ROS_INFO("Loop [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
                 loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
@@ -1474,6 +1730,13 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[loc_ret.id_a].insert(loc_ret.id_b);
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
+        if (ret == -1) {
+            // outlier_loops.push_back(i);
+        }
+    }
+
+    for (int i = outlier_loops.size() - 1; i >= 0; i--) {
+        all_loops.erase(all_loops.begin() + outlier_loops[i]);
     }
 
     auto ret_loops = average_same_loop(good_loops);
@@ -1519,14 +1782,14 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     Problem problem;
 
 //        if (solve_count % 10 == 0)
-    printf("SOLVE COUNT %d Trying to solve size %d, TS %ld, good_loop and detections %ld\n", solve_count, sliding_window_size(), swarm_est_poses.size(), good_2drone_measurements.size());
     has_new_keyframe = false;
+    detection_in_keyframes = 0;
     std::vector<std::pair<int64_t, int>> param_indexs;
     cutting_edges();
 
     for (unsigned int i = 0; i < sf_sld_win.size(); i++ ) {
         // ROS_INFO()
-        this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
+        detection_in_keyframes = this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
     }
 
     int num_res_blks_sf = problem.NumResidualBlocks();
@@ -1546,6 +1809,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     ROS_INFO("Loop residual blocks %d residual nums %d", problem.NumResidualBlocks() - num_res_blks_sf, problem.NumResiduals() - num_res_sf);
     num_res_sf = problem.NumResiduals();
 
+    printf("TICK: %d sliding_window_size: %d swarm_est_poses: %d detection_in_keyframes: %d good_2drone_measurements: %ld\n", 
+        solve_count, sliding_window_size(), swarm_est_poses.size(), detection_in_keyframes, good_2drone_measurements.size());
 
     ceres::Solver::Options options;
 
@@ -1553,16 +1818,17 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //SPARSE NORMAL 21
     //DENSE NORM DOGLEG 49.31ms
     options.max_num_iterations = 1000;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = CGNR;//SPARSE_NORMAL_CHOLESKY;
+    // options.trust_region_strategy_type = ceres::DOGLEG;
+
     if (finish_init) {
-        options.max_solver_time_in_seconds = MAX_SOLVER_TIME;
+        options.max_solver_time_in_seconds = max_solver_time;
         options.max_num_iterations = 1000;
     }
     
     options.num_threads = thread_num;
     Solver::Summary summary;
 
-    options.trust_region_strategy_type = ceres::DOGLEG;
     
     ros::Time t2 = ros::Time::now();
 
@@ -1588,12 +1854,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     std::cout << summary.message << std::endl;
-
-#ifdef DEBUG_OUTPUT_SLD_WIN
-    for (auto & sf: sf_sld_win) {
-        print_frame(sf);
-    }
-#endif
+    //std::cout << summary.FullReport() << std::endl;
+    // for (auto & sf: sf_sld_win) {
+        // print_frame(sf);
+    // }
 
 #ifdef DEBUG_OUTPUT_POSES
     //if (finish_init) 
@@ -1624,10 +1888,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
                     Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
                     Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
                     Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
-                    double ang_err = ERRVOEST.yaw()/ VO_ERROR_ANGLE;
+                    double ang_err = ERRVOEST.yaw()/ VO_METER_STD_ANGLE;
                     
                     printf("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f\n",
-                            ERRVOEST.pos().x()/VO_DRIFT_METER, ERRVOEST.pos().y()/VO_DRIFT_METER, ERRVOEST.pos().z()/VO_DRIFT_METER, ang_err);
+                            ERRVOEST.pos().x()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().y()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().z()/VO_METER_STD_TRANSLATION, ang_err);
 
                     printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
                             DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);
@@ -1692,7 +1956,9 @@ void SwarmLocalizationSolver::generate_cgraph() {
         //	style=filled;
         //   color=lightgrey;
         // label = "process #1";
-        sprintf(node_name, "SwarmFrame %d", TSShort(sf.ts));
+        auto t = ros::Time();
+        t.fromNSec(sf.ts);
+        sprintf(node_name, "SwarmFrame %f", t.toSec());
         agattrsym (sub_graph, "label");
         agset (sub_graph, "label", node_name);
 
@@ -1732,7 +1998,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
                             Swarm::Pose(pose_win[pose_win.size()-2], true), 
                             Swarm::Pose(pose_win.back(), true)
                         );
-                        sprintf(edgename, "VIO:DP [%3.2f,%3.2f,%3.2f] DY %4.3f", dp.pos().x(), dp.pos().y(), dp.pos().z(),
+                        sprintf(edgename, "VIO:RP:[%3.2f,%3.2f,%3.2f],%4.3fdeg", dp.pos().x(), dp.pos().y(), dp.pos().z(),
                             dp.yaw()*57.3);
                         agset(edge, "label", edgename);
 
@@ -1743,6 +2009,40 @@ void SwarmLocalizationSolver::generate_cgraph() {
             } 
         }
     }
+    
+    for (const SwarmFrame & sf : sf_sld_win) {
+        auto ts = sf.ts;
+        for (auto & it : sf.id2nodeframe) {
+            auto & nf = it.second;
+            for (auto & detected: nf.detected_nodes) {
+                auto _ida = detected.id_a;
+                auto _idb = detected.id_b;
+                auto node1 = AGNodes[ts][_ida];
+                auto node2 = AGNodes[ts][_idb];
+
+                auto edge = agedge(g, node1, node2, "Det",1);
+                agattrsym (edge, "label");
+                sprintf(edgename, "Detected");
+                agset(edge, "label", edgename);
+            }
+
+            for (auto & it: nf.dis_map) {
+                int _idj = it.first;
+                if(sf.node_id_list.find(_idj) != sf.node_id_list.end() &&
+                    nf.distance_available(_idj)) {
+                    auto _ida = nf.id;
+                    auto node1 = AGNodes[ts][_ida];
+                    auto node2 = AGNodes[ts][_idj];
+
+                    auto edge = agedge(g, node1, node2, "Dis",1);
+                    agattrsym (edge, "label");
+                    sprintf(edgename, "Dis %3.2f", it.second);
+                    agset(edge, "label", edgename);
+                }
+            }
+        }
+    }
+
 
     //
     int count = 0;

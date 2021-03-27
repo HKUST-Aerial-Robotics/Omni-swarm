@@ -2,49 +2,68 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph" default="true" />
-    <arg name="bag" default="true" />
+    <arg name="cgraph" default="false" />
+    <arg name="cgraph_path" default="$(env HOME)/graph.dot" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <rosparam>
             force_freq: 10
             max_accept_cost: 100
-            max_keyframe_num: 10000
+            max_keyframe_num: 20
             min_keyframe_num: 1
-            thread_num: 20
+            thread_num: 1
             min_kf_movement : 0.5
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
-            loop_outlier_threshold_pos: 1.0
-            loop_outlier_threshold_yaw: 0.5
             enable_detection: true
             enable_detection_depth: true
             enable_loop: true
             enable_distance: true
-            vo_drift_meter: 0.003
-            vo_drift_meter_z: 0.005
-            vo_drift_angle: 0.02
-            distance_measurement_error: 0.2
-            loop_cov_xy: 0.5
-            loop_cov_z: 0.5
-            loop_cov_yaw: 0.5
-            detection_sphere_cov: 0.1
-            detection_inv_dep_cov: 0.5
+            VO_METER_STD_TRANSLATION: 0.05
+            VO_METER_STD_Z: 0.05
+            VO_METER_STD_ANGLE: 0.003
+            DISTANCE_STD: 0.07
+            #LOOP_XY_STD: 0.5
+            #LOOP_Z_STD: 0.12
+            
+            LOOP_POS_STD_0: 0.6
+            LOOP_POS_STD_SLOPE: 0.5
+            LOOP_YAW_STD_0: 0.05
+            LOOP_YAW_STD_SLOPE: 0.1
+            
+            DETECTION_SPHERE_STD: 0.01
+            DETECTION_INV_DEP_STD: 0.07
+            DETECTION_DEP_STD: 0.08
             publish_full_path: true
             is_pc_replay: true
-            kf_use_all_nodes: false
+            kf_use_all_nodes: true
+
+            #OUTLIER REJECTION
+            det_dpos_thres: 0.2
+            detection_outlier_thres: 0.5
+            detection_inv_dep_outlier_thres: 0.5
+            distance_outlier_threshold: 1.0
+            distance_height_outlier_threshold: 1.0
+            loop_outlier_threshold_pos: 0.5
+            loop_outlier_threshold_distance: 1.8
+            loop_outlier_threshold_yaw: 0.5
+            max_solver_time: 0.15
+
+            max_solver_time: 0.5
+            cg:
+                x: 0.04
+                y: 0.0
+                z: -0.02
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
-        <param name="cgraph_path" value="$(env HOME)/graph.dot" type="string" />
+        <param name="cgraph_path" value="$(arg cgraph_path)" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
         <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />
+        <remap from="/swarm_drones/swarm_drone_fused_relative" to="/swarm_drones/swarm_drone_fused_relative_pc" />
     </node>
     <group if="$(arg viz)">
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
     </group>
-    <node pkg="rosbag" type="record" name="rosbag_record_local" 
-        args="record -O /home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/DataAnalysis/data/swarm_local_pc.bag -a" 
-        if="$(arg bag)" />
-</launch>
+ </launch>

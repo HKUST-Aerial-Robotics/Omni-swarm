@@ -40,9 +40,6 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
 
 Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only = true);
 
-typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, 7>  SFErrorCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, 7> HorizonCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, 7> LoopCost;
 
 //Poses is dict of timestamp and then id;
 //state<ts,id>
@@ -68,12 +65,19 @@ struct swarm_localization_solver_params{
     bool enable_cgraph_generation = false;
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
+    float loop_outlier_threshold_distance = 2.0;
+    float det_dpos_thres = 1.0;
+    float detection_outlier_thres;
+    float detection_inv_dep_outlier_thres;
     bool enable_detection;
     bool enable_loop;
     bool enable_distance;
     bool enable_detection_depth;
     bool kf_use_all_nodes;
     bool generate_full_path;
+    float max_solver_time;
+    float distance_outlier_threshold;
+    float distance_height_outlier_threshold;
 };
 
 class SwarmLocalizationSolver {
@@ -88,9 +92,10 @@ class SwarmLocalizationSolver {
 
     unsigned int solve_count = 0;
 
+
     swarm_localization_solver_params params;
 
-
+    int detection_in_keyframes = 0;
     std::vector<swarm_msgs::LoopConnection> all_loops;
     std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
 
@@ -101,6 +106,8 @@ class SwarmLocalizationSolver {
     unsigned int max_frame_number = 100;
     unsigned int min_frame_number = 5;
     unsigned int dense_frame_number = 20;
+    
+    float max_solver_time;
 
     std::set<int> all_nodes;
 
@@ -125,23 +132,26 @@ class SwarmLocalizationSolver {
 
     void init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
 
-    void init_static_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+    void init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid);
 
-    std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) const;
+
+    std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges);
 
     bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const;
 
-    bool loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
+    int loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
 
     bool detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _loc, Swarm::DroneDetection & loc_ret, double & dt_err, double & dpos) const;
+
+    bool check_outlier_detection(const NodeFrame & _nf_a, const NodeFrame & _nf_b, const DroneDetection & det_ret) const;
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
 
 
-    void
+    int
     setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
     CostFunction *
@@ -150,7 +160,7 @@ class SwarmLocalizationSolver {
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
     CostFunction *
-    _setup_cost_function_by_loop(const std::vector<Swarm::GeneralMeasurement2Drones*> & loops, IDTSIndex _id_ts_poseindex) const;
+    _setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loops) const;
 
     void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
     
@@ -161,7 +171,8 @@ class SwarmLocalizationSolver {
     
     int judge_is_key_frame(const SwarmFrame &sf);
 
-    void add_as_keyframe(const SwarmFrame &sf);
+    void add_as_keyframe(SwarmFrame sf);
+    void outlier_rejection_frame(SwarmFrame & sf) const;
     void print_frame(const SwarmFrame & sf) const;
     void replace_last_kf(const SwarmFrame & sf);
     
@@ -196,6 +207,13 @@ public:
     float init_z_movement = 1.0;
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
+    float detection_inv_dep_outlier_thres;
+    float distance_outlier_threshold;
+    float distance_height_outlier_threshold;
+    float detection_outlier_thres;
+    float loop_outlier_threshold_distance;
+
+    float det_dpos_thres;
 
     bool enable_detection;
     bool enable_loop;
@@ -225,7 +243,6 @@ public:
 
     bool PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const;
     bool NodeCooridnateOffset(int _id, Pose & _pose, Eigen::Matrix4d & cov) const;
-
     bool CanPredictSwarm() {
         return finish_init;
     }
