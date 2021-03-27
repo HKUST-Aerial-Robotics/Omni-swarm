@@ -153,6 +153,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string netvlad_model_path = "";
     int width;
     int height;
+    cv::setNumThreads(1);
     nh.param<int>("self_id", self_id, -1);
     nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
