@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO 200
 
-MAVPACKED(
+
 typedef struct __mavlink_node_realtime_info_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  float x; /*< [m] X Position*/
@@ -17,7 +17,7 @@ typedef struct __mavlink_node_realtime_info_t {
  int16_t yaw; /*< [rad] Yaw angle rad*1000*/
  uint16_t remote_distance[10]; /*< [m] Distance to Remote Drone*1000*/
  uint8_t odom_vaild; /*<  If odometry is vaild*/
-}) mavlink_node_realtime_info_t;
+} mavlink_node_realtime_info_t;
 
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO_LEN 49
 #define MAVLINK_MSG_ID_NODE_REALTIME_INFO_MIN_LEN 49

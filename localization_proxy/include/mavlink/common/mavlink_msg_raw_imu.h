@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_RAW_IMU 27
 
-MAVPACKED(
+
 typedef struct __mavlink_raw_imu_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  int16_t xacc; /*<  X acceleration (raw)*/
@@ -15,7 +15,7 @@ typedef struct __mavlink_raw_imu_t {
  int16_t xmag; /*<  X Magnetic field (raw)*/
  int16_t ymag; /*<  Y Magnetic field (raw)*/
  int16_t zmag; /*<  Z Magnetic field (raw)*/
-}) mavlink_raw_imu_t;
+} mavlink_raw_imu_t;
 
 #define MAVLINK_MSG_ID_RAW_IMU_LEN 26
 #define MAVLINK_MSG_ID_RAW_IMU_MIN_LEN 26

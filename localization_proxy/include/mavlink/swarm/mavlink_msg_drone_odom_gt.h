@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT 205
 
-MAVPACKED(
+
 typedef struct __mavlink_drone_odom_gt_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  int16_t x; /*< [m] X Position*1000*/
@@ -17,7 +17,7 @@ typedef struct __mavlink_drone_odom_gt_t {
  int16_t vy; /*< [m] Velocity_Y*1000*/
  int16_t vz; /*< [m] Velocity_Z*1000*/
  int8_t source_id; /*<  Source ID of drone*/
-}) mavlink_drone_odom_gt_t;
+} mavlink_drone_odom_gt_t;
 
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT_LEN 25
 #define MAVLINK_MSG_ID_DRONE_ODOM_GT_MIN_LEN 25

@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_GPS_RAW_INT 24
 
-MAVPACKED(
+
 typedef struct __mavlink_gps_raw_int_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  int32_t lat; /*< [degE7] Latitude (WGS84, EGM96 ellipsoid)*/
@@ -15,7 +15,7 @@ typedef struct __mavlink_gps_raw_int_t {
  uint16_t cog; /*< [cdeg] Course over ground (NOT heading, but direction of movement) in degrees * 100, 0.0..359.99 degrees. If unknown, set to: UINT16_MAX*/
  uint8_t fix_type; /*<  GPS fix type.*/
  uint8_t satellites_visible; /*<  Number of satellites visible. If unknown, set to 255*/
-}) mavlink_gps_raw_int_t;
+} mavlink_gps_raw_int_t;
 
 #define MAVLINK_MSG_ID_GPS_RAW_INT_LEN 30
 #define MAVLINK_MSG_ID_GPS_RAW_INT_MIN_LEN 30

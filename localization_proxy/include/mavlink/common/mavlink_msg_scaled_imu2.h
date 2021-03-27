@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_SCALED_IMU2 116
 
-MAVPACKED(
+
 typedef struct __mavlink_scaled_imu2_t {
  uint32_t time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
  int16_t xacc; /*< [mG] X acceleration*/
@@ -15,7 +15,7 @@ typedef struct __mavlink_scaled_imu2_t {
  int16_t xmag; /*< [mT] X Magnetic field*/
  int16_t ymag; /*< [mT] Y Magnetic field*/
  int16_t zmag; /*< [mT] Z Magnetic field*/
-}) mavlink_scaled_imu2_t;
+} mavlink_scaled_imu2_t;
 
 #define MAVLINK_MSG_ID_SCALED_IMU2_LEN 22
 #define MAVLINK_MSG_ID_SCALED_IMU2_MIN_LEN 22

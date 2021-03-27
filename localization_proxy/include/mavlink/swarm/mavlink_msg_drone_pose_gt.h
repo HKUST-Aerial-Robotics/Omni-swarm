@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_DRONE_POSE_GT 206
 
-MAVPACKED(
+
 typedef struct __mavlink_drone_pose_gt_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  int16_t x; /*< [m] X Position*1000*/
@@ -11,7 +11,7 @@ typedef struct __mavlink_drone_pose_gt_t {
  int16_t z; /*< [m] Z Position*1000*/
  int16_t yaw; /*< [rad*1000] Yaw*1000*/
  int8_t source_id; /*<  Source ID of drone*/
-}) mavlink_drone_pose_gt_t;
+} mavlink_drone_pose_gt_t;
 
 #define MAVLINK_MSG_ID_DRONE_POSE_GT_LEN 13
 #define MAVLINK_MSG_ID_DRONE_POSE_GT_MIN_LEN 13

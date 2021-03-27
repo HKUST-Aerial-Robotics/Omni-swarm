@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_SET_HOME_POSITION 243
 
-MAVPACKED(
+
 typedef struct __mavlink_set_home_position_t {
  int32_t latitude; /*< [degE7] Latitude (WGS84)*/
  int32_t longitude; /*< [degE7] Longitude (WGS84)*/
@@ -16,7 +16,7 @@ typedef struct __mavlink_set_home_position_t {
  float approach_y; /*< [m] Local Y position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone.*/
  float approach_z; /*< [m] Local Z position of the end of the approach vector. Multicopters should set this position based on their takeoff path. Grass-landing fixed wing aircraft should set it the same way as multicopters. Runway-landing fixed wing aircraft should set it to the opposite direction of the takeoff, assuming the takeoff happened from the threshold / touchdown zone.*/
  uint8_t target_system; /*<  System ID.*/
-}) mavlink_set_home_position_t;
+} mavlink_set_home_position_t;
 
 #define MAVLINK_MSG_ID_SET_HOME_POSITION_LEN 53
 #define MAVLINK_MSG_ID_SET_HOME_POSITION_MIN_LEN 53

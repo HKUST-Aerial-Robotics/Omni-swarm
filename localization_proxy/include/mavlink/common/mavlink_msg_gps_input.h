@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_GPS_INPUT 232
 
-MAVPACKED(
+
 typedef struct __mavlink_gps_input_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  uint32_t time_week_ms; /*< [ms] GPS time (from start of GPS week)*/
@@ -23,7 +23,7 @@ typedef struct __mavlink_gps_input_t {
  uint8_t gps_id; /*<  ID of the GPS for multiple GPS inputs*/
  uint8_t fix_type; /*<  0-1: no fix, 2: 2D fix, 3: 3D fix. 4: 3D with DGPS. 5: 3D with RTK*/
  uint8_t satellites_visible; /*<  Number of satellites visible.*/
-}) mavlink_gps_input_t;
+} mavlink_gps_input_t;
 
 #define MAVLINK_MSG_ID_GPS_INPUT_LEN 63
 #define MAVLINK_MSG_ID_GPS_INPUT_MIN_LEN 63

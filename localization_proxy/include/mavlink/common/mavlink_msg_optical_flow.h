@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_OPTICAL_FLOW 100
 
-MAVPACKED(
+
 typedef struct __mavlink_optical_flow_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  float flow_comp_m_x; /*< [m] Flow in x-sensor direction, angular-speed compensated*/
@@ -13,7 +13,7 @@ typedef struct __mavlink_optical_flow_t {
  int16_t flow_y; /*< [dpix] Flow in y-sensor direction*/
  uint8_t sensor_id; /*<  Sensor ID*/
  uint8_t quality; /*<  Optical flow quality / confidence. 0: bad, 255: maximum quality*/
-}) mavlink_optical_flow_t;
+} mavlink_optical_flow_t;
 
 #define MAVLINK_MSG_ID_OPTICAL_FLOW_LEN 26
 #define MAVLINK_MSG_ID_OPTICAL_FLOW_MIN_LEN 26

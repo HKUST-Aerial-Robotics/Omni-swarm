@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_NODE_BASED_FUSED 208
 
-MAVPACKED(
+
 typedef struct __mavlink_node_based_fused_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  int16_t rel_x; /*< [m] Relative X Position*1000*/
@@ -15,7 +15,7 @@ typedef struct __mavlink_node_based_fused_t {
  int16_t cov_z; /*< [m] Z Position Cov*1000*/
  int16_t cov_yaw; /*< [rad] Yaw Cov*1000*/
  uint8_t target_id; /*<  Target ID of drone*/
-}) mavlink_node_based_fused_t;
+} mavlink_node_based_fused_t;
 
 #define MAVLINK_MSG_ID_NODE_BASED_FUSED_LEN 21
 #define MAVLINK_MSG_ID_NODE_BASED_FUSED_MIN_LEN 21
