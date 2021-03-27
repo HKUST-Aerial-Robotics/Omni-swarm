@@ -304,7 +304,7 @@ class LocalProxy {
         if (sd_self_id < 0) {
             sd_self_id = self_id;
         }
-        if (s_index < 0) {
+        if (s_index < 0 && sf_queue.size() > 2) {
             ROS_WARN("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
                 nd.self_drone_id,
                 nd.remote_drone_id,
