@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_ATTITUDE_QUATERNION_COV 61
 
-MAVPACKED(
+
 typedef struct __mavlink_attitude_quaternion_cov_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  float q[4]; /*<  Quaternion components, w, x, y, z (1 0 0 0 is the null-rotation)*/
@@ -11,7 +11,7 @@ typedef struct __mavlink_attitude_quaternion_cov_t {
  float pitchspeed; /*< [rad/s] Pitch angular speed*/
  float yawspeed; /*< [rad/s] Yaw angular speed*/
  float covariance[9]; /*<  Attitude covariance*/
-}) mavlink_attitude_quaternion_cov_t;
+} mavlink_attitude_quaternion_cov_t;
 
 #define MAVLINK_MSG_ID_ATTITUDE_QUATERNION_COV_LEN 72
 #define MAVLINK_MSG_ID_ATTITUDE_QUATERNION_COV_MIN_LEN 72

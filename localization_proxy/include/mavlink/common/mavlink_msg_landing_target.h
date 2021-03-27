@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_LANDING_TARGET 149
 
-MAVPACKED(
+
 typedef struct __mavlink_landing_target_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  float angle_x; /*< [rad] X-axis angular offset of the target from the center of the image*/
@@ -13,7 +13,7 @@ typedef struct __mavlink_landing_target_t {
  float size_y; /*< [rad] Size of target along y-axis*/
  uint8_t target_num; /*<  The ID of the target if multiple targets are present*/
  uint8_t frame; /*<  Coordinate frame used for following fields.*/
-}) mavlink_landing_target_t;
+} mavlink_landing_target_t;
 
 #define MAVLINK_MSG_ID_LANDING_TARGET_LEN 30
 #define MAVLINK_MSG_ID_LANDING_TARGET_MIN_LEN 30

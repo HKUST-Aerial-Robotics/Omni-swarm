@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND 202
 
-MAVPACKED(
+
 typedef struct __mavlink_swarm_remote_command_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  int32_t param1; /*< [m] param1*/
@@ -18,7 +18,7 @@ typedef struct __mavlink_swarm_remote_command_t {
  int32_t param10; /*< [m] param10*/
  int8_t target_id; /*<  Target ID of drone*/
  uint8_t command_type; /*< [m] Onboard command type*/
-}) mavlink_swarm_remote_command_t;
+} mavlink_swarm_remote_command_t;
 
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_LEN 46
 #define MAVLINK_MSG_ID_SWARM_REMOTE_COMMAND_MIN_LEN 46

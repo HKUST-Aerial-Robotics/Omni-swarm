@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_RC_CHANNELS_RAW 35
 
-MAVPACKED(
+
 typedef struct __mavlink_rc_channels_raw_t {
  uint32_t time_boot_ms; /*< [ms] Timestamp (time since system boot).*/
  uint16_t chan1_raw; /*< [us] RC channel 1 value.*/
@@ -16,7 +16,7 @@ typedef struct __mavlink_rc_channels_raw_t {
  uint16_t chan8_raw; /*< [us] RC channel 8 value.*/
  uint8_t port; /*<  Servo output port (set of 8 outputs = 1 port). Most MAVs will just use one, but this allows for more than 8 servos.*/
  uint8_t rssi; /*< [%] Receive signal strength indicator. Values: [0-100], 255: invalid/unknown.*/
-}) mavlink_rc_channels_raw_t;
+} mavlink_rc_channels_raw_t;
 
 #define MAVLINK_MSG_ID_RC_CHANNELS_RAW_LEN 22
 #define MAVLINK_MSG_ID_RC_CHANNELS_RAW_MIN_LEN 22

@@ -3,11 +3,11 @@
 
 #define MAVLINK_MSG_ID_COMMAND_ACK 77
 
-MAVPACKED(
+
 typedef struct __mavlink_command_ack_t {
  uint16_t command; /*<  Command ID (of acknowledged command).*/
  uint8_t result; /*<  Result of command.*/
-}) mavlink_command_ack_t;
+} mavlink_command_ack_t;
 
 #define MAVLINK_MSG_ID_COMMAND_ACK_LEN 3
 #define MAVLINK_MSG_ID_COMMAND_ACK_MIN_LEN 3

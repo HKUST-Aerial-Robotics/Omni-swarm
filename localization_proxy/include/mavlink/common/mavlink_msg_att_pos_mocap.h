@@ -3,14 +3,14 @@
 
 #define MAVLINK_MSG_ID_ATT_POS_MOCAP 138
 
-MAVPACKED(
+
 typedef struct __mavlink_att_pos_mocap_t {
  uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude the number.*/
  float q[4]; /*<  Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0)*/
  float x; /*< [m] X position (NED)*/
  float y; /*< [m] Y position (NED)*/
  float z; /*< [m] Z position (NED)*/
-}) mavlink_att_pos_mocap_t;
+} mavlink_att_pos_mocap_t;
 
 #define MAVLINK_MSG_ID_ATT_POS_MOCAP_LEN 36
 #define MAVLINK_MSG_ID_ATT_POS_MOCAP_MIN_LEN 36

@@ -3,7 +3,7 @@
 
 #define MAVLINK_MSG_ID_NODE_DETECTED 203
 
-MAVPACKED(
+
 typedef struct __mavlink_node_detected_t {
  int32_t lps_time; /*< [ms] LPS_TIME*/
  int32_t target_id; /*<  Target ID of drone*/
@@ -16,7 +16,7 @@ typedef struct __mavlink_node_detected_t {
  float local_pose_self_yaw; /*< [deg] Yaw of Detector */
  int16_t prob; /*< [1] Prob*10000*/
  uint16_t inv_dep; /*< [1/m] inverse depth*10000;0 then unavailable*/
-}) mavlink_node_detected_t;
+} mavlink_node_detected_t;
 
 #define MAVLINK_MSG_ID_NODE_DETECTED_LEN 40
 #define MAVLINK_MSG_ID_NODE_DETECTED_MIN_LEN 40
