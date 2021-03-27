@@ -12,6 +12,7 @@
 #include <mutex>
 
 int MIN_DIRECTION_LOOP;
+double DETECTOR_MATCH_THRES;
 
 using namespace std::chrono; 
 
@@ -133,7 +134,9 @@ void SwarmLoop::VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyfra
 
 void SwarmLoop::on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc) {
     // ROS_INFO("Remote");
-    this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
+    if (recived_image) {
+        this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
+    }
 }
 
 void SwarmLoop::on_remote_image(const FisheyeFrameDescriptor_t & frame_desc) {
@@ -148,6 +151,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string camera_config_path = "";
     std::string superpoint_model_path = "";
     std::string netvlad_model_path = "";
+    int width;
+    int height;
     nh.param<int>("self_id", self_id, -1);
     nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
 
@@ -158,6 +163,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
     nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
     nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
+    nh.param<int>("min_match_per_dir", MIN_MATCH_PRE_DIR, 15);
     nh.param<int>("jpg_quality", JPG_QUALITY, 50);
     nh.param<int>("accept_min_3d_pts", ACCEPT_MIN_3D_PTS, 50);
     nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
@@ -165,15 +171,22 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);
     nh.param<bool>("enable_sub_remote_frame", enable_sub_remote_frame, false);
     nh.param<bool>("send_img", send_img, false);
+    nh.param<bool>("is_pc_replay", IS_PC_REPLAY, false);
     nh.param<bool>("send_whole_img_desc", send_whole_img_desc, false);
+    nh.param<bool>("send_all_features", SEND_ALL_FEATURES, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
     nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
     nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
     nh.param<double>("max_freq", max_freq, 1.0);
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
+    nh.param<double>("detector_match_thres", DETECTOR_MATCH_THRES, 0.9);
+    nh.param<bool>("lower_cam_as_main", LOWER_CAM_AS_MAIN, false);
+
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
     nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
+    nh.param<int>("width", width, 400);
+    nh.param<int>("height", height, 208);
 
     nh.param<std::string>("camera_config_path",camera_config_path, 
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
@@ -181,9 +194,10 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
 
     nh.param<bool>("debug_image", debug_image, false);
+    nh.param<std::string>("output_path", OUTPUT_PATH, "");
     
     loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
-    loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, self_id, send_img, nh);
+    loop_cam = new LoopCam(camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, width, height, self_id, send_img, nh);
     loop_cam->show = debug_image; 
     loop_detector = new LoopDetector();
     loop_detector->self_id = self_id;
@@ -195,11 +209,12 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     };
 
     loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & frame_desc) {
-        if (enable_pub_remote_frame) {
-            remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
+        if (recived_image) {
+            if (enable_pub_remote_frame) {
+                remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
+            }
+            this->on_remote_image(frame_desc);
         }
-
-        this->on_remote_image(frame_desc);
     };
 
     loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
