@@ -99,7 +99,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             max_solver_time(_params.max_solver_time),
             distance_outlier_threshold(_params.distance_outlier_threshold),
             distance_height_outlier_threshold(_params.distance_height_outlier_threshold),
-            loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance)
+            loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance),
+            loop_outlier_threshold_distance_init(_params.loop_outlier_threshold_distance_init)
     {
     }
 
@@ -512,6 +513,13 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 }
 
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
+    auto loc_ret = Swarm::LoopConnection(loop_con);
+    auto distance = loc_ret.relative_pose.pos().norm();
+    if (!finish_init && distance > loop_outlier_threshold_distance_init || finish_init && distance > loop_outlier_threshold_distance) {
+        ROS_WARN("Add loop failed %d(%d)->%d(%d) Distance too long %f", 
+            loc_ret.id_a, TSShort(loc_ret.ts_a), loc_ret.id_b, TSShort(loc_ret.ts_b), distance);
+        return;
+    }
     if (enable_loop) {
 #ifndef DEBUG_LOOP_ONLY_INIT
         all_loops.push_back(loop_con);
@@ -1293,10 +1301,10 @@ void SwarmLocalizationSolver::cutting_edges() {
                         if (fabs(dis1-dis2) > DISTANCE_CROSS_THRESS && false) {
                             _nf.enabled_distance[_id2] = false;
                         } else {
-                            ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
-                                 _id, _id2,
-                                 TSShort(_nf.ts),
-                                 dis1, dis2, (dis1+dis2)/2.0);
+                            // ROS_INFO("Merging distance %d<->%d@%d %3.2f and %3.2f to %3.2f", 
+                            //      _id, _id2,
+                            //      TSShort(_nf.ts),
+                            //      dis1, dis2, (dis1+dis2)/2.0);
                             _nf.dis_map[_id2] = (dis1+dis2)/2.0;
                             _nf.enabled_distance[_id2] = true;
                             distance_count += 1;
@@ -1652,22 +1660,15 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         auto poseb_est = Pose(poseb, true);
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
-        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw|| distance > loop_outlier_threshold_distance) {
+        if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
             ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f ERR P%3.2f Y%3.2f. Delete this loop", 
                 _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
                 new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z(),
                 dpose_err.pos().norm(), dpose_err.yaw()*57.3);
             return -1;
         }
-    } else {
-        if (distance > loop_outlier_threshold_distance) {
-                ROS_WARN("Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f. Delete this loop", 
-                    _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
-                    new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z());
-                return -1;
-        }
     }
-    
+        
     dpos = dpose_self_a.pos().norm() +  dpose_self_b.pos().norm();
 
     return 1;

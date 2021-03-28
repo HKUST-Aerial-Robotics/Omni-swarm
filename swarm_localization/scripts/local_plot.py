@@ -502,7 +502,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
 
         if groundtruth:
             plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {_id}")
-        # plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {_id}")
+        plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {_id}")
         # plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
         if i in poses_path and use_offline:
             plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline {_id}")
@@ -661,6 +661,29 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, dte
         yaw = yawa_vo[i]
         dp_vo[i] = yaw_rotate_vec(-yaw, dp_vo[i])
     
+    if groundtruth:
+        rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
+        rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
+        rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
+        rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
+
+
+        rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
+        rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
+        rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
+
+        print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+        print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
+        print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
+
+        rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
+        rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
+        rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
+        rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
+
+        print(f"VO RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
+        print(f"VO BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
+
     if show:
         fig = plt.figure(f"Relative Pose 2D {main_id}->{target_id}")
 
@@ -724,30 +747,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_id, dte
         plt.show()
 
 
-    if groundtruth:
-        rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
-        rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
-        rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
-        rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
-
-
-        rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
-        rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
-        rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
-
-        print(f"RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
-        print(f"BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):3.3f}")
-        print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
-
-        rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
-        rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
-        rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
-        rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
-
-        print(f"VO RMSE {main_id}->{target_id} {rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f} yaw {rmse_yaw*180/pi:3.3} deg")
-        print(f"VO BIAS {main_id}->{target_id} {np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
-
-    
     
 
 
