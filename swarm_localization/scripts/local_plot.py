@@ -8,6 +8,7 @@ from transformations import *
 import argparse
 from numpy.linalg import norm
 import scipy.stats as stats
+import copy
 
 plt.rc('figure', figsize=(10,5))
 #plt.rc('figure', figsize=(20,15))
@@ -40,13 +41,14 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
     quat = []
     print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        for i in range(len(msg.ids)):
-            _i = msg.ids[i]
-            if _i == _id:
-                ts.append(msg.header.stamp.to_sec() - t0)
-                pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
-                ypr.append([msg.local_drone_yaw[i], 0, 0])
-                quat.append(quaternion_from_euler(0, 0, msg.local_drone_yaw[i]))
+        if t.to_sec() > t0:
+            for i in range(len(msg.ids)):
+                _i = msg.ids[i]
+                if _i == _id:
+                    ts.append(msg.header.stamp.to_sec() - t0)
+                    pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
+                    ypr.append([msg.local_drone_yaw[i], 0, 0])
+                    quat.append(quaternion_from_euler(0, 0, msg.local_drone_yaw[i]))
 
     ret = {
         "t": np.array(ts) ,
@@ -63,15 +65,16 @@ def read_pose_swarm_frame(bag, topic, _id, t0):
     quat = []
     print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        if msg.header.stamp.to_sec() < t0:
-                continue
-        for node in msg.node_frames:
-            _i = node.id
-            if _i == _id and node.vo_available:
-                ts.append(node.header.stamp.to_sec() - t0)
-                pos.append([node.position.x, node.position.y, node.position.z])
-                ypr.append([node.yaw, 0, 0])
-                quat.append(quaternion_from_euler(0, 0, node.yaw))
+        if t.to_sec() > t0:
+            if msg.header.stamp.to_sec() < t0:
+                    continue
+            for node in msg.node_frames:
+                _i = node.id
+                if _i == _id and node.vo_available:
+                    ts.append(node.header.stamp.to_sec() - t0)
+                    pos.append([node.position.x, node.position.y, node.position.z])
+                    ypr.append([node.yaw, 0, 0])
+                    quat.append(quaternion_from_euler(0, 0, node.yaw))
     ret = {
         "t": np.array(ts),
         "pos_raw": np.array(pos),
@@ -90,20 +93,21 @@ def read_distances_swarm_frame(bag, topic, t0):
     ts = []
     print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        for node in msg.node_frames:
-            _ida = node.id
-            if not (_ida in distances):
-                distances[_ida] = {}
-            for i in range(len(node.dismap_ids)):
-                _id = node.dismap_ids[i]
-                _dis = node.dismap_dists[i]
-                if not (_id in distances[_ida]):
-                    distances[_ida][_id] = {
-                        "t": [],
-                        "dis": []
-                    }
-                distances[_ida][_id]["t"].append(msg.header.stamp.to_sec() - t0)
-                distances[_ida][_id]["dis"].append(_dis)
+        if t.to_sec() > t0:
+            for node in msg.node_frames:
+                _ida = node.id
+                if not (_ida in distances):
+                    distances[_ida] = {}
+                for i in range(len(node.dismap_ids)):
+                    _id = node.dismap_ids[i]
+                    _dis = node.dismap_dists[i]
+                    if not (_id in distances[_ida]):
+                        distances[_ida][_id] = {
+                            "t": [],
+                            "dis": []
+                        }
+                    distances[_ida][_id]["t"].append(msg.header.stamp.to_sec() - t0)
+                    distances[_ida][_id]["dis"].append(_dis)
     return distances
 
 def read_distances_remote_nodes(bag, topic, t0, main_id):
@@ -112,17 +116,18 @@ def read_distances_remote_nodes(bag, topic, t0, main_id):
     ts = []
     print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        for i in range(len(msg.node_ids)):
-            if msg.active[i]:
-                _id = msg.node_ids[i]
-                _dis = msg.node_dis[i]
-                if not (_id in distances):
-                    distances[_id] = {
-                        "t" : [],
-                        "dis" : []
-                    }
-                distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
-                distances[_id]["dis"].append(_dis)
+        if t.to_sec() > t0:
+            for i in range(len(msg.node_ids)):
+                if msg.active[i]:
+                    _id = msg.node_ids[i]
+                    _dis = msg.node_dis[i]
+                    if not (_id in distances):
+                        distances[_id] = {
+                            "t" : [],
+                            "dis" : []
+                        }
+                    distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
+                    distances[_id]["dis"].append(_dis)
     return distances
 
 
@@ -282,7 +287,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0):
     bag = rosbag.Bag(bagname)
     poses = {}
     poses_fused = {}
@@ -293,7 +298,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     
     for topic, msg, t in bag.read_messages(topics=["/swarm_drones/swarm_frame"]):
         if len(msg.node_frames) >= len(nodes):
-            t0 = msg.header.stamp.to_sec()
+            t0 = msg.header.stamp.to_sec() + dt
             # print(t0, msg)
             break
     
@@ -310,8 +315,8 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
 
-        if poses_path[i] is None:
-            poses_path[i] = poses_fused[i]
+        if i not in poses_path or poses_path[i] is None:
+            poses_path[i] = copy.copy(poses_fused[i])
 
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
     # detections = read_detections(bag, t0, "/swarm_drones/node_detected")
