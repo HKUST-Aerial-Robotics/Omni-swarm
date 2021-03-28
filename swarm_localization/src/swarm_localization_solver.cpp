@@ -802,6 +802,7 @@ double SwarmLocalizationSolver::solve() {
         return -1;
     enable_to_init = false;
     estimate_observability();
+    bool is_init_solve = false;
 
     if (finish_init && !enable_to_init) {
         ROS_WARN("Observability not meet now. set finish init to false!!!");
@@ -827,6 +828,7 @@ double SwarmLocalizationSolver::solve() {
     if (!finish_init) {
         //Init procedure
         if (enable_to_init) {
+            is_init_solve = true;
             //generate_cgraph();
             ROS_INFO("No init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
@@ -853,13 +855,13 @@ double SwarmLocalizationSolver::solve() {
     }
 
     if (finish_init) {
-        sync_est_poses(this->est_poses_tsid);
+        sync_est_poses(this->est_poses_tsid, is_init_solve);
     }
     printf("\n\n");
     return cost_now;
 }
 
-void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid) {
+void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid, bool is_init_solve) {
     ROS_INFO("Sync poses to saved while init successful");
     int64_t last_ts = sf_sld_win.back().ts;
     kf_pathes.clear();
@@ -899,8 +901,15 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 memcpy(est_poses_idts_saved[_id][sf.ts], ptr, 4*sizeof(double));
                 Pose p(ptr, true);
                 kf_pathes[_nf.id].push_back(std::make_pair(_nf.ts, p));
+                if (is_init_solve) {
+                    last_saved_est_kf_ts.push_back(sf.ts);
+                }
             } 
         }
+    }
+
+    if (!is_init_solve) {
+        last_saved_est_kf_ts.push_back(last_ts);
     }
 
     if (generate_full_path) {
@@ -935,8 +944,6 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             // ROS_INFO("Full path of %d length %ld", id, full_pathes[id].size());
         }
     }
-
-    last_saved_est_kf_ts.push_back(last_ts);
 }
 
 unsigned int SwarmLocalizationSolver::sliding_window_size() const {

@@ -134,7 +134,7 @@ class SwarmLocalizationSolver {
 
     void init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
 
-    void sync_est_poses(const EstimatePoses &_est_poses_tsid);
+    void sync_est_poses(const EstimatePoses &_est_poses_tsid, bool is_init_solve);
 
 
     std::vector<Swarm::GeneralMeasurement2Drones*> find_available_loops_detections(std::map<int, std::set<int>> & loop_edges);
