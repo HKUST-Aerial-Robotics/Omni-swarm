@@ -28,7 +28,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
         #  LIBRARIES localization_proxy
-  CATKIN_DEPENDS roscpp rosmsg rospy std_msgs geometry_msgs nav_msgs swarm_msgs
+  CATKIN_DEPENDS roscpp rosmsg rospy std_msgs geometry_msgs nav_msgs swarm_msgs swarmcomm_msgs
 #  DEPENDS system_lib
 )
 
@@ -39,7 +39,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+  # include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
 )
