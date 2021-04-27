@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  swarm_localization
 )
 
 find_package(Eigen3 REQUIRED)
@@ -19,7 +20,7 @@ find_package(Ceres REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES distributed_solver
- CATKIN_DEPENDS roscpp rospy std_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs swarm_localization
 #  DEPENDS system_lib
 )
 
@@ -48,7 +49,7 @@ add_executable(${PROJECT_NAME}_test
   src/distributed_solver_test.cpp
 )
 
-set_target_properties(${PROJECT_NAME}_test PROPERTIES OUTPUT_NAME node PREFIX "")
+set_target_properties(${PROJECT_NAME}_test PROPERTIES OUTPUT_NAME ${PROJECT_NAME}_test PREFIX "")
 
 add_dependencies(${PROJECT_NAME}_test 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -58,4 +59,5 @@ target_link_libraries(${PROJECT_NAME}_test
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
   ${CERES_LIBRARIES}
+  dw
 )
