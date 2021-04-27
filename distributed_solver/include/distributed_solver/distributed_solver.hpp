@@ -15,7 +15,6 @@ protected:
     std::unique_ptr<ceres::internal::Program> reduced_program;
     std::vector<double*> removed_parameter_blocks;
     double fixed_cost;
-    ceres::Problem problem;
     std::vector<double> reduced_parameters;
     int num_residuals_;
     int num_parameters_;

@@ -31,7 +31,7 @@ namespace DSLAM {
         if (is_huber_norm) {
             loss_function = new ceres::HuberLoss(1.0);
         }
-        problem.AddResidualBlock(cost_function, loss_function, poses);
+        problem_impl->AddResidualBlock(cost_function, loss_function, poses.data(), poses.size());
     }
 
     void DistributedSolver::setup() {
@@ -45,6 +45,9 @@ namespace DSLAM {
 
         evaluator_options.evaluation_callback =
             reduced_program->mutable_evaluation_callback();
+
+        evaluator_options.context = problem_impl->context();
+        evaluator_options.num_eliminate_blocks = 0;
         
         evaluator.reset(ceres::internal::Evaluator::Create(
             evaluator_options, reduced_program.get(), &error));
@@ -68,22 +71,24 @@ namespace DSLAM {
         x_ = ceres::ConstVectorRef(reduced_parameters.data(), num_parameters_);
         double x_cost_ = 0;
 
-        ceres::Vector residuals_, gradient_;
-        residuals_.resize(num_residuals_);
+        residual.resize(num_residuals_);
 
         int num_effective_parameters_ = evaluator->NumEffectiveParameters();
-        gradient_.resize(num_effective_parameters_);
+        gradient.resize(num_effective_parameters_);
         jacobian_ = evaluator->CreateJacobian();
         if (!evaluator->Evaluate(evaluate_options,
                             x_.data(),
                             &x_cost_,
-                            residuals_.data(),
-                            gradient_.data(),
+                            residual.data(),
+                            gradient.data(),
                             jacobian_)) {
             assert(false && "Residual evalute? failed in DGSSOlver");
             exit(-1);
         }
 
+
+       
+        
         return x_cost_;
     }
 
@@ -107,7 +112,24 @@ namespace DSLAM {
         ceres::Vector x, residual, gradient;
         ceres::internal::SparseMatrix * jacobian = nullptr;
         double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
-
         
+        ceres::Matrix J, Jt;
+        jacobian->ToDenseMatrix(&J);
+        Jt = J.transpose();
+        auto H = Jt * J;
+        auto g = - Jt * residual;
+
+        std::cout << "Cost now: " << cost << std::endl;
+        std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
+        std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
+        // std::cout << "Jacobian\n" << J << std::endl;
+        // std::cout << "Hessian\n" << H << std::endl;
+        // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
+        ceres::Vector xnew;
+        xnew.resize(x.size())
+        for (unsigned int i = 0; i < x.size(); i ++ ) {
+            double sum = g(i);
+            xnew[i] = sum/H(i,i);
+        }
     }
 }
