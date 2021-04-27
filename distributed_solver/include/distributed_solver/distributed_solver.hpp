@@ -26,9 +26,16 @@ public:
     ~DistributedSolver() {};
     virtual void set_local_poses(std::vector<double*> poses);
     virtual void set_remote_poses(std::vector<double*> poses);
-    virtual void add_residual(ceres::CostFunction * cost_function, bool is_huber_norm = false) {};
+    virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
     virtual void setup();
     virtual void solve() {};
+
+    virtual double get_x_jacobian_residual(
+        ceres::Vector & x_,
+        ceres::Vector & residual,
+        ceres::Vector & gradient,
+        ceres::internal::SparseMatrix * & jacobian_
+    );
 };
 
 // class ADMMDistributed : public DistributedSolver {
