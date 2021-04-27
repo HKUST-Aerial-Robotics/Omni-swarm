@@ -2,6 +2,9 @@
 #include <swarm_localization/localiztion_costfunction.hpp>
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
+#include <random>
+
+
 namespace backward
 {
     backward::SignalHandling sh;
@@ -14,6 +17,38 @@ float LOOP_POS_STD_SLOPE = 0.0;
 
 float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
+
+std::random_device rd{};
+std::mt19937 gen{rd()};
+
+// values near the mean are the most likely
+// standard deviation affects the dispersion of generated values from the mean
+std::normal_distribution<double> d{0,1};
+
+
+CostFunction * setup_test_loop(int ida, int idb, int ta, int tb, double * posea, double * poseb) {
+    Swarm::LoopConnection * loop = new Swarm::LoopConnection;
+    loop->id_a = ida;
+    loop->id_b = idb;
+    loop->ts_a = ta;
+    loop->ts_b = tb;
+    loop->avg_count = 1;
+    Eigen::Vector3d dpos(poseb[0] -posea[0], 
+        poseb[1] - posea[1],
+        poseb[2] - posea[2]);
+
+    loop->relative_pose = Swarm::Pose(
+        dpos, poseb[3] - posea[3]
+    );
+
+    auto sle = new SwarmLoopError(loop);
+    auto cost_function = new LoopCost(sle);
+    cost_function->AddParameterBlock(4);
+    cost_function->AddParameterBlock(4);
+    cost_function->SetNumResiduals(sle->residual_count());
+
+    return cost_function;
+}
 
 void DGSTest() {
 
@@ -58,30 +93,14 @@ void DGSTest() {
             }
 
             //Initial without noise
-
             poses[t][i][0] = t*pose_x_step; //x
             poses[t][i][1] = i*pose_y_step; //y
             poses[t][i][2] = 0; //z
             poses[t][i][3] = 0; //yaw
 
             if (i > 0) {
-                Swarm::LoopConnection * loop = new Swarm::LoopConnection;
-                loop->id_a = i - 1;
-                loop->id_b = i;
-                loop->ts_a = t;
-                loop->ts_b = t;
-                loop->avg_count = 1;
-                Eigen::Vector3d dpos(poses[t][i][0] - poses[t][i-1][0], 
-                    poses[t][i][1] - poses[t][i-1][1],
-                    poses[t][i][2] - poses[t][i-1][2]);
-
-                loop->relative_pose = Swarm::Pose(
-                    dpos, poses[t][i][3] - poses[t][i-1][3]
-                );
-
-                auto sle = new SwarmLoopError(loop);
-                auto cost_function = new LoopCost(sle);
-
+                //Setup relative pose residual between agents
+                auto cost_function = setup_test_loop(i-1, i, t, t, poses[t][i-1], poses[t][i]);
                 costs.push_back(std::make_tuple(
                     cost_function, poses[t][i-1], poses[t][i]
                 ));
@@ -89,45 +108,34 @@ void DGSTest() {
                 if(i == main_id) {
                     neighbor_poses.push_back(poses[t][i-1]);
                     neighbor_costs.push_back(std::make_tuple(
-                    cost_function, poses[t][i-1], poses[t][i]
-                ));
+                        cost_function, poses[t][i-1], poses[t][i]
+                    ));
                 }
-
-                loops.push_back(loop);
             }
 
             if (t > 0) {
-                Swarm::LoopConnection * loop = new Swarm::LoopConnection;
-                loop->id_a = i;
-                loop->id_b = i;
-                loop->ts_a = t-1;
-                loop->ts_b = t;
-                loop->avg_count = 1;
-                Eigen::Vector3d dpos(poses[t][i][0] - poses[t-1][i][0], 
-                    poses[t][i][1] - poses[t-1][i][1],
-                    poses[t][i][2] - poses[t-1][i][2]);
-
-                loop->relative_pose = Swarm::Pose(
-                    dpos, poses[t][i][3] - poses[t-1][i][3]
-                );
-
-                auto sle = new SwarmLoopError(loop);
-                auto cost_function = new LoopCost(sle);
-
+                //Setup relative pose residual same agent different time
+                auto cost_function = setup_test_loop(i, i, t-1, t, poses[t-1][i], poses[t][i]);
                 costs.push_back(std::make_tuple(
                     cost_function, poses[t-1][i], poses[t][i]
                 ));
 
                 if(i == main_id) {
-                    neighbor_poses.push_back(poses[t-1][i]);
                     neighbor_costs.push_back(std::make_tuple(
                         cost_function, poses[t-1][i], poses[t][i]
                     ));
                 }
-
-                loops.push_back(loop);
             }
 
+        }
+    }
+
+    for (auto & _poses: poses) {
+        for (auto & _pose : _poses) {
+            _pose[0] += d(gen)*0.3;
+            _pose[1] += d(gen)*0.3;
+            _pose[2] += d(gen)*0.3;
+            _pose[3] += d(gen)*0.1;
         }
     }
 
