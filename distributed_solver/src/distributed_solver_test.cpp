@@ -2,14 +2,12 @@
 #include <swarm_localization/localiztion_costfunction.hpp>
 #include <random>
 
-
-// #define BACKWARD_HAS_DW 1
-// #include <backward.hpp>
-// namespace backward
-// {
-//     backward::SignalHandling sh;
-// }
-
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward
+{
+    backward::SignalHandling sh;
+}
 
 using namespace DSLAM;
 float LOOP_POS_STD_0 = 0.5;
@@ -19,10 +17,10 @@ float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
 float POS_INITAL_NOISE_STD = 1.0;
-float YAW_INITAL_NOISE_STD = 0.1;
+float YAW_INITAL_NOISE_STD = 0.0;
 
-// std::random_device rd{};
-//std::mt19937 gen{rd()};
+std::random_device rd{};
+// std::mt19937 eng{rd()};
 std::default_random_engine eng{0};
 
 
@@ -68,14 +66,15 @@ void DGSTest() {
 
     //Construct a grid sample  
     std::vector<std::tuple<ceres::CostFunction*, double*, double*>> costs;
-    std::vector<AgentState> states(10);
 
     std::vector<std::vector<double*>> poses;
     std::vector<Swarm::LoopConnection*> loops;
-    int pose_grid_width = 10;
-    int pose_grid_length = 10;
+    int pose_grid_width = 5;
+    int pose_grid_length = 5;
     double pose_x_step = 1;
     double pose_y_step = 1;
+
+    std::vector<AgentState> states(pose_grid_width);
 
     states.resize(pose_grid_width);
     /*
@@ -189,40 +188,64 @@ void DGSTest() {
         );
     }
 
-    for (unsigned int iter = 0; iter < 10; iter++) {
+    printf("Initial states:\n");
+    for (unsigned int t = 0; t < pose_grid_length; t ++) {
+        for (unsigned int i = 0; i < solvers.size(); i ++) {
+            printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+        }
+        printf("\n");
+    }
+
+    for (unsigned int iter = 0; iter < 100; iter++) {
         printf("iter %d:", iter);
         double iter_cost = 0;
-        bool need_linearization = (iter % 3 == 0);
+        bool need_linearization = (iter % 4 == 0);
         
         if (need_linearization && iter > 0) {
             //Sync pose_tmps to poses
-            for (unsigned int i = 0; i < solvers.size(); i ++) {
-                for (unsigned int t = 0; t < pose_grid_length; t ++) {
-                    memcpy(poses[i][t], poses_tmp[i][t], 4*sizeof(double));
+            printf("Sync poses, relinearization...\n");
+            for (unsigned int t = 0; t < pose_grid_length; t ++) {
+                for (unsigned int i = 0; i < solvers.size(); i ++) {
+                    memcpy(poses[t][i], poses_tmp[t][i], 4*sizeof(double));
+                    printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
                 }
+                printf("\n");
             }
         }
 
-        for (unsigned int i = 0; i < solvers.size(); i ++) {
+        for (unsigned int i = 0; i < pose_grid_width; i ++) {
             auto &solver = solvers[i];
+            solver.setup();
+            iter_cost += solver.cost();
+        }
+
+        printf("start cost: %3.3f ", iter_cost);
+        iter_cost = 0;
+
+        for (unsigned int i = 0; i < pose_grid_width; i ++) {
+            auto &solver = solvers[i];
+
+            //Update to last states
             std::vector<double*> _neighbor_poses;
             for(auto _index : states[i].neighbor_poses_index) {
-                _neighbor_poses.push_back(poses_tmp[_index.first][_index.second]);
+                _neighbor_poses.push_back(poses_tmp[_index.second][_index.first]);
             }
 
             if (iter > 0 ) {
                 solver.update_remote_poses(_neighbor_poses);
             }
 
+            //Perform iteration
             iter_cost += solver.iteration(need_linearization);
+
+            //Update state to neighbors
             auto last_poses = solver.get_last_local_states();
             for (unsigned int t = 0; t < pose_grid_length; t++) {
-                memcpy(poses_tmp[i][t], last_poses[t], sizeof(double) * 4);
+                memcpy(poses_tmp[t][i], last_poses[t].data(), sizeof(double) * 4);
             }
-
         }
 
-        printf("cost: %f\n", iter_cost);
+        printf("final cost: %3.3f\n", iter_cost);
     }
 
     std::cout << "DGSTest Finish" << std::endl;

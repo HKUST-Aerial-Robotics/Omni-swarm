@@ -9,8 +9,9 @@
 namespace DSLAM {
 class DistributedSolver {
 protected:
-    std::set<double*> local_poses;
-    std::set<double*> remote_poses;
+    std::vector<double*> local_poses;
+    std::vector<double*> remote_poses;
+    std::vector<std::pair<ceres::CostFunction * , std::vector<double*> >> residuals;
     ceres::internal::Evaluator * evaluator = nullptr;
     ceres::internal::Program * reduced_program = nullptr;
     std::vector<double*> removed_parameter_blocks;
@@ -26,7 +27,15 @@ protected:
     ceres::internal::SparseMatrix * jacobian = nullptr;
     ceres::Matrix J, Jt;
     ceres::Matrix H,g;
+
+    bool need_setup = true;
 public:
+    void print_reduced_parameters() {
+        ceres::Vector x_;
+        x_.resize(num_parameters_);
+        memcpy(x_.data(), reduced_parameters.data(), num_parameters_*sizeof(double));
+        std::cout << "print_reduced_parameters" << x_.transpose() << std::endl;
+    }
     DistributedSolver();
     virtual void set_local_poses(std::vector<double*> poses);
     virtual void set_remote_poses(std::vector<double*> poses);
@@ -37,16 +46,17 @@ public:
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
     virtual void linearization() {};
     virtual void setup();
+    virtual double cost() const = 0;
     virtual double iteration(bool linearization = true) {};
 
-    virtual std::vector<double*> get_last_local_states() {};
+    virtual std::vector<ceres::Vector> get_last_local_states() {};
 
     virtual double get_x_jacobian_residual(
         ceres::Vector & x_,
         ceres::Vector & residual,
         ceres::Vector & gradient,
         ceres::internal::SparseMatrix * & jacobian_
-    );
+    ) const;
 };
 
 // class ADMMDistributed : public DistributedSolver {
@@ -66,8 +76,10 @@ public:
     ~DGSSolver() {};
     virtual void linearization();
     virtual double iteration(bool linearization = true) override;
+    virtual double cost() const override;
     virtual void update_remote_poses(std::vector<double*> poses) override;
-    virtual std::vector<double*> get_last_local_states() override;
+    virtual std::vector<ceres::Vector> get_last_local_states() override;
+
 };
 
 }
