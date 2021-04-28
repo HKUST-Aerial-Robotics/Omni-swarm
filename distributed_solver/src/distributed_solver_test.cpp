@@ -195,10 +195,10 @@ void DGSTest() {
         }
         printf("\n");
     }
-
-    for (unsigned int iter = 0; iter < 100; iter++) {
+    
+    double iter_cost = 0;
+    for (unsigned int iter = 0; iter < 50; iter++) {
         printf("iter %d:", iter);
-        double iter_cost = 0;
         bool need_linearization = (iter % 4 == 0);
         
         if (need_linearization && iter > 0) {
@@ -244,10 +244,17 @@ void DGSTest() {
                 memcpy(poses_tmp[t][i], last_poses[t].data(), sizeof(double) * 4);
             }
         }
-
         printf("final cost: %3.3f\n", iter_cost);
     }
 
+    printf("final states:\n");
+    for (unsigned int t = 0; t < pose_grid_length; t ++) {
+        for (unsigned int i = 0; i < solvers.size(); i ++) {
+            printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+        }
+        printf("\n");
+    }
+    printf("final cost: %3.3f\n", iter_cost);
     std::cout << "DGSTest Finish" << std::endl;
 }
 
