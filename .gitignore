@@ -32,3 +32,5 @@ data_analyze/.ipynb_checkpoints/
 swarm_localization/DataAnalysis/.ipynb_checkpoints/
 swarm_localization/scripts/.ipynb_checkpoints/local_plot-checkpoint.py
 swarm_localization/DataAnalysis/*
+distributed_solver/cmake-build-release/
+distributed_solver/cmake-build-debug/
