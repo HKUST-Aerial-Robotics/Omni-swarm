@@ -22,8 +22,9 @@ protected:
 
     //These values are at linearized point!
     ceres::Vector x, residual, gradient;
-
+    
     ceres::internal::SparseMatrix * jacobian = nullptr;
+    ceres::Matrix J, Jt;
     ceres::Matrix H,g;
 public:
     DistributedSolver();
@@ -32,7 +33,7 @@ public:
 
     virtual void update_remote_poses(std::vector<double*> poses) {};
     
-    virtual void set_fixed_pose(std::vector<double*> poses) {};
+    virtual void set_fixed_poses(std::vector<double*> poses);
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
     virtual void linearization() {};
     virtual void setup();
@@ -62,8 +63,9 @@ class DGSSolver: public  DistributedSolver{
     ceres::Vector x_last;
 public:
     DGSSolver();
+    ~DGSSolver() {};
     virtual void linearization();
-    virtual void iteration(bool linearization = true) override;
+    virtual double iteration(bool linearization = true) override;
     virtual void update_remote_poses(std::vector<double*> poses) override;
     virtual std::vector<double*> get_last_local_states() override;
 };

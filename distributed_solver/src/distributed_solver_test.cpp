@@ -18,7 +18,7 @@ float LOOP_POS_STD_SLOPE = 0.0;
 float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
-float POS_INITAL_NOISE_STD = 0.5;
+float POS_INITAL_NOISE_STD = 1.0;
 float YAW_INITAL_NOISE_STD = 0.1;
 
 // std::random_device rd{};
@@ -59,6 +59,9 @@ struct AgentState {
     std::vector<double *> local_poses;
     std::vector<double *> neighbor_poses;
     std::vector<std::tuple<ceres::CostFunction*, double*, double*>> related_costs;
+
+    //Pose agentid/poseid
+    std::vector<std::pair<int, int>> neighbor_poses_index;
 };
 
 void DGSTest() {
@@ -85,7 +88,7 @@ void DGSTest() {
     | ...
     */
 
-    printf("Setup poses with agents %d time %d step %f/%f\n",
+    printf("Setup poses with agents %d time %d step %3.1f/%3.1f\n",
         pose_grid_width,
         pose_grid_length,
         pose_x_step,
@@ -113,7 +116,10 @@ void DGSTest() {
                 ));
 
                 states[i].neighbor_poses.push_back(poses[t][i-1]);
+                states[i].neighbor_poses_index.push_back(std::make_pair(i-1, t));
+
                 states[i-1].neighbor_poses.push_back(poses[t][i]);
+                states[i-1].neighbor_poses_index.push_back(std::make_pair(i, t));
                 
                 states[i].related_costs.push_back(std::make_tuple(
                         cost_function, poses[t][i-1], poses[t][i]
@@ -148,6 +154,16 @@ void DGSTest() {
     }
 
 
+    //poses_tmp for simulate inter-agent communication
+    std::vector<std::vector<double*>> poses_tmp;
+    for (int t = 0; t < pose_grid_length; t ++) {
+        poses_tmp.push_back(std::vector<double*>(pose_grid_width));
+        for (int i = 0; i < pose_grid_width; i++)  {
+            poses_tmp[t][i] = new double[4];
+            memcpy(poses_tmp[t][i], poses[t][i], 4*sizeof(double));
+        }
+    }
+
     std::vector<DGSSolver> solvers(pose_grid_width);
     for (unsigned int i = 0; i < solvers.size(); i ++) {
         auto &solver = solvers[i];
@@ -173,11 +189,43 @@ void DGSTest() {
         );
     }
 
-    for (unsigned int i = 0; i < solvers.size(); i ++) {
-        auto &solver = solvers[i];
-        printf("Agent : %d:\n", i);
-        solver.iteration();
+    for (unsigned int iter = 0; iter < 10; iter++) {
+        printf("iter %d:", iter);
+        double iter_cost = 0;
+        bool need_linearization = (iter % 3 == 0);
+        
+        if (need_linearization && iter > 0) {
+            //Sync pose_tmps to poses
+            for (unsigned int i = 0; i < solvers.size(); i ++) {
+                for (unsigned int t = 0; t < pose_grid_length; t ++) {
+                    memcpy(poses[i][t], poses_tmp[i][t], 4*sizeof(double));
+                }
+            }
+        }
+
+        for (unsigned int i = 0; i < solvers.size(); i ++) {
+            auto &solver = solvers[i];
+            std::vector<double*> _neighbor_poses;
+            for(auto _index : states[i].neighbor_poses_index) {
+                _neighbor_poses.push_back(poses_tmp[_index.first][_index.second]);
+            }
+
+            if (iter > 0 ) {
+                solver.update_remote_poses(_neighbor_poses);
+            }
+
+            iter_cost += solver.iteration(need_linearization);
+            auto last_poses = solver.get_last_local_states();
+            for (unsigned int t = 0; t < pose_grid_length; t++) {
+                memcpy(poses_tmp[i][t], last_poses[t], sizeof(double) * 4);
+            }
+
+        }
+
+        printf("cost: %f\n", iter_cost);
     }
+
+    std::cout << "DGSTest Finish" << std::endl;
 }
 
 int main() {
