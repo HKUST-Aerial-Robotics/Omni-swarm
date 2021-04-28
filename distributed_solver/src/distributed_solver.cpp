@@ -256,6 +256,7 @@ namespace DSLAM {
                 }
             }
             delta_[i] = sum/H(i,i);
+            delta_last[i] = delta_[i];
         }
 
         double candidate_cost_ = 0;
