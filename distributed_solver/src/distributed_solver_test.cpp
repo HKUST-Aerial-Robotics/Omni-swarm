@@ -17,7 +17,7 @@ float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
 float POS_INITAL_NOISE_STD = 1.0;
-float YAW_INITAL_NOISE_STD = 0.0;
+float YAW_INITAL_NOISE_STD = 0.2;
 
 std::random_device rd{};
 // std::mt19937 eng{rd()};
@@ -69,8 +69,8 @@ void DGSTest() {
 
     std::vector<std::vector<double*>> poses;
     std::vector<Swarm::LoopConnection*> loops;
-    int pose_grid_width = 5;
-    int pose_grid_length = 5;
+    int pose_grid_width = 10;
+    int pose_grid_length = 10;
     double pose_x_step = 1;
     double pose_y_step = 1;
 
