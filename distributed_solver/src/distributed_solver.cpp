@@ -25,6 +25,12 @@ namespace DSLAM {
             // problem_impl->SetParameterBlockConstant(p);
         }
     }
+
+    void DistributedSolver::set_fixed_poses(std::vector<double*> poses) {
+        for (auto p: poses) {
+            problem_impl->SetParameterBlockConstant(p);
+        }
+    }
     
     void DistributedSolver::add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm) {
         ceres::LossFunction *loss_function = nullptr;
@@ -89,8 +95,6 @@ namespace DSLAM {
             exit(-1);
         }
 
-
-       
         
         return x_cost_;
     }
@@ -106,7 +110,6 @@ namespace DSLAM {
 
         double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
         
-        ceres::Matrix J, Jt;
         jacobian->ToDenseMatrix(&J);
         Jt = J.transpose();
         H = Jt * J;
@@ -128,10 +131,40 @@ namespace DSLAM {
         int index_remote_start = local_poses.size() * PARAM_BLOCK_SIZE;
         for (int i = 0; i < poses.size(); i++) {
             delta_last(index_remote_start+i*PARAM_BLOCK_SIZE) = poses[i][0] - x(index_remote_start+i*PARAM_BLOCK_SIZE);
+            delta_last(index_remote_start+i*PARAM_BLOCK_SIZE+1) = poses[i][1] - x(index_remote_start+i*PARAM_BLOCK_SIZE+1);
+            delta_last(index_remote_start+i*PARAM_BLOCK_SIZE+2) = poses[i][2] - x(index_remote_start+i*PARAM_BLOCK_SIZE+2);
+            delta_last(index_remote_start+i*PARAM_BLOCK_SIZE+3) = poses[i][3] - x(index_remote_start+i*PARAM_BLOCK_SIZE+3);
         }
+
+        // printf("Xold [");
+        // for (int i = 0; i < poses.size(); i++) {
+        //     printf("%f ", x(index_remote_start+i*PARAM_BLOCK_SIZE));
+        //     printf("%f ", x(index_remote_start+i*PARAM_BLOCK_SIZE+1));
+        //     printf("%f ", x(index_remote_start+i*PARAM_BLOCK_SIZE+2));
+        //     printf("%f ", x(index_remote_start+i*PARAM_BLOCK_SIZE+3));
+        // }
+
+        // printf("]^T\nXNew [");
+        // for (int i = 0; i < poses.size(); i++) {
+        //     printf("%f ", poses[i][0]);
+        //     printf("%f ", poses[i][1]);
+        //     printf("%f ", poses[i][2]);
+        //     printf("%f ", poses[i][3]);
+        // }
+
+        // printf("]^T\n");
+
+    }
+
+    std::vector<double*> DGSSolver::get_last_local_states() {
+        std::vector<double *> ret;
+        for (unsigned int i = 0; i < local_poses.size(); i ++) {
+            ret.push_back(x_last.data() + i*PARAM_BLOCK_SIZE);
+        }
+        return ret;
     }
     
-    void DGSSolver::iteration(bool need_linearization) {
+    double DGSSolver::iteration(bool need_linearization) {
         //First we need to get the hessian matrix
         // H = J^T J
         // g = -J^T f(x)
@@ -168,9 +201,11 @@ namespace DSLAM {
         evaluator->Evaluate(
             x_last.data(), &candidate_cost_, nullptr, nullptr, nullptr);
         
-        std::cout << "Cost after DGS iteration" << candidate_cost_ << std::endl;
         delta_last = delta_;
+        // std::cout << "Cost after DGS iteration" << candidate_cost_ << std::endl;
         // std::cout << "delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
-        // std::cout << "xnew (" << x.size() <<") [" << (candidate_x_).transpose() << "]^T" << std::endl;
+        // std::cout << "xnew (" << x_last.size() <<") [" << (x_last).transpose() << "]^T" << std::endl;
+
+        return candidate_cost_;
     }
 }
