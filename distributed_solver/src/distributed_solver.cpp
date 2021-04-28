@@ -131,12 +131,22 @@ namespace DSLAM {
     void DGSSolver::linearization() {
         setup();
 
+        TicToc tic;
         double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
-        
+        // printf("Linearization: Evaluation with Jacobian %3.1fms ",tic.toc());
+        evaluation_with_jacobian_time += tic.toc();
+
+        TicToc tic2;
         jacobian->ToDenseMatrix(&J);
+        printf("ToDenseMatrix %3.1fms ",tic2.toc());
+
+        TicToc tic3;
         Jt = J.transpose();
         H = Jt * J;
+        printf("Jt * J %3.1fms H[%dx%d]\n",tic3.toc(), H.rows(), H.cols());
+        tic3.tic();
         g = - Jt * residual;
+        printf("Jt * residual %3.1fms \n",tic3.toc());
 
         // std::cout << "Linearization cost: " << cost << std::endl;
         // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
@@ -233,7 +243,7 @@ namespace DSLAM {
         //Then update x <- x + dx
 
         //First we need to setup the problem and obtain H matrix
-
+        TicToc tic_iteration;
         if (need_linearization) {
             linearization();
             delta_last.resize(x.size());
@@ -248,6 +258,7 @@ namespace DSLAM {
 
         //Assmue local pose is in the front 
         //Core of Gauss Seidel
+        TicToc tic_gs;
         for (unsigned int i = 0; i < local_poses.size()*PARAM_BLOCK_SIZE; i ++ ) {
             double sum = g(i);
             for (unsigned int j = 0; j < delta_.size(); j++) {
@@ -258,10 +269,12 @@ namespace DSLAM {
             delta_[i] = sum/H(i,i);
             delta_last[i] = delta_[i];
         }
+        
 
         double candidate_cost_ = 0;
-        // evaluator->Plus(reduced_parameters.data(), delta_.data(), candidate_x_.data());
         x_last = x + delta_;
+        // printf("Gauss Seidel time %3.1fms ", tic_gs.toc());
+
         evaluator->Evaluate(
             x_last.data(), &candidate_cost_, nullptr, nullptr, nullptr);
         
@@ -270,7 +283,9 @@ namespace DSLAM {
         // std::cout << "delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
         // std::cout << "xold (" << x.size() <<") [" << (x).transpose() << "]^T" << std::endl;
         // std::cout << "xnew (" << x_last.size() <<") [" << (x_last).transpose() << "]^T" << std::endl;
-
+        iteration_time += tic_iteration.toc();
+        printf("iteration time %3.1fms\n", iteration_time);
+        iterations ++;
         return candidate_cost_;
     }
 }

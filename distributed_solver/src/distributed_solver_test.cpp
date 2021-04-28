@@ -23,6 +23,7 @@ std::random_device rd{};
 // std::mt19937 eng{rd()};
 std::default_random_engine eng{0};
 
+// #define OUTPUT_COOR
 
 // values near the mean are the most likely
 // standard deviation affects the dispersion of generated values from the mean
@@ -69,8 +70,8 @@ void DGSTest() {
 
     std::vector<std::vector<double*>> poses;
     std::vector<Swarm::LoopConnection*> loops;
-    int pose_grid_width = 10;
-    int pose_grid_length = 10;
+    int pose_grid_width = 100;
+    int pose_grid_length = 100;
     double pose_x_step = 1;
     double pose_y_step = 1;
 
@@ -188,6 +189,7 @@ void DGSTest() {
         );
     }
 
+#ifdef OUTPUT_COOR
     printf("Initial states:\n");
     for (unsigned int t = 0; t < pose_grid_length; t ++) {
         for (unsigned int i = 0; i < solvers.size(); i ++) {
@@ -195,6 +197,7 @@ void DGSTest() {
         }
         printf("\n");
     }
+#endif
     
     double iter_cost = 0;
     for (unsigned int iter = 0; iter < 50; iter++) {
@@ -207,9 +210,9 @@ void DGSTest() {
             for (unsigned int t = 0; t < pose_grid_length; t ++) {
                 for (unsigned int i = 0; i < solvers.size(); i ++) {
                     memcpy(poses[t][i], poses_tmp[t][i], 4*sizeof(double));
-                    printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+                    // printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
                 }
-                printf("\n");
+                // printf("\n");
             }
         }
 
@@ -222,6 +225,7 @@ void DGSTest() {
         printf("start cost: %3.3f ", iter_cost);
         iter_cost = 0;
 
+        // #pragma omp parallel for num_threads(12)
         for (unsigned int i = 0; i < pose_grid_width; i ++) {
             auto &solver = solvers[i];
 
@@ -246,7 +250,7 @@ void DGSTest() {
         }
         printf("final cost: %3.3f\n", iter_cost);
     }
-
+#ifdef OUTPUT_COOR
     printf("final states:\n");
     for (unsigned int t = 0; t < pose_grid_length; t ++) {
         for (unsigned int i = 0; i < solvers.size(); i ++) {
@@ -255,6 +259,7 @@ void DGSTest() {
         printf("\n");
     }
     printf("final cost: %3.3f\n", iter_cost);
+#endif
     std::cout << "DGSTest Finish" << std::endl;
 }
 

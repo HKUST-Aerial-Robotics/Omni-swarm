@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   swarm_localization
 )
 
+# find_package(OpenMP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Ceres REQUIRED)
 
@@ -60,4 +61,5 @@ target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}
   ${CERES_LIBRARIES}
   dw
+  # OpenMP::OpenMP_CXX
 )
