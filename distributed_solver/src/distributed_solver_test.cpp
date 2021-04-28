@@ -1,14 +1,14 @@
 #include <distributed_solver/distributed_solver.hpp>
 #include <swarm_localization/localiztion_costfunction.hpp>
-#define BACKWARD_HAS_DW 1
-#include <backward.hpp>
 #include <random>
 
 
-namespace backward
-{
-    backward::SignalHandling sh;
-}
+// #define BACKWARD_HAS_DW 1
+// #include <backward.hpp>
+// namespace backward
+// {
+//     backward::SignalHandling sh;
+// }
 
 
 using namespace DSLAM;
@@ -18,8 +18,8 @@ float LOOP_POS_STD_SLOPE = 0.0;
 float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
-float POS_INITAL_NOISE_STD = 0.1;
-float YAW_INITAL_NOISE_STD = 0.0;
+float POS_INITAL_NOISE_STD = 0.5;
+float YAW_INITAL_NOISE_STD = 0.1;
 
 // std::random_device rd{};
 //std::mt19937 gen{rd()};
@@ -113,9 +113,14 @@ void DGSTest() {
                 ));
 
                 states[i].neighbor_poses.push_back(poses[t][i-1]);
+                states[i-1].neighbor_poses.push_back(poses[t][i]);
+                
                 states[i].related_costs.push_back(std::make_tuple(
                         cost_function, poses[t][i-1], poses[t][i]
-                    ));
+                ));
+                states[i-1].related_costs.push_back(std::make_tuple(
+                        cost_function, poses[t][i-1], poses[t][i]
+                ));
             }
 
             if (t > 0) {
@@ -170,7 +175,7 @@ void DGSTest() {
 
     for (unsigned int i = 0; i < solvers.size(); i ++) {
         auto &solver = solvers[i];
-        printf("Agent : %d\n");
+        printf("Agent : %d:\n", i);
         solver.iteration();
     }
 }
@@ -178,4 +183,5 @@ void DGSTest() {
 int main() {
     printf("Hello,world\n");
     DGSTest();
+    return 0;
 }

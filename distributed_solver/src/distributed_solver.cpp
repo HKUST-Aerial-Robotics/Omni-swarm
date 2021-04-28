@@ -112,7 +112,7 @@ namespace DSLAM {
         H = Jt * J;
         g = - Jt * residual;
 
-        std::cout << "Linearzation: cost now: " << cost << std::endl;
+        std::cout << "Linearization cost: " << cost << std::endl;
         // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
         // std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
         // std::cout << "gradient (" << gradient.size() <<") [" << gradient.transpose() << "]^T" << std::endl;
@@ -120,6 +120,15 @@ namespace DSLAM {
         // // std::cout << J << std::endl;
         // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n";// << H << std::endl;
         // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
+    }
+
+
+    void DGSSolver::update_remote_poses(std::vector<double*> poses) {
+        assert(poses.size() == remote_poses.size() && "New remote poses size must be equal!");
+        int index_remote_start = local_poses.size() * PARAM_BLOCK_SIZE;
+        for (int i = 0; i < poses.size(); i++) {
+            delta_last(index_remote_start+i*PARAM_BLOCK_SIZE) = poses[i][0] - x(index_remote_start+i*PARAM_BLOCK_SIZE);
+        }
     }
     
     void DGSSolver::iteration(bool need_linearization) {
@@ -135,12 +144,11 @@ namespace DSLAM {
             linearization();
             delta_last.resize(x.size());
             delta_last.setZero();
+            x_last = x;
         }
         
         ceres::Vector delta_;
-        ceres::Vector candidate_x_;
         delta_.resize(x.size());
-        candidate_x_.resize(candidate_x_.size());
         delta_.setZero();
 
         //Assmue local pose is in the front 
@@ -156,11 +164,12 @@ namespace DSLAM {
 
         double candidate_cost_ = 0;
         // evaluator->Plus(reduced_parameters.data(), delta_.data(), candidate_x_.data());
-        candidate_x_ = x + delta_;
+        x_last = x + delta_;
         evaluator->Evaluate(
-            candidate_x_.data(), &candidate_cost_, nullptr, nullptr, nullptr);
+            x_last.data(), &candidate_cost_, nullptr, nullptr, nullptr);
         
-        std::cout << "Cost now after iteration" << candidate_cost_ << std::endl;
+        std::cout << "Cost after DGS iteration" << candidate_cost_ << std::endl;
+        delta_last = delta_;
         // std::cout << "delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
         // std::cout << "xnew (" << x.size() <<") [" << (candidate_x_).transpose() << "]^T" << std::endl;
     }
