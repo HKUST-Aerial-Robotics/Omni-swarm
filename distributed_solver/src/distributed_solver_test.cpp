@@ -18,8 +18,13 @@ float LOOP_POS_STD_SLOPE = 0.0;
 float LOOP_YAW_STD_0 = 0.5;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
-std::random_device rd{};
-std::mt19937 gen{rd()};
+float POS_INITAL_NOISE_STD = 0.1;
+float YAW_INITAL_NOISE_STD = 0.0;
+
+// std::random_device rd{};
+//std::mt19937 gen{rd()};
+std::default_random_engine eng{0};
+
 
 // values near the mean are the most likely
 // standard deviation affects the dispersion of generated values from the mean
@@ -50,13 +55,17 @@ CostFunction * setup_test_loop(int ida, int idb, int ta, int tb, double * posea,
     return cost_function;
 }
 
+struct AgentState {
+    std::vector<double *> local_poses;
+    std::vector<double *> neighbor_poses;
+    std::vector<std::tuple<ceres::CostFunction*, double*, double*>> related_costs;
+};
+
 void DGSTest() {
 
     //Construct a grid sample  
-    std::vector<double *> local_poses;
-    std::vector<double *> neighbor_poses;
     std::vector<std::tuple<ceres::CostFunction*, double*, double*>> costs;
-    std::vector<std::tuple<ceres::CostFunction*, double*, double*>> neighbor_costs;
+    std::vector<AgentState> states(10);
 
     std::vector<std::vector<double*>> poses;
     std::vector<Swarm::LoopConnection*> loops;
@@ -65,6 +74,7 @@ void DGSTest() {
     double pose_x_step = 1;
     double pose_y_step = 1;
 
+    states.resize(pose_grid_width);
     /*
     Pit i is id, t is stamp
 
@@ -74,8 +84,6 @@ void DGSTest() {
     x P02 P12 P22 P32 P42 P52 ... poses[2]
     | ...
     */
-
-    int main_id = 1;
 
     printf("Setup poses with agents %d time %d step %f/%f\n",
         pose_grid_width,
@@ -88,9 +96,8 @@ void DGSTest() {
         poses.push_back(std::vector<double*>(pose_grid_width));
         for (int i = 0; i < pose_grid_width; i++)  {
             poses[t][i] = new double[4];
-            if (main_id == i) {
-                local_poses.push_back(poses[t][main_id]);
-            }
+
+            states[i].local_poses.push_back(poses[t][i]);
 
             //Initial without noise
             poses[t][i][0] = t*pose_x_step; //x
@@ -105,12 +112,10 @@ void DGSTest() {
                     cost_function, poses[t][i-1], poses[t][i]
                 ));
 
-                if(i == main_id) {
-                    neighbor_poses.push_back(poses[t][i-1]);
-                    neighbor_costs.push_back(std::make_tuple(
+                states[i].neighbor_poses.push_back(poses[t][i-1]);
+                states[i].related_costs.push_back(std::make_tuple(
                         cost_function, poses[t][i-1], poses[t][i]
                     ));
-                }
             }
 
             if (t > 0) {
@@ -120,11 +125,9 @@ void DGSTest() {
                     cost_function, poses[t-1][i], poses[t][i]
                 ));
 
-                if(i == main_id) {
-                    neighbor_costs.push_back(std::make_tuple(
-                        cost_function, poses[t-1][i], poses[t][i]
-                    ));
-                }
+                states[i].related_costs.push_back(std::make_tuple(
+                    cost_function, poses[t-1][i], poses[t][i]
+                ));
             }
 
         }
@@ -132,31 +135,44 @@ void DGSTest() {
 
     for (auto & _poses: poses) {
         for (auto & _pose : _poses) {
-            _pose[0] += d(gen)*0.3;
-            _pose[1] += d(gen)*0.3;
-            _pose[2] += d(gen)*0.3;
-            _pose[3] += d(gen)*0.1;
+            _pose[0] += d(eng)*POS_INITAL_NOISE_STD;
+            _pose[1] += d(eng)*POS_INITAL_NOISE_STD;
+            _pose[2] += d(eng)*POS_INITAL_NOISE_STD;
+            _pose[3] += d(eng)*YAW_INITAL_NOISE_STD;
         }
     }
 
-    printf("Testing DGSSolver, local poses %ld, neightbor poses %ld residuals %ld\n",
-        local_poses.size(),
-        neighbor_poses.size(),
-        neighbor_costs.size()
-    );
 
-    DGSSolver solver;
-    solver.set_local_poses(local_poses);
-    solver.set_remote_poses(neighbor_poses);
+    std::vector<DGSSolver> solvers(pose_grid_width);
+    for (unsigned int i = 0; i < solvers.size(); i ++) {
+        auto &solver = solvers[i];
+        auto &local_poses = states[i].local_poses;
+        auto &neighbor_poses = states[i].neighbor_poses;
+        auto &neighbor_costs = states[i].related_costs;
 
-    for (auto cost : neighbor_costs) {
-        std::vector<double*> _poses(2);
-        _poses[0] = std::get<1>(cost);
-        _poses[1] = std::get<2>(cost);
-        solver.add_residual(std::get<0>(cost), _poses);
+        solver.set_local_poses(local_poses);
+        solver.set_remote_poses(neighbor_poses);
+
+        for (auto cost : neighbor_costs) {
+            std::vector<double*> _poses(2);
+            _poses[0] = std::get<1>(cost);
+            _poses[1] = std::get<2>(cost);
+            solver.add_residual(std::get<0>(cost), _poses);
+        }
+
+        printf("DGSSolver: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
+            i,
+            local_poses.size(),
+            neighbor_poses.size(),
+            neighbor_costs.size()
+        );
     }
 
-    solver.solve();
+    for (unsigned int i = 0; i < solvers.size(); i ++) {
+        auto &solver = solvers[i];
+        printf("Agent : %d\n");
+        solver.iteration();
+    }
 }
 
 int main() {

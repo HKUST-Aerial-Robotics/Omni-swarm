@@ -22,7 +22,7 @@ namespace DSLAM {
         for (auto p: poses) {
             remote_poses.insert(p);
             problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
-            problem_impl->SetParameterBlockConstant(p);
+            // problem_impl->SetParameterBlockConstant(p);
         }
     }
     
@@ -40,17 +40,20 @@ namespace DSLAM {
         
         ceres::internal::Program* program = problem_impl->mutable_program();
         std::string error;
-        reduced_program.reset(program->CreateReducedProgram(
-            &removed_parameter_blocks, &fixed_cost, &error));
-
+        // reduced_program.reset(program->CreateReducedProgram(
+        //     &removed_parameter_blocks, &fixed_cost, &error));
+        // evaluator_options.evaluation_callback =
+        //     reduced_program->mutable_evaluation_callback();
         evaluator_options.evaluation_callback =
-            reduced_program->mutable_evaluation_callback();
+            program->mutable_evaluation_callback();
 
         evaluator_options.context = problem_impl->context();
         evaluator_options.num_eliminate_blocks = 0;
         
-        evaluator.reset(ceres::internal::Evaluator::Create(
-            evaluator_options, reduced_program.get(), &error));
+        // evaluator.reset(ceres::internal::Evaluator::Create(
+        //     evaluator_options, reduced_program.get(), &error));
+        evaluator= ceres::internal::Evaluator::Create(
+            evaluator_options, program, &error);
 
         num_parameters_ = evaluator->NumParameters();
         num_residuals_ = evaluator->NumResiduals();
@@ -98,8 +101,28 @@ namespace DSLAM {
 
     }
 
+    void DGSSolver::linearization() {
+        setup();
+
+        double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
+        
+        ceres::Matrix J, Jt;
+        jacobian->ToDenseMatrix(&J);
+        Jt = J.transpose();
+        H = Jt * J;
+        g = - Jt * residual;
+
+        std::cout << "Linearzation: cost now: " << cost << std::endl;
+        // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
+        // std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
+        // std::cout << "gradient (" << gradient.size() <<") [" << gradient.transpose() << "]^T" << std::endl;
+        // std::cout << "Jacobian [" << J.rows() << "," << J.cols() << "] \n";
+        // // std::cout << J << std::endl;
+        // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n";// << H << std::endl;
+        // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
+    }
     
-    void DGSSolver::solve() {
+    void DGSSolver::iteration(bool need_linearization) {
         //First we need to get the hessian matrix
         // H = J^T J
         // g = -J^T f(x)
@@ -108,28 +131,37 @@ namespace DSLAM {
 
         //First we need to setup the problem and obtain H matrix
 
-        setup();
-        ceres::Vector x, residual, gradient;
-        ceres::internal::SparseMatrix * jacobian = nullptr;
-        double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
-        
-        ceres::Matrix J, Jt;
-        jacobian->ToDenseMatrix(&J);
-        Jt = J.transpose();
-        auto H = Jt * J;
-        auto g = - Jt * residual;
-
-        std::cout << "Cost now: " << cost << std::endl;
-        std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
-        std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
-        // std::cout << "Jacobian\n" << J << std::endl;
-        // std::cout << "Hessian\n" << H << std::endl;
-        // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
-        ceres::Vector xnew;
-        xnew.resize(x.size())
-        for (unsigned int i = 0; i < x.size(); i ++ ) {
-            double sum = g(i);
-            xnew[i] = sum/H(i,i);
+        if (need_linearization) {
+            linearization();
+            delta_last.resize(x.size());
+            delta_last.setZero();
         }
+        
+        ceres::Vector delta_;
+        ceres::Vector candidate_x_;
+        delta_.resize(x.size());
+        candidate_x_.resize(candidate_x_.size());
+        delta_.setZero();
+
+        //Assmue local pose is in the front 
+        for (unsigned int i = 0; i < local_poses.size()*PARAM_BLOCK_SIZE; i ++ ) {
+            double sum = g(i);
+            for (unsigned int j = 0; j < delta_.size(); j++) {
+                if (j!=i) {
+                    sum = sum + -H(i,j)*delta_last(j);
+                }
+            }
+            delta_[i] = sum/H(i,i);
+        }
+
+        double candidate_cost_ = 0;
+        // evaluator->Plus(reduced_parameters.data(), delta_.data(), candidate_x_.data());
+        candidate_x_ = x + delta_;
+        evaluator->Evaluate(
+            candidate_x_.data(), &candidate_cost_, nullptr, nullptr, nullptr);
+        
+        std::cout << "Cost now after iteration" << candidate_cost_ << std::endl;
+        // std::cout << "delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
+        // std::cout << "xnew (" << x.size() <<") [" << (candidate_x_).transpose() << "]^T" << std::endl;
     }
 }

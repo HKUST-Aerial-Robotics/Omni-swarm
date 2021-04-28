@@ -11,8 +11,8 @@ class DistributedSolver {
 protected:
     std::set<double*> local_poses;
     std::set<double*> remote_poses;
-    std::shared_ptr<ceres::internal::Evaluator> evaluator;
-    std::unique_ptr<ceres::internal::Program> reduced_program;
+    ceres::internal::Evaluator * evaluator = nullptr;
+    ceres::internal::Program * reduced_program = nullptr;
     std::vector<double*> removed_parameter_blocks;
     double fixed_cost;
     std::vector<double> reduced_parameters;
@@ -20,14 +20,18 @@ protected:
     int num_parameters_;
     ceres::internal::ProblemImpl* problem_impl;
 
+    ceres::Vector x, residual, gradient;
+    ceres::internal::SparseMatrix * jacobian = nullptr;
+    ceres::Matrix H,g;
 public:
     DistributedSolver();
-    ~DistributedSolver() {};
     virtual void set_local_poses(std::vector<double*> poses);
     virtual void set_remote_poses(std::vector<double*> poses);
+    virtual void set_fixed_pose(std::vector<double*> poses) {};
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
+    virtual void linearization() {};
     virtual void setup();
-    virtual void solve() {};
+    virtual void iteration(bool linearization = true) {};
 
     virtual double get_x_jacobian_residual(
         ceres::Vector & x_,
@@ -47,10 +51,11 @@ public:
 // };
 
 class DGSSolver: public  DistributedSolver{
+    ceres::Vector delta_last;
 public:
     DGSSolver();
-    ~DGSSolver() {};
-    virtual void solve() override;
+    virtual void linearization();
+    virtual void iteration(bool linearization = true) override;
 };
 
 }
