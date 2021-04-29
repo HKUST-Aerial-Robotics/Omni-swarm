@@ -7,7 +7,7 @@
 #define PARAM_BLOCK_SIZE 4
 #define RESIDUAL_BLOCK_SIZE 4
 
-// #define ENABLE_PROFROLING_OUTPUT
+#define ENABLE_PROFROLING_OUTPUT
 
 namespace DSLAM {
     DistributedSolver::DistributedSolver():
@@ -265,16 +265,6 @@ namespace DSLAM {
         jacobian->ToDenseMatrix(&J);
         tic2.stop();
 
-        TicToc tic3;
-        // H = Jt * J;
-        // tic3.stop();
-        // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
-
-        // TicToc tic_fastH;
-        // setup_full_H();
-        // tic_fastH.stop();
-        // std::cout << "setup_full_H [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
-        
         TicToc tic4;
         g.resize(x.rows(), x.cols());
         g.setZero();
@@ -283,7 +273,6 @@ namespace DSLAM {
         tic4.stop();
 #ifdef ENABLE_PROFROLING_OUTPUT
         printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic2.toc());
-        // printf("Jt * J %3.1fms  setup_full_H %fms H[%ldx%ld]",tic3.toc(), tic_fastH.toc(), H.rows(), H.cols());
         printf("J^T: %3.1fms Jt * residual %3.3fms\n",tic3.toc(), tic4.toc());
 #endif
         // std::cout << "Linearization cost: " << cost << std::endl;
