@@ -3,11 +3,33 @@
 #include "ceres/program.h"
 #include "ceres/sparse_matrix.h"
 #include "ceres/parameter_block.h"
+#include "ceres/triplet_sparse_matrix.h"
+#include "ceres/block_sparse_matrix.h"
 
 #define PARAM_BLOCK_SIZE 4
 #define RESIDUAL_BLOCK_SIZE 4
 
 // #define ENABLE_PROFROLING_OUTPUT
+Eigen::SparseMatrix<double> CreateBlockJacobian(
+    const ceres::internal::TripletSparseMatrix& block_jacobian_transpose) {
+  typedef Eigen::SparseMatrix<double> SparseMatrix;
+  typedef Eigen::Triplet<double> Triplet;
+
+  const int* rows = block_jacobian_transpose.rows();
+  const int* cols = block_jacobian_transpose.cols();
+  const double* values = block_jacobian_transpose.values();
+  int num_nonzeros = block_jacobian_transpose.num_nonzeros();
+  std::vector<Triplet> triplets;
+  triplets.reserve(num_nonzeros);
+  for (int i = 0; i < num_nonzeros; ++i) {
+    triplets.push_back(Triplet(rows[i], cols[i], values[i]));
+  }
+
+  SparseMatrix block_jacobian(block_jacobian_transpose.num_rows(),
+                              block_jacobian_transpose.num_cols());
+  block_jacobian.setFromTriplets(triplets.begin(), triplets.end());
+  return block_jacobian;
+}
 
 namespace DSLAM {
     DistributedSolver::DistributedSolver():
@@ -225,7 +247,8 @@ namespace DSLAM {
             for (int j = 0; j <= i; j ++) {
                 for (auto k0 : factor_indexs) {
                     for (auto k = k0*RESIDUAL_BLOCK_SIZE; k < k0*RESIDUAL_BLOCK_SIZE+ RESIDUAL_BLOCK_SIZE; k ++)
-                        block(i, j) = block(i, j) + J(k, i+i0*PARAM_BLOCK_SIZE)*J(k, j+j0*PARAM_BLOCK_SIZE);
+                        // block(i, j) = block(i, j) + J(k, i+i0*PARAM_BLOCK_SIZE)*J(k, j+j0*PARAM_BLOCK_SIZE);
+                        block(i, j) = block(i, j) + J_.coeff(k, i+i0*PARAM_BLOCK_SIZE)*J_.coeff(k, j+j0*PARAM_BLOCK_SIZE);
                 }
                 block(j,i) = block(i,j);
             }
@@ -263,11 +286,17 @@ namespace DSLAM {
         evaluation_with_jacobian_time += tic.toc();
         tic.stop();
         
-        //ToDenseMatrix 2.9ms 100x100 direct J^T: 33.2ms Jt * residual 8.7ms LeftMultiply 0.026ms
-        TicToc tic2;
-        jacobian->ToDenseMatrix(&J);
-        tic2.stop();
+        //ToDenseMatrix 2.9ms 100x100 direct J^T: 33.2ms Jt * residual 8.7ms LeftMultiply 0.026ms toEigenSpare 0.19ms
+        // TicToc tic2;
+        // jacobian->ToDenseMatrix(&J);
+        // tic2.stop();
 
+        TicToc tic3;
+        auto Jtri = new ceres::internal::TripletSparseMatrix;
+        ((ceres::internal::BlockSparseMatrix*) jacobian)->ToTripletSparseMatrix(Jtri);
+        J_ = CreateBlockJacobian(*Jtri);
+        tic3.stop();
+        
         TicToc tic4;
         g.resize(x.rows(), x.cols());
         g.setZero();
@@ -275,7 +304,11 @@ namespace DSLAM {
         g = -g;
         tic4.stop();
 #ifdef ENABLE_PROFROLING_OUTPUT
-        printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic2.toc());
+        // printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms ToDenseMatrix %3.1fms toEigenSpare %3.2fms", 
+            // x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic2.toc(), tic3.toc());
+        printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms toEigenSpare %3.2fms", 
+            x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic3.toc());
+
         printf("Jt * residual %3.3fms\n", tic4.toc());
 #endif
         // std::cout << "Linearization cost: " << cost << std::endl;
@@ -284,6 +317,7 @@ namespace DSLAM {
         // std::cout << "gradient (" << gradient.size() <<") [" << gradient.transpose() << "]^T" << std::endl;
         // std::cout << "Jacobian [" << J.rows() << "," << J.cols() << "] \n";
         // std::cout << J << std::endl;
+        // std::cout << "Sparse J\n"<< Eigen::MatrixXd(J_) << std::endl;
         // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n";// << H << std::endl;
         // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
     }
