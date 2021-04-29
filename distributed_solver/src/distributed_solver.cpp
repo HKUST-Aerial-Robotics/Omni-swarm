@@ -236,7 +236,7 @@ namespace DSLAM {
         }
         TicToc tsetzero;
         H.setZero();
-        std::cout << "set zero time" <<tsetzero.toc() << std::endl;
+        // std::cout << "set zero time" <<tsetzero.toc() << std::endl;
         auto & all_blocks = program->parameter_blocks();
         for (unsigned i0 = 0; i0 < all_blocks.size(); i0++) {
             for (unsigned j0 = 0; j0 <= i0; j0 ++){
@@ -247,7 +247,7 @@ namespace DSLAM {
                 H.block(j0*PARAM_BLOCK_SIZE, i0*PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE) = block.transpose();
             }
         }
-        std::cout << "setup_full_H time" <<tsetzero.toc() << std::endl;
+        // std::cout << "setup_full_H time" <<tsetzero.toc() << std::endl;
     }
 
     void DGSSolver::linearization() {
@@ -269,9 +269,9 @@ namespace DSLAM {
         tic3.stop();
         // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
 
-        TicToc tic_fastH;
-        setup_full_H();
-        tic_fastH.stop();
+        // TicToc tic_fastH;
+        // setup_full_H();
+        // tic_fastH.stop();
         // std::cout << "setup_full_H [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
 
         TicToc tic4;
@@ -390,21 +390,50 @@ namespace DSLAM {
         delta_.resize(x.size());
         delta_.setZero();
 
-        //Assmue local pose is in the front 
-        //Core of Gauss Seidel
+        // Assmue local pose is in the front 
+        // Core of Gauss Seidel
+        // TicToc tic_gs;
+        // setup_full_H();
+        // for (unsigned int i = 0; i < local_poses.size()*PARAM_BLOCK_SIZE; i ++ ) {
+        //     double sum = g(i);
+        //     for (unsigned int j = 0; j < delta_.size(); j++) {
+        //         if (j!=i) {
+        //             sum = sum + -H(i,j)*delta_last(j);
+        //         }
+        //     }
+        //     delta_[i] = sum/H(i,i);
+        //     delta_last[i] = delta_[i];
+        // }
+        // std::cout << "direct method tic_gs" << tic_gs.toc();
+        // std::cout << " delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
+        
         TicToc tic_gs;
-        for (unsigned int i = 0; i < local_poses.size()*PARAM_BLOCK_SIZE; i ++ ) {
-            double sum = g(i);
-            for (unsigned int j = 0; j < delta_.size(); j++) {
-                if (j!=i) {
-                    sum = sum + -H(i,j)*delta_last(j);
+        delta_.setZero();
+        //Block method even gives a better convergence!
+        for (unsigned int i = 0; i < local_poses.size(); i ++ ) {
+            double * _p = local_poses[i];
+            if (involved_residuals.find(_p) == involved_residuals.end()) {
+                continue;
+            }
+            ceres::Vector sum = g.block(i*PARAM_BLOCK_SIZE, 0, PARAM_BLOCK_SIZE, 1);
+            auto _residuals_indexs = involved_residuals[_p];
+            for (auto _residuals_index: _residuals_indexs) {
+                auto _factor = residuals[_residuals_index];
+                for (auto * ptr_j : _factor.second) {
+                    int j = poses_internal_map[ptr_j].second;
+                    if (i!= j) {
+                        auto Hij = H_block(i, j);
+                        sum = sum - Hij*delta_last.block(j*PARAM_BLOCK_SIZE, 0, PARAM_BLOCK_SIZE, 1);
+                    }
                 }
             }
-            delta_[i] = sum/H(i,i);
-            delta_last[i] = delta_[i];
+            ceres::Vector delta =  H_block(i, i).inverse() * sum;
+            memcpy(delta_.data()+i*PARAM_BLOCK_SIZE, delta.data(), PARAM_BLOCK_SIZE*sizeof(double));
+            memcpy(delta_last.data() + i*PARAM_BLOCK_SIZE, delta.data(), PARAM_BLOCK_SIZE*sizeof(double));
         }
-        
-        tic_gs.stop();
+
+        // std::cout << "block method tic_gs" << tic_gs.toc();
+        // std::cout << " delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
 
         double candidate_cost_ = 0;
         x_last = x + delta_;
