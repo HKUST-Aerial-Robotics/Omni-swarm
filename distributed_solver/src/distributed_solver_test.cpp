@@ -70,8 +70,8 @@ void DGSTest() {
 
     std::vector<std::vector<double*>> poses;
     std::vector<Swarm::LoopConnection*> loops;
-    int pose_grid_width = 100;
-    int pose_grid_length = 100;
+    int pose_grid_width = 10;
+    int pose_grid_length = 1000;
     
     // pose_grid_width = 3;
     // pose_grid_length = 3;

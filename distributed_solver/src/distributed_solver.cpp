@@ -7,7 +7,7 @@
 #define PARAM_BLOCK_SIZE 4
 #define RESIDUAL_BLOCK_SIZE 4
 
-#define ENABLE_PROFROLING_OUTPUT
+// #define ENABLE_PROFROLING_OUTPUT
 
 namespace DSLAM {
     DistributedSolver::DistributedSolver():
@@ -50,6 +50,7 @@ namespace DSLAM {
         if (!need_setup) {
             return;
         }
+
         local_poses_original_map.clear();
         local_poses_original_map.clear();
         local_poses_internal_index.clear();
@@ -58,7 +59,7 @@ namespace DSLAM {
         remote_poses_original_map.clear();
         remote_poses_internal_index.clear();
 
-
+        //May cause memory issue on huge problem now
         problem_impl = new ceres::internal::ProblemImpl;
         for (unsigned int i = 0; i < local_poses.size(); i++) {
             auto & p = local_poses[i];
@@ -74,7 +75,9 @@ namespace DSLAM {
 
         for (unsigned int i = 0; i < residuals.size(); i++) {
             auto & res = residuals[i];
-            problem_impl->AddResidualBlock(res.first, nullptr, res.second.data(), res.second.size());
+            residuals_blocks.push_back(
+                problem_impl->AddResidualBlock(res.first, nullptr, res.second.data(), res.second.size())
+            );
             for (auto ptr: res.second) {
                 if (involved_residuals.find(ptr) == involved_residuals.end()) {
                     involved_residuals[ptr]= std::set<int>();
@@ -273,7 +276,7 @@ namespace DSLAM {
         tic4.stop();
 #ifdef ENABLE_PROFROLING_OUTPUT
         printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic2.toc());
-        printf("J^T: %3.1fms Jt * residual %3.3fms\n",tic3.toc(), tic4.toc());
+        printf("Jt * residual %3.3fms\n", tic4.toc());
 #endif
         // std::cout << "Linearization cost: " << cost << std::endl;
         // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
