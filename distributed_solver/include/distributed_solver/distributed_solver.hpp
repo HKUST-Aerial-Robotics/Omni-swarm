@@ -6,6 +6,7 @@
 #include "ceres/evaluator.h"
 #include <chrono>
 #include <ctime>
+#include <Eigen/Sparse>
 
 
 namespace DSLAM {
@@ -76,6 +77,7 @@ protected:
     
     ceres::internal::SparseMatrix * jacobian = nullptr;
     ceres::internal::Program* program = nullptr;
+    Eigen::SparseMatrix<double> J_;
     ceres::Matrix J, Jt;
     ceres::Matrix H,g;
 
