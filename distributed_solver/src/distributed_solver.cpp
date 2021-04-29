@@ -377,6 +377,7 @@ namespace DSLAM {
         //Then update x <- x + dx
 
         //First we need to setup the problem and obtain H matrix
+
         TicToc tic_iteration;
         if (need_linearization) {
             linearization();
@@ -392,7 +393,11 @@ namespace DSLAM {
 
         // Assmue local pose is in the front 
         // Core of Gauss Seidel
-        // TicToc tic_gs;
+        
+        //-O0 direct method tic_gs 253.295ms block method tic_gs 12.0005ms
+        //-O3 direct method tic_gs 10.608ms block method tic_gs 0.246023ms
+
+        TicToc tic_gs;
         // setup_full_H();
         // for (unsigned int i = 0; i < local_poses.size()*PARAM_BLOCK_SIZE; i ++ ) {
         //     double sum = g(i);
@@ -402,14 +407,14 @@ namespace DSLAM {
         //         }
         //     }
         //     delta_[i] = sum/H(i,i);
-        //     delta_last[i] = delta_[i];
+        //     // delta_last[i] = delta_[i];
         // }
         // std::cout << "direct method tic_gs" << tic_gs.toc();
         // std::cout << " delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
         
-        TicToc tic_gs;
         delta_.setZero();
         //Block method even gives a better convergence!
+        // tic_gs.tic();
         for (unsigned int i = 0; i < local_poses.size(); i ++ ) {
             double * _p = local_poses[i];
             if (involved_residuals.find(_p) == involved_residuals.end()) {
@@ -432,7 +437,7 @@ namespace DSLAM {
             memcpy(delta_last.data() + i*PARAM_BLOCK_SIZE, delta.data(), PARAM_BLOCK_SIZE*sizeof(double));
         }
 
-        // std::cout << "block method tic_gs" << tic_gs.toc();
+        // std::cout << "block method tic_gs" << tic_gs.toc() << std::endl;
         // std::cout << " delta (" << x.size() <<") [" << delta_.transpose() << "]^T" << std::endl;
 
         double candidate_cost_ = 0;
