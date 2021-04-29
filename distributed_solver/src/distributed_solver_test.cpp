@@ -73,8 +73,8 @@ void DGSTest() {
     int pose_grid_width = 100;
     int pose_grid_length = 100;
     
-    pose_grid_width = 3;
-    pose_grid_length = 3;
+    // pose_grid_width = 3;
+    // pose_grid_length = 3;
 
     double pose_x_step = 1;
     double pose_y_step = 1;
