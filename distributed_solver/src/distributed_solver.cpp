@@ -97,9 +97,7 @@ namespace DSLAM {
 
         for (unsigned int i = 0; i < residuals.size(); i++) {
             auto & res = residuals[i];
-            residuals_blocks.push_back(
-                problem_impl->AddResidualBlock(res.first, nullptr, res.second.data(), res.second.size())
-            );
+            problem_impl->AddResidualBlock(res.first, nullptr, res.second.data(), res.second.size());
             for (auto ptr: res.second) {
                 if (involved_residuals.find(ptr) == involved_residuals.end()) {
                     involved_residuals[ptr]= std::set<int>();

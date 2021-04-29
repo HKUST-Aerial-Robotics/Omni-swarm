@@ -73,8 +73,8 @@ void DGSTest() {
     int pose_grid_width = 10;
     int pose_grid_length = 1000;
     
-    pose_grid_width = 100;
-    pose_grid_length = 100;
+    pose_grid_width = 1000;
+    pose_grid_length = 1000;
 
     double pose_x_step = 1;
     double pose_y_step = 1;
@@ -205,9 +205,10 @@ void DGSTest() {
 #endif
     
     double iter_cost = 0;
+    int factor_count = 0;
     for (unsigned int iter = 0; iter < iteration_max; iter++) {
         printf("iter %d:", iter);
-        bool need_linearization = (iter % 4 == 0);
+        bool need_linearization = (iter %4 == 0);
         
         if (need_linearization && iter > 0) {
             //Sync pose_tmps to poses
@@ -225,10 +226,12 @@ void DGSTest() {
             auto &solver = solvers[i];
             solver.setup();
             iter_cost += solver.cost();
+            factor_count += states[i].related_costs.size();
         }
 
-        printf("start cost: %.1e ", iter_cost);
+        printf("start cost: %.1e ", iter_cost/factor_count);
         iter_cost = 0;
+        factor_count = 0;
 
         // #pragma omp parallel for num_threads(12)
         for (unsigned int i = 0; i < pose_grid_width; i ++) {
@@ -246,6 +249,7 @@ void DGSTest() {
 
             //Perform iteration
             iter_cost += solver.iteration(need_linearization);
+            factor_count += states[i].related_costs.size();
 
             //Update state to neighbors
             auto last_poses = solver.get_last_local_states();
@@ -253,7 +257,7 @@ void DGSTest() {
                 memcpy(poses_tmp[t][i], last_poses[t].data(), sizeof(double) * 4);
             }
         }
-        printf("final cost: %.1e\n", iter_cost);
+        printf("final cost: %.1e\n", iter_cost/factor_count);
     }
 #ifdef OUTPUT_COOR
     printf("final states:\n");
