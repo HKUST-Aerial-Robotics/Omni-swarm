@@ -11,6 +11,8 @@
 namespace DSLAM {
 class TicToc
 {
+    bool stopped = false;
+    double delta = 0;
   public:
     TicToc()
     {
@@ -24,9 +26,20 @@ class TicToc
 
     double toc()
     {
+        if (stopped) {
+            return delta;
+        }
         end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
         return elapsed_seconds.count() * 1000;
+    }
+
+    double stop() {
+        stopped = true;
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        delta = elapsed_seconds.count() * 1000;
+        return delta;
     }
 
   private:
@@ -36,7 +49,16 @@ class TicToc
 class DistributedSolver {
 protected:
     std::vector<double*> local_poses;
+    std::vector<int> local_poses_internal_index;
+    std::map<double*, int> local_poses_original_map;
+    std::map<double*, std::set<int>> involved_residuals;
+    //Pointer->is_local(true),index
+    std::map<double*, std::pair<bool,int>> poses_internal_map;
+
     std::vector<double*> remote_poses;
+    std::vector<int> remote_poses_internal_index;
+    std::map<double*, int> remote_poses_original_map;
+    
     std::vector<std::pair<ceres::CostFunction * , std::vector<double*> >> residuals;
     ceres::internal::Evaluator * evaluator = nullptr;
     ceres::internal::Program * reduced_program = nullptr;
@@ -51,6 +73,7 @@ protected:
     ceres::Vector x, residual, gradient;
     
     ceres::internal::SparseMatrix * jacobian = nullptr;
+    ceres::internal::Program* program = nullptr;
     ceres::Matrix J, Jt;
     ceres::Matrix H,g;
 
@@ -77,6 +100,8 @@ public:
     virtual void setup();
     virtual double cost() const = 0;
     virtual double iteration(bool linearization = true) {};
+    virtual ceres::Matrix & setup_full_H();
+    virtual std::vector<int> factor_indexs_between_i_j(double* i, double* j);
 
     virtual std::vector<ceres::Vector> get_last_local_states() {};
 

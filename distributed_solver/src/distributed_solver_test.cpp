@@ -74,6 +74,7 @@ void DGSTest() {
     int pose_grid_length = 100;
     double pose_x_step = 1;
     double pose_y_step = 1;
+    int iteration_max = 100;
 
     std::vector<AgentState> states(pose_grid_width);
 
@@ -200,7 +201,7 @@ void DGSTest() {
 #endif
     
     double iter_cost = 0;
-    for (unsigned int iter = 0; iter < 50; iter++) {
+    for (unsigned int iter = 0; iter < iteration_max; iter++) {
         printf("iter %d:", iter);
         bool need_linearization = (iter % 4 == 0);
         
@@ -222,7 +223,7 @@ void DGSTest() {
             iter_cost += solver.cost();
         }
 
-        printf("start cost: %3.3f ", iter_cost);
+        printf("start cost: %.1e ", iter_cost);
         iter_cost = 0;
 
         // #pragma omp parallel for num_threads(12)
@@ -248,7 +249,7 @@ void DGSTest() {
                 memcpy(poses_tmp[t][i], last_poses[t].data(), sizeof(double) * 4);
             }
         }
-        printf("final cost: %3.3f\n", iter_cost);
+        printf("final cost: %.1e\n", iter_cost);
     }
 #ifdef OUTPUT_COOR
     printf("final states:\n");
