@@ -2,7 +2,12 @@
 #include "ceres/problem_impl.h"
 #include "ceres/program.h"
 #include "ceres/sparse_matrix.h"
+#include "ceres/parameter_block.h"
+
 #define PARAM_BLOCK_SIZE 4
+#define RESIDUAL_BLOCK_SIZE 4
+
+// #define ENABLE_PROFROLING_OUTPUT
 
 namespace DSLAM {
     DistributedSolver::DistributedSolver():
@@ -45,23 +50,83 @@ namespace DSLAM {
         if (!need_setup) {
             return;
         }
+        local_poses_original_map.clear();
+        local_poses_original_map.clear();
+        local_poses_internal_index.clear();
+
+        remote_poses_original_map.clear();
+        remote_poses_original_map.clear();
+        remote_poses_internal_index.clear();
+
+
         problem_impl = new ceres::internal::ProblemImpl;
-        for (auto p: local_poses) {
+        for (unsigned int i = 0; i < local_poses.size(); i++) {
+            auto & p = local_poses[i];
             problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
+            local_poses_original_map[p] = i;
         }
 
-        for (auto p: remote_poses) {
+        for (unsigned int i = 0; i < remote_poses.size(); i++) {
+            auto & p = remote_poses[i];
             problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
+            remote_poses_original_map[p] = i;
         }
 
-        for (auto & res : residuals) {
+        for (unsigned int i = 0; i < residuals.size(); i++) {
+            auto & res = residuals[i];
             problem_impl->AddResidualBlock(res.first, nullptr, res.second.data(), res.second.size());
+            for (auto ptr: res.second) {
+                if (involved_residuals.find(ptr) == involved_residuals.end()) {
+                    involved_residuals[ptr]= std::set<int>();
+                }
+                involved_residuals[ptr].insert(i);
+            }
         }
 
         ceres::internal::Evaluator::Options evaluator_options;
         evaluator_options.linear_solver_type = ceres::CGNR;
         
-        ceres::internal::Program* program = problem_impl->mutable_program();
+        program = problem_impl->mutable_program();
+        
+        int _param_block_count = 0;
+        for (auto _param_block : program->parameter_blocks()) {
+            double * _param = _param_block->mutable_user_state();
+            auto it = local_poses_original_map.find(_param);
+            if (it != local_poses_original_map.end()) {
+                //This param block is for local
+                poses_internal_map[_param] = std::make_pair(true, _param_block_count);
+            } else {
+                auto it = remote_poses_original_map.find(_param);
+                if (it != remote_poses_original_map.end()) {
+                //This param block is for remote
+                    poses_internal_map[_param] = std::make_pair(false, _param_block_count);
+                } else {
+                    assert(true && "Parameter block belong to nothing...");
+                }
+            }
+            _param_block_count ++;
+        }
+
+        for (auto p : local_poses) {
+            if (poses_internal_map.find(p) == poses_internal_map.end()) {
+                local_poses_internal_index.push_back(-1);
+            } else {
+                assert(poses_internal_map[p].first && "Local poses must be local only");
+                local_poses_internal_index.push_back(poses_internal_map[p].second);
+            }
+        }
+
+        for (auto p : remote_poses) {
+            if (poses_internal_map.find(p) == poses_internal_map.end()) {
+                remote_poses_internal_index.push_back(-1);
+            } else {
+                assert(!poses_internal_map[p].first && "Remote poses must be local only");
+                remote_poses_internal_index.push_back(poses_internal_map[p].second);
+            }
+        }
+
+
+
         std::string error;
         // reduced_program.reset(program->CreateReducedProgram(
         //     &removed_parameter_blocks, &fixed_cost, &error));
@@ -128,6 +193,53 @@ namespace DSLAM {
 
     }
 
+    std::vector<int> DistributedSolver::factor_indexs_between_i_j(double * pi, double * pj) {
+        std::vector<int> ret;
+        if (involved_residuals.find(pi) == involved_residuals.end() ||
+            involved_residuals.find(pj) == involved_residuals.end() ) {
+            return ret;
+        }
+        auto factors_i = involved_residuals[pi];
+        auto factors_j = involved_residuals[pj];
+
+        for (auto factor_index : factors_i) {
+            if (factors_j.find(factor_index) != factors_j.end()) {
+                ret.push_back(factor_index);
+            }
+        }
+
+        return ret;
+    }
+
+    ceres::Matrix & DistributedSolver::setup_full_H() {
+        if (H.rows() != J.cols() || H.cols()!=J.cols()) {
+            H.resize(J.cols(), J.cols());
+        }
+        H.setZero();
+
+        auto all_blocks = program->parameter_blocks();
+        for (unsigned i0 = 0; i0 < all_blocks.size(); i0++) {
+            for (unsigned j0 = 0; j0 <= i0; j0 ++){
+                double *_param_i = all_blocks[i0]->mutable_user_state();
+                double *_param_j = all_blocks[j0]->mutable_user_state();
+                std::vector<int> factor_indexs = factor_indexs_between_i_j(_param_i, _param_j);
+                for (int _dimi = 0; _dimi < PARAM_BLOCK_SIZE; _dimi ++) {
+                    int i = i0*PARAM_BLOCK_SIZE + _dimi;
+                    for (int _dimj = 0; _dimj < PARAM_BLOCK_SIZE; _dimj ++) {
+                        int j = j0*PARAM_BLOCK_SIZE + _dimj;
+                        if (i <= j) {
+                            for (auto k0 : factor_indexs) {
+                                for (auto k = k0*RESIDUAL_BLOCK_SIZE; k < k0*RESIDUAL_BLOCK_SIZE+ RESIDUAL_BLOCK_SIZE; k ++)
+                                    H(i, j) = H(i, j) + J(k, i)*J(k, j);
+                            }
+                        }
+                        H(j,i) = H(i,j);
+                    }
+                }
+            }
+        }
+    }
+
     void DGSSolver::linearization() {
         setup();
 
@@ -135,19 +247,31 @@ namespace DSLAM {
         double cost = get_x_jacobian_residual(x, residual, gradient, jacobian);
         // printf("Linearization: Evaluation with Jacobian %3.1fms ",tic.toc());
         evaluation_with_jacobian_time += tic.toc();
+        tic.stop();
 
         TicToc tic2;
         jacobian->ToDenseMatrix(&J);
-        printf("ToDenseMatrix %3.1fms ",tic2.toc());
+        tic2.stop();
 
         TicToc tic3;
         Jt = J.transpose();
-        H = Jt * J;
-        printf("Jt * J %3.1fms H[%dx%d]\n",tic3.toc(), H.rows(), H.cols());
-        tic3.tic();
-        g = - Jt * residual;
-        printf("Jt * residual %3.1fms \n",tic3.toc());
+        // H = Jt * J;
+        tic3.stop();
+        // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
 
+        TicToc tic_fastH;
+        setup_full_H();
+        tic_fastH.stop();
+        // std::cout << "setup_full_H [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
+
+        TicToc tic4;
+        g = - Jt * residual;
+        tic4.stop();
+#ifdef ENABLE_PROFROLING_OUTPUT
+        printf("states: %ld residuals %ld linearization %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic.toc(), tic2.toc());
+        printf("Jt * J %3.1fms  setup_full_H %fms H[%ldx%ld]",tic3.toc(), tic_fastH.toc(), H.rows(), H.cols());
+        printf("Jt * residual %3.1fms\n",tic4.toc());
+#endif
         // std::cout << "Linearization cost: " << cost << std::endl;
         // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
         // std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
@@ -270,10 +394,10 @@ namespace DSLAM {
             delta_last[i] = delta_[i];
         }
         
+        tic_gs.stop();
 
         double candidate_cost_ = 0;
         x_last = x + delta_;
-        // printf("Gauss Seidel time %3.1fms ", tic_gs.toc());
 
         evaluator->Evaluate(
             x_last.data(), &candidate_cost_, nullptr, nullptr, nullptr);
@@ -284,8 +408,12 @@ namespace DSLAM {
         // std::cout << "xold (" << x.size() <<") [" << (x).transpose() << "]^T" << std::endl;
         // std::cout << "xnew (" << x_last.size() <<") [" << (x_last).transpose() << "]^T" << std::endl;
         iteration_time += tic_iteration.toc();
-        printf("iteration time %3.1fms\n", iteration_time);
         iterations ++;
+
+#ifdef ENABLE_PROFROLING_OUTPUT
+        printf("Iteration time %3.1fms/AVG%3.1fms ", tic_iteration.toc(), iteration_time/iterations);
+        printf("Gauss Seidel time %3.1fms\n", tic_gs.toc());
+#endif
         return candidate_cost_;
     }
 }
