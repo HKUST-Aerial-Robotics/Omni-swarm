@@ -61,7 +61,6 @@ protected:
     std::map<double*, int> remote_poses_original_map;
     
     std::vector<std::pair<ceres::CostFunction * , std::vector<double*> >> residuals;
-    std::vector<ceres::ResidualBlockId> residuals_blocks;
 
     ceres::internal::Evaluator * evaluator = nullptr;
     ceres::internal::Program * reduced_program = nullptr;
