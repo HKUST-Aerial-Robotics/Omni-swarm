@@ -211,33 +211,43 @@ namespace DSLAM {
         return ret;
     }
 
+    ceres::Matrix DistributedSolver::H_block( int i0, int j0) {
+        ceres::Matrix block(PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE);
+        block.setZero();
+        auto & all_blocks = program->parameter_blocks();
+        double *_param_i = all_blocks[i0]->mutable_user_state();
+        double *_param_j = all_blocks[j0]->mutable_user_state();
+        std::vector<int> factor_indexs = factor_indexs_between_i_j(_param_i, _param_j);
+        for (int i = 0; i < PARAM_BLOCK_SIZE; i ++) {
+            for (int j = 0; j <= i; j ++) {
+                for (auto k0 : factor_indexs) {
+                    for (auto k = k0*RESIDUAL_BLOCK_SIZE; k < k0*RESIDUAL_BLOCK_SIZE+ RESIDUAL_BLOCK_SIZE; k ++)
+                        block(i, j) = block(i, j) + J(k, i+i0*PARAM_BLOCK_SIZE)*J(k, j+j0*PARAM_BLOCK_SIZE);
+                }
+                block(j,i) = block(i,j);
+            }
+        }
+        return block;
+    }
+
     ceres::Matrix & DistributedSolver::setup_full_H() {
         if (H.rows() != J.cols() || H.cols()!=J.cols()) {
             H.resize(J.cols(), J.cols());
         }
+        TicToc tsetzero;
         H.setZero();
-
-        auto all_blocks = program->parameter_blocks();
+        std::cout << "set zero time" <<tsetzero.toc() << std::endl;
+        auto & all_blocks = program->parameter_blocks();
         for (unsigned i0 = 0; i0 < all_blocks.size(); i0++) {
             for (unsigned j0 = 0; j0 <= i0; j0 ++){
-                double *_param_i = all_blocks[i0]->mutable_user_state();
-                double *_param_j = all_blocks[j0]->mutable_user_state();
-                std::vector<int> factor_indexs = factor_indexs_between_i_j(_param_i, _param_j);
-                for (int _dimi = 0; _dimi < PARAM_BLOCK_SIZE; _dimi ++) {
-                    int i = i0*PARAM_BLOCK_SIZE + _dimi;
-                    for (int _dimj = 0; _dimj < PARAM_BLOCK_SIZE; _dimj ++) {
-                        int j = j0*PARAM_BLOCK_SIZE + _dimj;
-                        if (i <= j) {
-                            for (auto k0 : factor_indexs) {
-                                for (auto k = k0*RESIDUAL_BLOCK_SIZE; k < k0*RESIDUAL_BLOCK_SIZE+ RESIDUAL_BLOCK_SIZE; k ++)
-                                    H(i, j) = H(i, j) + J(k, i)*J(k, j);
-                            }
-                        }
-                        H(j,i) = H(i,j);
-                    }
-                }
+                // printf("Blk %d,%d %d %d\n", i0*PARAM_BLOCK_SIZE, j0*PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE);
+                // std::cout << H_block(i0, j0);
+                auto block = H_block(i0, j0);
+                H.block(i0*PARAM_BLOCK_SIZE, j0*PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE) = block;
+                H.block(j0*PARAM_BLOCK_SIZE, i0*PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE) = block.transpose();
             }
         }
+        std::cout << "setup_full_H time" <<tsetzero.toc() << std::endl;
     }
 
     void DGSSolver::linearization() {

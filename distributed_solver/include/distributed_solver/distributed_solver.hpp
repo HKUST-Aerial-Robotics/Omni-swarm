@@ -101,6 +101,7 @@ public:
     virtual double cost() const = 0;
     virtual double iteration(bool linearization = true) {};
     virtual ceres::Matrix & setup_full_H();
+    virtual ceres::Matrix H_block(int i0, int j0);
     virtual std::vector<int> factor_indexs_between_i_j(double* i, double* j);
 
     virtual std::vector<ceres::Vector> get_last_local_states() {};
