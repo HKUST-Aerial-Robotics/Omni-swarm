@@ -251,6 +251,7 @@ namespace DSLAM {
     }
 
     void DGSSolver::linearization() {
+        TicToc tic_linearization;
         setup();
 
         TicToc tic;
@@ -258,36 +259,39 @@ namespace DSLAM {
         // printf("Linearization: Evaluation with Jacobian %3.1fms ",tic.toc());
         evaluation_with_jacobian_time += tic.toc();
         tic.stop();
-
+        
+        //ToDenseMatrix 2.9ms 100x100 direct J^T: 33.2ms Jt * residual 8.7ms LeftMultiply 0.026ms
         TicToc tic2;
         jacobian->ToDenseMatrix(&J);
         tic2.stop();
 
         TicToc tic3;
-        Jt = J.transpose();
         // H = Jt * J;
-        tic3.stop();
+        // tic3.stop();
         // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
 
         // TicToc tic_fastH;
         // setup_full_H();
         // tic_fastH.stop();
         // std::cout << "setup_full_H [" << H.rows() << "," << H.cols() << "] \n" << H << std::endl;
-
+        
         TicToc tic4;
-        g = - Jt * residual;
+        g.resize(x.rows(), x.cols());
+        g.setZero();
+        jacobian->LeftMultiply(residual.data(), g.data());
+        g = -g;
         tic4.stop();
 #ifdef ENABLE_PROFROLING_OUTPUT
-        printf("states: %ld residuals %ld linearization %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic.toc(), tic2.toc());
-        printf("Jt * J %3.1fms  setup_full_H %fms H[%ldx%ld]",tic3.toc(), tic_fastH.toc(), H.rows(), H.cols());
-        printf("Jt * residual %3.1fms\n",tic4.toc());
+        printf("states: %ld residuals %ld linearization %3.1fms Evaluate %3.1fms ToDenseMatrix %3.1fms ", x.size(), residual.size(), tic_linearization.toc(), tic.toc(), tic2.toc());
+        // printf("Jt * J %3.1fms  setup_full_H %fms H[%ldx%ld]",tic3.toc(), tic_fastH.toc(), H.rows(), H.cols());
+        printf("J^T: %3.1fms Jt * residual %3.3fms\n",tic3.toc(), tic4.toc());
 #endif
         // std::cout << "Linearization cost: " << cost << std::endl;
         // std::cout << "x (" << x.size() <<") [" << x.transpose() << "]^T" << std::endl;
         // std::cout << "f(x) (" << residual.size() <<") [" << residual.transpose() << "]^T" << std::endl;
         // std::cout << "gradient (" << gradient.size() <<") [" << gradient.transpose() << "]^T" << std::endl;
         // std::cout << "Jacobian [" << J.rows() << "," << J.cols() << "] \n";
-        // // std::cout << J << std::endl;
+        // std::cout << J << std::endl;
         // std::cout << "Hessian [" << H.rows() << "," << H.cols() << "] \n";// << H << std::endl;
         // std::cout << "g(" << g.size() << ") [" << g.transpose() << "]^T" << std::endl;
     }
