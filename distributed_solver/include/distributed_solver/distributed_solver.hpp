@@ -55,6 +55,9 @@ protected:
     std::map<double*, std::set<int>> involved_residuals;
     //Pointer->is_local(true),index
     std::map<double*, std::pair<bool,int>> poses_internal_map;
+    int index_remote_start = 0;
+
+    std::vector<double*> fixed_poses;
 
     std::vector<double*> remote_poses;
     std::vector<int> remote_poses_internal_index;
@@ -63,7 +66,7 @@ protected:
     std::vector<std::pair<ceres::CostFunction * , std::vector<double*> >> residuals;
 
     ceres::internal::Evaluator * evaluator = nullptr;
-    ceres::internal::Program * reduced_program = nullptr;
+    std::unique_ptr<ceres::internal::Program> reduced_program;
     std::vector<double*> removed_parameter_blocks;
     double fixed_cost;
     std::vector<double> reduced_parameters;
@@ -75,7 +78,6 @@ protected:
     ceres::Vector x, residual, gradient;
     
     ceres::internal::SparseMatrix * jacobian = nullptr;
-    ceres::internal::Program* program = nullptr;
     Eigen::SparseMatrix<double> J_;
     ceres::Matrix J, Jt;
     ceres::Matrix H,g;
@@ -97,7 +99,9 @@ public:
 
     virtual void update_remote_poses(std::vector<double*> poses) {};
     
-    virtual void set_fixed_poses(std::vector<double*> poses);
+    virtual void set_poses_fixed(std::vector<double*> poses);
+    virtual void set_pose_fixed(double* poses);
+
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
     virtual void linearization() {};
     virtual void setup();
