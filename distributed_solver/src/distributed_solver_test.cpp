@@ -15,7 +15,7 @@ using namespace DSLAM;
 float LOOP_POS_STD_0 = 0.5;
 float LOOP_POS_STD_SLOPE = 0.0;
 
-float LOOP_YAW_STD_0 = 0.5;
+float LOOP_YAW_STD_0 = 0.05;
 float LOOP_YAW_STD_SLOPE = 0.0;
 
 float POS_INITAL_NOISE_STD = 1.0;
@@ -197,7 +197,7 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
         printf("Initial states:\n");
         for (unsigned int t = 0; t < pose_grid_length; t ++) {
             for (unsigned int i = 0; i < solvers.size(); i ++) {
-                printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+                printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
             }
             printf("\n");
         }
@@ -220,7 +220,7 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
                 for (unsigned int i = 0; i < solvers.size(); i ++) {
                     memcpy(poses[t][i], poses_tmp[t][i], 4*sizeof(double));
                     if (output_coor) {
-                        printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+                        printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
                     }
                 }
                 if (output_coor) {
@@ -271,7 +271,7 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
         printf("final states:\n");
         for (unsigned int t = 0; t < pose_grid_length; t ++) {
             for (unsigned int i = 0; i < solvers.size(); i ++) {
-                printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+                printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
             }
             printf("\n");
         }

@@ -369,7 +369,7 @@ namespace DSLAM {
             } else {
                 ceres::Vector v;
                 v.resize(PARAM_BLOCK_SIZE);
-                memcpy(v.data(), local_poses[ii*PARAM_BLOCK_SIZE], sizeof(double)*PARAM_BLOCK_SIZE);
+                memcpy(v.data(), local_poses[ii], sizeof(double)*PARAM_BLOCK_SIZE);
                 ret.push_back(v);
             }
         }
