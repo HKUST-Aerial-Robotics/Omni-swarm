@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(OpenMP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(Boost REQUIRED COMPONENTS program_options)
 
 catkin_package(
  INCLUDE_DIRS include
@@ -62,5 +63,6 @@ target_link_libraries(${PROJECT_NAME}_test
   ${PROJECT_NAME}
   ${CERES_LIBRARIES}
   dw
+  ${Boost_LIBRARIES}
   # OpenMP::OpenMP_CXX
 )
