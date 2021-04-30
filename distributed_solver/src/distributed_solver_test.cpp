@@ -4,12 +4,12 @@
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
-// #define BACKWARD_HAS_DW 1
-// #include <backward.hpp>
-// namespace backward
-// {
-//     backward::SignalHandling sh;
-// }
+#define BACKWARD_HAS_DW 1
+#include <backward.hpp>
+namespace backward
+{
+    backward::SignalHandling sh;
+}
 
 using namespace DSLAM;
 float LOOP_POS_STD_0 = 0.5;
@@ -174,6 +174,9 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
 
         solver.set_local_poses(local_poses);
         solver.set_remote_poses(neighbor_poses);
+        if (i == 0) {
+            solver.set_pose_fixed(local_poses[0]);
+        }
 
         for (auto cost : neighbor_factors) {
             std::vector<double*> _poses(2);
@@ -210,9 +213,18 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
         if (need_linearization && iter > 0) {
             //Sync pose_tmps to poses
             printf("Sync poses, relinearization... ");
+            if (output_coor) {
+                printf("\n");
+            }
             for (unsigned int t = 0; t < pose_grid_length; t ++) {
                 for (unsigned int i = 0; i < solvers.size(); i ++) {
                     memcpy(poses[t][i], poses_tmp[t][i], 4*sizeof(double));
+                    if (output_coor) {
+                        printf("(%3.2f,%3.2f)\t",poses[t][i][0], poses[t][i][1]);
+                    }
+                }
+                if (output_coor) {
+                    printf("\n");
                 }
             }
         }
@@ -252,7 +264,7 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
                 memcpy(poses_tmp[t][i], last_poses[t].data(), sizeof(double) * 4);
             }
         }
-        printf("final cost: %.1e\n", iter_cost/factor_count);
+        printf("end cost: %.1e\n", iter_cost/factor_count);
     }
 
     if(output_coor) {
@@ -263,9 +275,10 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
             }
             printf("\n");
         }
-        printf("final cost: %3.3f\n", iter_cost);
+        printf("final cost: %3.3f\n", iter_cost/factor_count);
     }
     std::cout << "GridPoseGraphTest Finish" << std::endl;
+    return;
 }
 
 int main(int argc, char *argv[]) {
@@ -280,11 +293,11 @@ int main(int argc, char *argv[]) {
 
     desc.add_options()
         ("help", "produce help message")
-        ("agents,a", po::value<int>()->default_value(100), "number of simulated agents")
-        ("keyframes,k", po::value<int>()->default_value(100), "number of keyframe per agents")
+        ("agents,a", po::value<int>()->default_value(1), "number of simulated agents")
+        ("keyframes,k", po::value<int>()->default_value(3), "number of keyframe per agents")
         ("maxiter,i", po::value<int>()->default_value(100), "number of max iterations")
         ("linearstep,l", po::value<int>()->default_value(2), "linearization per step")
-        ("output_coor,v", po::value<bool>()->default_value(false), "if output coordinate")
+        ("output_coor,v", "if output coordinate")
         ;
 
     po::variables_map vm;
@@ -296,6 +309,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    GridPoseGraphTest(vm["agents"].as<int>(), vm["keyframes"].as<int>(), vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm["output_coor"].as<bool>());
+    GridPoseGraphTest(vm["agents"].as<int>(), vm["keyframes"].as<int>(), vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm.count("output_coor"));
     return 0;
 }

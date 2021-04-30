@@ -40,7 +40,6 @@ namespace DSLAM {
         local_poses.clear();
         for (auto p: poses) {
             local_poses.push_back(p);
-            // problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
         }
         need_setup = true;
     }
@@ -49,17 +48,20 @@ namespace DSLAM {
         remote_poses.clear();
         for (auto p: poses) {
             remote_poses.push_back(p);
-            // problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
         }
         need_setup = true;
     }
 
-    void DistributedSolver::set_fixed_poses(std::vector<double*> poses) {
+    void DistributedSolver::set_poses_fixed(std::vector<double*> poses) {
         for (auto p: poses) {
-            problem_impl->SetParameterBlockConstant(p);
+            fixed_poses.push_back(p);
         }
     }
     
+    void DistributedSolver::set_pose_fixed(double *p) {
+        fixed_poses.push_back(p);
+    }
+
     void DistributedSolver::add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm) {
         ceres::LossFunction *loss_function = nullptr;
         if (is_huber_norm) {
@@ -80,6 +82,7 @@ namespace DSLAM {
         remote_poses_original_map.clear();
         remote_poses_original_map.clear();
         remote_poses_internal_index.clear();
+        poses_internal_map.clear();
 
         //May cause memory issue on huge problem now
         problem_impl = new ceres::internal::ProblemImpl;
@@ -93,6 +96,11 @@ namespace DSLAM {
             auto & p = remote_poses[i];
             problem_impl->AddParameterBlock(p, PARAM_BLOCK_SIZE);
             remote_poses_original_map[p] = i;
+        }
+
+        for (unsigned int i = 0; i < fixed_poses.size(); i++) {
+            auto & p = fixed_poses[i];
+            problem_impl->SetParameterBlockConstant(p);
         }
 
         for (unsigned int i = 0; i < residuals.size(); i++) {
@@ -109,10 +117,13 @@ namespace DSLAM {
         ceres::internal::Evaluator::Options evaluator_options;
         evaluator_options.linear_solver_type = ceres::CGNR;
         
-        program = problem_impl->mutable_program();
-        
+        auto program = problem_impl->mutable_program();
+        std::string error;
+        reduced_program.reset(program->CreateReducedProgram(
+            &removed_parameter_blocks, &fixed_cost, &error));
+
         int _param_block_count = 0;
-        for (auto _param_block : program->parameter_blocks()) {
+        for (auto _param_block : reduced_program->parameter_blocks()) {
             double * _param = _param_block->mutable_user_state();
             auto it = local_poses_original_map.find(_param);
             if (it != local_poses_original_map.end()) {
@@ -130,12 +141,13 @@ namespace DSLAM {
             _param_block_count ++;
         }
 
+        index_remote_start = 0;
         for (auto p : local_poses) {
             if (poses_internal_map.find(p) == poses_internal_map.end()) {
                 local_poses_internal_index.push_back(-1);
             } else {
-                assert(poses_internal_map[p].first && "Local poses must be local only");
                 local_poses_internal_index.push_back(poses_internal_map[p].second);
+                index_remote_start += PARAM_BLOCK_SIZE;
             }
         }
 
@@ -148,29 +160,23 @@ namespace DSLAM {
             }
         }
 
-
-
-        std::string error;
-        // reduced_program.reset(program->CreateReducedProgram(
-        //     &removed_parameter_blocks, &fixed_cost, &error));
         // evaluator_options.evaluation_callback =
-        //     reduced_program->mutable_evaluation_callback();
-        evaluator_options.evaluation_callback =
-            program->mutable_evaluation_callback();
-
+        // program->mutable_evaluation_callback();
         evaluator_options.context = problem_impl->context();
         evaluator_options.num_eliminate_blocks = 0;
-        
-        // evaluator.reset(ceres::internal::Evaluator::Create(
-        //     evaluator_options, reduced_program.get(), &error));
-        evaluator= ceres::internal::Evaluator::Create(
-            evaluator_options, program, &error);
+        evaluator_options.evaluation_callback =
+            reduced_program->mutable_evaluation_callback();
+
+        evaluator = ceres::internal::Evaluator::Create(
+            evaluator_options, reduced_program.get(), &error);
+        // evaluator = ceres::internal::Evaluator::Create(
+        //     evaluator_options, program, &error);
 
         num_parameters_ = evaluator->NumParameters();
         num_residuals_ = evaluator->NumResiduals();
 
-        reduced_parameters.resize(program->NumParameters());
-        program->ParameterBlocksToStateVector(reduced_parameters.data());
+        reduced_parameters.resize(reduced_program->NumParameters());
+        reduced_program->ParameterBlocksToStateVector(reduced_parameters.data());
         x.resize(num_parameters_);
         memcpy(x.data(), reduced_parameters.data(), num_parameters_*sizeof(double));
         
@@ -237,7 +243,7 @@ namespace DSLAM {
     ceres::Matrix DistributedSolver::H_block( int i0, int j0) {
         ceres::Matrix block(PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE);
         block.setZero();
-        auto & all_blocks = program->parameter_blocks();
+        auto & all_blocks = reduced_program->parameter_blocks();
         double *_param_i = all_blocks[i0]->mutable_user_state();
         double *_param_j = all_blocks[j0]->mutable_user_state();
         std::vector<int> factor_indexs = factor_indexs_between_i_j(_param_i, _param_j);
@@ -261,7 +267,7 @@ namespace DSLAM {
         TicToc tsetzero;
         H.setZero();
         // std::cout << "set zero time" <<tsetzero.toc() << std::endl;
-        auto & all_blocks = program->parameter_blocks();
+        auto & all_blocks = reduced_program->parameter_blocks();
         for (unsigned i0 = 0; i0 < all_blocks.size(); i0++) {
             for (unsigned j0 = 0; j0 <= i0; j0 ++){
                 // printf("Blk %d,%d %d %d\n", i0*PARAM_BLOCK_SIZE, j0*PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE, PARAM_BLOCK_SIZE);
@@ -323,7 +329,6 @@ namespace DSLAM {
 
     void DGSSolver::update_remote_poses(std::vector<double*> poses) {
         assert(poses.size() == remote_poses.size() && "New remote poses size must be equal!");
-        int index_remote_start = local_poses.size() * PARAM_BLOCK_SIZE;
         for (int i = 0; i < poses.size(); i++) {
             delta_last(index_remote_start+i*PARAM_BLOCK_SIZE) = poses[i][0] - x(index_remote_start+i*PARAM_BLOCK_SIZE);
             delta_last(index_remote_start+i*PARAM_BLOCK_SIZE+1) = poses[i][1] - x(index_remote_start+i*PARAM_BLOCK_SIZE+1);
@@ -354,10 +359,19 @@ namespace DSLAM {
 
     std::vector<ceres::Vector> DGSSolver::get_last_local_states() {
         std::vector<ceres::Vector> ret;
-        for (unsigned int i = 0; i < local_poses.size(); i ++) {
-            ceres::Vector v(PARAM_BLOCK_SIZE);
-            memcpy(v.data(), x_last.data() + i*PARAM_BLOCK_SIZE, sizeof(double)*PARAM_BLOCK_SIZE);
-            ret.push_back(v);
+        for (unsigned int ii = 0; ii < local_poses.size(); ii ++) {
+            int i = local_poses_internal_index[ii];
+            if (i >= 0) {
+                ceres::Vector v;
+                v.resize(PARAM_BLOCK_SIZE);
+                v = x_last.block(i*PARAM_BLOCK_SIZE, 0, PARAM_BLOCK_SIZE, 1);
+                ret.push_back(v);
+            } else {
+                ceres::Vector v;
+                v.resize(PARAM_BLOCK_SIZE);
+                memcpy(v.data(), local_poses[ii*PARAM_BLOCK_SIZE], sizeof(double)*PARAM_BLOCK_SIZE);
+                ret.push_back(v);
+            }
         }
         return ret;
     }
@@ -443,8 +457,12 @@ namespace DSLAM {
         delta_.setZero();
         //Block method even gives a better convergence!
         // tic_gs.tic();
-        for (unsigned int i = 0; i < local_poses.size(); i ++ ) {
-            double * _p = local_poses[i];
+        for (unsigned int ii = 0; ii < local_poses.size(); ii ++ ) {
+            int i = local_poses_internal_index[ii];
+            if (local_poses_internal_index[ii] < 0) {
+                continue;
+            }
+            double * _p = local_poses[ii];
             if (involved_residuals.find(_p) == involved_residuals.end()) {
                 continue;
             }
