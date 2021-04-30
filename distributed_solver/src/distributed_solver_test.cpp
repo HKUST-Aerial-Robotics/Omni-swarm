@@ -275,7 +275,7 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
             }
             printf("\n");
         }
-        printf("final cost: %3.3f\n", iter_cost/factor_count);
+        printf("final cost: %.1e\n", iter_cost/factor_count);
     }
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
