@@ -63,7 +63,7 @@ struct AgentState {
     std::vector<std::pair<int, int>> neighbor_poses_index;
 };
 
-void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_max, int linearization_step, bool output_coor) {
+void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_max, int linearization_step, bool output_coor, double accept_cost = 0.01) {
     double pose_x_step = 1;
     double pose_y_step = 1;
     
@@ -265,6 +265,10 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
             }
         }
         printf("end cost: %.1e\n", iter_cost/factor_count);
+        if (iter_cost/factor_count < accept_cost) {
+            printf("reaches accept cost:%.1e/%.1e at iteration %d...\n", iter_cost/factor_count, accept_cost, iter);
+            break;
+        }
     }
 
     if(output_coor) {
@@ -275,8 +279,13 @@ void GridPoseGraphTest(int pose_grid_width, int pose_grid_length, int iteration_
             }
             printf("\n");
         }
-        printf("final cost: %.1e\n", iter_cost/factor_count);
     }
+    double iter_time;
+    for (unsigned int i = 0; i < pose_grid_width; i ++) {
+        iter_time += solvers[i].get_total_iteration_time();
+    }
+
+    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e\n", iter_time, iter_time/pose_grid_width, iter_cost/factor_count);
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
 }
@@ -297,6 +306,7 @@ int main(int argc, char *argv[]) {
         ("keyframes,k", po::value<int>()->default_value(3), "number of keyframe per agents")
         ("maxiter,i", po::value<int>()->default_value(100), "number of max iterations")
         ("linearstep,l", po::value<int>()->default_value(2), "linearization per step")
+        ("cost,c", po::value<double>()->default_value(0.01), "accept cost")
         ("output_coor,v", "if output coordinate")
         ;
 
@@ -309,6 +319,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    GridPoseGraphTest(vm["agents"].as<int>(), vm["keyframes"].as<int>(), vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm.count("output_coor"));
+    GridPoseGraphTest(vm["agents"].as<int>(), vm["keyframes"].as<int>(), vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm.count("output_coor"),
+        vm["cost"].as<double>());
     return 0;
 }
