@@ -86,6 +86,23 @@ protected:
     double evaluation_with_jacobian_time = 0;
     double iteration_time;
     int iterations = 0;
+
+    virtual double iteration(bool linearization = true) {};
+    virtual ceres::Matrix & setup_full_H();
+    virtual ceres::Matrix H_block(int i0, int j0);
+    virtual std::vector<int> factor_indexs_between_i_j(double* i, double* j);
+
+    virtual std::vector<ceres::Vector> get_last_local_states() {};
+
+    virtual double get_x_jacobian_residual(
+        ceres::Vector & x_,
+        ceres::Vector & residual,
+        ceres::Vector & gradient,
+        ceres::internal::SparseMatrix * & jacobian_
+    ) const;
+
+    virtual void linearization() {};
+
 public:
     void print_reduced_parameters() {
         ceres::Vector x_;
@@ -103,22 +120,11 @@ public:
     virtual void set_pose_fixed(double* poses);
 
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
-    virtual void linearization() {};
     virtual void setup();
     virtual double cost() const = 0;
-    virtual double iteration(bool linearization = true) {};
-    virtual ceres::Matrix & setup_full_H();
-    virtual ceres::Matrix H_block(int i0, int j0);
-    virtual std::vector<int> factor_indexs_between_i_j(double* i, double* j);
-
-    virtual std::vector<ceres::Vector> get_last_local_states() {};
-
-    virtual double get_x_jacobian_residual(
-        ceres::Vector & x_,
-        ceres::Vector & residual,
-        ceres::Vector & gradient,
-        ceres::internal::SparseMatrix * & jacobian_
-    ) const;
+    
+    double get_total_iteration_time();
+    double get_average_iteration_time();
 };
 
 // class ADMMDistributed : public DistributedSolver {

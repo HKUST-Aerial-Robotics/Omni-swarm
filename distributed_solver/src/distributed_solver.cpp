@@ -411,6 +411,14 @@ namespace DSLAM {
         return x_cost_;
     }
 
+    double DistributedSolver::get_total_iteration_time() {
+        return iteration_time;
+    }
+
+    double DistributedSolver::get_average_iteration_time() {
+        return iteration_time/iterations;
+    }
+
     double DGSSolver::iteration(bool need_linearization) {
         //First we need to get the hessian matrix
         // H = J^T J
