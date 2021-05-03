@@ -150,7 +150,7 @@ void grid_poses_generation(
 
             if (t > 0) {
                 //Setup relative pose residual same agent different time
-                auto cost_function = setup_test_loop(i, i, t-1, t, poses[t-1][i], poses[t][i]);
+                auto cost_function = setup_test_loop(i, i, t-1, t, poses[t-1][i], poses[t][i], param.LOOP_POS_NOISE_STD, param.LOOP_YAW_NOISE_STD);
                 factors.push_back(std::make_tuple(
                     cost_function, poses[t-1][i].data(), poses[t][i].data()
                 ));
@@ -164,14 +164,6 @@ void grid_poses_generation(
     }
 
 
-    printf("GridPoseGraphTest: Pose graph with agents %d time %d step %3.1f/%3.1f total poses %d factors %ld\n",
-        pose_grid_width,
-        pose_grid_length,
-        pose_x_step,
-        pose_y_step,
-        pose_grid_width * pose_grid_length,
-        factors.size()
-    );
 
     if (param.noise_type == PoseGraphGenerationParam::NOISE_LOCAL) {
         for (auto & _poses: poses) {
@@ -188,8 +180,8 @@ void grid_poses_generation(
         std::map<int, double> pos_drift_constant;
         std::map<int, double> yaw_drift_constant;
         for (unsigned int i = 0; i < pose_grid_width; i++) {
-            pos_drift_constant[i] = d(eng)*param.POS_NOISE_STD*param.pose_y_step/10;
-            yaw_drift_constant[i] = d(eng)*param.YAW_NOISE_STD*param.pose_y_step/10;
+            pos_drift_constant[i] = 0;//d(eng)*param.POS_NOISE_STD*param.pose_y_step/10;
+            yaw_drift_constant[i] = 0;//d(eng)*param.YAW_NOISE_STD*param.pose_y_step/10;
         }
 
         for (unsigned int i = 1; i < pose_grid_width; i++) {
@@ -218,16 +210,37 @@ void grid_poses_generation(
     }
 }
 
-void PoseGraphTest(PoseGraphGenerationParam param, int iteration_max, int linearization_step, bool output_coor, double accept_cost = 0.01) {
+
+//Solver type 0 centralized
+//Solver type 1 DGS
+void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteration_max, int linearization_step, bool output_coor, double accept_cost = 0.01) {
     std::vector<std::vector<Eigen::Vector4d>> poses;
     std::vector<std::vector<Eigen::Vector4d>> poses_gt;
     std::vector<AgentState> states;
     std::vector<std::tuple<ceres::CostFunction*, double*, double*>> factors;
     int keyframe_per_agents_num = param.keyframe_per_agents_num;
     int agents_num = param.agents_num;
-
-    grid_poses_generation(poses_gt, poses, states, factors, param);
+    double iter_time = 0;
+    double iter_cost = 0;
+    int factor_count = 0;
     
+    std::string _solver_type = "DGS";
+    if (solver_type == 0) {
+        _solver_type = "Centrialized";
+    }
+    
+    grid_poses_generation(poses_gt, poses, states, factors, param);
+
+    printf("GridPoseGraphTest: Solver:%s Pose graph with agents %d time %d step %3.1f/%3.1f total poses %d factors %ld\n",
+        _solver_type.c_str(),
+        agents_num,
+        keyframe_per_agents_num,
+        param.pose_x_step,
+        param.pose_y_step,
+        agents_num * keyframe_per_agents_num,
+        factors.size()
+    );
+
     //poses_tmp for simulate inter-agent communication
     std::vector<std::vector<Eigen::Vector4d>> poses_tmp;
     for (int t = 0; t < keyframe_per_agents_num; t ++) {
@@ -237,127 +250,156 @@ void PoseGraphTest(PoseGraphGenerationParam param, int iteration_max, int linear
         }
     }
 
-    std::vector<DGSSolver> solvers(agents_num);
-    for (unsigned int i = 0; i < solvers.size(); i ++) {
-        auto &solver = solvers[i];
-        auto &local_poses = states[i].local_poses;
-        auto &neighbor_poses = states[i].neighbor_poses;
-        auto &neighbor_factors = states[i].related_factors;
-
-        solver.set_local_poses(local_poses);
-        solver.set_remote_poses(neighbor_poses);
-        if (i == 0) {
-            solver.set_pose_fixed(local_poses[0]);
-        }
-
-        for (auto cost : neighbor_factors) {
-            std::vector<double*> _poses(2);
-            _poses[0] = std::get<1>(cost);
-            _poses[1] = std::get<2>(cost);
-            solver.add_residual(std::get<0>(cost), _poses);
-        }
-
-        printf("DGSSolver: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
-            i,
-            local_poses.size(),
-            neighbor_poses.size(),
-            neighbor_factors.size()
-        );
-    }
-
     if (output_coor) {
         printf("Initial states:\n");
         for (unsigned int t = 0; t < keyframe_per_agents_num; t ++) {
-            for (unsigned int i = 0; i < solvers.size(); i ++) {
+            for (unsigned int i = 0; i < agents_num; i ++) {
                 printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
             }
             printf("\n");
         }
     }
 
-    
-    double iter_cost = 0;
-    int factor_count = 0;
-    for (unsigned int iter = 0; iter < iteration_max; iter++) {
-        printf("iter %d:", iter);
-        bool need_linearization = (iter %linearization_step == 0);
-        
-        if (need_linearization && iter > 0) {
-            //Sync pose_tmps to poses
-            printf("Sync poses, relinearization... ");
-            if (output_coor) {
-                printf("\n");
+    if (solver_type == 0) {
+        CentrializedSolver solver;
+        for (unsigned int i = 0; i < states.size(); i ++) {
+            auto &local_poses = states[i].local_poses;
+            auto &neighbor_poses = states[i].neighbor_poses;
+            auto &neighbor_factors = states[i].related_factors;
+            solver.set_local_poses(local_poses);
+
+            if (i == 0) {
+                solver.set_pose_fixed(local_poses[0]);
             }
-            for (unsigned int t = 0; t < keyframe_per_agents_num; t ++) {
-                for (unsigned int i = 0; i < solvers.size(); i ++) {
-                    memcpy(poses[t][i].data(), poses_tmp[t][i].data(), sizeof(double) * 4);
-                    if (output_coor) {
-                        printf("(%3.2f,%3.2f,%3.2f)%3.3f\t",poses[t][i](0), poses[t][i](1), poses[t][i](2), poses[t][i](3)*57.3);
-                    }
-                }
+
+            printf("Centralized Add Agent: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
+                i,
+                local_poses.size(),
+                neighbor_poses.size(),
+                neighbor_factors.size()
+            );
+        }
+
+        for (auto cost : factors) {
+            std::vector<double*> _poses(2);
+            _poses[0] = std::get<1>(cost);
+            _poses[1] = std::get<2>(cost);
+            solver.add_residual(std::get<0>(cost), _poses);
+        }
+
+        
+        iter_cost = solver.solve();
+        factor_count = factors.size();
+        iter_time = solver.get_total_iteration_time();
+    } else {
+        std::vector<DGSSolver> solvers(agents_num);
+        for (unsigned int i = 0; i < solvers.size(); i ++) {
+            auto &solver = solvers[i];
+            auto &local_poses = states[i].local_poses;
+            auto &neighbor_poses = states[i].neighbor_poses;
+            auto &neighbor_factors = states[i].related_factors;
+
+            solver.set_local_poses(local_poses);
+            solver.set_remote_poses(neighbor_poses);
+            if (i == 0) {
+                solver.set_pose_fixed(local_poses[0]);
+            }
+
+            for (auto cost : neighbor_factors) {
+                std::vector<double*> _poses(2);
+                _poses[0] = std::get<1>(cost);
+                _poses[1] = std::get<2>(cost);
+                solver.add_residual(std::get<0>(cost), _poses);
+            }
+
+            printf("DGSSolver: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
+                i,
+                local_poses.size(),
+                neighbor_poses.size(),
+                neighbor_factors.size()
+            );
+        }
+        
+        for (unsigned int iter = 0; iter < iteration_max; iter++) {
+            printf("iter %d:", iter);
+            bool need_linearization = (iter %linearization_step == 0);
+            
+            if (need_linearization && iter > 0) {
+                //Sync pose_tmps to poses
+                printf("Sync poses, relinearization... ");
                 if (output_coor) {
                     printf("\n");
                 }
+                for (unsigned int t = 0; t < keyframe_per_agents_num; t ++) {
+                    for (unsigned int i = 0; i < solvers.size(); i ++) {
+                        memcpy(poses[t][i].data(), poses_tmp[t][i].data(), sizeof(double) * 4);
+                        if (output_coor) {
+                            printf("(%3.2f,%3.2f,%3.2f)%3.3f\t",poses[t][i](0), poses[t][i](1), poses[t][i](2), poses[t][i](3)*57.3);
+                        }
+                    }
+                    if (output_coor) {
+                        printf("\n");
+                    }
+                }
+            }
+
+            for (unsigned int i = 0; i < agents_num; i ++) {
+                auto &solver = solvers[i];
+                solver.setup();
+                iter_cost += solver.cost();
+                factor_count += states[i].related_factors.size();
+            }
+
+            printf("start cost: %.1e ", iter_cost/factor_count);
+            iter_cost = 0;
+            factor_count = 0;
+
+            // #pragma omp parallel for num_threads(12)
+            for (unsigned int i = 0; i < agents_num; i ++) {
+                auto &solver = solvers[i];
+
+                //Update to last states
+                std::vector<double*> _neighbor_poses;
+                for(auto _index : states[i].neighbor_poses_index) {
+                    _neighbor_poses.push_back(poses_tmp[_index.second][_index.first].data());
+                }
+
+                if (iter > 0 ) {
+                    solver.update_remote_poses(_neighbor_poses);
+                }
+
+                //Perform iteration
+                iter_cost += solver.iteration(need_linearization);
+                factor_count += states[i].related_factors.size();
+
+                //Update state to neighbors
+                auto last_poses = solver.get_last_local_states();
+                for (unsigned int t = 0; t < keyframe_per_agents_num; t++) {
+                    memcpy(poses_tmp[t][i].data(), last_poses[t].data(), sizeof(double) * 4);
+                }
+            }
+            printf("end cost: %.1e(%.1e)\n", iter_cost/factor_count, iter_cost);
+            if (iter_cost/factor_count < accept_cost) {
+                printf("reaches accept cost:%.1e/%.1e at iteration %d...\n", iter_cost/factor_count, accept_cost, iter);
+                break;
             }
         }
-
         for (unsigned int i = 0; i < agents_num; i ++) {
-            auto &solver = solvers[i];
-            solver.setup();
-            iter_cost += solver.cost();
-            factor_count += states[i].related_factors.size();
-        }
-
-        printf("start cost: %.1e ", iter_cost/factor_count);
-        iter_cost = 0;
-        factor_count = 0;
-
-        // #pragma omp parallel for num_threads(12)
-        for (unsigned int i = 0; i < agents_num; i ++) {
-            auto &solver = solvers[i];
-
-            //Update to last states
-            std::vector<double*> _neighbor_poses;
-            for(auto _index : states[i].neighbor_poses_index) {
-                _neighbor_poses.push_back(poses_tmp[_index.second][_index.first].data());
-            }
-
-            if (iter > 0 ) {
-                solver.update_remote_poses(_neighbor_poses);
-            }
-
-            //Perform iteration
-            iter_cost += solver.iteration(need_linearization);
-            factor_count += states[i].related_factors.size();
-
-            //Update state to neighbors
-            auto last_poses = solver.get_last_local_states();
-            for (unsigned int t = 0; t < keyframe_per_agents_num; t++) {
-                memcpy(poses_tmp[t][i].data(), last_poses[t].data(), sizeof(double) * 4);
-            }
-        }
-        printf("end cost: %.1e\n", iter_cost/factor_count);
-        if (iter_cost/factor_count < accept_cost) {
-            printf("reaches accept cost:%.1e/%.1e at iteration %d...\n", iter_cost/factor_count, accept_cost, iter);
-            break;
+            iter_time += solvers[i].get_total_iteration_time();
         }
     }
 
     if(output_coor) {
         printf("final states:\n");
         for (unsigned int t = 0; t < keyframe_per_agents_num; t ++) {
-            for (unsigned int i = 0; i < solvers.size(); i ++) {
+            for (unsigned int i = 0; i < agents_num; i ++) {
                 printf("(%3.2f,%3.2f,%3.2f),%3.3f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
             }
             printf("\n");
         }
     }
-    double iter_time;
-    for (unsigned int i = 0; i < agents_num; i ++) {
-        iter_time += solvers[i].get_total_iteration_time();
-    }
 
-    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e\n", iter_time, iter_time/agents_num, iter_cost/factor_count);
+    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e(total%1.e)\n", iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost);
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
 }
@@ -379,8 +421,9 @@ int main(int argc, char *argv[]) {
         ("maxiter,i", po::value<int>()->default_value(100), "number of max iterations")
         ("linearstep,l", po::value<int>()->default_value(2), "linearization per step")
         ("cost,c", po::value<double>()->default_value(0.01), "accept cost")
-        ("output_coor,v", "if output coordinate")
-        ("loop_noise", "if noise on loop")
+        ("solver,s", po::value<int>()->default_value(1), "solver type 0 for centrialized 2 for DGS")
+        ("output-coor,v", "if output coordinate")
+        ("loop-noise", "if noise on loop")
         ("no_initial_noise", "no initial pose noise")
         ("initial_drift_noise,d", "drift initial noise")
         ;
@@ -398,9 +441,9 @@ int main(int argc, char *argv[]) {
     param.LOOP_POS_NOISE_STD = 0;
     param.LOOP_YAW_NOISE_STD = 0;
     param.pose_x_step = 1.0;
-    param.pose_y_step = 5;
+    param.pose_y_step = 1.0;
     
-    if (vm.count("loop_noise")) {
+    if (vm.count("loop-noise")) {
         param.LOOP_POS_NOISE_STD = 0.2;
         param.LOOP_YAW_NOISE_STD = 0.05;
     }
@@ -423,7 +466,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    PoseGraphTest(param, vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm.count("output_coor"),
+    PoseGraphTest(param, vm["solver"].as<int>(), vm["maxiter"].as<int>(), vm["linearstep"].as<int>(), vm.count("output-coor"),
         vm["cost"].as<double>());
     return 0;
 }

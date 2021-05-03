@@ -47,7 +47,23 @@ class TicToc
     std::chrono::time_point<std::chrono::system_clock> start, end;
 };
 
-class DistributedSolver {
+class BaseSolver {
+protected:
+    double evaluation_with_jacobian_time = 0;
+    double iteration_time;
+    int iterations = 0;
+public:
+    BaseSolver() {}
+    virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm=false) = 0;
+    virtual void set_local_poses(std::vector<double*> poses) = 0;
+    virtual double get_total_iteration_time();
+    virtual double get_average_iteration_time();
+
+    virtual void set_poses_fixed(std::vector<double*> poses) = 0;
+    virtual void set_pose_fixed(double* poses) = 0;
+};
+
+class DistributedSolver : public BaseSolver{
 protected:
     std::vector<double*> local_poses;
     std::vector<int> local_poses_internal_index;
@@ -83,10 +99,7 @@ protected:
     ceres::Matrix H,g;
 
     bool need_setup = true;
-    double evaluation_with_jacobian_time = 0;
-    double iteration_time;
-    int iterations = 0;
-
+    
     virtual double iteration(bool linearization = true) {};
     virtual ceres::Matrix & setup_full_H();
     virtual ceres::Matrix H_block(int i0, int j0);
@@ -122,9 +135,7 @@ public:
     virtual void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm = false);
     virtual void setup();
     virtual double cost() const = 0;
-    
-    double get_total_iteration_time();
-    double get_average_iteration_time();
+
 };
 
 // class ADMMDistributed : public DistributedSolver {
@@ -148,6 +159,18 @@ public:
     virtual void update_remote_poses(std::vector<double*> poses) override;
     virtual std::vector<ceres::Vector> get_last_local_states() override;
 
+};
+
+
+class CentrializedSolver : public BaseSolver{
+protected:
+ceres::Problem problem;
+public:
+    void add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm=false) override;
+    void set_local_poses(std::vector<double*> poses) override;
+    void set_pose_fixed(double* pose);
+    void set_poses_fixed(std::vector<double*> poses);
+    double solve();
 };
 
 }
