@@ -185,6 +185,13 @@ void grid_poses_generation(
     } else if (param.noise_type == PoseGraphGenerationParam::NOISE_DRIFT) {
         auto _poses = poses[0];
         auto _poses_gt = poses_gt[0];
+        std::map<int, double> pos_drift_constant;
+        std::map<int, double> yaw_drift_constant;
+        for (unsigned int i = 0; i < pose_grid_width; i++) {
+            pos_drift_constant[i] = d(eng)*param.POS_NOISE_STD*param.pose_y_step/10;
+            yaw_drift_constant[i] = d(eng)*param.YAW_NOISE_STD*param.pose_y_step/10;
+        }
+
         for (unsigned int i = 1; i < pose_grid_width; i++) {
             _poses[i](0) = d(eng)*param.POS_NOISE_STD*param.pose_x_step + _poses_gt[i](0) - _poses_gt[i-1](0) + _poses[i-1](0);
             _poses[i](1) = d(eng)*param.POS_NOISE_STD*param.pose_x_step + _poses_gt[i](1) - _poses_gt[i-1](1) + _poses[i-1](1);
@@ -198,10 +205,10 @@ void grid_poses_generation(
                 Swarm::Pose gt(poses_gt[t][i].data(), true);
                 Swarm::Pose pose0(poses[t-1][i].data(), true);
                 Swarm::Pose relative_pose = Swarm::Pose::DeltaPose(gt0, gt, true);
-                relative_pose.pos().x() += d(eng)*param.POS_NOISE_STD;
-                relative_pose.pos().y() += d(eng)*param.POS_NOISE_STD;
-                relative_pose.pos().z() += d(eng)*param.POS_NOISE_STD;
-                relative_pose.yaw() += d(eng)*param.YAW_NOISE_STD;
+                relative_pose.pos().x() += d(eng)*param.POS_NOISE_STD + pos_drift_constant[i];
+                relative_pose.pos().y() += d(eng)*param.POS_NOISE_STD + pos_drift_constant[i];
+                relative_pose.pos().z() += d(eng)*param.POS_NOISE_STD + pos_drift_constant[i];
+                relative_pose.yaw() += d(eng)*param.YAW_NOISE_STD + yaw_drift_constant[i];
                 relative_pose.update_attitude();
 
                 Swarm::Pose pose = pose0*relative_pose;
@@ -407,8 +414,8 @@ int main(int argc, char *argv[]) {
     if (vm.count("initial_drift_noise")) {
         param.noise_type = PoseGraphGenerationParam::NOISE_DRIFT;
         param.POS_NOISE_STD = 0.0109;
-        // param.YAW_NOISE_STD = 0.0033/180*M_PI;
-        param.YAW_NOISE_STD = 0.01/180*M_PI;
+        param.YAW_NOISE_STD = 0.0033/180*M_PI;
+        // param.YAW_NOISE_STD = 0.01/180*M_PI;
     }
 
     if (vm.count("help")) {
