@@ -162,7 +162,7 @@ public:
 };
 
 
-class CentrializedSolver : public BaseSolver{
+class CentralizedSolver : public BaseSolver{
 protected:
 ceres::Problem problem;
 public:

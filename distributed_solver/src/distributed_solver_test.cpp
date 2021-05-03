@@ -86,6 +86,7 @@ struct PoseGraphGenerationParam{
 
     double pose_x_step = 1;
     double pose_y_step = 1;
+    bool duplicate_factor = false;
 };
 
 void grid_poses_generation(
@@ -263,7 +264,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
     }
 
     if (solver_type == 0) {
-        CentrializedSolver solver;
+        CentralizedSolver solver;
         for (unsigned int i = 0; i < states.size(); i ++) {
             auto &local_poses = states[i].local_poses;
             auto &neighbor_poses = states[i].neighbor_poses;
@@ -274,22 +275,34 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                 solver.set_pose_fixed(local_poses[0]);
             }
 
-            printf("Centralized Add Agent: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
-                i,
-                local_poses.size(),
-                neighbor_poses.size(),
-                neighbor_factors.size()
-            );
+            // printf("Centralized Add Agent: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
+            //     i,
+            //     local_poses.size(),
+            //     neighbor_poses.size(),
+            //     neighbor_factors.size()
+            // );
+
+            if (param.duplicate_factor) {
+                for (auto cost : neighbor_factors) {
+                    std::vector<double*> _poses(2);
+                    _poses[0] = std::get<1>(cost);
+                    _poses[1] = std::get<2>(cost);
+                    solver.add_residual(std::get<0>(cost), _poses);
+                    factor_count++;
+                }
+            }
         }
 
-        for (auto cost : factors) {
-            std::vector<double*> _poses(2);
-            _poses[0] = std::get<1>(cost);
-            _poses[1] = std::get<2>(cost);
-            solver.add_residual(std::get<0>(cost), _poses);
+        if (!param.duplicate_factor) {
+            for (auto cost : factors) {
+                std::vector<double*> _poses(2);
+                _poses[0] = std::get<1>(cost);
+                _poses[1] = std::get<2>(cost);
+                solver.add_residual(std::get<0>(cost), _poses);
+            }
+            factor_count = factors.size();
         }
         iter_cost = solver.solve(tolerance);
-        factor_count = factors.size();
         iter_time = solver.get_total_iteration_time();
     } else {
         std::vector<DGSSolver> solvers(agents_num);
@@ -312,12 +325,12 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                 solver.add_residual(std::get<0>(cost), _poses);
             }
 
-            printf("DGSSolver: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
-                i,
-                local_poses.size(),
-                neighbor_poses.size(),
-                neighbor_factors.size()
-            );
+            // printf("DGSSolver: %d, local poses %ld, neightbor poses %ld residuals %ld\n",
+            //     i,
+            //     local_poses.size(),
+            //     neighbor_poses.size(),
+            //     neighbor_factors.size()
+            // );
         }
         
         for (unsigned int iter = 0; iter < iteration_max; iter++) {
@@ -353,7 +366,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                 factor_count += states[i].related_factors.size();
             }
 
-            printf("start cost: %.1e(%.1e) ", iter_cost/factor_count, iter_cost);
+            printf("start cost: %.2e(%.2e) ", iter_cost/factor_count, iter_cost);
             iter_cost_last = iter_cost;
             iter_cost = 0;
             factor_count = 0;
@@ -386,9 +399,9 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
             eta = fabs(iter_cost - iter_cost_last) / iter_cost;
             // std::cout << iter_cost << "," <<  iter_cost_last << "," << eta << std::endl;
 
-            printf("end cost: %.1e(%.1e) tolerance %.1e factors %d\n", iter_cost/factor_count, iter_cost, eta, factor_count);
+            printf("end cost: %.2e(%.2e) tolerance %.1e factors %d\n", iter_cost/factor_count, iter_cost, eta, factor_count);
             if (eta < tolerance) {
-                printf("convergence: cost:%.1e at iteration %d...\n", iter_cost/factor_count, iter);
+                printf("convergence: cost:%.2e at iteration %d...\n", iter_cost/factor_count, iter);
                 break;
             }
         }
@@ -407,7 +420,8 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
         }
     }
 
-    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e(total %1.e)\n", iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost);
+    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.2e(total %.2e) factors %d\n", 
+                    iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost, factor_count);
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
 }
@@ -429,11 +443,11 @@ int main(int argc, char *argv[]) {
         ("maxiter,i", po::value<int>()->default_value(100), "number of max iterations")
         ("linearstep,l", po::value<int>()->default_value(2), "linearization per step")
         ("cost,c", po::value<double>()->default_value(0.01), "accept cost tolerance")
-        ("solver,s", po::value<int>()->default_value(1), "solver type 0 for centrialized 2 for DGS")
+        ("solver,s", po::value<int>()->default_value(1), "solver type 0 for centralized 2 for DGS")
         ("output-coor,v", "if output coordinate")
-        ("loop-noise", "if noise on loop")
-        ("no_initial_noise", "no initial pose noise")
-        ("initial_drift_noise,d", "drift initial noise")
+        ("no-loop-noise", "if noise on loop")
+        ("duplicate-factor,d", "enable duplicate in centralized solver")
+        ("noise-type,n", po::value<int>()->default_value(2), "no initial pose noise")
         ;
 
     po::variables_map vm;
@@ -451,23 +465,31 @@ int main(int argc, char *argv[]) {
     param.pose_x_step = 1.0;
     param.pose_y_step = 1.0;
     
-    if (vm.count("loop-noise")) {
+    if (!vm.count("no-loop-noise")) {
         param.LOOP_POS_NOISE_STD = 0.2;
         param.LOOP_YAW_NOISE_STD = 0.05;
     }
 
-    if (vm.count("no_initial_noise")) {
+    if (vm["noise-type"].as<int>() == 0) {
         param.noise_type = PoseGraphGenerationParam::NO_NOISE;
         param.POS_NOISE_STD = 0.0;
         param.YAW_NOISE_STD = 0.0;
     }
 
-    if (vm.count("initial_drift_noise")) {
+    if (vm["noise-type"].as<int>() == 1) {
+        param.noise_type = PoseGraphGenerationParam::NOISE_LOCAL;
+        param.POS_NOISE_STD = 1.0;
+        param.YAW_NOISE_STD = 0.1;
+    }
+
+    if (vm["noise-type"].as<int>() == 2) {
         param.noise_type = PoseGraphGenerationParam::NOISE_DRIFT;
         param.POS_NOISE_STD = 0.0109;
         param.YAW_NOISE_STD = 0.0033/180*M_PI;
         // param.YAW_NOISE_STD = 0.01/180*M_PI;
     }
+
+    param.duplicate_factor = vm.count("duplicate-factor");
 
     if (vm.count("help")) {
         std::cout << desc << "\n";
