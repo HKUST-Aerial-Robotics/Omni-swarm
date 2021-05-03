@@ -516,27 +516,27 @@ namespace DSLAM {
     }
 
 
-    void CentrializedSolver::add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm) {
+    void CentralizedSolver::add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm) {
         problem.AddResidualBlock(cost_function, nullptr, poses.data(), poses.size());
     }
 
-    void CentrializedSolver::set_local_poses(std::vector<double*> poses) {
+    void CentralizedSolver::set_local_poses(std::vector<double*> poses) {
         for (auto & p : poses) {
             problem.AddParameterBlock(p, PARAM_BLOCK_SIZE);
         }
     }
 
-    void CentrializedSolver::set_pose_fixed(double* pose) {
+    void CentralizedSolver::set_pose_fixed(double* pose) {
         problem.SetParameterBlockConstant(pose);
     }
 
-    void CentrializedSolver::set_poses_fixed(std::vector<double*> poses) {
+    void CentralizedSolver::set_poses_fixed(std::vector<double*> poses) {
         for (auto & p : poses) {
             problem.SetParameterBlockConstant(p);
         }
     }
 
-    double CentrializedSolver::solve(double tolerance) {
+    double CentralizedSolver::solve(double tolerance) {
         ceres::Solver::Options options;
         //SPARSE NORMAL DOGLEG 12.5ms
         //SPARSE NORMAL 21
