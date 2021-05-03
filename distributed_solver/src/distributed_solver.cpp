@@ -543,9 +543,11 @@ namespace DSLAM {
         //DENSE NORM DOGLEG 49.31ms
         options.max_num_iterations = 1000;
         // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-        options.linear_solver_type = ceres::CGNR;
         options.function_tolerance = tolerance;
+        options.linear_solver_type = ceres::CGNR;
         // options.trust_region_strategy_type = ceres::DOGLEG;
+        // options.linear_solver_type = ceres::LEVENBERG_MARQUARDT;
+
         options.num_threads = 1;
         ceres::Solver::Summary summary;
         TicToc tic_iteration;
