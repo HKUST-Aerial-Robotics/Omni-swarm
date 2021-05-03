@@ -23,7 +23,7 @@ find_package(Boost REQUIRED COMPONENTS program_options)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES distributed_solver
- CATKIN_DEPENDS roscpp rospy std_msgs swarm_localization
+ CATKIN_DEPENDS roscpp rospy std_msgs swarm_localization swarm_msgs
 #  DEPENDS system_lib
 )
 
