@@ -3,6 +3,7 @@
 #include <random>
 #include <boost/program_options.hpp>
 #include <swarm_msgs/Pose.h>
+#include <algorithm>
 
 namespace po = boost::program_options;
 
@@ -352,7 +353,13 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
             // );
         }
         
+        std::vector<int> seq;
+        for (unsigned int i = 0; i < agents_num; i ++) {
+            seq.push_back(i);
+        }
+        
         for (unsigned int iter = 0; iter < iteration_max; iter++) {
+            std::shuffle(std::begin(seq), std::end(seq), eng);
             printf("iter %d:", iter);
             bool need_linearization = (iter %linearization_step == 0);
             
@@ -391,7 +398,8 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
             factor_count = 0;
 
             // #pragma omp parallel for num_threads(12)
-            for (unsigned int i = 0; i < agents_num; i ++) {
+            for (unsigned int ii = 0; ii < agents_num; ii ++) {
+                int i = seq[ii];
                 auto &solver = solvers[i];
 
                 //Update to last states
@@ -439,8 +447,8 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
         }
     }
 
-    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.2e(total %.2e) factors %d\n", 
-                    iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost, factor_count);
+    printf("total elapse time %.1es time per agents %3.4fms final cost: %.2e(total %.2e) factors %d\n", 
+                    iter_time/1000, iter_time/agents_num, iter_cost/factor_count, iter_cost, factor_count);
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
 }
