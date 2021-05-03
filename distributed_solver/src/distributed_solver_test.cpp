@@ -70,7 +70,9 @@ struct PoseGraphGenerationParam{
     enum {
         NO_NOISE,
         NOISE_LOCAL,
-        NOISE_DRIFT
+        NOISE_DRIFT,
+        NOISE_ZERO,
+        NOISE_RANDOM
     } noise_type;
     
     enum {
@@ -165,14 +167,31 @@ void grid_poses_generation(
     }
 
 
-
-    if (param.noise_type == PoseGraphGenerationParam::NOISE_LOCAL) {
+    if (param.noise_type == PoseGraphGenerationParam::NOISE_ZERO) {
+        for (auto & _poses: poses) {
+            for (auto & _pose : _poses) {
+                _pose(0) = 0;
+                _pose(1) = 0;
+                _pose(2) = 0;
+                _pose(3) = 0;
+            }
+        }
+    } else if (param.noise_type == PoseGraphGenerationParam::NOISE_LOCAL) {
         for (auto & _poses: poses) {
             for (auto & _pose : _poses) {
                 _pose(0) += d(eng)*param.POS_NOISE_STD;
                 _pose(1) += d(eng)*param.POS_NOISE_STD;
                 _pose(2) += d(eng)*param.POS_NOISE_STD;
                 _pose(3) += d(eng)*param.YAW_NOISE_STD;
+            }
+        }
+    } else if (param.noise_type == PoseGraphGenerationParam::NOISE_RANDOM) {
+        for (auto & _poses: poses) {
+            for (auto & _pose : _poses) {
+                _pose(0) = d(eng)*param.POS_NOISE_STD;
+                _pose(1) = d(eng)*param.POS_NOISE_STD;
+                _pose(2) = d(eng)*param.POS_NOISE_STD;
+                _pose(3) = d(eng)*param.YAW_NOISE_STD;
             }
         }
     } else if (param.noise_type == PoseGraphGenerationParam::NOISE_DRIFT) {
@@ -470,10 +489,14 @@ int main(int argc, char *argv[]) {
         param.LOOP_YAW_NOISE_STD = 0.05;
     }
 
-    if (vm["noise-type"].as<int>() == 0) {
+    if (vm["noise-type"].as<int>() == -1) {
         param.noise_type = PoseGraphGenerationParam::NO_NOISE;
         param.POS_NOISE_STD = 0.0;
         param.YAW_NOISE_STD = 0.0;
+    }
+
+    if (vm["noise-type"].as<int>() == 0) {
+        param.noise_type = PoseGraphGenerationParam::NOISE_ZERO;
     }
 
     if (vm["noise-type"].as<int>() == 1) {
@@ -487,6 +510,14 @@ int main(int argc, char *argv[]) {
         param.POS_NOISE_STD = 0.0109;
         param.YAW_NOISE_STD = 0.0033/180*M_PI;
         // param.YAW_NOISE_STD = 0.01/180*M_PI;
+    }
+
+
+
+    if (vm["noise-type"].as<int>() == 3) {
+        param.noise_type = PoseGraphGenerationParam::NOISE_RANDOM;
+        param.POS_NOISE_STD = param.pose_x_step * param.keyframe_per_agents_num;
+        param.YAW_NOISE_STD = 0;
     }
 
     param.duplicate_factor = vm.count("duplicate-factor");

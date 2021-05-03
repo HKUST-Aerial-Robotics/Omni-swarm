@@ -542,7 +542,8 @@ namespace DSLAM {
         //SPARSE NORMAL 21
         //DENSE NORM DOGLEG 49.31ms
         options.max_num_iterations = 1000;
-        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        // options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        options.linear_solver_type = ceres::CGNR;
         options.function_tolerance = tolerance;
         // options.trust_region_strategy_type = ceres::DOGLEG;
         options.num_threads = 1;
