@@ -2,6 +2,8 @@
 #include <swarm_localization/localiztion_costfunction.hpp>
 #include <random>
 #include <boost/program_options.hpp>
+#include <swarm_msgs/Pose.h>
+
 namespace po = boost::program_options;
 
 #define BACKWARD_HAS_DW 1
@@ -192,10 +194,18 @@ void grid_poses_generation(
 
         for (unsigned int t = 1; t < pose_grid_length; t++) {
             for (unsigned int i = 0; i < pose_grid_width; i++) {
-                poses[t][i](0) = d(eng)*param.POS_NOISE_STD*param.pose_y_step + poses_gt[t][i](0) - poses_gt[t-1][i](0) + poses[t-1][i](0);
-                poses[t][i](1) = d(eng)*param.POS_NOISE_STD*param.pose_y_step + poses_gt[i][i](1) - poses_gt[t-1][i](1) + poses[t-1][i](1);
-                poses[t][i](2) = d(eng)*param.POS_NOISE_STD*param.pose_y_step + poses_gt[i][i](2) - poses_gt[t-1][i](2) + poses[t-1][i](2);
-                poses[t][i](3) = d(eng)*param.YAW_NOISE_STD*param.pose_y_step + poses_gt[i][i](3) - poses_gt[t-1][i](3) + poses[t-1][i](3);
+                Swarm::Pose gt0(poses_gt[t-1][i].data(), true);
+                Swarm::Pose gt(poses_gt[t][i].data(), true);
+                Swarm::Pose pose0(poses[t-1][i].data(), true);
+                Swarm::Pose relative_pose = Swarm::Pose::DeltaPose(gt0, gt, true);
+                relative_pose.pos().x() += d(eng)*param.POS_NOISE_STD;
+                relative_pose.pos().y() += d(eng)*param.POS_NOISE_STD;
+                relative_pose.pos().z() += d(eng)*param.POS_NOISE_STD;
+                relative_pose.yaw() += d(eng)*param.YAW_NOISE_STD;
+                relative_pose.update_attitude();
+
+                Swarm::Pose pose = pose0*relative_pose;
+                pose.to_vector_xyzyaw(poses[t][i].data());
             }
         }
     }
@@ -275,7 +285,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int iteration_max, int linear
                 for (unsigned int i = 0; i < solvers.size(); i ++) {
                     memcpy(poses[t][i].data(), poses_tmp[t][i].data(), sizeof(double) * 4);
                     if (output_coor) {
-                        printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i](0), poses[t][i](1), poses[t][i](2), poses[t][i](3)*57.3);
+                        printf("(%3.2f,%3.2f,%3.2f)%3.3f\t",poses[t][i](0), poses[t][i](1), poses[t][i](2), poses[t][i](3)*57.3);
                     }
                 }
                 if (output_coor) {
@@ -330,7 +340,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int iteration_max, int linear
         printf("final states:\n");
         for (unsigned int t = 0; t < keyframe_per_agents_num; t ++) {
             for (unsigned int i = 0; i < solvers.size(); i ++) {
-                printf("(%3.2f,%3.2f,%3.2f)%3.1f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
+                printf("(%3.2f,%3.2f,%3.2f),%3.3f\t",poses[t][i][0], poses[t][i][1], poses[t][i][2], poses[t][i][3]*57.3);
             }
             printf("\n");
         }
@@ -397,7 +407,8 @@ int main(int argc, char *argv[]) {
     if (vm.count("initial_drift_noise")) {
         param.noise_type = PoseGraphGenerationParam::NOISE_DRIFT;
         param.POS_NOISE_STD = 0.0109;
-        param.YAW_NOISE_STD = 0.0033/180*M_PI;
+        // param.YAW_NOISE_STD = 0.0033/180*M_PI;
+        param.YAW_NOISE_STD = 0.01/180*M_PI;
     }
 
     if (vm.count("help")) {
