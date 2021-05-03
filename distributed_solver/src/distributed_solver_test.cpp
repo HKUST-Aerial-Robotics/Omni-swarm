@@ -213,7 +213,7 @@ void grid_poses_generation(
 
 //Solver type 0 centralized
 //Solver type 1 DGS
-void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteration_max, int linearization_step, bool output_coor, double accept_cost = 0.01) {
+void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteration_max, int linearization_step, bool output_coor, double tolerance = 0.01) {
     std::vector<std::vector<Eigen::Vector4d>> poses;
     std::vector<std::vector<Eigen::Vector4d>> poses_gt;
     std::vector<AgentState> states;
@@ -222,6 +222,8 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
     int agents_num = param.agents_num;
     double iter_time = 0;
     double iter_cost = 0;
+    double iter_cost_last = 0;
+    double eta = 0;
     int factor_count = 0;
     
     std::string _solver_type = "DGS";
@@ -286,9 +288,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
             _poses[1] = std::get<2>(cost);
             solver.add_residual(std::get<0>(cost), _poses);
         }
-
-        
-        iter_cost = solver.solve();
+        iter_cost = solver.solve(tolerance);
         factor_count = factors.size();
         iter_time = solver.get_total_iteration_time();
     } else {
@@ -343,6 +343,9 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                 }
             }
 
+            iter_cost = 0;
+            factor_count = 0;
+
             for (unsigned int i = 0; i < agents_num; i ++) {
                 auto &solver = solvers[i];
                 solver.setup();
@@ -350,7 +353,8 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                 factor_count += states[i].related_factors.size();
             }
 
-            printf("start cost: %.1e ", iter_cost/factor_count);
+            printf("start cost: %.1e(%.1e) ", iter_cost/factor_count, iter_cost);
+            iter_cost_last = iter_cost;
             iter_cost = 0;
             factor_count = 0;
 
@@ -378,9 +382,13 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
                     memcpy(poses_tmp[t][i].data(), last_poses[t].data(), sizeof(double) * 4);
                 }
             }
-            printf("end cost: %.1e(%.1e)\n", iter_cost/factor_count, iter_cost);
-            if (iter_cost/factor_count < accept_cost) {
-                printf("reaches accept cost:%.1e/%.1e at iteration %d...\n", iter_cost/factor_count, accept_cost, iter);
+
+            eta = fabs(iter_cost - iter_cost_last) / iter_cost;
+            // std::cout << iter_cost << "," <<  iter_cost_last << "," << eta << std::endl;
+
+            printf("end cost: %.1e(%.1e) tolerance %.1e factors %d\n", iter_cost/factor_count, iter_cost, eta, factor_count);
+            if (eta < tolerance) {
+                printf("convergence: cost:%.1e at iteration %d...\n", iter_cost/factor_count, iter);
                 break;
             }
         }
@@ -399,7 +407,7 @@ void PoseGraphTest(PoseGraphGenerationParam param, int solver_type, int iteratio
         }
     }
 
-    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e(total%1.e)\n", iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost);
+    printf("total elapse time %.1ems time per agents %3.4fms final cost: %.1e(total %1.e)\n", iter_time, iter_time/agents_num, iter_cost/factor_count, iter_cost);
     std::cout << "GridPoseGraphTest Finish" << std::endl;
     return;
 }
@@ -420,7 +428,7 @@ int main(int argc, char *argv[]) {
         ("keyframes,k", po::value<int>()->default_value(3), "number of keyframe per agents")
         ("maxiter,i", po::value<int>()->default_value(100), "number of max iterations")
         ("linearstep,l", po::value<int>()->default_value(2), "linearization per step")
-        ("cost,c", po::value<double>()->default_value(0.01), "accept cost")
+        ("cost,c", po::value<double>()->default_value(0.01), "accept cost tolerance")
         ("solver,s", po::value<int>()->default_value(1), "solver type 0 for centrialized 2 for DGS")
         ("output-coor,v", "if output coordinate")
         ("loop-noise", "if noise on loop")

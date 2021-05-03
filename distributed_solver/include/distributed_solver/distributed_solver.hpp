@@ -170,7 +170,7 @@ public:
     void set_local_poses(std::vector<double*> poses) override;
     void set_pose_fixed(double* pose);
     void set_poses_fixed(std::vector<double*> poses);
-    double solve();
+    double solve(double tolerance=0.01);
 };
 
 }
