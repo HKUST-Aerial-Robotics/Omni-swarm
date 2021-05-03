@@ -411,11 +411,11 @@ namespace DSLAM {
         return x_cost_;
     }
 
-    double DistributedSolver::get_total_iteration_time() {
+    double BaseSolver::get_total_iteration_time() {
         return iteration_time;
     }
 
-    double DistributedSolver::get_average_iteration_time() {
+    double BaseSolver::get_average_iteration_time() {
         return iteration_time/iterations;
     }
 
@@ -513,5 +513,46 @@ namespace DSLAM {
         printf("Gauss Seidel time %3.1fms\n", tic_gs.toc());
 #endif
         return candidate_cost_;
+    }
+
+
+    void CentrializedSolver::add_residual(ceres::CostFunction * cost_function, std::vector<double*> poses, bool is_huber_norm) {
+        problem.AddResidualBlock(cost_function, nullptr, poses.data(), poses.size());
+    }
+
+    void CentrializedSolver::set_local_poses(std::vector<double*> poses) {
+        for (auto & p : poses) {
+            problem.AddParameterBlock(p, PARAM_BLOCK_SIZE);
+        }
+    }
+
+    void CentrializedSolver::set_pose_fixed(double* pose) {
+        problem.SetParameterBlockConstant(pose);
+    }
+
+    void CentrializedSolver::set_poses_fixed(std::vector<double*> poses) {
+        for (auto & p : poses) {
+            problem.SetParameterBlockConstant(p);
+        }
+    }
+
+    double CentrializedSolver::solve() {
+        ceres::Solver::Options options;
+        //SPARSE NORMAL DOGLEG 12.5ms
+        //SPARSE NORMAL 21
+        //DENSE NORM DOGLEG 49.31ms
+        options.max_num_iterations = 1000;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        // options.trust_region_strategy_type = ceres::DOGLEG;
+        options.num_threads = 1;
+        ceres::Solver::Summary summary;
+        TicToc tic_iteration;
+        ceres::Solve(options, &problem, &summary);
+        iteration_time += tic_iteration.toc();
+        iterations ++;
+
+        // std::cout << summary.BriefReport() << std::endl;
+        std::cout << summary.FullReport() << std::endl;
+        return summary.final_cost;
     }
 }
