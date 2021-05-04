@@ -39,6 +39,9 @@ include_directories(
 # Declare a C++ library
 add_library(${PROJECT_NAME}
   src/distributed_solver.cpp
+  src/base_solver.cpp
+  src/centralized_solver.cpp
+  src/DGS_solver.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

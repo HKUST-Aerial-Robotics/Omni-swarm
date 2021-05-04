@@ -1,4 +1,5 @@
-#include <distributed_solver/distributed_solver.hpp>
+#include <distributed_solver/DGS_solver.hpp>
+#include <distributed_solver/centralized_solver.hpp>
 #include <swarm_localization/localiztion_costfunction.hpp>
 #include <random>
 #include <boost/program_options.hpp>
