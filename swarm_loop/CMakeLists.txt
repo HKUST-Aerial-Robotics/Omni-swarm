@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   swarm_msgs
   message_generation
   camera_models
+  message_filters
   vins
 )
 

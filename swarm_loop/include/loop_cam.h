@@ -15,12 +15,36 @@
 #include <vins/FlattenImages.h>
 #include "superpoint_tensorrt.h"
 #include "mobilenetvlad_tensorrt.h"
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+
 //#include <swarm_loop/HFNetSrv.h>
 
 using namespace swarm_msgs;
 using namespace camodocal;
 // using namespace swarm_loop;
 
+struct StereoFrame{
+    ros::Time stamp;
+    std::vector<cv::Mat> left_images, right_images, depth_images;
+    geometry_msgs::Pose pose_drone;
+    std::vector<geometry_msgs::Pose> left_extrisincs, right_extrisincs;
+
+    StereoFrame():stamp(0) {
+
+    }
+
+    StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _right_image):
+        stamp(_stamp)
+    {
+        left_images.push_back(_left_image);
+        right_images.push_back(_right_image);
+    }
+
+    StereoFrame(vins::FlattenImages vins_flatten) {
+
+    }
+};
 
 class LoopCam {
     int cam_count = 0;
@@ -28,6 +52,7 @@ class LoopCam {
     int self_id = 0;
     ros::ServiceClient hfnet_client;
     ros::ServiceClient superpoint_client;
+    CameraConfig camera_configuration;
 
 #ifdef USE_TENSORRT
     SuperPointTensorRT superpoint_net;
@@ -40,16 +65,15 @@ public:
     bool show = false;
 
     // LoopDetector * loop_detector = nullptr;
-
-    LoopCam(const std::string & _camera_config_path, 
+    LoopCam(CameraConfig _camera_configuration, const std::string & _camera_config_path, 
         const std::string & superpoint_model, double thres, const std::string & netvlad_model, int width, int height, 
         int self_id, bool _send_img, ros::NodeHandle & nh);
     
-    ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image& msg, bool superpoint_mode=false);
+    ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, cv::Mat img, bool superpoint_mode=false);
     
-    ImageDescriptor_t generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
+    ImageDescriptor_t generate_image_descriptor(const StereoFrame & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
     
-    FisheyeFrameDescriptor_t on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs);
+    FisheyeFrameDescriptor_t on_flattened_images(const StereoFrame & msg, std::vector<cv::Mat> & imgs);
 
     cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
 
@@ -64,4 +88,9 @@ public:
 
     CameraPtr cam;
     cv::Mat cameraMatrix;
+
+    CameraConfig get_camera_configuration() const {
+        return camera_configuration;
+    }
+
 };
