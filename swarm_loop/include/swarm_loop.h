@@ -29,15 +29,18 @@ protected:
 
     std::set<ros::Time> received_keyframe_stamps;
 
+    CameraConfig camera_configuration;
 
     void on_loop_connection (LoopConnection & loop_con, bool is_local = false);
 
-    std::queue<vins::FlattenImages> viokfs;
-    std::mutex viokf_lock;
+    std::queue<StereoFrame> raw_stereo_images;
+    std::mutex raw_stereo_image_lock;
 
-    vins::FlattenImages find_viokf(const nav_msgs::Odometry & odometry);
+    StereoFrame find_images_raw(const nav_msgs::Odometry & odometry);
 
     void flatten_raw_callback(const vins::FlattenImages & viokf);
+
+    void stereo_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr right);
 
     double last_invoke = 0;
     
@@ -45,9 +48,9 @@ protected:
 
     void odometry_keyframe_callback(const nav_msgs::Odometry & odometry);
 
-    void VIOnonKF_callback(const vins::FlattenImages & viokf);
+    void VIOnonKF_callback(const StereoFrame & viokf);
+    void VIOKF_callback(const StereoFrame & viokf, bool nonkeyframe = false);
 
-    void VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyframe = false);
 
     void on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc);
 
@@ -63,6 +66,12 @@ protected:
     ros::Publisher loopconn_pub;
     ros::Publisher remote_image_desc_pub;
     ros::Publisher local_image_desc_pub;
+
+    message_filters::Subscriber<sensor_msgs::Image> * image_sub_l;
+    message_filters::Subscriber<sensor_msgs::Image> * image_sub_r;
+    message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> * sync;
+
+
     bool enable_pub_remote_frame;
     bool enable_pub_local_frame;
     bool enable_sub_remote_frame;

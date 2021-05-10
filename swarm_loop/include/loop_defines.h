@@ -126,3 +126,10 @@ inline void reduceVector(std::vector<T> &v, std::vector<B> status)
             v[j++] = v[i];
     v.resize(j);
 }
+
+enum CameraConfig{
+    STEREO_PINHOLE = 0,
+    STEREO_FISHEYE = 1,
+    FOURCORNER_FISHEYE = 2
+};
+

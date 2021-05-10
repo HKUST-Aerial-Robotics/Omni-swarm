@@ -10,9 +10,11 @@
 using namespace std::chrono;
 
 double TRIANGLE_THRES;
+#define USE_TENSORRT
 
-LoopCam::LoopCam(const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
+LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
     const std::string & netvlad_model, int width, int height, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
+    camera_configuration(_camera_configuration),
     self_id(_self_id),
 #ifdef USE_TENSORRT
     superpoint_net(superpoint_model, width, height, thres), 
@@ -188,38 +190,26 @@ void LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std:
 
 
 
-FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages & msg, std::vector<cv::Mat> imgs) {
+FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, std::vector<cv::Mat> &imgs) {
     FisheyeFrameDescriptor_t frame_desc;
     
-    if (msg.up_cams[3].width > 0) {
-        imgs.resize(4);
-    } else {
-        imgs.resize(3);
-    }
+    imgs.resize(msg.left_images.size());
 
     cv::Mat _show, tmp;
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[0], 1, _show));
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[1], 2, tmp));
-    cv::hconcat(_show, tmp, _show);
-    frame_desc.images.push_back(generate_image_descriptor(msg, imgs[2], 3, tmp));
-    cv::hconcat(_show, tmp, _show);
-    
-    if (msg.up_cams[4].width > 0) {
-        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[3], 4, tmp));
-        cv::hconcat(_show, tmp, _show);
-    } else {
-        frame_desc.images.push_back(generate_null_img_desc());
-    }
-    
-    frame_desc.image_num = 4;
-    frame_desc.timestamp = frame_desc.images[0].timestamp;
-    frame_desc.images[1].timestamp = frame_desc.timestamp;
-    frame_desc.images[2].timestamp = frame_desc.timestamp;
-    frame_desc.images[3].timestamp = frame_desc.timestamp;
 
-    for (size_t i = 0; i < 4; i++) {
+    for (unsigned int i = 0; i < msg.left_images.size(); i ++) {
+        frame_desc.images.push_back(generate_image_descriptor(msg, imgs[i], i, tmp));
+        frame_desc.images[i].timestamp = frame_desc.timestamp;
         frame_desc.images[i].direction = i;
+
+        if (_show.cols == 0) {
+            _show = tmp;
+        } else {
+            cv::hconcat(_show, tmp, _show);
+        }
     }
+
+    frame_desc.image_num = msg.left_images.size();
     
     frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
     frame_desc.pose_drone = fromROSPose(msg.pose_drone);
@@ -243,17 +233,17 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const vins::FlattenImages 
     return frame_desc;
 }
 
-ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages & msg, cv::Mat & img, const int & vcam_id, cv::Mat & _show)
+ImageDescriptor_t LoopCam::generate_image_descriptor(const StereoFrame & msg, cv::Mat & img, const int & vcam_id, cv::Mat & _show)
 {
-    if (vcam_id > msg.up_cams.size()) {
+    if (vcam_id > msg.left_images.size()) {
         ROS_WARN("Flatten images too few");
         ImageDescriptor_t ides;
         ides.landmark_num = 0;
         return ides;
     }
     
-    ImageDescriptor_t ides = extractor_img_desc_deepnet(msg.header.stamp, msg.up_cams[vcam_id], LOWER_CAM_AS_MAIN);
-    ImageDescriptor_t ides_down = extractor_img_desc_deepnet(msg.header.stamp, msg.down_cams[vcam_id], !LOWER_CAM_AS_MAIN);
+    ImageDescriptor_t ides = extractor_img_desc_deepnet(msg.stamp, msg.left_images[vcam_id], LOWER_CAM_AS_MAIN);
+    ImageDescriptor_t ides_down = extractor_img_desc_deepnet(msg.stamp, msg.right_images[vcam_id], !LOWER_CAM_AS_MAIN);
 
     if (ides.image_desc_size == 0 && ides_down.image_desc_size == 0)
     {
@@ -269,20 +259,20 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
     auto start = high_resolution_clock::now();
     // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
 
-    ides.timestamp = toLCMTime(msg.header.stamp);
+    ides.timestamp = toLCMTime(msg.stamp);
     ides.drone_id = self_id; // -1 is self drone;
-    ides.camera_extrinsic = fromROSPose(msg.extrinsic_up_cams[vcam_id]);
+    ides.camera_extrinsic = fromROSPose(msg.left_extrisincs[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.image_size = 0;
 
-    ides_down.timestamp = toLCMTime(msg.header.stamp);
+    ides_down.timestamp = toLCMTime(msg.stamp);
     ides_down.drone_id = self_id; // -1 is self drone;
-    ides_down.camera_extrinsic = fromROSPose(msg.extrinsic_down_cams[vcam_id]);
+    ides_down.camera_extrinsic = fromROSPose(msg.right_extrisincs[vcam_id]);
     ides_down.pose_drone = fromROSPose(msg.pose_drone);
     ides_down.image_size = 0;
 
-    auto cv_ptr = cv_bridge::toCvShare(msg.up_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
-    auto cv_ptr2 = cv_bridge::toCvShare(msg.down_cams[vcam_id], boost::make_shared<vins::FlattenImages>(msg));
+    auto image_left = msg.left_images[vcam_id];
+    auto image_right = msg.left_images[vcam_id];
 
     std::vector<cv::Point2f> pts_up, pts_down;
     pts_up = toCV(ides.landmarks_2d);
@@ -304,8 +294,8 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
-    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.extrinsic_up_cams[vcam_id]);
-    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.extrinsic_down_cams[vcam_id]);
+    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.left_extrisincs[vcam_id]);
+    Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.right_extrisincs[vcam_id]);
 
     std::vector<float> desc_new;
 
@@ -371,15 +361,15 @@ ImageDescriptor_t LoopCam::generate_image_descriptor(const vins::FlattenImages &
 
     if (send_img) {
         if (LOWER_CAM_AS_MAIN) {
-            encode_image(cv_ptr2->image, ides_down);
+            encode_image(image_right, ides_down);
         } else {
-            encode_image(cv_ptr->image, ides);
+            encode_image(image_left, ides);
         }
     }
 
     if (show) {
-        cv::Mat img_up = cv_ptr->image;
-        cv::Mat img_down = cv_ptr2->image;
+        cv::Mat img_up = image_left;
+        cv::Mat img_down = image_right;
 
         img_up.copyTo(img);
         if (!send_img) {
@@ -447,7 +437,7 @@ cv::Mat LoopCam::landmark_desc_compute(const cv::Mat &_img, const std::vector<ge
     return ret;
 }
 
-ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sensor_msgs::Image &msg, bool superpoint_mode)
+ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat img, bool superpoint_mode)
 {
     auto start = high_resolution_clock::now();
 
@@ -457,15 +447,13 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     img_des.image_size = 0;
     img_des.landmark_num = 0;
 
-
-
-    auto cv_ptr = cv_bridge::toCvCopy(msg);
-    cv::Mat roi = cv_ptr->image(cv::Rect(0, cv_ptr->image.rows*3/4, cv_ptr->image.cols, cv_ptr->image.rows/4));
+    if (camera_configuration == CameraConfig::STEREO_FISHEYE) {
+    cv::Mat roi = img(cv::Rect(0, img.rows*3/4, img.cols, img.rows/4));
     roi.setTo(cv::Scalar(0, 0, 0));
-    // std::cout << "Image size" << cv_ptr->image.size() << std::endl;
+    }
 #ifdef USE_TENSORRT
     std::vector<cv::Point2f> features;
-    superpoint_net.inference(cv_ptr->image, features, img_des.feature_descriptor);
+    superpoint_net.inference(img, features, img_des.feature_descriptor);
     img_des.image_desc_size = 0;
     img_des.image_desc.clear();
     CVPoints2LCM(features, img_des.landmarks_2d);
@@ -477,7 +465,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, const sen
     img_des.image_size = 0;
 
     if (!superpoint_mode) {
-        img_des.image_desc = netvlad_net.inference(cv_ptr->image);
+        img_des.image_desc = netvlad_net.inference(img);
         img_des.image_desc_size = img_des.image_desc.size();
     }
     // if (hfnet_client.call(hfnet_srv))
