@@ -84,6 +84,8 @@ protected:
     double superpoint_thres = 0.012;
 
     ros::Timer timer;
+
+    geometry_msgs::Pose left_extrinsic, right_extrinsic;
 public:
     SwarmLoop ();
     

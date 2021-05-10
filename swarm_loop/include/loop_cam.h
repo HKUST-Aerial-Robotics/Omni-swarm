@@ -34,11 +34,14 @@ struct StereoFrame{
 
     }
 
-    StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _right_image):
+    StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _right_image, 
+        geometry_msgs::Pose _left_extrinsic, geometry_msgs::Pose _right_extrinsic):
         stamp(_stamp)
     {
         left_images.push_back(_left_image);
         right_images.push_back(_right_image);
+        left_extrisincs.push_back(_left_extrinsic);
+        right_extrisincs.push_back(_right_extrinsic);
     }
 
     StereoFrame(vins::FlattenImages vins_flatten) {
