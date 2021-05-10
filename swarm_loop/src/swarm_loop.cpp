@@ -86,7 +86,8 @@ void SwarmLoop::stereo_images_callback(const sensor_msgs::ImageConstPtr left, co
     raw_stereo_image_lock.lock();
     auto _l = getImageFromMsg(left);
     auto _r = getImageFromMsg(right);
-    raw_stereo_images.push(StereoFrame(_l->header.stamp, _l->image, _r->image));
+    raw_stereo_images.push(StereoFrame(_l->header.stamp, 
+        _l->image, _r->image, left_extrinsic, right_extrinsic));
     raw_stereo_image_lock.unlock();
 }
 
@@ -180,6 +181,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string camera_config_path = "";
     std::string superpoint_model_path = "";
     std::string netvlad_model_path = "";
+    std::string vins_config_path;
     std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
     int width;
     int height;
@@ -224,10 +226,15 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     nh.param<std::string>("camera_config_path",camera_config_path, 
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
-    nh.param<std::string>("image0_topic", IMAGE0_TOPIC, "");
-    nh.param<std::string>("image1_topic", IMAGE1_TOPIC, "");
     nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
     nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
+
+    nh.param<std::string>("vins_config_path",vins_config_path, "");
+
+    cv::FileStorage fsSettings;
+    fsSettings.open(vins_config_path.c_str(), cv::FileStorage::READ);
+    fsSettings["image0_topic"] >> IMAGE0_TOPIC;
+    fsSettings["image1_topic"] >> IMAGE1_TOPIC;
 
     nh.param<bool>("debug_image", debug_image, false);
     nh.param<std::string>("output_path", OUTPUT_PATH, "");
@@ -296,6 +303,15 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         while(0 == loop_net->lcm_handle()) {
         }
     });
+
+
+    // cv::Mat cv_T;
+    // fsSettings["body_T_cam0"] >> cv_T;
+    // Eigen::Matrix4d T;
+    // cv::cv2eigen(cv_T, T);
+    // RIC[1] = T.block<3, 3>(0, 0);
+    // TIC[1] = T.block<3, 1>(0, 3);
+
 }
 
 }

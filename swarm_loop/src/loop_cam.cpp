@@ -10,7 +10,6 @@
 using namespace std::chrono;
 
 double TRIANGLE_THRES;
-#define USE_TENSORRT
 
 LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
     const std::string & netvlad_model, int width, int height, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
