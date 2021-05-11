@@ -10,6 +10,7 @@
 #include <nav_msgs/Odometry.h>
 #include <mutex>
 #include <swarm_msgs/FisheyeFrameDescriptor.h>
+#include <opencv2/core/eigen.hpp>
 
 using namespace std::chrono; 
 

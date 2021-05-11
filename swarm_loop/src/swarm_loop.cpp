@@ -228,16 +228,26 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
     nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
     nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
-
     nh.param<std::string>("vins_config_path",vins_config_path, "");
-
+    nh.param<bool>("debug_image", debug_image, false);
+    nh.param<std::string>("output_path", OUTPUT_PATH, "");
+    
     cv::FileStorage fsSettings;
     fsSettings.open(vins_config_path.c_str(), cv::FileStorage::READ);
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;
     fsSettings["image1_topic"] >> IMAGE1_TOPIC;
 
-    nh.param<bool>("debug_image", debug_image, false);
-    nh.param<std::string>("output_path", OUTPUT_PATH, "");
+    cv::Mat cv_T;
+    fsSettings["body_T_cam0"] >> cv_T;
+    Eigen::Matrix4d T;
+    cv::cv2eigen(cv_T, T);
+    left_extrinsic = toROSPose(Swarm::Pose(T.block<3, 3>(0, 0), T.block<3, 1>(0, 3)));
+
+    fsSettings["body_T_cam1"] >> cv_T;
+    cv::cv2eigen(cv_T, T);
+
+    right_extrinsic = toROSPose(Swarm::Pose(T.block<3, 3>(0, 0), T.block<3, 1>(0, 3)));
+
     
     loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
     loop_cam = new LoopCam(camera_configuration, camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, width, height, self_id, send_img, nh);
@@ -305,12 +315,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     });
 
 
-    // cv::Mat cv_T;
-    // fsSettings["body_T_cam0"] >> cv_T;
-    // Eigen::Matrix4d T;
-    // cv::cv2eigen(cv_T, T);
-    // RIC[1] = T.block<3, 3>(0, 0);
-    // TIC[1] = T.block<3, 1>(0, 3);
+    
 
 }
 
