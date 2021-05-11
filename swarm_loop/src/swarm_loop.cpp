@@ -28,15 +28,7 @@ cv_bridge::CvImageConstPtr getImageFromMsg(const sensor_msgs::ImageConstPtr &img
     // std::cout << img_msg->encoding << std::endl;
     if (img_msg->encoding == "8UC1" || img_msg->encoding == "mono8")
     {
-        sensor_msgs::Image img;
-        img.header = img_msg->header;
-        img.height = img_msg->height;
-        img.width = img_msg->width;
-        img.is_bigendian = img_msg->is_bigendian;
-        img.step = img_msg->step;
-        img.data = img_msg->data;
-        img.encoding = "mono8";
-        ptr = cv_bridge::toCvShare(img_msg, sensor_msgs::image_encodings::MONO8);
+        ptr = cv_bridge::toCvShare(img_msg, "8UC1");
     } else
     {
         ptr = cv_bridge::toCvShare(img_msg, sensor_msgs::image_encodings::BGR8);        
@@ -57,12 +49,12 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
     auto stamp = odometry.header.stamp;
     StereoFrame ret;
     raw_stereo_image_lock.lock();
-    while (raw_stereo_images.size() > 0 && fabs(stamp.toSec() - raw_stereo_images.front().stamp.toSec()) > 1e-3) {
-        // ROS_INFO("Removing d stamp %f", stamp.toSec() - stereoframes.front().header.stamp.toSec());
+    while (raw_stereo_images.size() > 0 && stamp.toSec() - raw_stereo_images.front().stamp.toSec() > 1e-3) {
+        // ROS_INFO("Removing d stamp %f", stamp.toSec() - raw_stereo_images.front().stamp.toSec());
         raw_stereo_images.pop();
     }
 
-    if (raw_stereo_images.size() > 0 && fabs(stamp.toSec() - raw_stereo_images.front().stamp.toSec() < 1e-3)) {
+    if (raw_stereo_images.size() > 0 && fabs(stamp.toSec() - raw_stereo_images.front().stamp.toSec()) < 1e-3) {
         auto ret = raw_stereo_images.front();
         raw_stereo_images.pop();
         ret.pose_drone = odometry.pose.pose;
@@ -83,9 +75,9 @@ void SwarmLoop::flatten_raw_callback(const vins::FlattenImages & stereoframe) {
 }
 
 void SwarmLoop::stereo_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr right) {
-    raw_stereo_image_lock.lock();
     auto _l = getImageFromMsg(left);
     auto _r = getImageFromMsg(right);
+    raw_stereo_image_lock.lock();
     raw_stereo_images.push(StereoFrame(_l->header.stamp, 
         _l->image, _r->image, left_extrinsic, right_extrinsic));
     raw_stereo_image_lock.unlock();
