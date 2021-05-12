@@ -37,7 +37,7 @@
             min_direction_loop: 3
             is_pc_replay: true
             detector_match_thres: 0.7
-            output_path: /root/output/
+            output_path: /home/xuhao/output/
             send_all_features: false
             lower_cam_as_main: false
         </rosparam>

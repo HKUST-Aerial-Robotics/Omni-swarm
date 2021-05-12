@@ -71,7 +71,7 @@ extern int ACCEPT_MIN_3D_PTS;
 #define RPERR_THRES 10*DEG2RAD
 #define LOCAL_DESC_LEN 256
 
-#define MAX_DIRS 4
+extern int MAX_DIRS;
 
 #define ACCEPT_SP_MATCH_DISTANCE 0.7
 
