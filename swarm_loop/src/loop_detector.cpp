@@ -300,7 +300,15 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
     double best_distance = 1000;
     int best_image_id = -1;
     //Strict use direction 1 now
-    direction_new = 1;
+    direction_new = 0;
+    if (loop_cam->get_camera_configuration() == CameraConfig::STEREO_FISHEYE) {
+        direction_new = 1;
+    } else if (loop_cam->get_camera_configuration() == CameraConfig::STEREO_PINHOLE) {
+        direction_new = 0;
+    } else {
+        exit(-1);
+    }
+
     if (new_img_desc.images[direction_new].landmark_num > 0) {
         double distance = 1000;
         int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);

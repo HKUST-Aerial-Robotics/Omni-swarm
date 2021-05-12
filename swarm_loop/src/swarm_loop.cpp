@@ -28,10 +28,10 @@ cv_bridge::CvImageConstPtr getImageFromMsg(const sensor_msgs::ImageConstPtr &img
     // std::cout << img_msg->encoding << std::endl;
     if (img_msg->encoding == "8UC1" || img_msg->encoding == "mono8")
     {
-        ptr = cv_bridge::toCvShare(img_msg, "8UC1");
+        ptr = cv_bridge::toCvCopy(img_msg, "8UC1");
     } else
     {
-        ptr = cv_bridge::toCvShare(img_msg, sensor_msgs::image_encodings::BGR8);        
+        ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);        
     }
     return ptr;
 }
@@ -215,6 +215,16 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     int _camconfig;
     nh.param<int>("camera_configuration", _camconfig, 1);
     camera_configuration = (CameraConfig) _camconfig;
+
+    if (camera_configuration == CameraConfig::STEREO_PINHOLE) {
+        MAX_DIRS = 1;
+    } else if (camera_configuration == CameraConfig::STEREO_FISHEYE) {
+        MAX_DIRS = 4;
+    } else {
+        MAX_DIRS = 0;
+        ROS_ERROR("Camera configuration %d not implement yet.", camera_configuration);
+        exit(-1);
+    }
 
     nh.param<std::string>("camera_config_path",camera_config_path, 
         "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
