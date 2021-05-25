@@ -23,8 +23,8 @@
             min_loop_feature_num: 30
             jpg_quality: 75
             
-            query_thres: 100
-            init_query_thres: 100
+            query_thres: 0.3
+            init_query_thres: 0.2
 
             min_movement_keyframe: 0.1
             enable_pub_remote_img: false

@@ -268,7 +268,8 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
 
     int search_num = SEARCH_NEAREST_NUM + max_index;
     index.search(1, img_desc.image_desc.data(), search_num, distances, labels);
-    
+    int return_msg_id = -1, return_drone_id = -1;
+    int k = -1;
     for (int i = 0; i < search_num; i++) {
         if (labels[i] < 0) {
             continue;
@@ -280,19 +281,31 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         }
 
         // int return_msg_id = imgid2fisheye.at(labels[i] + index_offset);
-        int return_msg_id = labels[i] + index_offset;
-        int return_drone_id = fisheyeframe_database[return_msg_id].drone_id;
+        return_msg_id = labels[i] + index_offset;
+        return_drone_id = fisheyeframe_database[imgid2fisheye[return_msg_id]].drone_id;
 
-        ROS_INFO("Return Label %d from %d, distance %f", labels[i] + index_offset, return_drone_id, distances[i]);
-        if (labels[i] < database_size() - max_index && distances[i] < thres) {
+        // ROS_INFO("Return Label %d/%d/%d from %d, distance %f/%f", labels[i] + index_offset, index.ntotal, index.ntotal - max_index , return_drone_id, distances[i], thres);
+        
+        // char title[100] = {0};
+        // char text[100] = {0};
+        // sprintf(title, "Search Index %d", i);
+        // sprintf(text, "Index %d Label %d from %d, IP %3.2f T %3.2f", i, labels[i] + index_offset, return_drone_id, distances[i], thres);
+
+        // std::cout << "img size " << fisheyeframe_database[imgid2fisheye[return_msg_id]].images[0].image.size() << std::endl;
+        // auto ret = cv::imdecode(fisheyeframe_database[imgid2fisheye[return_msg_id]].images[0].image, cv::IMREAD_COLOR);
+        // cv::putText(ret, text, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
+        // cv::imshow(title, ret);
+        
+        if (labels[i] < index.ntotal - max_index && distances[i] > thres) {
             //Is same id, max index make sense
-            distance = distances[i];
-            ROS_INFO("Database return %ld on drone %d, radius %f msg_id %d", labels[i] + index_offset, return_drone_id, distances[i], return_msg_id);
+            k = i;
+            thres = distance = distances[i];
             return return_msg_id;
         }
     }
 
-    return -1;
+    // ROS_INFO("Database return %ld on drone %d, radius %f msg_id %d", labels[k] + index_offset, return_drone_id, distances[k], return_msg_id);
+    return return_msg_id;
 }
 
 
@@ -775,6 +788,10 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             int new_dir_id = index2dirindex_new[idi].first;
             auto pt_old = toCV(old_frame_desc.images[old_dir_id].landmarks_2d[old_pt_id]);
             auto pt_new = toCV(new_frame_desc.images[new_dir_id].landmarks_2d[new_pt_id]);
+
+            if (_matched_imgs[old_dir_id].channels() != 3) {
+                cv::cvtColor(_matched_imgs[old_dir_id], _matched_imgs[old_dir_id], cv::COLOR_GRAY2BGR);
+            }
 
             cv::line(_matched_imgs[old_dir_id], pt_old, pt_new + cv::Point2f(0, imgs_old[old_dir_id].rows), cv::Scalar(0, 255, 0));
             cv::circle(_matched_imgs[old_dir_id], pt_old, 3, cv::Scalar(255, 0, 0), 1);
