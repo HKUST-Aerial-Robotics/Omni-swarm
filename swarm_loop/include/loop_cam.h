@@ -26,6 +26,7 @@ using namespace camodocal;
 
 struct StereoFrame{
     ros::Time stamp;
+    int keyframe_id;
     std::vector<cv::Mat> left_images, right_images, depth_images;
     geometry_msgs::Pose pose_drone;
     std::vector<geometry_msgs::Pose> left_extrisincs, right_extrisincs;
@@ -35,13 +36,14 @@ struct StereoFrame{
     }
 
     StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _right_image, 
-        geometry_msgs::Pose _left_extrinsic, geometry_msgs::Pose _right_extrinsic):
+        geometry_msgs::Pose _left_extrinsic, geometry_msgs::Pose _right_extrinsic, int self_id):
         stamp(_stamp)
     {
         left_images.push_back(_left_image);
         right_images.push_back(_right_image);
         left_extrisincs.push_back(_left_extrinsic);
         right_extrisincs.push_back(_right_extrinsic);
+        keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
     }
 
     StereoFrame(vins::FlattenImages vins_flatten) {

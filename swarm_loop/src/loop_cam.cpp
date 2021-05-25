@@ -63,7 +63,7 @@ void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
 
     cv::imencode(".jpg", _img, _img_desc.image, params);
     // std::cout << "IMENCODE Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
-    std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
+    // std::cout << "JPG SIZE" << _img_desc.image.size() << std::endl;
 
     _img_desc.image_height = _img.size().height;
     _img_desc.image_width = _img.size().width;
@@ -209,8 +209,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
     }
 
     frame_desc.image_num = msg.left_images.size();
-    
-    frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + self_id * 100;
+    frame_desc.msg_id = msg.keyframe_id;
     frame_desc.pose_drone = fromROSPose(msg.pose_drone);
     frame_desc.landmark_num = 0;
     for (auto & frame : frame_desc.images) {
