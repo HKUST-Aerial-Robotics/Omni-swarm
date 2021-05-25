@@ -466,17 +466,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
         img_des.image_desc = netvlad_net.inference(img);
         img_des.image_desc_size = img_des.image_desc.size();
     }
-    // if (hfnet_client.call(hfnet_srv))
-    // {
-    //     auto &desc = hfnet_srv.response.global_desc;
-    //     if (desc.size() > 0)
-    //     {
-    //         // ROS_INFO("Received response from server desc.size %ld", desc.size());
-    //         img_des.image_desc_size = desc.size();
-    //         img_des.image_desc = desc;
-    //         return img_des;
-    //     }
-    // }
+
     for (unsigned int i = 0; i < img_des.landmarks_2d.size(); i++)
     {
         auto pt_up = img_des.landmarks_2d[i];
