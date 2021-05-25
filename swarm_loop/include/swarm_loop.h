@@ -11,6 +11,7 @@
 #include <mutex>
 #include <swarm_msgs/FisheyeFrameDescriptor.h>
 #include <opencv2/core/eigen.hpp>
+#include <sensor_msgs/CompressedImage.h>
 
 using namespace std::chrono; 
 
@@ -42,6 +43,7 @@ protected:
     void flatten_raw_callback(const vins::FlattenImages & viokf);
 
     void stereo_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr right);
+    void comp_stereo_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::CompressedImageConstPtr right);
 
     double last_invoke = 0;
     
@@ -52,6 +54,7 @@ protected:
     void VIOnonKF_callback(const StereoFrame & viokf);
     void VIOKF_callback(const StereoFrame & viokf, bool nonkeyframe = false);
 
+    void pub_node_frame(const StereoFrame & viokf);
 
     void on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc);
 
@@ -67,10 +70,12 @@ protected:
     ros::Publisher loopconn_pub;
     ros::Publisher remote_image_desc_pub;
     ros::Publisher local_image_desc_pub;
+    ros::Publisher keyframe_pub;
 
-    message_filters::Subscriber<sensor_msgs::Image> * image_sub_l;
-    message_filters::Subscriber<sensor_msgs::Image> * image_sub_r;
+    message_filters::Subscriber<sensor_msgs::Image> * image_sub_l, *image_sub_r;
+    message_filters::Subscriber<sensor_msgs::CompressedImage> * comp_image_sub_l, *comp_image_sub_r;
     message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> * sync;
+    message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> * comp_sync;
 
 
     bool enable_pub_remote_frame;

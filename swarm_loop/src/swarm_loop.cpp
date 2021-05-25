@@ -10,6 +10,7 @@
 #include <thread>
 #include <nav_msgs/Odometry.h>
 #include <mutex>
+#include <swarm_msgs/node_frame.h>
 
 int MIN_DIRECTION_LOOP;
 double DETECTOR_MATCH_THRES;
@@ -21,6 +22,10 @@ inline double DT_MS(system_clock::time_point start) {
 }
 
 namespace swarm_localization_pkg {
+
+cv::Mat getImageFromMsg(const sensor_msgs::CompressedImageConstPtr &img_msg, int flag) {
+    return cv::imdecode(img_msg->data, flag);
+}
 
 cv_bridge::CvImageConstPtr getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
 {
@@ -79,9 +84,20 @@ void SwarmLoop::stereo_images_callback(const sensor_msgs::ImageConstPtr left, co
     auto _r = getImageFromMsg(right);
     raw_stereo_image_lock.lock();
     raw_stereo_images.push(StereoFrame(_l->header.stamp, 
-        _l->image, _r->image, left_extrinsic, right_extrinsic));
+        _l->image, _r->image, left_extrinsic, right_extrinsic, self_id));
     raw_stereo_image_lock.unlock();
 }
+
+
+void SwarmLoop::comp_stereo_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::CompressedImageConstPtr right) {
+    auto _l = getImageFromMsg(left, cv::IMREAD_GRAYSCALE);
+    auto _r = getImageFromMsg(right, cv::IMREAD_GRAYSCALE);
+    raw_stereo_image_lock.lock();
+    raw_stereo_images.push(StereoFrame(left->header.stamp, 
+        _l, _r, left_extrinsic, right_extrinsic, self_id));
+    raw_stereo_image_lock.unlock();
+}
+
 
 void SwarmLoop::odometry_callback(const nav_msgs::Odometry & odometry) {
     if (odometry.header.stamp.toSec() - last_invoke < ACCEPT_NONKEYFRAME_WAITSEC) {
@@ -153,6 +169,17 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
     loop_detector->on_image_recv(ret, imgs);
 }
 
+void SwarmLoop::pub_node_frame(const StereoFrame & viokf) {
+    swarm_msgs::node_frame nf;
+    nf.position = viokf.pose_drone.position;
+    nf.quat = viokf.pose_drone.orientation;
+    nf.vo_available = true;
+    nf.id = self_id;
+    nf.keyframe_id = viokf.keyframe_id;
+    keyframe_pub.publish(nf);
+}
+
+
 void SwarmLoop::on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc) {
     // ROS_INFO("Remote");
     if (recived_image) {
@@ -174,7 +201,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string superpoint_model_path = "";
     std::string netvlad_model_path = "";
     std::string vins_config_path;
-    std::string IMAGE0_TOPIC, IMAGE1_TOPIC;
+    std::string IMAGE0_TOPIC, IMAGE1_TOPIC, COMP_IMAGE0_TOPIC, COMP_IMAGE1_TOPIC;
     int width;
     int height;
     cv::setNumThreads(1);
@@ -239,6 +266,9 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;
     fsSettings["image1_topic"] >> IMAGE1_TOPIC;
 
+    fsSettings["compressed_image0_topic"] >> COMP_IMAGE0_TOPIC;
+    fsSettings["compressed_image1_topic"] >> COMP_IMAGE1_TOPIC;
+
     cv::Mat cv_T;
     fsSettings["body_T_cam0"] >> cv_T;
     Eigen::Matrix4d T;
@@ -247,6 +277,9 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     fsSettings["body_T_cam1"] >> cv_T;
     cv::cv2eigen(cv_T, T);
+
+    int is_comp_images = 0;
+    fsSettings["is_compressed_images"] >> is_comp_images;
 
     right_extrinsic = toROSPose(Swarm::Pose(T.block<3, 3>(0, 0), T.block<3, 1>(0, 3)));
 
@@ -282,12 +315,20 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     } else {
         //Subscribe stereo pinhole, probrably is 
         ROS_INFO("Will directly receive raw images %s and %s", IMAGE0_TOPIC.c_str(), IMAGE1_TOPIC.c_str());
-        image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
-        image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
-        sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
-        sync->registerCallback(boost::bind(&SwarmLoop::stereo_images_callback, this, _1, _2));
+        if (is_comp_images) {
+            comp_image_sub_l = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            comp_image_sub_r = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            comp_sync = new message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> (*comp_image_sub_l, *comp_image_sub_r, 1000);
+            comp_sync->registerCallback(boost::bind(&SwarmLoop::comp_stereo_images_callback, this, _1, _2));
+        } else {
+            image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
+            sync->registerCallback(boost::bind(&SwarmLoop::stereo_images_callback, this, _1, _2));
+        }
     }
     
+    keyframe_pub = nh.advertise<swarm_msgs::node_frame>("keyframe", 10);
     odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoop::odometry_callback, this, ros::TransportHints().tcpNoDelay());
     keyframe_odometry_sub  = nh.subscribe("/vins_estimator/keyframe_pose", 1, &SwarmLoop::odometry_keyframe_callback, this, ros::TransportHints().tcpNoDelay());
 

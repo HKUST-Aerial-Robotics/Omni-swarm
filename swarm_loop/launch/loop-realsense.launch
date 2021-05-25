@@ -9,10 +9,13 @@
     <!-- <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_rtx3080_fp16.trt" /> -->
     <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_titan_fp32.trt"/>
     <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_titan_fp32.trt" />
-    <arg name="camera_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/single_drone_rs_data/left.yaml" />
-    <arg name="vins_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/single_drone_rs_data/smalldrone_stereo.yaml" />
-
-    <node pkg="vins" type="vins_node" name="vins_estimator" args="$(arg vins_config_path)" output="log" />
+    <arg name="camera_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/left.yaml" />
+    <arg name="vins_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/realsense.yaml" />
+    
+    <node pkg="vins" type="vins_node" name="vins_estimator" output="log" >
+        <param name="config_file" type="string" value="$(arg vins_config_path)"/>
+    </node>
+    
     <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
