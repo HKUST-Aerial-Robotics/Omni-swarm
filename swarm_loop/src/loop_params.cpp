@@ -18,3 +18,4 @@ std::string OUTPUT_PATH;
 bool IS_PC_REPLAY;
 bool SEND_ALL_FEATURES;
 bool LOWER_CAM_AS_MAIN;
+int MAX_DIRS;

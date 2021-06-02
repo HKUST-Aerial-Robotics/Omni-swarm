@@ -467,6 +467,7 @@ public:
         nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("loop_outlier_threshold_distance", solver_params.loop_outlier_threshold_distance, 2.0f);
+        nh.param<float>("loop_outlier_threshold_distance_init", solver_params.loop_outlier_threshold_distance_init, 0.5f);
         nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);

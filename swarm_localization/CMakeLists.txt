@@ -28,7 +28,7 @@ find_package(Ceres REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
         #  LIBRARIES swarm_localization
-        CATKIN_DEPENDS roscpp rospy std_msgs swarm_msgs swarm_detection
+        CATKIN_DEPENDS roscpp rospy std_msgs swarm_msgs
 #  DEPENDS system_lib
 )
 

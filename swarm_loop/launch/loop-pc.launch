@@ -21,8 +21,8 @@
             min_loop_feature_num: 8
             jpg_quality: 75
             
-            query_thres: 100
-            init_query_thres: 100
+            query_thres: 0.3
+            init_query_thres: 0.2
 
             min_movement_keyframe: 0.1
             enable_pub_remote_img: true
@@ -37,7 +37,7 @@
             min_direction_loop: 3
             is_pc_replay: true
             detector_match_thres: 0.7
-            output_path: /root/output/
+            output_path: /home/xuhao/output/
             send_all_features: false
             lower_cam_as_main: false
         </rosparam>
