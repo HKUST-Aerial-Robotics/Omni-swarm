@@ -316,6 +316,26 @@ private:
 
     }
 
+    void pub_zero_base_coor(ros::Time stamp) {
+        swarm_drone_basecoor sdb;
+        sdb.header.stamp = stamp;
+        sdb.ids.push_back(self_id);
+        geometry_msgs::Point pt;
+        pt.x = 0;
+        pt.y = 0;
+        pt.z = 0;
+        geometry_msgs::Vector3 pcov;
+        pcov.x = 0;
+        pcov.y = 0;
+        pcov.z = 0;
+
+        sdb.drone_basecoor.push_back(pt);
+        sdb.position_cov.push_back(pcov);
+        sdb.drone_baseyaw.push_back(0);
+        sdb.yaw_cov.push_back(0);
+        fused_drone_basecoor_pub.publish(sdb);
+    }
+
     void pub_fused_relative(const SwarmFrameState & _sfs, ros::Time stamp) {
         if (_sfs.node_poses.size() <= 1) {
             return;
@@ -402,6 +422,7 @@ private:
                     }
                     pub_fused_relative(_sfs, sf.stamp);
                 } else {
+                    pub_zero_base_coor(ros::Time::now());
                     ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
                     //ROS_WARN("Unable to predict swarm");
                 }

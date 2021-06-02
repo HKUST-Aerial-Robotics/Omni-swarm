@@ -26,7 +26,7 @@ find_package(Eigen3 REQUIRED)
 
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
+    #INCLUDE_DIRS include
         #  LIBRARIES localization_proxy
   CATKIN_DEPENDS roscpp rosmsg rospy std_msgs geometry_msgs nav_msgs swarm_msgs swarmcomm_msgs
 #  DEPENDS system_lib
