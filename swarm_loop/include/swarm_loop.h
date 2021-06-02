@@ -10,6 +10,8 @@
 #include <nav_msgs/Odometry.h>
 #include <mutex>
 #include <swarm_msgs/FisheyeFrameDescriptor.h>
+#include <opencv2/core/eigen.hpp>
+#include <sensor_msgs/CompressedImage.h>
 
 using namespace std::chrono; 
 
@@ -29,15 +31,19 @@ protected:
 
     std::set<ros::Time> received_keyframe_stamps;
 
+    CameraConfig camera_configuration;
 
     void on_loop_connection (LoopConnection & loop_con, bool is_local = false);
 
-    std::queue<vins::FlattenImages> viokfs;
-    std::mutex viokf_lock;
+    std::queue<StereoFrame> raw_stereo_images;
+    std::mutex raw_stereo_image_lock;
 
-    vins::FlattenImages find_viokf(const nav_msgs::Odometry & odometry);
+    StereoFrame find_images_raw(const nav_msgs::Odometry & odometry);
 
     void flatten_raw_callback(const vins::FlattenImages & viokf);
+
+    void stereo_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr right);
+    void comp_stereo_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::CompressedImageConstPtr right);
 
     double last_invoke = 0;
     
@@ -45,9 +51,10 @@ protected:
 
     void odometry_keyframe_callback(const nav_msgs::Odometry & odometry);
 
-    void VIOnonKF_callback(const vins::FlattenImages & viokf);
+    void VIOnonKF_callback(const StereoFrame & viokf);
+    void VIOKF_callback(const StereoFrame & viokf, bool nonkeyframe = false);
 
-    void VIOKF_callback(const vins::FlattenImages & viokf, bool nonkeyframe = false);
+    void pub_node_frame(const StereoFrame & viokf);
 
     void on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc);
 
@@ -63,6 +70,14 @@ protected:
     ros::Publisher loopconn_pub;
     ros::Publisher remote_image_desc_pub;
     ros::Publisher local_image_desc_pub;
+    ros::Publisher keyframe_pub;
+
+    message_filters::Subscriber<sensor_msgs::Image> * image_sub_l, *image_sub_r;
+    message_filters::Subscriber<sensor_msgs::CompressedImage> * comp_image_sub_l, *comp_image_sub_r;
+    message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> * sync;
+    message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> * comp_sync;
+
+
     bool enable_pub_remote_frame;
     bool enable_pub_local_frame;
     bool enable_sub_remote_frame;
@@ -75,6 +90,8 @@ protected:
     double superpoint_thres = 0.012;
 
     ros::Timer timer;
+
+    geometry_msgs::Pose left_extrinsic, right_extrinsic;
 public:
     SwarmLoop ();
     

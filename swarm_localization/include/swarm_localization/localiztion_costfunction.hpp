@@ -21,7 +21,8 @@ using ceres::Covariance;
 using namespace Swarm;
 using namespace Eigen;
 
-
+// #define DynamicCovarianceScaling
+#define DCS_PHI ((T)(1))
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -38,6 +39,16 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_std.y();
     error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_std.z();
     error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_std;
+#ifdef DynamicCovarianceScaling
+    T X2 = error[0]*error[0] + error[1]*error[1] + error[2]*error[2] + error[3]*error[3];
+    T s = sqrt((T)2*DCS_PHI/(DCS_PHI + X2));
+    if (s < (T)1) {
+        error[0] = s * error[0];
+        error[1] = s * error[1];
+        error[2] = s * error[2];
+        error[3] = s * error[3];
+    }
+#endif
 }
 
 template<typename T>
