@@ -8,8 +8,9 @@
 #include <time.h>
 #include <thread>  
 #include <unistd.h>
-#include "swarm_types.hpp"
+#include "swarm_msgs/swarm_types.hpp"
 #include <ros/ros.h>
+#include "swarm_localization_params.hpp"
 
 using ceres::CostFunction;
 using ceres::Problem;
@@ -25,7 +26,6 @@ using namespace Eigen;
 #define DCS_PHI ((T)(1))
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
-
 
 //idstamppose[id][stamp] -> pose index in poses
 typedef std::map<int64_t, std::map<int, int>> IDStampPose;

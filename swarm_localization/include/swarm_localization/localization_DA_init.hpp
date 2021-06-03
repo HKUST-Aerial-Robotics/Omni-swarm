@@ -1,6 +1,6 @@
 #include <swarm_msgs/Pose.h>
 #include <swarm_msgs/swarm_frame.h>
-#include <swarm_localization/swarm_types.hpp>
+#include <swarm_msgs/swarm_types.hpp>
 
 struct DAHypothesis{
     int self_id = -1;

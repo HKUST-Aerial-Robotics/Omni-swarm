@@ -8,9 +8,11 @@
 #include <thread>
 #include <unistd.h>
 #include <functional>
-#include <swarm_localization/swarm_types.hpp>
+#include <swarm_msgs/swarm_types.hpp>
 #include <mutex>
 #include <swarm_msgs/LoopConnection.h>
+
+
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
 typedef std::map<int, Eigen::Quaterniond> ID2Quat;
