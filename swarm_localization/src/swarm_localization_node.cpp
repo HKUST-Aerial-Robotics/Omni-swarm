@@ -337,7 +337,7 @@ private:
     }
 
     void pub_fused_relative(const SwarmFrameState & _sfs, ros::Time stamp) {
-        if (_sfs.node_poses.size() <= 1) {
+        if (_sfs.node_poses.size() < 1) {
             return;
         } 
         swarm_fused_relative sfr;
@@ -347,6 +347,7 @@ private:
         sf.header.stamp = stamp;
         sfr.header.stamp = stamp;
         sdb.header.stamp = stamp;
+        sdb.self_id = self_id;
         Pose self_pose = _sfs.node_poses.at(self_id);
 
         sf.self_yaw = self_pose.yaw();
