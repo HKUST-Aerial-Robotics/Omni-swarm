@@ -25,6 +25,7 @@
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/swarm_detected.h>
 #include <nav_msgs/Path.h>
+#include "swarm_localization/swarm_localization_params.hpp"
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -101,7 +102,7 @@ class SwarmLocalizationNode {
         }
 
         for (auto nd_xyzyaw: _nf.detected_xyzyaws) {
-            DroneDetection dobj(nd_xyzyaw, false);
+            DroneDetection dobj(nd_xyzyaw, false, CG);
             nf.detected_nodes.push_back(dobj);
         }
 
