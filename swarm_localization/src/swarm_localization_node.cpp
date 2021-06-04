@@ -70,7 +70,7 @@ class SwarmLocalizationNode {
             ROS_ERROR("No such node %d", _nf.id);
             exit(-1);
         }
-        NodeFrame nf(all_node_defs.at(_nf.id));
+        NodeFrame nf(all_node_defs.at(_nf.id), VO_DRIFT_XYZ, VO_METER_STD_ANGLE);
         nf.stamp = _nf.header.stamp;
         nf.ts = nf.stamp.toNSec();
         nf.frame_available = true;
