@@ -46,6 +46,16 @@ struct StereoFrame{
         keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
     }
 
+    StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _dep_image, 
+        geometry_msgs::Pose _left_extrinsic, int self_id):
+        stamp(_stamp)
+    {
+        left_images.push_back(_left_image);
+        depth_images.push_back(_dep_image);
+        left_extrisincs.push_back(_left_extrinsic);
+        keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
+    }
+
     StereoFrame(vins::FlattenImages vins_flatten) {
 
     }
@@ -76,7 +86,8 @@ public:
     
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, cv::Mat img, bool superpoint_mode=false);
     
-    ImageDescriptor_t generate_image_descriptor(const StereoFrame & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
+    ImageDescriptor_t generate_stereo_image_descriptor(const StereoFrame & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
+    ImageDescriptor_t generate_gray_depth_image_descriptor(const StereoFrame & msg, cv::Mat & img, const int & vcam_id, cv::Mat &_show);
     
     FisheyeFrameDescriptor_t on_flattened_images(const StereoFrame & msg, std::vector<cv::Mat> & imgs);
 
