@@ -99,6 +99,24 @@ void SwarmLoop::comp_stereo_images_callback(const sensor_msgs::CompressedImageCo
 }
 
 
+void SwarmLoop::comp_depth_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::ImageConstPtr depth) {
+    auto _l = getImageFromMsg(left, cv::IMREAD_GRAYSCALE);
+    auto _d = getImageFromMsg(depth);
+    raw_stereo_image_lock.lock();
+    raw_stereo_images.push(StereoFrame(left->header.stamp, 
+        _l, _d->image, left_extrinsic, self_id));
+    raw_stereo_image_lock.unlock();
+}
+
+void SwarmLoop::depth_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr depth) {
+    auto _l = getImageFromMsg(left);
+    auto _d = getImageFromMsg(depth);
+    raw_stereo_image_lock.lock();
+    raw_stereo_images.push(StereoFrame(left->header.stamp, 
+        _l->image, _d->image, left_extrinsic, self_id));
+    raw_stereo_image_lock.unlock();
+}
+
 void SwarmLoop::odometry_callback(const nav_msgs::Odometry & odometry) {
     if (odometry.header.stamp.toSec() - last_invoke < ACCEPT_NONKEYFRAME_WAITSEC) {
         return;
@@ -201,7 +219,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string superpoint_model_path = "";
     std::string netvlad_model_path = "";
     std::string vins_config_path;
-    std::string IMAGE0_TOPIC, IMAGE1_TOPIC, COMP_IMAGE0_TOPIC, COMP_IMAGE1_TOPIC;
+    std::string IMAGE0_TOPIC, IMAGE1_TOPIC, COMP_IMAGE0_TOPIC, COMP_IMAGE1_TOPIC, DEPTH_TOPIC;
     int width;
     int height;
     cv::setNumThreads(1);
@@ -242,27 +260,30 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     int _camconfig;
     nh.param<int>("camera_configuration", _camconfig, 1);
     camera_configuration = (CameraConfig) _camconfig;
+    nh.param<std::string>("vins_config_path",vins_config_path, "");
+    nh.param<std::string>("camera_config_path",camera_config_path, 
+        "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
+    nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
+    nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
+    nh.param<bool>("debug_image", debug_image, false);
+    nh.param<std::string>("output_path", OUTPUT_PATH, "");
+    
+    cv::FileStorage fsSettings;
+    fsSettings.open(vins_config_path.c_str(), cv::FileStorage::READ);
 
     if (camera_configuration == CameraConfig::STEREO_PINHOLE) {
         MAX_DIRS = 1;
     } else if (camera_configuration == CameraConfig::STEREO_FISHEYE) {
         MAX_DIRS = 4;
+    } else if (camera_configuration == CameraConfig::PINHOLE_DEPTH) {
+        MAX_DIRS = 1;
+        fsSettings["depth_topic"] >> DEPTH_TOPIC;
     } else {
         MAX_DIRS = 0;
         ROS_ERROR("Camera configuration %d not implement yet.", camera_configuration);
         exit(-1);
     }
 
-    nh.param<std::string>("camera_config_path",camera_config_path, 
-        "/home/xuhao/swarm_ws/src/VINS-Fusion-gpu/config/vi_car/cam0_mei.yaml");
-    nh.param<std::string>("superpoint_model_path", superpoint_model_path, "");
-    nh.param<std::string>("netvlad_model_path", netvlad_model_path, "");
-    nh.param<std::string>("vins_config_path",vins_config_path, "");
-    nh.param<bool>("debug_image", debug_image, false);
-    nh.param<std::string>("output_path", OUTPUT_PATH, "");
-    
-    cv::FileStorage fsSettings;
-    fsSettings.open(vins_config_path.c_str(), cv::FileStorage::READ);
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;
     fsSettings["image1_topic"] >> IMAGE1_TOPIC;
 
@@ -312,19 +333,34 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     if (camera_configuration == CameraConfig::STEREO_FISHEYE) {
         flatten_raw_sub = nh.subscribe("/vins_estimator/flattened_gray", 1, &SwarmLoop::flatten_raw_callback, this, ros::TransportHints().tcpNoDelay());
-    } else {
+    } else if (camera_configuration == CameraConfig::STEREO_PINHOLE) {
         //Subscribe stereo pinhole, probrably is 
-        ROS_INFO("Will directly receive raw images %s and %s", IMAGE0_TOPIC.c_str(), IMAGE1_TOPIC.c_str());
         if (is_comp_images) {
+            ROS_INFO("Input: compressed images %s and %s", COMP_IMAGE0_TOPIC.c_str(), COMP_IMAGE1_TOPIC.c_str());
             comp_image_sub_l = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             comp_image_sub_r = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             comp_sync = new message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> (*comp_image_sub_l, *comp_image_sub_r, 1000);
             comp_sync->registerCallback(boost::bind(&SwarmLoop::comp_stereo_images_callback, this, _1, _2));
         } else {
+            ROS_INFO("Input: raw images %s and %s", IMAGE0_TOPIC.c_str(), IMAGE1_TOPIC.c_str());
             image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
             sync->registerCallback(boost::bind(&SwarmLoop::stereo_images_callback, this, _1, _2));
+        }
+    } else if (camera_configuration == CameraConfig::PINHOLE_DEPTH) {
+        if (is_comp_images) {
+            ROS_INFO("Input: compressed images %s and depth %s", COMP_IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
+            comp_image_sub_l = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, DEPTH_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            comp_depth_sync = new message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::Image> (*comp_image_sub_l, *image_sub_r, 1000);
+            comp_depth_sync->registerCallback(boost::bind(&SwarmLoop::comp_depth_images_callback, this, _1, _2));
+        } else {
+            ROS_INFO("Input: raw images %s and depth %s", IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
+            image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, DEPTH_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
+            sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
+            sync->registerCallback(boost::bind(&SwarmLoop::depth_images_callback, this, _1, _2));
         }
     }
     

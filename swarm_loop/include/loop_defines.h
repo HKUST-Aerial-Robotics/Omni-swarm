@@ -83,7 +83,9 @@ extern double TRIANGLE_THRES;
 
 extern double DETECTOR_MATCH_THRES;
 
-extern bool ENABLE_LK_LOOP_DETECTION; 
+extern bool ENABLE_LK_LOOP_DETECTION;
+
+extern bool USE_DEPTH;
 
 extern bool IS_PC_REPLAY;
 
@@ -130,6 +132,7 @@ inline void reduceVector(std::vector<T> &v, std::vector<B> status)
 enum CameraConfig{
     STEREO_PINHOLE = 0,
     STEREO_FISHEYE = 1,
-    FOURCORNER_FISHEYE = 2
+    PINHOLE_DEPTH = 2,
+    FOURCORNER_FISHEYE = 3
 };
 

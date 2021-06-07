@@ -44,7 +44,8 @@ protected:
 
     void stereo_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr right);
     void comp_stereo_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::CompressedImageConstPtr right);
-
+    void comp_depth_images_callback(const sensor_msgs::CompressedImageConstPtr left, const sensor_msgs::ImageConstPtr right);
+    void depth_images_callback(const sensor_msgs::ImageConstPtr left, const sensor_msgs::ImageConstPtr depth);
     double last_invoke = 0;
     
     void odometry_callback(const nav_msgs::Odometry & odometry);
@@ -76,6 +77,7 @@ protected:
     message_filters::Subscriber<sensor_msgs::CompressedImage> * comp_image_sub_l, *comp_image_sub_r;
     message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> * sync;
     message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> * comp_sync;
+    message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::Image> * comp_depth_sync;
 
 
     bool enable_pub_remote_frame;
