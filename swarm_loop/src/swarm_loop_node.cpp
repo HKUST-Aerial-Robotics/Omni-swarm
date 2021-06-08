@@ -1,11 +1,5 @@
 #include "swarm_loop.h"
 
-#define BACKWARD_HAS_DW 1
-#include <backward.hpp>
-namespace backward
-{
-    backward::SignalHandling sh;
-}
 
 class SwarmLoopNode :  public swarm_localization_pkg::SwarmLoop
 {
