@@ -6,10 +6,10 @@
     <arg name="send_whole_img_desc"     default="false"/>
     <arg name="self_id"     default="1"/>
     <arg name="vins"     default="false"/>
-    <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_rtx3080_fp16.trt"/>
-    <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_rtx3080_fp16.trt" />
-    <!-- <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_titan_fp32.trt"/> -->
-    <!-- <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_titan_fp32.trt" /> -->
+    <!-- <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_rtx3080_fp16.trt"/> -->
+    <!-- <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_rtx3080_fp16.trt" /> -->
+    <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_titan_fp32.trt"/>
+    <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_titan_fp32.trt" />
     <arg name="camera_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/left.yaml" />
     <arg name="vins_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/realsense.yaml" />
     
@@ -17,7 +17,7 @@
         <param name="config_file" type="string" value="$(arg vins_config_path)"/>
     </node>
     
-    <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" >
+    <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" launch-prefix="gdb -ex run --args" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
@@ -46,7 +46,8 @@
             send_all_features: false
             lower_cam_as_main: false
             min_match_per_dir: 5
-            camera_configuration: 0
+            # camera_configuration: 0
+            camera_configuration: 2
             width: 640
             height: 480
         </rosparam>
