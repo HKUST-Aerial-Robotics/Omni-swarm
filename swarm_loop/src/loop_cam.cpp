@@ -354,7 +354,7 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
     ImageDescriptor_t ides = extractor_img_desc_deepnet(msg.stamp, msg.left_images[vcam_id], LOWER_CAM_AS_MAIN);
     ImageDescriptor_t ides_down = extractor_img_desc_deepnet(msg.stamp, msg.right_images[vcam_id], !LOWER_CAM_AS_MAIN);
 
-    if (ides.image_desc_size == 0 || ides_down.image_desc_size == 0)
+    if (ides.image_desc_size == 0 && ides_down.image_desc_size == 0)
     {
         ROS_WARN("Failed on deepnet;");
         cv::Mat _img;
