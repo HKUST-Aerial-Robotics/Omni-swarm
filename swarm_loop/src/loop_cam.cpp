@@ -250,9 +250,9 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
 
     if (ides.image_desc_size == 0)
     {
-        ROS_WARN("Failed on deepnet;");
+        ROS_WARN("Failed on deepnet.");
         cv::Mat _img;
-        return ides;
+        // return ides;
     }
     else
     {
@@ -291,7 +291,7 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
     for (unsigned int i = 0; i < pts_up.size(); i++)
     {
         auto pt_up = pts_up[i];
-        auto dep = msg.depth_images[vcam_id].at<unsigned short>(pt_up)/100.0;
+        auto dep = msg.depth_images[vcam_id].at<unsigned short>(pt_up)/1000.0;
         Eigen::Vector3d pt_up3d, pt_down3d;
         cam->liftProjective(Eigen::Vector2d(pt_up.x, pt_up.y), pt_up3d);
 
@@ -302,10 +302,8 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         pt3d.y = _pt3d.y() * dep;
         pt3d.z = _pt3d.z() * dep;
 
-        int idx = ids_up[i];
-
-        ides.landmarks_3d[idx] = pt3d;
-        ides.landmarks_flag[idx] = 1;
+        ides.landmarks_3d[i] = pt3d;
+        ides.landmarks_flag[i] = 1;
     }
 
     printf("3D features: %d\n", pts_3d.size());
@@ -329,10 +327,10 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
                 auto _pt = ides.landmarks_2d[i];
                 auto dep = ides.landmarks_3d[i].z;
                 cv::Point2f pt(_pt.x, _pt.y);
-                cv::circle(img_up, pt, 3, cv::Scalar(0, 0, 255), 1);
+                cv::circle(img_up, pt, 3, cv::Scalar(0, 255, 0), 1);
                 char idtext[100] = {};
                 sprintf(idtext, "%3.2f", dep);
-                cv::putText(img, idtext, pt - cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
+                cv::putText(img_up, idtext, pt - cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 255), 1);
             }
         }
 
@@ -354,11 +352,11 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
     ImageDescriptor_t ides = extractor_img_desc_deepnet(msg.stamp, msg.left_images[vcam_id], LOWER_CAM_AS_MAIN);
     ImageDescriptor_t ides_down = extractor_img_desc_deepnet(msg.stamp, msg.right_images[vcam_id], !LOWER_CAM_AS_MAIN);
 
-    if (ides.image_desc_size == 0 || ides_down.image_desc_size == 0)
+    if (ides.image_desc_size == 0 && ides_down.image_desc_size == 0)
     {
         ROS_WARN("Failed on deepnet;");
-        cv::Mat _img;
-        return ides;
+        // cv::Mat _img;
+        // return ides;
     }
     else
     {
