@@ -17,7 +17,7 @@
         <param name="config_file" type="string" value="$(arg vins_config_path)"/>
     </node>
     
-    <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" launch-prefix="gdb -ex run --args" >
+    <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
