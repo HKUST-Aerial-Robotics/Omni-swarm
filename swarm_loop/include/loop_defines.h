@@ -71,6 +71,9 @@ extern int ACCEPT_MIN_3D_PTS;
 #define RPERR_THRES 10*DEG2RAD
 #define LOCAL_DESC_LEN 256
 
+#define DEPTH_NEAR_THRES 0.5
+#define DEPTH_FAR_THRES 10.0
+
 extern int MAX_DIRS;
 
 #define ACCEPT_SP_MATCH_DISTANCE 0.7
