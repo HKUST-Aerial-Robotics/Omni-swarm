@@ -191,6 +191,7 @@ void LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std:
 
 FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, std::vector<cv::Mat> &imgs) {
     FisheyeFrameDescriptor_t frame_desc;
+    frame_desc.timestamp = toLCMTime(msg.stamp);
     
     imgs.resize(msg.left_images.size());
 
@@ -199,11 +200,9 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
     for (unsigned int i = 0; i < msg.left_images.size(); i ++) {
         if (camera_configuration == CameraConfig::PINHOLE_DEPTH) {
             frame_desc.images.push_back(generate_gray_depth_image_descriptor(msg, imgs[i], i, tmp));
-            frame_desc.images[i].timestamp = frame_desc.timestamp;
             frame_desc.images[i].direction = i;
         } else {
             frame_desc.images.push_back(generate_stereo_image_descriptor(msg, imgs[i], i, tmp));
-            frame_desc.images[i].timestamp = frame_desc.timestamp;
             frame_desc.images[i].direction = i;
         }
 
@@ -243,6 +242,7 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         ROS_WARN("Flatten images too few");
         ImageDescriptor_t ides;
         ides.landmark_num = 0;
+        ides.timestamp = toLCMTime(msg.stamp);
         return ides;
     }
     
@@ -551,6 +551,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
     auto start = high_resolution_clock::now();
 
     ImageDescriptor_t img_des;
+    img_des.timestamp = toLCMTime(stamp);
     img_des.image_desc_size = 0;
     img_des.feature_descriptor_size = 0;
     img_des.image_size = 0;
