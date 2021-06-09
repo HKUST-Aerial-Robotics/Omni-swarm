@@ -254,10 +254,6 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         cv::Mat _img;
         // return ides;
     }
-    else
-    {
-        ROS_INFO("Deepnet gives %ld kpts", ides.landmarks_2d.size());
-    }
 
     auto start = high_resolution_clock::now();
     // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
@@ -281,13 +277,12 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         return ides;
     }
     
-    std::vector<Eigen::Vector3d> pts_3d;
-
     Swarm::Pose pose_drone(msg.pose_drone);
     Swarm::Pose pose_cam = pose_drone * Swarm::Pose(msg.left_extrisincs[vcam_id]);
 
     std::vector<float> desc_new;
 
+    int count_3d = 0;
     for (unsigned int i = 0; i < pts_up.size(); i++)
     {
         auto pt_up = pts_up[i];
@@ -309,10 +304,11 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
 
             ides.landmarks_3d[i] = pt3d;
             ides.landmarks_flag[i] = 1;
+            count_3d ++;
         }
     }
 
-    printf("3D features: %d\n", pts_3d.size());
+    ROS_INFO("Image 2d kpts: %ld 3d : %d", ides.landmarks_2d.size(), count_3d);
 
     if (send_img) {
         encode_image(image_left, ides);
@@ -364,10 +360,6 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
         // cv::Mat _img;
         // return ides;
     }
-    else
-    {
-        ROS_INFO("Deepnet gives %ld kpts", ides.landmarks_2d.size());
-    }
 
     auto start = high_resolution_clock::now();
     // std::cout << "Downsample and encode Cost " << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 << "ms" << std::endl;
@@ -404,13 +396,13 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
     // ides.landmarks_2d_norm.clear();
     // ides.landmarks_3d.clear();
     
-    std::vector<Eigen::Vector3d> pts_3d;
-
     Swarm::Pose pose_drone(msg.pose_drone);
     Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.left_extrisincs[vcam_id]);
     Swarm::Pose pose_down = pose_drone * Swarm::Pose(msg.right_extrisincs[vcam_id]);
 
     std::vector<float> desc_new;
+
+    int count_3d = 0;
 
     for (unsigned int i = 0; i < pts_up.size(); i++)
     {
@@ -434,8 +426,6 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
             continue;
         }
 
-        pts_3d.push_back(point_3d);
-
         Point2d_t pt2d;
         pt2d.x = pt_up.x;
         pt2d.y = pt_up.y;
@@ -454,7 +444,7 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
 
         ides_down.landmarks_3d[idx_down] = pt3d;
         ides_down.landmarks_flag[idx_down] = 1;
-
+        count_3d ++;
         // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
 
         // desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
@@ -465,7 +455,7 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
 
     }
 
-    printf("3D features: %d\n", pts_3d.size());
+    ROS_INFO("Image 2d kpts: %ld 3d : %d", ides.landmarks_2d.size(), count_3d);
 
     // ides.feature_descriptor.clear();
     // ides.feature_descriptor = std::vector<float>(desc_new);
