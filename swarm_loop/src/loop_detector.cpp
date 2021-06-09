@@ -410,7 +410,7 @@ int LoopDetector::compute_relative_pose(
         std::vector<cv::DMatch> &matches,
         int &inlier_num) {
         //Compute PNP
-    ROS_INFO("Matched features %ld", matched_2d_norm_old.size());
+    // ROS_INFO("Matched features %ld", matched_2d_norm_old.size());
     cv::Mat K = (cv::Mat_<double>(3, 3) << 1.0, 0, 0, 0, 1.0, 0, 0, 0, 1.0);
 
     cv::Mat r, rvec, rvec2, t, t2, D, tmp_r;
@@ -421,8 +421,8 @@ int LoopDetector::compute_relative_pose(
     Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
     Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
     Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
-    std::cout << "OLD to new initial" << std::endl;
-    old_drone_to_new_initial.print();
+    // std::cout << "OLD to new initial" << std::endl;
+    // old_drone_to_new_initial.print();
     // PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);
     
     int iteratives = 100;
@@ -442,8 +442,8 @@ int LoopDetector::compute_relative_pose(
     }
 
     Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
-    std::cout << "DP_old_to_new_6d inliers" << inliers.size();
-    DP_old_to_new_6d.print();
+    // std::cout << "DP_old_to_new_6d inliers" << inliers.size();
+    // DP_old_to_new_6d.print();
 
     DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
     //As our pose graph uses 4D pose, here we must solve 4D pose
@@ -455,7 +455,7 @@ int LoopDetector::compute_relative_pose(
 
     success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
 
-    ROS_INFO("PnPRansac %d inlines %d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
+    ROS_INFO("PnPRansac %d inlines %d/%d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, matched_2d_norm_old.size(), fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
     inlier_num = inliers.rows;
 
     for (int i = 0; i < inlier_num; i++) {
@@ -499,7 +499,7 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     //However, due to the transmission and parameter, some may be empty.
     // We will only matched the frame which isn't empty
 
-    printf("compute_correspond_features on main dir [%d(drone%d): %d(drone%d)]: ", \
+    printf("compute_correspond_features on main dir [%d(drone%d): %d(drone%d)]: ",
         main_dir_old, old_frame_desc.drone_id,
         main_dir_new, new_frame_desc.drone_id
     );
@@ -839,8 +839,6 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
         ret.id_b = new_frame_desc.drone_id;
         ret.ts_b = toROSTime(new_frame_desc.timestamp);
-
-        ROS_INFO("OLD TS %ld NEW TS %ld", old_frame_desc.timestamp.sec, new_frame_desc.timestamp.sec);
 
         ret.self_pose_a = toROSPose(old_frame_desc.pose_drone);
         ret.self_pose_b = toROSPose(new_frame_desc.pose_drone);
