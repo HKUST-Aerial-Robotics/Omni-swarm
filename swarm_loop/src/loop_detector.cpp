@@ -97,7 +97,6 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
             int direction = 1;
             int direction_old = -1;
             FisheyeFrameDescriptor_t & _old_fisheye_img = query_fisheyeframe_from_database(flatten_desc, init_mode, flatten_desc.prevent_adding_db, direction, direction_old);
-
             auto stop = high_resolution_clock::now(); 
 
             if (direction_old >= 0 ) {
@@ -316,9 +315,13 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
     direction_new = 0;
     if (loop_cam->get_camera_configuration() == CameraConfig::STEREO_FISHEYE) {
         direction_new = 1;
-    } else if (loop_cam->get_camera_configuration() == CameraConfig::STEREO_PINHOLE) {
+    } else if (
+        loop_cam->get_camera_configuration() == CameraConfig::STEREO_PINHOLE ||
+        loop_cam->get_camera_configuration() == CameraConfig::PINHOLE_DEPTH
+    ) {
         direction_new = 0;
     } else {
+        ROS_ERROR("Camera configuration %d not support yet in query_fisheyeframe_from_database", loop_cam->get_camera_configuration());
         exit(-1);
     }
 
