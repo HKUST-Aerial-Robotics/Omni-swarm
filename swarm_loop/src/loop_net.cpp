@@ -35,6 +35,9 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
         return;
     }
+
+    ROS_INFO("broadcast img id %d with %d landmarks desc %d", img_des.msg_id, img_des.landmark_num, img_des.feature_descriptor_size);
+
     
     int feature_num = 0;
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
@@ -55,7 +58,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = feature_num;
     img_desc_header.direction = img_des.direction;
-    // ROS_INFO("Sent Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
+    // ROS_INFO("Send Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
 
 
     lcm.publish("VIOKF_HEADER", &img_desc_header);
