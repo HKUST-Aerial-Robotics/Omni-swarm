@@ -284,24 +284,28 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
     std::vector<Eigen::Vector3d> pts_3d;
 
     Swarm::Pose pose_drone(msg.pose_drone);
-    Swarm::Pose pose_up = pose_drone * Swarm::Pose(msg.left_extrisincs[vcam_id]);
+    Swarm::Pose pose_cam = pose_drone * Swarm::Pose(msg.left_extrisincs[vcam_id]);
 
     std::vector<float> desc_new;
 
     for (unsigned int i = 0; i < pts_up.size(); i++)
     {
         auto pt_up = pts_up[i];
+        if (pt_up.x < 0 || pt_up.x > 640 || pt_up.y < 0 || pt_up.y > 480) {
+            continue;
+        }
+        
         auto dep = msg.depth_images[vcam_id].at<unsigned short>(pt_up)/1000.0;
         if (dep > DEPTH_NEAR_THRES && dep < DEPTH_FAR_THRES) {
             Eigen::Vector3d pt_up3d, pt_down3d;
             cam->liftProjective(Eigen::Vector2d(pt_up.x, pt_up.y), pt_up3d);
 
             Eigen::Vector3d _pt3d(pt_up3d.x()/pt_up3d.z(), pt_up3d.y()/pt_up3d.z(), 1);
-
+            _pt3d = pose_cam * (_pt3d*dep);
             Point3d_t pt3d;
-            pt3d.x = _pt3d.x() * dep;
-            pt3d.y = _pt3d.y() * dep;
-            pt3d.z = _pt3d.z() * dep;
+            pt3d.x = _pt3d.x();
+            pt3d.y = _pt3d.y();
+            pt3d.z = _pt3d.z();
 
             ides.landmarks_3d[i] = pt3d;
             ides.landmarks_flag[i] = 1;
@@ -580,6 +584,7 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
 
         //Debug on bug PC only!
         //img_des.image_desc.resize(1024);
+        //img_des.image_desc_size = 1024;
     }
 
     for (unsigned int i = 0; i < img_des.landmarks_2d.size(); i++)
