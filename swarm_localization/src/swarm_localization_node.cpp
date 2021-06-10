@@ -334,6 +334,7 @@ private:
         sdb.position_cov.push_back(pcov);
         sdb.drone_baseyaw.push_back(0);
         sdb.yaw_cov.push_back(0);
+        sdb.self_id = self_id;
         fused_drone_basecoor_pub.publish(sdb);
     }
 

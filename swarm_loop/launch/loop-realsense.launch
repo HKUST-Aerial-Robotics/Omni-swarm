@@ -21,9 +21,9 @@
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
-            init_loop_min_feature_num: 30
-            init_loop_min_feature_num_l2: 30
-            min_loop_feature_num: 30
+            init_loop_min_feature_num: 20
+            init_loop_min_feature_num_l2: 20
+            min_loop_feature_num: 20
             jpg_quality: 75
             
             query_thres: 0.2
@@ -45,7 +45,7 @@
             output_path: /home/xuhao/output/
             send_all_features: false
             lower_cam_as_main: false
-            min_match_per_dir: 5
+            min_match_per_dir: 20
             # camera_configuration: 0
             camera_configuration: 2
             width: 640
