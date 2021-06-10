@@ -39,8 +39,13 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         ROS_INFO("Empty local database, where giveup remote image");
         return;
     } else {
-        ROS_INFO("Detetor start process FisheyFrame from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
-            flatten_desc.landmark_num);
+        if (loop_cam->get_camera_configuration() == STEREO_FISHEYE) {
+            ROS_INFO("Detector start process KeyFrame from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
+                flatten_desc.landmark_num);
+        } else {
+            ROS_INFO("Detector start process KeyFrame from %d with landmark: %d and lm desc size %d", drone_id,
+                flatten_desc.images[0].landmarks_2d.size(), flatten_desc.images[0].feature_descriptor.size());
+        }
     }
 
     success_loop_nodes.insert(self_id);
