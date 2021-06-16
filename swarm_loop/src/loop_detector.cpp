@@ -252,6 +252,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, bool i
         } 
     } else {
         int _id = query_from_database(img_desc, local_index, false, thres, 1, distance);
+        // ROS_INFO("Is remote image, query only from remote db: %d", _id);
         return _id;
     }
     return -1;
@@ -300,7 +301,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         // cv::putText(ret, text, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
         // cv::imshow(title, ret);
         
-        if (labels[i] < index.ntotal - max_index && distances[i] > thres) {
+        if (labels[i] <= index.ntotal - max_index && distances[i] > thres) {
             //Is same id, max index make sense
             k = i;
             thres = distance = distances[i];
@@ -314,7 +315,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
 
 
 FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old) {
-    double best_distance = 1000;
+    double best_distance = 0;
     int best_image_id = -1;
     //Strict use direction 1 now
     direction_new = 0;
@@ -331,12 +332,15 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
     }
 
     if (new_img_desc.images[direction_new].landmark_num > 0) {
-        double distance = 1000;
+        double distance = 0;
         int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);
-        
-        if (id != -1 && distance < best_distance) {
+        if (id != -1 && distance > best_distance) {
             best_image_id = id;
         }
+
+        // ROS_INFO("query_from_database(new_img_desc.images.at(direction_new) return %d best_image_id %d distance %f/%f", 
+            // id, best_image_id, distance, best_distance);
+
 
         if (best_image_id != -1) {
             int msg_id = imgid2fisheye[best_image_id];
