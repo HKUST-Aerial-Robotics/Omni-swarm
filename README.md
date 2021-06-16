@@ -1,5 +1,5 @@
-# SWARM PKGS
+# Omni-swarm
+A Decentralized Omnidirectional Visual-Inertial-UWB State Estimation System for Aerial Swarm
 
-## Intro
+## Introduction
 
-This is some stuff for swarm
