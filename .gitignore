@@ -11,6 +11,8 @@ swarm_detection/.vscode/
 localization_proxy/.vscode/
 swarm_loop/build/
 swarm_loop/.vscode/
+swarm_loop/models/
+swarm_loop/models.zip
 .vscode/
 support_files/ORBvoc.txt
 swarm_localization/build/
@@ -32,5 +34,3 @@ data_analyze/.ipynb_checkpoints/
 swarm_localization/DataAnalysis/.ipynb_checkpoints/
 swarm_localization/scripts/.ipynb_checkpoints/local_plot-checkpoint.py
 swarm_localization/DataAnalysis/*
-distributed_solver/cmake-build-release/
-distributed_solver/cmake-build-debug/
