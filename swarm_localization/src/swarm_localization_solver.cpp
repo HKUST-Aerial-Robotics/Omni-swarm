@@ -4,7 +4,6 @@
 
 #include "swarm_localization/swarm_localization_solver.hpp"
 
-
 #include <iostream>
 #include "glog/logging.h"
 #include <eigen3/Eigen/Dense>
