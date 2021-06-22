@@ -852,6 +852,9 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.self_pose_a = toROSPose(old_frame_desc.pose_drone);
         ret.self_pose_b = toROSPose(new_frame_desc.pose_drone);
 
+        ret.keyframe_id_a = old_frame_desc.msg_id;
+        ret.keyframe_id_b = new_frame_desc.msg_id;
+
         ret.pnp_inlier_num = inlier_num;
 
         return true;

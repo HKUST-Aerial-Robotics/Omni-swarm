@@ -194,15 +194,21 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
 
     loop_net->broadcast_fisheye_desc(ret);
     loop_detector->on_image_recv(ret, imgs);
+    pub_node_frame(ret);
 }
 
-void SwarmLoop::pub_node_frame(const StereoFrame & viokf) {
+void SwarmLoop::pub_node_frame(const FisheyeFrameDescriptor_t & viokf) {
     swarm_msgs::node_frame nf;
-    nf.position = viokf.pose_drone.position;
-    nf.quat = viokf.pose_drone.orientation;
+    nf.position.x = viokf.pose_drone.position[0];
+    nf.position.y = viokf.pose_drone.position[1];
+    nf.position.z = viokf.pose_drone.position[2];
+    nf.quat.x = viokf.pose_drone.orientation[0];
+    nf.quat.y = viokf.pose_drone.orientation[1];
+    nf.quat.z = viokf.pose_drone.orientation[2];
+    nf.quat.w = viokf.pose_drone.orientation[3];
     nf.vo_available = true;
-    nf.id = self_id;
-    nf.keyframe_id = viokf.keyframe_id;
+    nf.id = viokf.drone_id;
+    nf.keyframe_id = viokf.msg_id;
     keyframe_pub.publish(nf);
 }
 
@@ -332,6 +338,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
                 remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
             }
             this->on_remote_image(frame_desc);
+            this->pub_node_frame(frame_desc);
         }
     };
 
