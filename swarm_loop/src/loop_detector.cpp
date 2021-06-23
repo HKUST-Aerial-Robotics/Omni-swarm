@@ -705,7 +705,8 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
     bool success = false;
 
-    ROS_INFO("Compute loop drone %d(dir %d)->%d(dir %d) landmarks %d:%d. Init %d", old_frame_desc.drone_id, main_dir_old,  new_frame_desc.drone_id, main_dir_new,
+    ROS_INFO("Compute loop drone %d(dir %d)->%d(dir %d) msgid %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, main_dir_old,  new_frame_desc.drone_id, main_dir_new,
+        old_frame_desc.msg_id, new_frame_desc.msg_id,
         old_frame_desc.landmark_num,
         new_frame_desc.landmark_num,
         init_mode);

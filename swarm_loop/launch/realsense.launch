@@ -20,7 +20,6 @@
     <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
-            loop_image_downsample: 1.0
             init_loop_min_feature_num: 20
             init_loop_min_feature_num_l2: 20
             min_loop_feature_num: 20

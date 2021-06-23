@@ -10,14 +10,7 @@
 #define LOOP_BOW_THRES 0.015
 // #define MATCH_INDEX_DIST 1
 #define FAST_THRES (20.0f)
-#define ORB_FEATURE_SIZE (32) // For ORB
-#define LOOP_FEATURE_NUM (200)
-// #define USE_CUDA
 
-extern double MIN_MOVEMENT_KEYFRAME;
-
-// #define LOOP_IMAGE_DOWNSAMPLE 2
-extern int LOOP_IMAGE_DOWNSAMPLE;
 extern int JPG_QUALITY;
 
 #define ACCEPT_LOOP_YAW (30) //ACCEPT MAX Yaw 
@@ -41,7 +34,7 @@ extern int MIN_LOOP_NUM;
 #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 #define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 
-extern double  INNER_PRODUCT_THRES;
+extern double INNER_PRODUCT_THRES;
 extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as similar
 extern int MATCH_INDEX_DIST;
 
@@ -65,8 +58,6 @@ extern int MATCH_INDEX_DIST;
 
 extern int ACCEPT_MIN_3D_PTS;
 
-#define GFTT_PTS 1000
-#define GFTT_MIN_DIS 10
 
 #define RPERR_THRES 10*DEG2RAD
 

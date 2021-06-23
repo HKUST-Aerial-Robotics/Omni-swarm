@@ -10,7 +10,6 @@
         args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager) --no-bond" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
-            loop_image_downsample: 1.0
             init_loop_min_feature_num: 30
             init_loop_min_feature_num_l2: 30
             min_loop_feature_num: 30

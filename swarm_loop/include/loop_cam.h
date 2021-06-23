@@ -94,12 +94,6 @@ public:
     
     FisheyeFrameDescriptor_t on_flattened_images(const StereoFrame & msg, std::vector<cv::Mat> & imgs);
 
-    cv::Mat landmark_desc_compute(const cv::Mat & _img, const std::vector<geometry_msgs::Point32> & points_uv);
-
-    std::vector<cv::Point2f> project_to_image(std::vector<cv::Point2f> points_norm2d);
-
-    cv::Point2d project_to_norm2d(cv::Point2f p);
-
     void encode_image(const cv::Mat & _img, ImageDescriptor_t & _img_desc);
     
     void match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down, 

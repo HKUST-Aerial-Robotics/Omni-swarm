@@ -167,14 +167,15 @@ void SwarmLoop::VIOnonKF_callback(const StereoFrame & stereoframe) {
 }
 
 void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe) {
-    if (stereoframe.stamp.toSec() - last_invoke < 1/max_freq) {
+    Eigen::Vector3d drone_pos(stereoframe.pose_drone.position.x, stereoframe.pose_drone.position.y, stereoframe.pose_drone.position.z);
+    double dpos = (last_keyframe_position - drone_pos).norm();
+
+    if (stereoframe.stamp.toSec() - last_invoke < 1/max_freq && dpos > min_movement_keyframe) {
         return;
     }
 
     last_invoke = stereoframe.stamp.toSec();
-    Eigen::Vector3d drone_pos(stereoframe.pose_drone.position.x, stereoframe.pose_drone.position.y, stereoframe.pose_drone.position.z);
-    double dpos = (last_keyframe_position - drone_pos).norm();
-
+    
     last_kftime = stereoframe.stamp;
 
     auto start = high_resolution_clock::now();
@@ -182,7 +183,7 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
     
     auto ret = loop_cam->on_flattened_images(stereoframe, imgs);
     
-    ret.prevent_adding_db = nonkeyframe;
+    ret.prevent_adding_db = nonkeyframe && dpos < min_movement_keyframe;
 
     if (ret.landmark_num == 0) {
         ROS_WARN("Null img desc, CNN no ready");
@@ -244,7 +245,6 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
     
-    nh.param<int>("loop_image_downsample", LOOP_IMAGE_DOWNSAMPLE, 1);
     nh.param<int>("init_loop_min_feature_num", INIT_MODE_MIN_LOOP_NUM, 10);
     nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
     nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
@@ -262,7 +262,6 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("send_all_features", SEND_ALL_FEATURES, false);
     nh.param<double>("query_thres", INNER_PRODUCT_THRES, 0.6);
     nh.param<double>("init_query_thres", INIT_MODE_PRODUCT_THRES, 0.3);
-    nh.param<double>("min_movement_keyframe", MIN_MOVEMENT_KEYFRAME, 0.2);
     nh.param<double>("max_freq", max_freq, 1.0);
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);

@@ -53,17 +53,6 @@ LoopCam::LoopCam(CameraConfig _camera_configuration,
     }
 }
 
-cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p)
-{
-    Eigen::Vector3d tmp_p;
-    cam->liftProjective(Eigen::Vector2d(p.x, p.y), tmp_p);
-    cv::Point2f ret;
-    ret.x = tmp_p.x() / tmp_p.z();
-    ret.y = tmp_p.y() / tmp_p.z();
-
-    return ret;
-}
-
 void LoopCam::encode_image(const cv::Mat &_img, ImageDescriptor_t &_img_desc)
 {
     auto start = high_resolution_clock::now();
@@ -179,20 +168,6 @@ void LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std:
     printf("%ld matches...", _matches.size());
 
     std::vector<uint8_t> status;
-    // cv::findEssentialMat(_pts_up, _pts_down, cameraMatrix, cv::RANSAC, 0.999, 1.0, status);
-    // cv::findFundamentalMat(_pts_up, _pts_down, cv::FM_RANSAC, 1.0, 0.99, status);
-
-    // reduceVector(_pts_up, status);
-    // reduceVector(_pts_down, status);
-    // reduceVector(ids, status);
-    // reduceVector(_matches, status);
-
-
-    // if (show) {
-    //     cv::Mat img = drawMatches(pts_up, pts_down, _matches, up, down);
-    //     cv::imshow("Stereo Matches", img);
-    //     cv::waitKey(30);
-    // }
 
     pts_up = std::vector<cv::Point2f>(_pts_up);
     pts_down = std::vector<cv::Point2f>(_pts_down);
@@ -319,7 +294,7 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         }
     }
 
-    ROS_INFO("Image 2d kpts: %ld 3d : %d", ides.landmarks_2d.size(), count_3d);
+    ROS_INFO("Image 2d kpts: %ld 3d : %d desc size %ld", ides.landmarks_2d.size(), count_3d, ides.feature_descriptor.size());
 
     if (send_img) {
         encode_image(image_left, ides);
@@ -531,26 +506,6 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
 
 }
 
-cv::Mat LoopCam::landmark_desc_compute(const cv::Mat &_img, const std::vector<geometry_msgs::Point32> &points_uv)
-{
-    cv::Mat ret;
-    ROS_INFO("Compute %ld landmark desc...", points_uv.size());
-    auto _des = cv::ORB::create(LOOP_FEATURE_NUM);
-    std::vector<cv::KeyPoint> kps;
-    for (auto pt : points_uv)
-    {
-        cv::KeyPoint kp;
-        kp.pt.x = pt.x;
-        kp.pt.y = pt.y;
-        kps.push_back(kp);
-        // printf("Landmark on %f %f   ", pt.x, pt.y);
-    }
-
-    _des->compute(_img, kps, ret);
-    // std::cout << "DESC 0" << desc.size() << std::endl;
-    return ret;
-}
-
 ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat img, bool superpoint_mode)
 {
     auto start = high_resolution_clock::now();
@@ -582,10 +537,6 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
     if (!superpoint_mode) {
         img_des.image_desc = netvlad_net.inference(img);
         img_des.image_desc_size = img_des.image_desc.size();
-
-        //Debug on bug PC only!
-        //img_des.image_desc.resize(1024);
-        //img_des.image_desc_size = 1024;
     }
 
     for (unsigned int i = 0; i < img_des.landmarks_2d.size(); i++)
@@ -664,22 +615,4 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
 #endif
     ROS_INFO("FAILED on deepnet!!! Service error");
     return img_des;
-}
-
-std::vector<cv::Point2f> LoopCam::project_to_image(std::vector<cv::Point2f> points_norm2d)
-{
-    std::vector<cv::Point2f> ret;
-    for (auto pt : points_norm2d)
-    {
-        Eigen::Vector3d p3d(pt.x, pt.y, 1);
-        Eigen::Vector2d p2d;
-        cam->spaceToPlane(p3d, p2d);
-        cv::Point2f cvpt2d;
-        cvpt2d.x = p2d.x();
-        cvpt2d.y = p2d.y();
-
-        ret.push_back(cvpt2d);
-    }
-
-    return ret;
 }
