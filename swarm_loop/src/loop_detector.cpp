@@ -291,16 +291,6 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
 
         // ROS_INFO("Return Label %d/%d/%d from %d, distance %f/%f", labels[i] + index_offset, index.ntotal, index.ntotal - max_index , return_drone_id, distances[i], thres);
         
-        // char title[100] = {0};
-        // char text[100] = {0};
-        // sprintf(title, "Search Index %d", i);
-        // sprintf(text, "Index %d Label %d from %d, IP %3.2f T %3.2f", i, labels[i] + index_offset, return_drone_id, distances[i], thres);
-
-        // std::cout << "img size " << fisheyeframe_database[imgid2fisheye[return_msg_id]].images[0].image.size() << std::endl;
-        // auto ret = cv::imdecode(fisheyeframe_database[imgid2fisheye[return_msg_id]].images[0].image, cv::IMREAD_COLOR);
-        // cv::putText(ret, text, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
-        // cv::imshow(title, ret);
-        
         if (labels[i] <= index.ntotal - max_index && distances[i] > thres) {
             //Is same id, max index make sense
             k = i;
@@ -315,7 +305,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
 
 
 FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const FisheyeFrameDescriptor_t & new_img_desc, bool init_mode, bool nonkeyframe, int & direction_new, int & direction_old) {
-    double best_distance = 0;
+    double best_distance = -1;
     int best_image_id = -1;
     //Strict use direction 1 now
     direction_new = 0;
@@ -332,7 +322,7 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
     }
 
     if (new_img_desc.images[direction_new].landmark_num > 0) {
-        double distance = 0;
+        double distance = -1;
         int id = query_from_database(new_img_desc.images.at(direction_new), init_mode, nonkeyframe, distance);
         if (id != -1 && distance > best_distance) {
             best_image_id = id;
@@ -346,8 +336,8 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
             int msg_id = imgid2fisheye[best_image_id];
             direction_old = imgid2dir[best_image_id];
             FisheyeFrameDescriptor_t & ret = fisheyeframe_database[msg_id];
-            ROS_INFO("Database return image %d fisheye frame from drone %d with direction %d", 
-                best_image_id, ret.drone_id, direction_old);
+            ROS_INFO("Database return image %d fisheye frame from drone %d with direction %d dist %f", 
+                best_image_id, ret.drone_id, direction_old, distance);
             return ret;
         }
     }

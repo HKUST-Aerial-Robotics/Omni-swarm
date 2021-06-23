@@ -216,8 +216,9 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     Eigen::Map<Eigen::MatrixXf> _desc(desc.data<float>(), desc.size(0), desc.size(1));
     Eigen::MatrixXf _tmp = (_desc.rowwise() - pca_mean);
     Eigen::MatrixXf _desc_new = _tmp *pca_comp_T;
-    // std::cout << "desc.size(1)" << desc.size(1) << "desc.size(0)" << desc.size(0) << std::endl;
     local_descriptors = std::vector<float>(_desc_new.data(), _desc_new.data() + _desc_new.cols()*_desc_new.rows());
+    // I already confirmed this _desc_new new is correct
+
     if (enable_perf) {
         std::cout << " computeDescriptors full " << tic.toc() << std::endl;
     }

@@ -34,3 +34,4 @@ data_analyze/.ipynb_checkpoints/
 swarm_localization/DataAnalysis/.ipynb_checkpoints/
 swarm_localization/scripts/.ipynb_checkpoints/local_plot-checkpoint.py
 swarm_localization/DataAnalysis/*
+swarm_loop/scripts/pca.py
