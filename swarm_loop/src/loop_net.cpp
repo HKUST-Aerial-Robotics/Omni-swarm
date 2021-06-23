@@ -29,7 +29,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
 
-
+    int byte_sent = 0;
     if (IS_PC_REPLAY) {
         ROS_INFO("Sending IMG DES Size %d with %d landmarks in PC replay mode.local feature size %d", img_des.getEncodedSize(), img_des.landmark_num, img_des.feature_descriptor_size);
         lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
@@ -43,7 +43,6 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
         }
     }
 
-    ROS_INFO("Broadcast img id %d with 3d landmarks: %d desc %d", img_des.msg_id, feature_num, img_des.feature_descriptor_size);
 
     ImageDescriptorHeader_t img_desc_header;
     img_desc_header.timestamp = img_des.timestamp;
@@ -57,12 +56,10 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = feature_num;
     img_desc_header.direction = img_des.direction;
-    // ROS_INFO("Send Message VIOHEADER size: %ld direction: %d feature_num: %d", img_desc_header.getEncodedSize(), img_desc_header.direction, img_desc_header.feature_num);
 
-
+    byte_sent += img_desc_header.getEncodedSize();
     lcm.publish("VIOKF_HEADER", &img_desc_header);
 
-    // ROS_INFO("Sending landmarks num: %d, local desc size %d", img_des.landmark_num, img_des.local_descriptors_size);
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         if (img_des.landmarks_flag[i] > 0 || SEND_ALL_FEATURES) {
             LandmarkDescriptor_t lm;
@@ -80,6 +77,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
 
             lm.msg_id = msg_id;
             lm.header_id = img_des.msg_id;
+            byte_sent += lm.getEncodedSize();
 
             lcm.publish("VIOKF_LANDMARKS", &lm);
         }
@@ -91,16 +89,18 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             ImageDescriptor_t img_desc_new = img_des;
             img_desc_new.feature_descriptor_size = 0;
             img_desc_new.feature_descriptor.clear();
+            byte_sent += img_desc_new.getEncodedSize();
             ROS_INFO("Sending IMG DES Size %d with %d landmarks.local feature size %d", img_desc_new.getEncodedSize(), img_desc_new.landmark_num, img_desc_new.feature_descriptor_size);
             lcm.publish("SWARM_LOOP_IMG_DES", &img_desc_new);
         } else {
+            byte_sent += img_des.getEncodedSize();
             ROS_INFO("Sending IMG DES Size %d with %d landmarks.local feature size %d", img_des.getEncodedSize(), img_des.landmark_num, img_des.feature_descriptor_size);
             lcm.publish("SWARM_LOOP_IMG_DES", &img_des);
         }
     }
     
 
-    // ROS_INFO("Sent Message KEYFRAME %ld with %d landmarks", msg_id, img_des.landmark_num);
+    ROS_INFO("Sent Message KEYFRAME %ld with %d/%d landmarks g_desc %d total %d bytes", msg_id, feature_num,img_des.landmark_num, img_desc_header.image_desc_size, byte_sent);
 }
 
 void LoopNet::broadcast_loop_connection(LoopConnection & loop_conn) {
