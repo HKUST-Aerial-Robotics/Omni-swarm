@@ -600,8 +600,8 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
         std::vector<cv::Point3f> &old_3d,
         std::vector<int> &old_idx) {
 
-    assert(new_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
-    assert(old_img_desc.landmarks_2d.size() * LOCAL_DESC_LEN == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
+    assert(new_img_desc.landmarks_2d.size() * FEATURE_DESC_SIZE == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
+    assert(old_img_desc.landmarks_2d.size() * FEATURE_DESC_SIZE == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 
     auto _old_norm_2d = toCV(old_img_desc.landmarks_2d_norm);
     auto _old_2d = toCV(old_img_desc.landmarks_2d);
@@ -632,10 +632,10 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
 
     // assert(landmark_desc_now.size() == _now_norm_2d.size()*256 && "landmark_desc_now must equal to _now_norm_2d size * 256");
 
-    cv::Mat desc_now( _now_norm_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    cv::Mat desc_now( _now_norm_2d.size(), FEATURE_DESC_SIZE, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
 
-    cv::Mat desc_old( old_img_desc.landmarks_2d.size(), LOCAL_DESC_LEN, CV_32F);
+    cv::Mat desc_old( old_img_desc.landmarks_2d.size(), FEATURE_DESC_SIZE, CV_32F);
     memcpy(desc_old.data, old_img_desc.feature_descriptor.data(), old_img_desc.feature_descriptor.size()*sizeof(float));
     
     cv::BFMatcher bfmatcher(cv::NORM_L2, true);

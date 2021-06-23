@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     std::string engine_path(argv[1]);
     std::string engine_path2(argv[2]);
 
-    SuperPointTensorRT sp_trt(engine_path, 400, 208,0.012, true);
+    SuperPointTensorRT sp_trt(engine_path, "", "",  400, 208,0.012, true);
     MobileNetVLADTensorRT netvlad_trt(engine_path2, 400, 208, true);
 
     std::cout << "Load 2 Model success" << std::endl << " Loading image " << argv[3] << std::endl;

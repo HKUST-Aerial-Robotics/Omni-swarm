@@ -11,12 +11,19 @@ using namespace std::chrono;
 
 double TRIANGLE_THRES;
 
-LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_config_path, const std::string &superpoint_model, double thres, int max_kp_num,
+#define USE_TENSORRT
+
+LoopCam::LoopCam(CameraConfig _camera_configuration, 
+    const std::string &camera_config_path, 
+    const std::string &superpoint_model, 
+    std::string _pca_comp,
+    std::string _pca_mean,
+    double thres, int max_kp_num,
     const std::string & netvlad_model, int width, int height, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
     camera_configuration(_camera_configuration),
     self_id(_self_id),
 #ifdef USE_TENSORRT
-    superpoint_net(superpoint_model, width, height, thres, max_kp_num), 
+    superpoint_net(superpoint_model, _pca_comp, _pca_mean, width, height, thres, max_kp_num), 
     netvlad_net(netvlad_model, width, height), 
 #endif
     send_img(_send_img)
@@ -40,6 +47,10 @@ LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_c
     hfnet_client.waitForExistence();
     superpoint_client.waitForExistence();
     printf("Deepnet ready\n");
+
+    if (OUTPUT_RAW_SUPERPOINT_DESC) {
+        fsp.open(OUTPUT_PATH+"superpoint.csv", std::fstream::app);
+    }
 }
 
 cv::Point2d LoopCam::project_to_norm2d(cv::Point2f p)
@@ -141,8 +152,8 @@ cv::Mat drawMatches(std::vector<cv::Point2f> pts1, std::vector<cv::Point2f> pts2
 void LoopCam::match_HFNet_local_features(std::vector<cv::Point2f> & pts_up, std::vector<cv::Point2f> & pts_down, std::vector<float> _desc_up, std::vector<float> _desc_down, 
         std::vector<int> & ids_up, std::vector<int> & ids_down) {
     printf("match_HFNet_local_features %ld %ld: ", pts_up.size(), pts_down.size());
-    cv::Mat desc_up( _desc_up.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_up.data());
-    cv::Mat desc_down( _desc_down.size()/LOCAL_DESC_LEN, LOCAL_DESC_LEN, CV_32F, _desc_down.data());
+    cv::Mat desc_up( _desc_up.size()/FEATURE_DESC_SIZE, FEATURE_DESC_SIZE, CV_32F, _desc_up.data());
+    cv::Mat desc_down( _desc_down.size()/FEATURE_DESC_SIZE, FEATURE_DESC_SIZE, CV_32F, _desc_down.data());
 
     cv::BFMatcher bfmatcher(cv::NORM_L2, true);
 
@@ -445,9 +456,9 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
         ides_down.landmarks_3d[idx_down] = pt3d;
         ides_down.landmarks_flag[idx_down] = 1;
         count_3d ++;
-        // std::cout << "Insert" << LOCAL_DESC_LEN * ids[i] << "to" << LOCAL_DESC_LEN * (ids[i] + 1)  << std::endl;
+        // std::cout << "Insert" << FEATURE_DESC_SIZE * ids[i] << "to" << FEATURE_DESC_SIZE * (ids[i] + 1)  << std::endl;
 
-        // desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + LOCAL_DESC_LEN * ids[i], ides.feature_descriptor.begin() + LOCAL_DESC_LEN * (ids[i] + 1) );
+        // desc_new.insert(desc_new.end(), ides.feature_descriptor.begin() + FEATURE_DESC_SIZE * ids[i], ides.feature_descriptor.begin() + FEATURE_DESC_SIZE * (ids[i] + 1) );
 
         // std::cout << "PT UP" << pt_up << "PT DOWN" << pt_down << std::endl;
 
@@ -595,6 +606,13 @@ ImageDescriptor_t LoopCam::extractor_img_desc_deepnet(ros::Time stamp, cv::Mat i
         pt3d.z = 0;
         img_des.landmarks_3d.push_back(pt3d);
         img_des.landmarks_flag.push_back(0);
+
+        if (OUTPUT_RAW_SUPERPOINT_DESC) {
+            for (int j = 0; j < FEATURE_DESC_SIZE; j ++) {
+                fsp << img_des.feature_descriptor[i*FEATURE_DESC_SIZE + j] << " ";
+            }
+            fsp << std::endl;
+        }
     } 
 
     return img_des;

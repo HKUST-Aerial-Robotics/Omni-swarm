@@ -72,7 +72,9 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             lm.landmark_3d = img_des.landmarks_3d[i];
             lm.landmark_flag = img_des.landmarks_flag[i];
             lm.drone_id = img_des.drone_id;
-            memcpy(lm.feature_descriptor, img_des.feature_descriptor.data() + i *FEATURE_DESC_SIZE, FEATURE_DESC_SIZE*sizeof(float));
+            lm.desc_len = FEATURE_DESC_SIZE;
+            lm.feature_descriptor = std::vector<float>(img_des.feature_descriptor.data() + i *FEATURE_DESC_SIZE, 
+                img_des.feature_descriptor.data() + (i+1)*FEATURE_DESC_SIZE);
             int64_t msg_id = rand() + img_des.timestamp.nsec;
             sent_message.insert(img_des.msg_id);
 
@@ -285,8 +287,8 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.landmarks_3d.push_back(msg->landmark_3d);
     tmp.landmarks_flag.push_back(msg->landmark_flag);
     tmp.feature_descriptor.insert(tmp.feature_descriptor.end(),
-        msg->feature_descriptor,
-        msg->feature_descriptor+FEATURE_DESC_SIZE
+        msg->feature_descriptor.begin(),
+        msg->feature_descriptor.begin()+FEATURE_DESC_SIZE
     );
     tmp.feature_descriptor_size = tmp.feature_descriptor.size();
     recv_lock.unlock();

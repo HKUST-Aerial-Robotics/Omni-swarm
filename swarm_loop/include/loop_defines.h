@@ -69,12 +69,11 @@ extern int ACCEPT_MIN_3D_PTS;
 #define GFTT_MIN_DIS 10
 
 #define RPERR_THRES 10*DEG2RAD
-#define LOCAL_DESC_LEN 256
 
 #define DEPTH_NEAR_THRES 0.5
 #define DEPTH_FAR_THRES 10.0
 
-#define FEATURE_DESC_SIZE 256
+#define FEATURE_DESC_SIZE 64
 
 extern int MAX_DIRS;
 
@@ -97,6 +96,8 @@ extern bool IS_PC_REPLAY;
 extern bool SEND_ALL_FEATURES;
 
 extern bool LOWER_CAM_AS_MAIN;
+
+extern bool OUTPUT_RAW_SUPERPOINT_DESC;
 
 extern std::string OUTPUT_PATH;
 class TicToc

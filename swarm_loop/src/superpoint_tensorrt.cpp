@@ -6,20 +6,108 @@
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height, int max_num);
 
+#define MAXBUFSIZE 100000
+Eigen::MatrixXf load_csv_mat_eigen(std::string csv) {
+    int cols = 0, rows = 0;
+    double buff[MAXBUFSIZE];
 
-SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, int _width, int _height, float _thres, int _max_num, bool _enable_perf):
+    // Read numbers from file into buffer.
+    std::ifstream infile;
+    infile.open(csv);
+    std::string line;
+
+    while (getline(infile, line))
+    {
+        int temp_cols = 0;
+        std::stringstream          lineStream(line);
+        std::string                cell;
+
+        while (std::getline(lineStream, cell, ','))
+        {
+            buff[rows * cols + temp_cols] = std::stod(cell);
+            temp_cols ++;
+        }
+
+        rows ++;
+        if (cols > 0) {
+            assert(cols == temp_cols && "Matrix must have same cols on each rows!");
+        } else {
+            cols = temp_cols;
+        }
+    }
+
+    infile.close();
+
+    Eigen::MatrixXf result(rows,cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            result(i,j) = buff[ cols*i+j ];
+
+    return result;
+}
+
+Eigen::VectorXf load_csv_vec_eigen(std::string csv) {
+    int cols = 0, rows = 0;
+    double buff[MAXBUFSIZE];
+
+    // Read numbers from file into buffer.
+    std::ifstream infile;
+    infile.open(csv);
+    while (! infile.eof())
+    {
+        std::string line;
+        getline(infile, line);
+
+        int temp_cols = 0;
+        std::stringstream stream(line);
+        while(! stream.eof())
+            stream >> buff[cols*rows+temp_cols++];
+
+        if (temp_cols == 0)
+            continue;
+
+        if (cols == 0)
+            cols = temp_cols;
+
+        rows++;
+    }
+
+    infile.close();
+
+    rows--;
+
+    // Populate matrix with numbers.
+    Eigen::VectorXf result(rows,cols);
+    for (int i = 0; i < rows; i++)
+            result(i) = buff[ i ];
+
+    return result;
+}
+
+SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, 
+    std::string _pca_comp,
+    std::string _pca_mean,
+    int _width, int _height, 
+    float _thres, int _max_num, 
+    bool _enable_perf):
     TensorRTInferenceGeneric("image", _width, _height), thres(_thres), max_num(_max_num), enable_perf(_enable_perf) {
     at::set_num_threads(1);
     TensorInfo outputTensorSemi, outputTensorDesc;
     outputTensorSemi.blobName = "semi";
     outputTensorDesc.blobName = "desc";
     outputTensorSemi.volume = height*width;
-    outputTensorDesc.volume = 1*256*height/8*width/8;
+    outputTensorDesc.volume = 1*SP_DESC_RAW_LEN*height/8*width/8;
     m_InputSize = height*width;
     m_OutputTensors.push_back(outputTensorSemi);
     m_OutputTensors.push_back(outputTensorDesc);
-    std::cout << "Trying to init TRT engine of SuperPointTensorRT" << std::endl;
+    std::cout << "Trying to init TRT engine of SuperPointTensorRT" << engine_path << std::endl;
     init(engine_path);
+
+    pca_comp_T = load_csv_mat_eigen(_pca_comp).transpose();
+    pca_mean = load_csv_vec_eigen(_pca_mean).transpose();
+
+    std::cout << "pca_comp rows " << pca_comp_T.rows() << "cols " << pca_comp_T.cols() << std::endl;
+    std::cout << "pca_mean " << pca_mean.size() << std::endl;
 }
 
 void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors) {
@@ -45,7 +133,7 @@ void SuperPointTensorRT::inference(const cv::Mat & input, std::vector<cv::Point2
     
     
     auto mProb = at::from_blob(m_OutputTensors[0].hostBuffer, {1, 1, height, width}, options);
-    auto mDesc = at::from_blob(m_OutputTensors[1].hostBuffer, {1, 256, height/8, width/8}, options);
+    auto mDesc = at::from_blob(m_OutputTensors[1].hostBuffer, {1, SP_DESC_RAW_LEN, height/8, width/8}, options);
     cv::Mat Prob = cv::Mat(height, width, CV_32F, m_OutputTensors[0].hostBuffer);
     if (enable_perf) {
         std::cout << " from_blob " << tic1.toc();
@@ -125,7 +213,11 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     desc = desc.transpose(0, 1).contiguous();
     desc = desc.to(torch::kCPU);
 
-    local_descriptors = std::vector<float>(desc.data<float>(), desc.data<float>()+desc.size(1)*desc.size(0));
+    Eigen::Map<Eigen::MatrixXf> _desc(desc.data<float>(), desc.size(0), desc.size(1));
+    Eigen::MatrixXf _tmp = (_desc.rowwise() - pca_mean);
+    Eigen::MatrixXf _desc_new = _tmp *pca_comp_T;
+    // std::cout << "desc.size(1)" << desc.size(1) << "desc.size(0)" << desc.size(0) << std::endl;
+    local_descriptors = std::vector<float>(_desc_new.data(), _desc_new.data() + _desc_new.cols()*_desc_new.rows());
     if (enable_perf) {
         std::cout << " computeDescriptors full " << tic.toc() << std::endl;
     }
