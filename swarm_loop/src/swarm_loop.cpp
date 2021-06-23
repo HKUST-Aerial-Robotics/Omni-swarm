@@ -170,7 +170,7 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
     Eigen::Vector3d drone_pos(stereoframe.pose_drone.position.x, stereoframe.pose_drone.position.y, stereoframe.pose_drone.position.z);
     double dpos = (last_keyframe_position - drone_pos).norm();
 
-    if (stereoframe.stamp.toSec() - last_invoke < 1/max_freq && dpos > min_movement_keyframe) {
+    if (stereoframe.stamp.toSec() - last_invoke < 1/max_freq) {
         return;
     }
 
