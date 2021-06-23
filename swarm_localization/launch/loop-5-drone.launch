@@ -65,7 +65,7 @@
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
         <param name="cgraph_path" value="$(arg cgraph_path)" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
-        <param name="is_pc_replay" value="$(arg is_pc_replay)" />
+        <param name="is_pc_replay" value="$(arg bag_replay)" />
         <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" if="$(arg bag_replay)" />
         <remap from="/swarm_drones/swarm_drone_fused_relative" to="/swarm_drones/swarm_drone_fused_relative_pc" if="$(arg bag_replay)" />
     </node>
