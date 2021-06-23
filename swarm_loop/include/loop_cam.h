@@ -81,7 +81,7 @@ public:
 
     // LoopDetector * loop_detector = nullptr;
     LoopCam(CameraConfig _camera_configuration, const std::string & _camera_config_path, 
-        const std::string & superpoint_model, double thres, const std::string & netvlad_model, int width, int height, 
+        const std::string & superpoint_model, double thres, int max_kp_num, const std::string & netvlad_model, int width, int height, 
         int self_id, bool _send_img, ros::NodeHandle & nh);
     
     ImageDescriptor_t extractor_img_desc_deepnet(ros::Time stamp, cv::Mat img, bool superpoint_mode=false);

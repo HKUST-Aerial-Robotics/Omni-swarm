@@ -2,13 +2,13 @@
 #include "loop_defines.h"
 #include "ATen/Parallel.h"
 
-//NMS code is from https://github.com/KinglittleQ/SuperPoint_SLAM
+//NMS code is modified from https://github.com/KinglittleQ/SuperPoint_SLAM
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
-            int border, int dist_thresh, int img_width, int img_height);
+            int border, int dist_thresh, int img_width, int img_height, int max_num);
 
 
-SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, int _width, int _height, float _thres, bool _enable_perf):
-    TensorRTInferenceGeneric("image", _width, _height), thres(_thres), enable_perf(_enable_perf) {
+SuperPointTensorRT::SuperPointTensorRT(std::string engine_path, int _width, int _height, float _thres, int _max_num, bool _enable_perf):
+    TensorRTInferenceGeneric("image", _width, _height), thres(_thres), max_num(_max_num), enable_perf(_enable_perf) {
     at::set_num_threads(1);
     TensorInfo outputTensorSemi, outputTensorDesc;
     outputTensorSemi.blobName = "semi";
@@ -90,7 +90,7 @@ void SuperPointTensorRT::getKeyPoints(const cv::Mat & prob, float threshold, std
     int border = 0;
     int dist_thresh = 4;
     TicToc ticnms;
-    NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height);
+    NMS2(keypoints_no_nms, conf, keypoints, border, dist_thresh, width, height, max_num);
     if (enable_perf) {
         printf(" NMS %f keypoints_no_nms %ld keypoints %ld\n", ticnms.toc(), keypoints_no_nms.size(), keypoints.size());
     }
@@ -131,11 +131,18 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
     }
 }
 
+bool pt_conf_comp(std::pair<cv::Point2f, double> i1, std::pair<cv::Point2f, double> i2)
+{
+    return (i1.second > i2.second);
+}
+
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
-            int border, int dist_thresh, int img_width, int img_height)
+            int border, int dist_thresh, int img_width, int img_height, int max_num)
 {
 
     std::vector<cv::Point2f> pts_raw = det;
+
+    std::vector<std::pair<cv::Point2f, double>> pts_conf_vec;
 
     cv::Mat grid = cv::Mat(cv::Size(img_width, img_height), CV_8UC1);
     cv::Mat inds = cv::Mat(cv::Size(img_width, img_height), CV_16UC1);
@@ -188,10 +195,18 @@ void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& 
             if (grid.at<char>(v,u) == 2)
             {
                 int select_ind = (int) inds.at<unsigned short>(v, u);
+                float _conf = confidence.at<float> (v, u);
                 cv::Point2f p = pts_raw[select_ind];
-                pts.push_back(p);
+                pts_conf_vec.push_back(std::make_pair(p, _conf));
                 valid_cnt++;
             }
         }
     }
+    
+    std::sort(pts_conf_vec.begin(), pts_conf_vec.end(), pt_conf_comp);
+    for (unsigned int i = 0; i < max_num && i < pts_conf_vec.size(); i ++) {
+        pts.push_back(pts_conf_vec[i].first);
+        // printf("conf:%f\n", pts_conf_vec[i].second);
+    }
+
 }

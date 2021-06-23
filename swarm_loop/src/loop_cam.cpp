@@ -11,12 +11,12 @@ using namespace std::chrono;
 
 double TRIANGLE_THRES;
 
-LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_config_path, const std::string &superpoint_model, double thres, 
+LoopCam::LoopCam(CameraConfig _camera_configuration, const std::string &camera_config_path, const std::string &superpoint_model, double thres, int max_kp_num,
     const std::string & netvlad_model, int width, int height, int _self_id, bool _send_img, ros::NodeHandle &nh) : 
     camera_configuration(_camera_configuration),
     self_id(_self_id),
 #ifdef USE_TENSORRT
-    superpoint_net(superpoint_model, width, height, thres), 
+    superpoint_net(superpoint_model, width, height, thres, max_kp_num), 
     netvlad_net(netvlad_model, width, height), 
 #endif
     send_img(_send_img)

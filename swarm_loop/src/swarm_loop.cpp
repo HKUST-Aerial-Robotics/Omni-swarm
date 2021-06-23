@@ -265,6 +265,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("max_freq", max_freq, 1.0);
     nh.param<double>("recv_msg_duration", recv_msg_duration, 0.5);
     nh.param<double>("superpoint_thres", superpoint_thres, 0.012);
+    nh.param<int>("superpoint_max_num", superpoint_max_num, 200);
     nh.param<double>("detector_match_thres", DETECTOR_MATCH_THRES, 0.9);
     nh.param<bool>("lower_cam_as_main", LOWER_CAM_AS_MAIN, false);
 
@@ -321,7 +322,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
 
     
     loop_net = new LoopNet(_lcm_uri, send_img, send_whole_img_desc, recv_msg_duration);
-    loop_cam = new LoopCam(camera_configuration, camera_config_path, superpoint_model_path, superpoint_thres, netvlad_model_path, width, height, self_id, send_img, nh);
+    loop_cam = new LoopCam(camera_configuration, camera_config_path, superpoint_model_path, superpoint_thres, superpoint_max_num, netvlad_model_path, width, height, self_id, send_img, nh);
     loop_cam->show = debug_image; 
     loop_detector = new LoopDetector();
     loop_detector->self_id = self_id;

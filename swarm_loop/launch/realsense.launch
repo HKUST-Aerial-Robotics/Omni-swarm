@@ -5,25 +5,28 @@
     <arg name="send_img"     default="false"/>
     <arg name="send_whole_img_desc"     default="false"/>
     <arg name="self_id"     default="1"/>
+    <arg name="vins"     default="false"/>
     <!-- <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_rtx3080_fp16.trt"/> -->
     <!-- <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_rtx3080_fp16.trt" /> -->
     <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_titan_fp32.trt"/>
     <arg name="netvlad_model_path"     default="$(find swarm_loop)/models/mobilenetvlad_480x640_titan_fp32.trt" />
-
     <arg name="camera_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/left.yaml" />
     <arg name="vins_config_path" default="/home/xuhao/Dropbox/data/SwarmExp2021/drone1-data/realsense/realsense.yaml" />
-    <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager --no-bond" output="$(arg output)"  />
-    <node pkg="nodelet" type="nodelet" name="swarm_loop" 
-        args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager) --no-bond" output="screen" >
+    
+    <node pkg="vins" type="vins_node_fisheye" name="vins_estimator" output="log" if="$(arg vins)">
+        <param name="config_file" type="string" value="$(arg vins_config_path)"/>
+    </node>
+    
+    <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="screen" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
             loop_image_downsample: 1.0
-            init_loop_min_feature_num: 30
-            init_loop_min_feature_num_l2: 30
-            min_loop_feature_num: 30
+            init_loop_min_feature_num: 20
+            init_loop_min_feature_num_l2: 20
+            min_loop_feature_num: 20
             jpg_quality: 75
             
-            query_thres: 0.3
+            query_thres: 0.2
             init_query_thres: 0.2
 
             min_movement_keyframe: 0.1
@@ -33,17 +36,21 @@
             accept_min_3d_pts: 30
             match_index_dist: 5
             recv_msg_duration: 0.5
-            superpoint_thres: 0.02
+            superpoint_thres: 0.2
             triangle_thres: 0.012
             #triangle_thres: 0.008
+            superpoint_max_num: 200
             min_direction_loop: 1
             is_pc_replay: false
             detector_match_thres: 0.7
-            output_path: /root/output/
+            output_path: /home/xuhao/output/
             send_all_features: false
             lower_cam_as_main: false
-            min_match_per_dir: 5
-            camera_configuration: 0
+            min_match_per_dir: 20
+            # camera_configuration: 0
+            camera_configuration: 2
+            width: 640
+            height: 480
         </rosparam>
         <param name="superpoint_model_path" value="$(arg superpoint_model_path)" type="string" />
         <param name="netvlad_model_path" value="$(arg netvlad_model_path)" type="string" />

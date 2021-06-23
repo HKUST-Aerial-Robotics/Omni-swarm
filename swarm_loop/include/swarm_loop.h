@@ -90,6 +90,7 @@ protected:
     double max_freq = 1.0;
     double recv_msg_duration = 0.5;
     double superpoint_thres = 0.012;
+    int superpoint_max_num = 200;
 
     ros::Timer timer;
 
