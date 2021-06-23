@@ -59,6 +59,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
 
     byte_sent += img_desc_header.getEncodedSize();
     lcm.publish("VIOKF_HEADER", &img_desc_header);
+    // printf("header %d", img_desc_header.getEncodedSize());
 
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         if (img_des.landmarks_flag[i] > 0 || SEND_ALL_FEATURES) {
@@ -78,6 +79,10 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             lm.msg_id = msg_id;
             lm.header_id = img_des.msg_id;
             byte_sent += lm.getEncodedSize();
+
+            // if (i == 0) {
+            //     printf("lm %d", lm.getEncodedSize());
+            // }
 
             lcm.publish("VIOKF_LANDMARKS", &lm);
         }
