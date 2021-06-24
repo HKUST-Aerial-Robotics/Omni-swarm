@@ -60,7 +60,7 @@
         <param name="send_img" value="$(arg send_img)" type="bool" />
         <param name="send_whole_img_desc" value="$(arg send_whole_img_desc)" type="bool" />
         <param name="self_id" value="$(arg self_id)" type="int" />
-        <param name="max_freq" value="$(arg max_freq)" type="float" />
+        <param name="max_freq" value="$(arg max_freq)" type="double" />
         <param name="superpoint_max_num" value="$(arg superpoint_max_num)" type="int" />
         <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
         <param name="vins_config_path" value="$(arg vins_config_path)" type="string" />
