@@ -271,6 +271,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("output_raw_superpoint_desc", OUTPUT_RAW_SUPERPOINT_DESC, false);
 
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
+    nh.param<double>("depth_far_thres", DEPTH_FAR_THRES, 10.0);
+    nh.param<double>("depth_near_thres", DEPTH_NEAR_THRES, 0.3);
     nh.param<int>("min_direction_loop", MIN_DIRECTION_LOOP, 3);
     nh.param<int>("width", width, 400);
     nh.param<int>("height", height, 208);
