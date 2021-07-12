@@ -23,6 +23,11 @@ void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
 
 void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, std::vector<cv::Mat> imgs) {
     auto start = high_resolution_clock::now();
+    
+    if (t0 < 0) {
+        t0 = toROSTime(flatten_desc.timestamp).toSec();
+    }
+
     if (flatten_desc.images.size() == 0) {
         ROS_WARN("FlattenDesc must carry more than zero images");
         return;
@@ -122,8 +127,9 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                     ROS_INFO("Adding success matched drone %d to database", flatten_desc.drone_id);
                     success_loop_nodes.insert(flatten_desc.drone_id);
 
-                    ROS_INFO("\n Loop Detected %d->%d DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
+                    ROS_INFO("\n Loop Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
                         ret.id_a, ret.id_b,
+                        (ret.ts_b - ret.ts_a).toSec(),
                         ret.dpos.x, ret.dpos.y, ret.dpos.z,
                         ret.dyaw*57.3,
                         ret.pnp_inlier_num
@@ -289,7 +295,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         return_msg_id = labels[i] + index_offset;
         return_drone_id = fisheyeframe_database[imgid2fisheye[return_msg_id]].drone_id;
 
-        // ROS_INFO("Return Label %d/%d/%d from %d, distance %f/%f", labels[i] + index_offset, index.ntotal, index.ntotal - max_index , return_drone_id, distances[i], thres);
+        //ROS_INFO("Return Label %d/%d/%d from %d, distance %f/%f", labels[i] + index_offset, index.ntotal, index.ntotal - max_index , return_drone_id, distances[i], thres);
         
         if (labels[i] <= index.ntotal - max_index && distances[i] > thres) {
             //Is same id, max index make sense
@@ -601,27 +607,6 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
     auto _now_2d = toCV(new_img_desc.landmarks_2d);
     auto _now_3d = toCV(new_img_desc.landmarks_3d);
 
-    // std::vector<int> ids;
-    // for (size_t i = 0; i < new_img_desc.landmarks_3d.size(); i++) {
-    //     ids.push_back(i);
-    // }
-
-    // Only reserve 3d points for new
-    // reduceVector(_now_norm_2d, new_img_desc.landmarks_flag);
-    // reduceVector(_now_3d, new_img_desc.landmarks_flag);
-    // reduceVector(ids, new_img_desc.landmarks_flag);
-    // std::vector<float> landmark_desc_now;
-    // for (size_t i = 0; i < new_img_desc.landmarks_flag.size(); i ++ ) {
-    //     if (new_img_desc.landmarks_flag[i]) {
-    //         landmark_desc_now.insert(landmark_desc_now.end(), new_img_desc.feature_descriptor.data() + i * 256, new_img_desc.feature_descriptor.data() + (i + 1)* 256 );
-    //     }
-    // }
-    // memcpy(desc_now.data, landmark_desc_now.data(), landmark_desc_now.size()*sizeof(float));
-
-    ROS_INFO("Raw size %ld 3d pts %ld", new_img_desc.landmarks_flag.size(), _now_norm_2d.size());
-
-    // assert(landmark_desc_now.size() == _now_norm_2d.size()*256 && "landmark_desc_now must equal to _now_norm_2d size * 256");
-
     cv::Mat desc_now( _now_norm_2d.size(), FEATURE_DESC_SIZE, CV_32F);
     memcpy(desc_now.data, new_img_desc.feature_descriptor.data(), new_img_desc.feature_descriptor.size()*sizeof(float));
 
@@ -705,7 +690,10 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
     bool success = false;
 
-    ROS_INFO("Compute loop drone %d(dir %d)->%d(dir %d) msgid %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, main_dir_old,  new_frame_desc.drone_id, main_dir_new,
+    double told = toROSTime(old_frame_desc.timestamp).toSec() - t0;
+    double tnew = toROSTime(new_frame_desc.timestamp).toSec() - t0;
+    ROS_INFO("Compute loop drone %d(dir %d)->%d(dir %d) t %f->%f(%f) msgid %d->%d landmarks %d:%d. Init %d", old_frame_desc.drone_id, main_dir_old, new_frame_desc.drone_id, main_dir_new,
+        told, tnew, tnew - told,
         old_frame_desc.msg_id, new_frame_desc.msg_id,
         old_frame_desc.landmark_num,
         new_frame_desc.landmark_num,
@@ -808,12 +796,12 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             cv::hconcat(show, _matched_imgs[i], show);
         }
 
-
-         if (success) {
-            sprintf(title, "MAP-BASED EDGE %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
+        double dt = (toROSTime(new_frame_desc.timestamp) - toROSTime(old_frame_desc.timestamp)).toSec();
+        if (success) {
+            sprintf(title, "MAP-BASED EDGE %d->%d dt %3.3fs inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, dt, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 3);
            } else {
-            sprintf(title, "FAILED LOOP %d->%d inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, inlier_num);
+            sprintf(title, "FAILED LOOP %d->%d dt %3.3fs inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, dt, inlier_num);
             cv::putText(show, title, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 3);
         }
 

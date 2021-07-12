@@ -35,6 +35,8 @@ protected:
     std::map<int64_t, std::vector<cv::Mat>> msgid2cvimgs;
     
     std::vector<cv::Scalar> colors;
+
+    double t0 = -1;
     
     bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc,
         int main_dir_new, int main_dir_old,

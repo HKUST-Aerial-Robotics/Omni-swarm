@@ -61,8 +61,8 @@ extern int ACCEPT_MIN_3D_PTS;
 
 #define RPERR_THRES 10*DEG2RAD
 
-#define DEPTH_NEAR_THRES 0.5
-#define DEPTH_FAR_THRES 10.0
+extern double DEPTH_NEAR_THRES;
+extern double DEPTH_FAR_THRES;
 
 #define FEATURE_DESC_SIZE 64
 
