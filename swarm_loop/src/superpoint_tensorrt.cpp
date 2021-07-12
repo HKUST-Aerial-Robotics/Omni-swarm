@@ -2,6 +2,7 @@
 #include "loop_defines.h"
 #include "ATen/Parallel.h"
 
+#define USE_PCA
 //NMS code is modified from https://github.com/KinglittleQ/SuperPoint_SLAM
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height, int max_num);
@@ -212,11 +213,13 @@ void SuperPointTensorRT::computeDescriptors(const torch::Tensor & mProb, const t
 
     desc = desc.transpose(0, 1).contiguous();
     desc = desc.to(torch::kCPU);
-
     Eigen::Map<Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor>> _desc(desc.data<float>(), desc.size(0), desc.size(1));
+#ifdef USE_PCA
     Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> _desc_new = (_desc.rowwise() - pca_mean) *pca_comp_T;
     local_descriptors = std::vector<float>(_desc_new.data(), _desc_new.data()+_desc_new.cols()*_desc_new.rows());
-    //local_descriptors = std::vector<float>(_desc.data(), _desc.data()+_desc.cols()*_desc.rows());
+#else
+    local_descriptors = std::vector<float>(_desc.data(), _desc.data()+_desc.cols()*_desc.rows());
+#endif
 
     if (enable_perf) {
         std::cout << " computeDescriptors full " << tic.toc() << std::endl;
