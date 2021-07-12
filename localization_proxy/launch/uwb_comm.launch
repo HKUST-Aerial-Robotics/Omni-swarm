@@ -1,15 +1,21 @@
 <launch>
     <arg name="output" default="screen" />
     <arg name="sf_queue_max_size" default="30" />
-    <!-- include file="$(find inf_uwb_ros)/launch/uwb_node.launch" -->
-    <!-- /include -->
+    <arg name="start_uwb_node" default="false" />
+    <arg name="enable_uwb" default="true" />
+    <arg name="self_id" default="0" />
+    
+    <include file="$(find inf_uwb_ros)/launch/uwb_node.launch" if="$(arg start_uwb_node)">
+    </include>
+
     <node pkg="localization_proxy" name="localization_proxy" type="localization_proxy_node" output="$(arg output)">
        <param name="vins_topic" value="/vins_estimator/imu_propagate" type="string" />
        <param name="sf_queue_max_size" value="$(arg sf_queue_max_size)" type="int" />
+       <param name="enable_uwb" value="$(arg enable_uwb)" type="bool" />
+       <param name="self_id" value="$(arg self_id)" type="int" />
        <rosparam>
             send_fused_freq: 0.0
             send_fused_basecoor_freq: 30.0
-            self_id: 0
        </rosparam>
     </node>
 </launch>
