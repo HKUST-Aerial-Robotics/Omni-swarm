@@ -1,6 +1,6 @@
 # Omni-swarm
 A Decentralized Omnidirectional Visual-Inertial-UWB State Estimation System for Aerial Swarm
-
+![](./doc/gcs.png)
 ## Introduction
 
 **Omni-swarm** is a decentralized omnidirectional visual-inertial-UWB state estimation system for the aerial swarm.
@@ -8,8 +8,7 @@ In order to solve the issues of observability, complicated initialization, insuf
 A graph-based optimization and forward propagation working as the back-end of the **Omni-swarm** to fuse the measurements from the front-end.
 According to the experiment result, the proposed decentralized state estimation method on the swarm system achieves centimeter-level relative state estimation accuracy while ensuring global consistency. Moreover, supported by the **Omni-swarm**, inter-drone collision avoidance can be accomplished in a whole decentralized scheme without any external device, demonstrating the potential of **Omni-swarm** to be the foundation of autonomous aerial swarm flights in different scenarios.
        
-The estimation result of Omni-swarm visualized in our [user interface](https://github.com/HKUST-Aerial-Robotics/swarm_gcs)
-![](./doc/gcs.png)
+
 
 The structure of Omni-swarm is
 ![](./doc/structure.PNG)
@@ -30,7 +29,8 @@ The Omni-swarm offical support TX2 with Ubuntu 18.04. For those running on other
 [swarm_msgs](https://github.com/HKUST-Swarm/swarm_msgs) [inf_uwb_ros](https://github.com/HKUST-Swarm/inf_uwb_ros) are compulsory.
 And [swarm_detector](https://github.com/HKUST-Swarm/swarm_detector) if you want to use detector, 
 
-First, running the pinhole or fisheye version of [VINS-Fisheye](https://github.com/HKUST-Aerial-Robotics/VINS-Fisheye) (Yes, VINS-Fisheye have is pinhole compatiable and is essential for Omni-swarm)
+First, running the pinhole or fisheye version of [VINS-Fisheye](https://github.com/HKUST-Aerial-Robotics/VINS-Fisheye) (Yes, VINS-Fisheye is pinhole compatiable and is essential for Omni-swarm).
+
 Start map-based localization with
 >roslaunch swarm_loop nodelet-sfisheye.launch
 
@@ -45,10 +45,9 @@ Start UWB communication module with (Support NoopLoop UWB module only)
 
 >roslaunch localization_proxy uwb_comm.launch start_uwb_node:=true
 
-If you don't have a UWB module, you may start the communication with
+If you don't have a UWB module, you may start the communication with a self id(start from 1, different on each drone)
 >roslaunch localization_proxy uwb_comm.launch start_uwb_node:=true enable_uwb:=false self_id:=1
 
-, note set different self_id begin from 1 on each drone
 
 Start state estimation with visualizer by
 
