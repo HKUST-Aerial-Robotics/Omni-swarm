@@ -6,6 +6,7 @@
     <arg name="send_whole_img_desc"     default="false"/>
     <arg name="self_id"     default="1"/>
     <arg name="camera_config_path" default="/root/swarm_ws/src/VINS-Fusion-Fisheye/config/fisheye_ptgrey_n3/front.yaml" />
+    <arg name="vins_config_path" default="/home/dji/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
     <node pkg="nodelet" type="nodelet" name="swarm_loop" 
         args="load swarm_localization_pkg/SwarmLoopNode /$(arg manager) --no-bond" output="screen" >
         <rosparam>
@@ -38,6 +39,8 @@
             min_match_per_dir: 5
             camera_configuration: 1
         </rosparam>
+        <param name="pca_comp_path" value="$(find swarm_loop)/models/components_.csv" type="string" />
+        <param name="pca_mean_path" value="$(find swarm_loop)/models/mean_.csv" type="string" />
         <param name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_tx2_fp16.trt" type="string" />
         <param name="netvlad_model_path" value="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" type="string" />
        <param name="debug_image" value="$(arg show)" type="bool" />
@@ -45,5 +48,7 @@
        <param name="send_whole_img_desc" value="$(arg send_whole_img_desc)" type="bool" />
        <param name="self_id" value="$(arg self_id)" type="int" />
        <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
+    <param name="vins_config_path" value="$(arg vins_config_path)" type="string" />
+
     </node>
 </launch>

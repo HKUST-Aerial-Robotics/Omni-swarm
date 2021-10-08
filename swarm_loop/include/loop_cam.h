@@ -56,8 +56,10 @@ struct StereoFrame{
         keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
     }
 
-    StereoFrame(vins::FlattenImages vins_flatten) {
-
+    StereoFrame(vins::FlattenImages vins_flatten):
+        stamp(vins_flatten.header.stamp)
+    {
+    
     }
 };
 

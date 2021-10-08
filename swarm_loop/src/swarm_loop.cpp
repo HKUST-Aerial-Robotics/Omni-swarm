@@ -60,11 +60,12 @@ void SwarmLoop::on_loop_connection (LoopConnection & loop_con, bool is_local) {
 }
 
 StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
+    ROS_INFO("find_images_raw %f", odometry.header.stamp.toSec());
     auto stamp = odometry.header.stamp;
     StereoFrame ret;
     raw_stereo_image_lock.lock();
     while (raw_stereo_images.size() > 0 && stamp.toSec() - raw_stereo_images.front().stamp.toSec() > 1e-3) {
-        // ROS_INFO("Removing d stamp %f", stamp.toSec() - raw_stereo_images.front().stamp.toSec());
+        ROS_INFO("Removing d stamp %f", stamp.toSec() - raw_stereo_images.front().stamp.toSec());
         raw_stereo_images.pop();
     }
 
@@ -72,7 +73,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
         auto ret = raw_stereo_images.front();
         raw_stereo_images.pop();
         ret.pose_drone = odometry.pose.pose;
-        // ROS_INFO("VIO KF found, returning...");
+        ROS_INFO("VIO KF found, returning...");
         raw_stereo_image_lock.unlock();
         return ret;
     } 
@@ -83,7 +84,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
 
 void SwarmLoop::flatten_raw_callback(const vins::FlattenImages & stereoframe) {
     raw_stereo_image_lock.lock();
-    // ROS_INFO("Received flatten_raw %f", stereoframe.header.stamp.toSec());
+    ROS_INFO("Received flatten_raw %f", stereoframe.header.stamp.toSec());
     raw_stereo_images.push(StereoFrame(stereoframe));
     raw_stereo_image_lock.unlock();
 }
