@@ -30,12 +30,12 @@ void SwarmLoop::on_loop_connection (LoopConnection & loop_con, bool is_local) {
 }
 
 StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
-    ROS_INFO("find_images_raw %f", odometry.header.stamp.toSec());
+    // ROS_INFO("find_images_raw %f", odometry.header.stamp.toSec());
     auto stamp = odometry.header.stamp;
     StereoFrame ret;
     raw_stereo_image_lock.lock();
     while (raw_stereo_images.size() > 0 && stamp.toSec() - raw_stereo_images.front().stamp.toSec() > 1e-3) {
-        ROS_INFO("Removing d stamp %f", stamp.toSec() - raw_stereo_images.front().stamp.toSec());
+        // ROS_INFO("Removing d stamp %f", stamp.toSec() - raw_stereo_images.front().stamp.toSec());
         raw_stereo_images.pop();
     }
 
@@ -43,7 +43,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
         auto ret = raw_stereo_images.front();
         raw_stereo_images.pop();
         ret.pose_drone = odometry.pose.pose;
-        ROS_INFO("VIO KF found, returning...");
+        // ROS_INFO("VIO KF found, returning...");
         raw_stereo_image_lock.unlock();
         return ret;
     } 
@@ -54,7 +54,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
 
 void SwarmLoop::flatten_raw_callback(const vins::FlattenImages & stereoframe) {
     raw_stereo_image_lock.lock();
-    ROS_INFO("Received flatten_raw %f", stereoframe.header.stamp.toSec());
+    ROS_INFO("(SwarmLoop::flatten_raw_callback) Received flatten_raw %f", stereoframe.header.stamp.toSec());
     raw_stereo_images.push(StereoFrame(stereoframe, self_id));
     raw_stereo_image_lock.unlock();
 }
@@ -107,7 +107,7 @@ void SwarmLoop::odometry_callback(const nav_msgs::Odometry & odometry) {
         // ROS_INFO("VIO Non Keyframe callback!!");
         VIOnonKF_callback(_stereoframe);
     } else {
-        ROS_WARN("Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
+        ROS_WARN("(SwarmLoop::odometry_callback) Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
     }
 }
 
@@ -117,7 +117,7 @@ void SwarmLoop::odometry_keyframe_callback(const nav_msgs::Odometry & odometry) 
     if (_imagesraw.stamp.toSec() > 1000) {
         VIOKF_callback(_imagesraw);
     } else {
-        ROS_WARN("Flattened images correspond to this Keyframe not found: %f", odometry.header.stamp.toSec());
+        ROS_WARN("(SwarmLoop::odometry_keyframe_callback) Flattened images correspond to this Keyframe not found: %f", odometry.header.stamp.toSec());
     }
 }
 
@@ -127,7 +127,7 @@ void SwarmLoop::VIOnonKF_callback(const StereoFrame & stereoframe) {
         
     if (!recived_image && (stereoframe.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
         //
-        ROS_INFO("USE non vio kf as KF at first keyframe!");
+        ROS_INFO("(SwarmLoop::VIOnonKF_callback) USE non vio kf as KF at first keyframe!");
         VIOKF_callback(stereoframe);
         return;
     }
@@ -387,10 +387,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         while(0 == loop_net->lcm_handle()) {
         }
     });
+}
 
-
+}
     
-
-}
-
-}

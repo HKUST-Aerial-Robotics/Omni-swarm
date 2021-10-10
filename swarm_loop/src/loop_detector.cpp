@@ -383,8 +383,8 @@ int LoopDetector::compute_relative_pose(
 
     Swarm::Pose initial_old_drone_pose = drone_pose_old;
     Swarm::Pose initial_old_cam_pose = initial_old_drone_pose * old_extrinsic;
-    Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
-    Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
+    // Swarm::Pose old_cam_in_new_initial = drone_pose_now.inverse() * initial_old_cam_pose;
+    // Swarm::Pose old_drone_to_new_initial = drone_pose_old.inverse() * drone_pose_now;
     // std::cout << "OLD to new initial" << std::endl;
     // old_drone_to_new_initial.print();
     // PnPInitialFromCamPose(initial_old_cam_pose, rvec, t);

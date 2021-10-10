@@ -61,7 +61,7 @@ struct StereoFrame{
 
     StereoFrame(vins::FlattenImages vins_flatten, int self_id):
         stamp(vins_flatten.header.stamp) {
-        for (int i = 0; i < vins_flatten.up_cams.size(); i++) {
+        for (int i = 1; i < vins_flatten.up_cams.size(); i++) {
             left_extrisincs.push_back(vins_flatten.extrinsic_up_cams[i]);
             right_extrisincs.push_back(vins_flatten.extrinsic_down_cams[i]);
             

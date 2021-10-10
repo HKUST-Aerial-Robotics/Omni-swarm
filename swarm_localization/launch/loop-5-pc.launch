@@ -2,8 +2,13 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph" default="false" />
-    <arg name="cgraph_path" default="$(env HOME)/graph.dot" />
+    <arg name="cgraph_path" default="/home/dji/swarm_log_latest/graph.dot" />
+    <arg name="cgraph" default="true" />
+    <arg name="enable_distance" default="true" />
+    <arg name="enable_detection" default="true" />
+    <arg name="enable_detection_depth" default="true" />
+    <arg name="enable_loop" default="true" />
+    <arg name="bag_replay" default="false" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
