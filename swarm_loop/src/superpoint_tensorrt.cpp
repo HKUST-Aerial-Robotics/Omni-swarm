@@ -1,6 +1,7 @@
-#include "superpoint_tensorrt.h"
-#include "loop_defines.h"
+#include "swarm_loop/superpoint_tensorrt.h"
+#include "swarm_loop/loop_defines.h"
 #include "ATen/Parallel.h"
+#include "swarm_loop/utils.h"
 
 #define USE_PCA
 //NMS code is modified from https://github.com/KinglittleQ/SuperPoint_SLAM

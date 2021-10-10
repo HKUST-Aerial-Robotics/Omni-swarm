@@ -1,4 +1,4 @@
-#include "swarm_loop.h"
+#include "swarm_loop/swarm_loop.h"
 
 
 class SwarmLoopNode :  public swarm_localization_pkg::SwarmLoop

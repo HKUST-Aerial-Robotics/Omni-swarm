@@ -1,8 +1,7 @@
-#include <loop_detector.h>
+#include <swarm_loop/loop_detector.h>
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <opencv2/opencv.hpp>
 #include <chrono> 
-#include <opencv2/core/eigen.hpp>
 
 using namespace std::chrono; 
 
@@ -174,46 +173,6 @@ cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
     return ret;
 }
 
-void PnPInitialFromCamPose(const Swarm::Pose &p, cv::Mat & rvec, cv::Mat & tvec) {
-    Eigen::Matrix3d R_w_c = p.att().toRotationMatrix();
-    Eigen::Matrix3d R_inital = R_w_c.inverse();
-    Eigen::Vector3d T_w_c = p.pos();
-    cv::Mat tmp_r;
-    Eigen::Vector3d P_inital = -(R_inital * T_w_c);
-
-    cv::eigen2cv(R_inital, tmp_r);
-    cv::Rodrigues(tmp_r, rvec);
-    cv::eigen2cv(P_inital, tvec);
-}
-
-Swarm::Pose PnPRestoCamPose(cv::Mat rvec, cv::Mat tvec) {
-    cv::Mat r;
-    cv::Rodrigues(rvec, r);
-    Eigen::Matrix3d R_pnp, R_w_c_old;
-    cv::cv2eigen(r, R_pnp);
-    R_w_c_old = R_pnp.transpose();
-    Eigen::Vector3d T_pnp, T_w_c_old;
-    cv::cv2eigen(tvec, T_pnp);
-    T_w_c_old = R_w_c_old * (-T_pnp);
-
-    return Swarm::Pose(R_w_c_old, T_w_c_old);
-}
-
-Swarm::Pose AffineRestoCamPose(Eigen::Matrix4d affine) {
-    Eigen::Matrix3d R;
-    Eigen::Vector3d T;
-
-    R = affine.block<3, 3>(0, 0);
-    T = affine.block<3, 1>(0, 3);
-    
-    R = (R.normalized()).transpose();
-    T = R *(-T);
-
-    std::cout << "R of affine\n" << R << std::endl;
-    std::cout << "T of affine\n" << T << std::endl;
-    std::cout << "RtR\n" << R.transpose()*R << std::endl;
-    return Swarm::Pose(R, T);
-}
 
 int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_desc) {
     for (size_t i = 0; i < new_fisheye_desc.images.size(); i++) {

@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef USE_TENSORRT
-#include "tensorrt_generic.h"
+#include "swarm_loop/tensorrt_generic.h"
 
 class MobileNetVLADTensorRT: public TensorRTInferenceGeneric {
 public:

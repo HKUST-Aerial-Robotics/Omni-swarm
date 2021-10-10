@@ -5,8 +5,8 @@
 #include <swarm_msgs/ImageDescriptor.h>
 #include <swarm_msgs/LoopConnection.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
-#include "loop_defines.h"
-#include <loop_cam.h>
+#include "swarm_loop/loop_defines.h"
+#include <swarm_loop/loop_cam.h>
 #include <functional>
 #include <swarm_msgs/Pose.h>
 #include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>

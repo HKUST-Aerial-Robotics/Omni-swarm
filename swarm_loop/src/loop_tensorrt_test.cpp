@@ -1,6 +1,7 @@
-#include "superpoint_tensorrt.h"
-#include "loop_defines.h"
-#include "mobilenetvlad_tensorrt.h"
+#include "swarm_loop/superpoint_tensorrt.h"
+#include "swarm_loop/loop_defines.h"
+#include "swarm_loop/mobilenetvlad_tensorrt.h"
+#include "swarm_loop/utils.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {

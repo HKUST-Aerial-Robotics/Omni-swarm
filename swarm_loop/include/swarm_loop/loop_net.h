@@ -6,7 +6,7 @@
 #include <string>
 #include <lcm/lcm-cpp.hpp>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
-#include "loop_defines.h"
+#include "swarm_loop/loop_defines.h"
 #include <swarm_msgs/swarm_lcm_converter.hpp>
 #include <functional>
 #include <set>

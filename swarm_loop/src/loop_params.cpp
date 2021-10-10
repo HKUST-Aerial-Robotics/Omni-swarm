@@ -1,4 +1,4 @@
-#include "loop_defines.h"
+#include "swarm_loop/loop_defines.h"
 
 int JPG_QUALITY;
 
@@ -20,3 +20,6 @@ int MAX_DIRS;
 bool OUTPUT_RAW_SUPERPOINT_DESC;
 double DEPTH_NEAR_THRES;
 double DEPTH_FAR_THRES;
+
+int MIN_DIRECTION_LOOP;
+double DETECTOR_MATCH_THRES;

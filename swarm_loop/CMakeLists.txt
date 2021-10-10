@@ -65,6 +65,7 @@ add_library(libswarm_loop
   src/loop_net.cpp
   src/loop_params.cpp
   src/swarm_loop.cpp
+  src/loop_utils.cpp
 )
 
 add_library(${PROJECT_NAME}_nodelet

@@ -1,9 +1,9 @@
 #pragma once
 #include "ros/ros.h"
 #include <iostream>
-#include "loop_net.h"
-#include "loop_cam.h"
-#include "loop_detector.h"
+#include "swarm_loop/loop_net.h"
+#include "swarm_loop/loop_cam.h"
+#include "swarm_loop/loop_detector.h"
 #include <chrono> 
 #include <Eigen/Eigen>
 #include <thread>

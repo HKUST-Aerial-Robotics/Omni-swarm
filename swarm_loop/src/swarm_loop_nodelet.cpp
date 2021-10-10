@@ -1,4 +1,4 @@
-#include "swarm_loop.h"
+#include "swarm_loop/swarm_loop.h"
 #include <nodelet/nodelet.h>
 #include <pluginlib/class_list_macros.h>
 

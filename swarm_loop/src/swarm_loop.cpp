@@ -1,11 +1,11 @@
-#include <swarm_loop.h>
+#include <swarm_loop/swarm_loop.h>
+#include <swarm_loop/utils.h>
 
 #include "ros/ros.h"
 #include <iostream>
-#include "loop_net.h"
-#include "loop_cam.h"
-#include "loop_detector.h"
-#include <chrono> 
+#include "swarm_loop/loop_net.h"
+#include "swarm_loop/loop_cam.h"
+#include "swarm_loop/loop_detector.h"
 #include <Eigen/Eigen>
 #include <thread>
 #include <nav_msgs/Odometry.h>
@@ -18,37 +18,7 @@ namespace backward
 {
     backward::SignalHandling sh;
 }
-
-
-int MIN_DIRECTION_LOOP;
-double DETECTOR_MATCH_THRES;
-
-using namespace std::chrono; 
-
-inline double DT_MS(system_clock::time_point start) {
-    return duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
-}
-
 namespace swarm_localization_pkg {
-
-cv::Mat getImageFromMsg(const sensor_msgs::CompressedImageConstPtr &img_msg, int flag) {
-    return cv::imdecode(img_msg->data, flag);
-}
-
-cv_bridge::CvImageConstPtr getImageFromMsg(const sensor_msgs::ImageConstPtr &img_msg)
-{
-    cv_bridge::CvImageConstPtr ptr;
-    // std::cout << img_msg->encoding << std::endl;
-    if (img_msg->encoding == "8UC1" || img_msg->encoding == "mono8")
-    {
-        ptr = cv_bridge::toCvCopy(img_msg, "8UC1");
-    } else if (img_msg->encoding == "16UC1") {
-        ptr = cv_bridge::toCvCopy(img_msg, "16UC1");
-    } else {
-        ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);        
-    }
-    return ptr;
-}
 
 void SwarmLoop::on_loop_connection (LoopConnection & loop_con, bool is_local) {
     if(is_local) {
@@ -85,7 +55,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
 void SwarmLoop::flatten_raw_callback(const vins::FlattenImages & stereoframe) {
     raw_stereo_image_lock.lock();
     ROS_INFO("Received flatten_raw %f", stereoframe.header.stamp.toSec());
-    raw_stereo_images.push(StereoFrame(stereoframe));
+    raw_stereo_images.push(StereoFrame(stereoframe, self_id));
     raw_stereo_image_lock.unlock();
 }
 

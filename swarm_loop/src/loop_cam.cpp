@@ -1,4 +1,4 @@
-#include <loop_cam.h>
+#include <swarm_loop/loop_cam.h>
 #include <camodocal/camera_models/CameraFactory.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>

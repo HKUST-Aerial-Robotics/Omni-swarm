@@ -17,12 +17,14 @@
 #include "mobilenetvlad_tensorrt.h"
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+#include <swarm_loop/utils.h>
 
 //#include <swarm_loop/HFNetSrv.h>
 
 using namespace swarm_msgs;
 using namespace camodocal;
 // using namespace swarm_loop;
+
 
 struct StereoFrame{
     ros::Time stamp;
@@ -43,7 +45,8 @@ struct StereoFrame{
         right_images.push_back(_right_image);
         left_extrisincs.push_back(_left_extrinsic);
         right_extrisincs.push_back(_right_extrinsic);
-        keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
+        keyframe_id = generate_keyframe_id(_stamp, self_id);
+
     }
 
     StereoFrame(ros::Time _stamp, cv::Mat _left_image, cv::Mat _dep_image, 
@@ -53,13 +56,23 @@ struct StereoFrame{
         left_images.push_back(_left_image);
         depth_images.push_back(_dep_image);
         left_extrisincs.push_back(_left_extrinsic);
-        keyframe_id = (_stamp.nsec * 1000)%1000000 + self_id + rand()%1000000;
+        keyframe_id = generate_keyframe_id(_stamp, self_id);
     }
 
-    StereoFrame(vins::FlattenImages vins_flatten):
-        stamp(vins_flatten.header.stamp)
-    {
-    
+    StereoFrame(vins::FlattenImages vins_flatten, int self_id):
+        stamp(vins_flatten.header.stamp) {
+        for (int i = 0; i < vins_flatten.up_cams.size(); i++) {
+            left_extrisincs.push_back(vins_flatten.extrinsic_up_cams[i]);
+            right_extrisincs.push_back(vins_flatten.extrinsic_down_cams[i]);
+            
+            auto _l = getImageFromMsg(vins_flatten.up_cams[i]);
+            auto _r = getImageFromMsg(vins_flatten.down_cams[i]);
+
+            left_images.push_back(_l->image);
+            right_images.push_back(_r->image);
+        }
+
+        keyframe_id = generate_keyframe_id(stamp, self_id);
     }
 };
 

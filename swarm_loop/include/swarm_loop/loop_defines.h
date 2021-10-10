@@ -91,40 +91,6 @@ extern bool LOWER_CAM_AS_MAIN;
 extern bool OUTPUT_RAW_SUPERPOINT_DESC;
 
 extern std::string OUTPUT_PATH;
-class TicToc
-{
-  public:
-    TicToc()
-    {
-        tic();
-    }
-
-    void tic()
-    {
-        start = std::chrono::system_clock::now();
-    }
-
-    double toc()
-    {
-        end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        return elapsed_seconds.count() * 1000;
-    }
-
-  private:
-    std::chrono::time_point<std::chrono::system_clock> start, end;
-};
-
-
-template<typename T, typename B>
-inline void reduceVector(std::vector<T> &v, std::vector<B> status)
-{
-    int j = 0;
-    for (int i = 0; i < int(v.size()); i++)
-        if (status[i])
-            v[j++] = v[i];
-    v.resize(j);
-}
 
 enum CameraConfig{
     STEREO_PINHOLE = 0,
