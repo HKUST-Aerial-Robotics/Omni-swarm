@@ -67,7 +67,7 @@ inline Odometry naive_predict(const Odometry &odom_now, double now, bool debug_o
     Odometry ret = odom_now;
     double t_odom = odom_now.header.stamp.toSec();
     if (debug_output) {
-        ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now - t_odom);
+        ROS_INFO("[LOCAL_PROXY] Naive predict now %f t_odom %f dt %f", now, t_odom, now - t_odom);
     } else {
     }
 
@@ -81,7 +81,7 @@ inline Odometry naive_predict(const Odometry &odom_now, double now, bool debug_o
 inline Odometry naive_predict_dt(const Odometry &odom_now, double dt) {
     Odometry ret = odom_now;
     // double now = ros::Time::now().toSec();
-    // ROS_INFO("Naive predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+    // ROS_INFO("[LOCAL_PROXY] Naive predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
     ret.pose.pose.position.x += dt * odom_now.twist.twist.linear.x;
     ret.pose.pose.position.y += dt * odom_now.twist.twist.linear.y;
     ret.pose.pose.position.z += dt * odom_now.twist.twist.linear.z;
@@ -132,7 +132,7 @@ class LocalProxy {
         }
 
         if (best >=0) {
-            // ROS_INFO("Find sf correspond to sd, dt %3.2fms", min_time*1000);
+            // ROS_INFO("[LOCAL_PROXY] Find sf correspond to sd, dt %3.2fms", min_time*1000);
             return best;
         }
         return -1;
@@ -140,10 +140,10 @@ class LocalProxy {
 
     void on_local_odometry_recv(const nav_msgs::Odometry &odom) {
 
-        // ROS_INFO("Odom recv");
+        // ROS_INFO("[LOCAL_PROXY] Odom recv");
         // double t_odom = odom.header.stamp.toSec();
         // double now = ros::Time::now().toSec();
-        // ROS_INFO("Naive1 predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
+        // ROS_INFO("[LOCAL_PROXY] Naive1 predict now %f t_odom %f dt %f", now, t_odom, now-t_odom);
         pos.x() = odom.pose.pose.position.x;
         pos.y() = odom.pose.pose.position.y;
         pos.z() = odom.pose.pose.position.z;
@@ -168,59 +168,7 @@ class LocalProxy {
         odometry_available = true;
         odometry_updated = true;
 
-        // ROS_INFO("ODOM OK");
-    }
-
-    //EUL is roll pitch yaw
-    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, int _id, ros::Time & ts, Point & pos, Eigen::Vector3d & eul, Point & vel, std::map<int, float> &_dis) {
-        mavlink_node_realtime_info_t node_realtime_info;
-        mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
-
-        ts = LPS2ROSTIME(node_realtime_info.lps_time);
-        //This odom is quat only and don't have yaw
-        int32_t tn = ROSTIME2LPS(ros::Time::now());
-        int32_t dt = tn - node_realtime_info.lps_time;
-        
-        if (!node_realtime_info.odom_vaild) {
-            ROS_WARN_THROTTLE(0.1, "odom not vaild %d", _id);
-            return false;
-        }
-        // ROS_INFO("x %d y %d z %d")
-        // pos.x = node_realtime_info.x/1000.0;
-        // pos.y = node_realtime_info.y/1000.0;
-        // pos.z = node_realtime_info.z/1000.0;
-        pos.x = node_realtime_info.x;
-        pos.y = node_realtime_info.y;
-        pos.z = node_realtime_info.z;
-        vel.x = node_realtime_info.vx / 100.0;
-        vel.y = node_realtime_info.vy / 100.0;
-        vel.z = node_realtime_info.vz / 100.0;
-
-        eul.z() = node_realtime_info.yaw / 1000.0;
-        eul.y() = node_realtime_info.pitch / 1000.0;
-        eul.x() = node_realtime_info.roll / 1000.0;
-
-        for (int i = 0; i < MAX_DRONE_SIZE; i++) {
-            if (node_realtime_info.remote_distance[i] > 0) {
-                //When >0, we have it distance for this id
-                if (node_realtime_info.remote_distance[i] == INVAILD_DISTANCE) {
-                    // _dis[i] = -1;
-                } else {
-                    _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
-                }
-            }
-        }
-
-
-        if (dt < 100) {
-            // ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_RECV", "ID %d NR RECV %d now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
-            // _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
-        } else {
-            // ROS_WARN_THROTTLE_NAMED(0.1, "PROXY_RECV", "ID %d NodeRealtime RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
-        }
-
-
-        return true;
+        // ROS_INFO("[LOCAL_PROXY] ODOM OK");
     }
 
     node_detected_xyzyaw on_node_detected_msg(int _id, mavlink_message_t &msg) {
@@ -234,7 +182,7 @@ class LocalProxy {
         int32_t dt = tn - mdetected.lps_time;
         if (dt < 100) {
             ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
-            // ROS_INFO("ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
+            // ROS_INFO("[LOCAL_PROXY] ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         } else {
             ROS_WARN_THROTTLE(1.0, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         }
@@ -268,7 +216,7 @@ class LocalProxy {
     void send_node_detected(const swarm_msgs::node_detected_xyzyaw & nd) {
         mavlink_message_t msg;
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
-        // ROS_INFO("SEND ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
+        // ROS_INFO("[LOCAL_PROXY] SEND ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
         int inv_dep = 0;
         if (nd.enable_scale) {
             inv_dep = nd.inv_dep * 10000.0;
@@ -318,12 +266,12 @@ class LocalProxy {
         }
         swarm_frame &_sf = sf_queue[s_index];
 
-        // ROS_INFO("SF node size %ld", _sf.node_frames.size());
+        // ROS_INFO("[LOCAL_PROXY] SF node size %ld", _sf.node_frames.size());
         for (int j = 0; j < _sf.node_frames.size(); j++) {
-            // ROS_INFO("NF id %d", _sf.node_frames[j].id);
+            // ROS_INFO("[LOCAL_PROXY] NF id %d", _sf.node_frames[j].id);
             if (_sf.node_frames[j].id == sd_self_id) {
                 _sf.node_frames[j].detected_xyzyaws.push_back(nd);
-                // ROS_INFO("SF BUF %d got detection", j);
+                // ROS_INFO("[LOCAL_PROXY] SF BUF %d got detection", j);
                 break;
             }
         }
@@ -395,7 +343,58 @@ class LocalProxy {
         }
     }
 
+    //EUL is roll pitch yaw
+    bool on_node_realtime_info_mavlink_msg_recv(mavlink_message_t &msg, int _id, ros::Time & ts, Point & pos, Eigen::Vector3d & eul, Point & vel, std::map<int, float> &_dis) {
+        mavlink_node_realtime_info_t node_realtime_info;
+        mavlink_msg_node_realtime_info_decode(&msg, &node_realtime_info);
+
+        ts = LPS2ROSTIME(node_realtime_info.lps_time);
+        //This odom is quat only and don't have yaw
+        int32_t tn = ROSTIME2LPS(ros::Time::now());
+        int32_t dt = tn - node_realtime_info.lps_time;
+        
+        if (!node_realtime_info.odom_vaild) {
+            ROS_INFO_NAMED("PROXY_RECV", "odom not vaild of drone %d", _id);
+            return false;
+        }
+        // ROS_INFO("[LOCAL_PROXY] x %d y %d z %d")
+        // pos.x = node_realtime_info.x/1000.0;
+        // pos.y = node_realtime_info.y/1000.0;
+        // pos.z = node_realtime_info.z/1000.0;
+        pos.x = node_realtime_info.x;
+        pos.y = node_realtime_info.y;
+        pos.z = node_realtime_info.z;
+        vel.x = node_realtime_info.vx / 100.0;
+        vel.y = node_realtime_info.vy / 100.0;
+        vel.z = node_realtime_info.vz / 100.0;
+
+        eul.z() = node_realtime_info.yaw / 1000.0;
+        eul.y() = node_realtime_info.pitch / 1000.0;
+        eul.x() = node_realtime_info.roll / 1000.0;
+
+        for (int i = 0; i < MAX_DRONE_SIZE; i++) {
+            if (node_realtime_info.remote_distance[i] > 0) {
+                //When >0, we have it distance for this id
+                if (node_realtime_info.remote_distance[i] == INVAILD_DISTANCE) {
+                    // _dis[i] = -1;
+                } else {
+                    _dis[i] = node_realtime_info.remote_distance[i] / 1000.0;
+                }
+            }
+        }
+        
+        ROS_INFO("[LOCAL_PROXY] ID %d T %d Pose now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
+            _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
+        
+        // if (dt < 100) {
+        // } else {
+        //     ROS_WARN("[LOCAL_PROXY] ID %d Pose RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
+        // }
+        return true;
+    }
+
     void parse_node_realtime_info(mavlink_message_t & msg, int _id) {
+        // ROS_INFO("[LOCAL_PROXY] parse_node_realtime_info");
         Odometry odom;
         std::map<int, float> _dis;
         ros::Time ts;
@@ -405,11 +404,13 @@ class LocalProxy {
         if (ret) {
             int s_index = find_sf_swarm_detected(ts);
             if (s_index >= 0) {
-                ROS_INFO_THROTTLE(1.0, "Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
+                ROS_INFO_THROTTLE(1.0, "[LOCAL_PROXY] Appending ODOM DIS TS %5.1f sf to frame %d/%ld", (ts - this->tsstart).toSec()*1000, s_index, sf_queue.size());
                 add_odom_dis_to_sf(sf_queue[s_index], _id, pos, eul, vel, ts, _dis);
             } else {
+                ROS_WARN_THROTTLE(1.0, "[LOCAL_PROXY] add_odom_dis_to_sf ID:%d failed queue_size %d", _id, sf_queue.size());
                 if (sf_queue.size() >= 2) {
-                    ROS_WARN_THROTTLE(1.0, "add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
+                    // ROS_WARN_THROTTLE(1.0, "[LOCAL_PROXY] add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
+                    ROS_WARN("[LOCAL_PROXY] add_odom_dis_to_sf ID:%d failed (sf_queue.front() - ts) %4.3f (sf_queue.back() - ts) %4.3f size: %d",
                         _id, 
                         (sf_queue.front().header.stamp - ts).toSec(),
                         (sf_queue.back().header.stamp - ts).toSec(),
@@ -421,10 +422,10 @@ class LocalProxy {
     }
 
     void parse_mavlink_data(incoming_broadcast_data income_data) {
-        // ROS_INFO("incoming data ts %d", income_data.lps_time);
+        // ROS_INFO("[LOCAL_PROXY] incoming data ts %d", income_data.lps_time);
         int _id = income_data.remote_id;
         if (_id == self_id) {
-            ROS_WARN("Receive self message; Return");
+            ROS_WARN("Receive self message %d/%d; Return", _id, self_id);
             return;
         }
         auto buf = income_data.data;
@@ -459,7 +460,7 @@ class LocalProxy {
     void send_mavlink_message(mavlink_message_t &msg, bool send_by_wifi=false) {
         int len = mavlink_msg_to_send_buffer(buf, &msg);
         data_buffer buffer;
-        // ROS_INFO("Msg size %d", len);
+        // ROS_INFO("[LOCAL_PROXY] Msg size %d", len);
 
         buffer.data = std::vector<uint8_t>(buf, buf + len);
 
@@ -484,7 +485,7 @@ class LocalProxy {
             } else {
                 dis_int[i] = (int)(dis[i] * 1000);
             }
-            // ROS_INFO("dis i %d: %d", i, dis_int[i]);
+            // ROS_INFO("[LOCAL_PROXY] dis i %d: %d", i, dis_int[i]);
         }
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
@@ -630,7 +631,7 @@ class LocalProxy {
         while (sf_queue.size() > sf_queue_max_size) {
             auto sf0 = sf_queue[0];
             swarm_frame_pub.publish(sf0);
-//            ROS_INFO("Queue is len that 5, send to fuse");
+//            ROS_INFO("[LOCAL_PROXY] Queue is len that 5, send to fuse");
             sf_queue.erase(sf_queue.begin());
         }
     }
@@ -707,7 +708,7 @@ class LocalProxy {
 
         //Because all information we use is from 0.02s ago
         sf.header.stamp = self_odom.header.stamp;
-        // ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
+        // ROS_INFO("[LOCAL_PROXY] SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
         //        sf.header.stamp = info.header.stamp;
 
         //Switch this to real odom from 0.02 ago
@@ -758,7 +759,7 @@ class LocalProxy {
 
         //Because all information we use is from 0.02s ago
         sf.header.stamp = LPS2ROSTIME(info.sys_time);
-        // ROS_INFO("SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
+        // ROS_INFO("[LOCAL_PROXY] SF TS %f", (sf.header.stamp - this->tsstart).toSec()*1000);
         //        sf.header.stamp = info.header.stamp;
 
         //Switch this to real odom from 0.02 ago
@@ -810,13 +811,14 @@ class LocalProxy {
         return sf;
     }
 
-    void on_uwb_distance_measurement(const remote_uwb_info &info) {
-        ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+    void on_uwb_distance_measurement(remote_uwb_info info) {
+        // ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+        ROS_INFO("[LOCAL_PROXY] Recv RTnode LPS T %d stamp %d now %d", info.sys_time, ROSTIME2LPS(info.header.stamp), ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
         //Using last distances, assume cost 0.02 time offset
         swarm_frame sf = create_swarm_frame_from_uwb(info);
-//        ROS_INFO("push sf %d", info.sys_time);
+//        ROS_INFO("[LOCAL_PROXY] push sf %d", info.sys_time);
         sf_queue.push_back(sf);
 
         float self_dis[100] = {0};
@@ -889,10 +891,10 @@ class LocalProxy {
 
 public:
     LocalProxy(ros::NodeHandle &_nh) : nh(_nh) {
-        ROS_INFO("Start SWARM Drone Proxy. Mavlink channels %d", MAVLINK_COMM_NUM_BUFFERS);
+        ROS_INFO("[LOCAL_PROXY] Start SWARM Drone Proxy. Mavlink channels %d", MAVLINK_COMM_NUM_BUFFERS);
         // bigger than 3 is ok
         nh.param<int>("sf_queue_max_size", sf_queue_max_size, 10);
-        ROS_INFO("sf_queue_max_size %d", sf_queue_max_size);
+        ROS_INFO("[LOCAL_PROXY] sf_queue_max_size %d", sf_queue_max_size);
         nh.param<int>("force_id", _force_id, -1); //Use a force id to publish the swarm frame messages, which means you can direct use gcs to compute same thing
         nh.param<int>("self_id", self_id, 0); 
 
@@ -941,8 +943,8 @@ public:
 };
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "localization_proxy");
-    ros::NodeHandle nh("localization_proxy");
+    ros::init(argc, argv, "LOCAL_PROXY");
+    ros::NodeHandle nh("LOCAL_PROXY");
     new LocalProxy(nh);
     //ros::MultiThreadedSpinner spinner(4);
     //spinner.spin();

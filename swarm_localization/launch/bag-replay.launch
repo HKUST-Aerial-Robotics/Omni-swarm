@@ -12,7 +12,7 @@
     <arg name="outdoor" default="false" />
 
     <arg name="output_folder" default="false" />
-    <arg name="vins_config_file" default="$(env HOME)/bags/swarm_local_2020_12/Configs/SwarmConfig1/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
+    <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc-outdoor.launch" if="$(arg outdoor)">
         <arg name="output" value="log" />
@@ -21,7 +21,7 @@
     </include>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" unless="$(arg outdoor)">
-        <arg name="output" value="screen" />
+        <arg name="output" value="log" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
     </include>
@@ -68,14 +68,14 @@
 
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="log" />
+            <arg name="output" value="screen" />
             <arg name="sf_queue_max_size" value="40" />
         </include>
 
         <include file="$(find inf_uwb_ros)/launch/uwb_node.launch"> 
             <arg name="self_id" default="$(arg drone_id)" />
             <arg name="output" value="log" />
-            <arg name="sim_latency" value="false" />
+            <arg name="sim_latency" value="true" />
             <arg name="latency_buffer_size" value="5" />
         </include>
         <include file="$(find swarm_pilot)/launch/swarm_pilot.launch"> 
