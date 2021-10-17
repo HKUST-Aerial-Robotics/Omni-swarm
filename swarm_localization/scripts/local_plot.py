@@ -758,7 +758,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
     ate_fused_sum = 0
     rmse_fused_yaw_sum = 0
 
-    print("EST{}: ATE P\t Yaw\t       RMSE         \t VO: ATE P\tYaw\tRMSE\t")
+    print("EST:\tATE_P\tATE_Yaw\tRMSE\t\tVO:\tATE_P\tATE_Yaw\tRMSE\t")
     for i in nodes:
         t_ = poses_fused[i]["t"]
         mask = t_<dte

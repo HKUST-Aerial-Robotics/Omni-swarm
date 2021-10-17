@@ -354,7 +354,7 @@ class LocalProxy {
         int32_t dt = tn - node_realtime_info.lps_time;
         
         if (!node_realtime_info.odom_vaild) {
-            ROS_INFO_NAMED("PROXY_RECV", "odom not vaild of drone %d", _id);
+            ROS_INFO_THROTTLE(1.0, "[PROXY_RECV] odom not vaild of drone %d", _id);
             return false;
         }
         // ROS_INFO("[LOCAL_PROXY] x %d y %d z %d")
@@ -383,10 +383,10 @@ class LocalProxy {
             }
         }
         
-        ROS_INFO("[LOCAL_PROXY] ID %d T %d Pose now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
-            _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
         
         // if (dt < 100) {
+                // ROS_INFO("[LOCAL_PROXY] ID %d T %d Pose now %d DT %d POS %3.2f %3.2f %3.2f VEL %3.2f %3.2f %3.2f", 
+                // _id, node_realtime_info.lps_time, tn, dt, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
         // } else {
         //     ROS_WARN("[LOCAL_PROXY] ID %d Pose RECV %d now %d DT %d", _id, node_realtime_info.lps_time, tn, dt);
         // }
@@ -812,8 +812,8 @@ class LocalProxy {
     }
 
     void on_uwb_distance_measurement(remote_uwb_info info) {
-        // ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
-        ROS_INFO("[LOCAL_PROXY] Recv RTnode LPS T %d stamp %d now %d", info.sys_time, ROSTIME2LPS(info.header.stamp), ROSTIME2LPS(ros::Time::now()));
+        ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+        // ROS_INFO("[LOCAL_PROXY] Recv RTnode LPS T %d stamp %d now %d", info.sys_time, ROSTIME2LPS(info.header.stamp), ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
         //Using last distances, assume cost 0.02 time offset
