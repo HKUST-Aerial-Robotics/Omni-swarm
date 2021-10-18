@@ -486,7 +486,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             # plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {_id}")
             pass
         
-        print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}%")
+        print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}% total_len {total_len:.1f}m")
     
     plt.legend()
     plt.grid()
@@ -557,16 +557,16 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax3.grid()
         plt.savefig(output_path+f"est_by_t{i}.png")
 
-def plot_distance_err(poses, poses_fused, poses_vo, poses_path, distances, nodes, is_show=False, t_calib = {1:0, 2:0, 5:0}):
+def plot_distance_err(poses, poses_fused, distances, main_id, nodes, is_show=False):
     for main_id in nodes:
         for i in nodes:
             if i == main_id:
                 continue
             t_ = np.array(distances[i][main_id]["t"])
-            pos_gt = poses[i]["pos_func"](t_+t_calib[i])
+            pos_gt = poses[i]["pos_func"](t_)
             pos_fused = poses_fused[i]["pos_func"](t_)
 
-            main_pos_gt = poses[main_id]["pos_func"](t_+t_calib[main_id])
+            main_pos_gt = poses[main_id]["pos_func"](t_)
             main_pos_fused = poses_fused[main_id]["pos_func"](t_)
 
             #pos_vo = poses_vo[i]["pos"]
@@ -801,7 +801,10 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         ate_vo_sum += ate_vo
         rmse_vo_yaw_sum += rmse_yaw_vo
 
-        print(f"{i}by{main_id}",end="\t")
+        if i == main_id:
+            print(f"Ego{main_id}",end="\t")
+        else:
+            print(f"{main_id}->{i}",end="\t")
         print(f"{ate_fused:3.3f}\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t",end="")
         # if i in poses_path:
         #     print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
@@ -1163,11 +1166,13 @@ def plot_loops_error(poses, loops, nodes):
     distances = np.array(distances)
     fig = plt.figure("Loop Error")
     plt.subplot(411)
+    plt.tight_layout()
     plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
     plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
     plt.plot(ts_a, dpos_errs[:,1], '2', label="Loop Error Y")
     plt.plot(ts_a, dpos_errs[:,2], '3', label="Loop Error Z")
-    plt.title("Error Pos Loop vs Vicon")
+    plt.title(f"Error Pos Loop vs Vicon. ErrNorm max {np.max(dpos_errs_norm):.2f}m")
+    plt.ylim(-np.min(dpos_errs_norm)*1.2, np.max(dpos_errs_norm)*1.2)
     plt.grid(which="both")
     plt.legend()
 
@@ -1201,7 +1206,8 @@ def plot_loops_error(poses, loops, nodes):
     plt.plot(pnp_inlier_nums, dpos_errs_norm, "x", label="")
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
-        plt.text(pnp_inlier_nums[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
+        if dpos_errs_norm[i]>0.2:
+            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{idas[i]}->{idbs[i]}", fontsize=12)
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
@@ -1248,57 +1254,6 @@ def plot_loops_error(poses, loops, nodes):
     print(f"Pos cov {np.cov(dpos_errs[:,0]):3.3f}, {np.cov(dpos_errs[:,1]):3.3f}, {np.cov(dpos_errs[:,2]):3.3f}")
     print(f"Yaw cov {np.cov(dyaw_errs)*57.3:3.3f}")
 
-    _cov_distances = np.linspace(0.2,1.8,20)
-    _cov_pos = []
-    _cov_yaw = []
-    for _mid in _cov_distances:
-        thres_low = _mid - 0.2
-        thres_high = _mid + 0.2
-        mask = np.where((dpos_loop_norms > thres_low) & (dpos_loop_norms < thres_high), True, False)
-        _dpos_err = dpos_errs[mask,:]
-        _dyaw_err = dyaw_errs[mask]
-
-        # mu, std = stats.norm.fit(_dpos_err[:,0])
-        # xmin, xmax = plt.xlim()
-        # x = np.linspace(xmin, xmax, 100)
-        # p = stats.norm.pdf(x, mu, std)
-        # plt.plot(x, p, 'k', linewidth=2)
-        # title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
-        # plt.title(title)
-
-        # plt.subplot(132)
-        # plt.hist(_dpos_err[:,1], 50, density=True, facecolor='g', alpha=0.75)
-        # mu, std = stats.norm.fit(_dpos_err[:,1])
-        # xmin, xmax = plt.xlim()
-        # x = np.linspace(xmin, xmax, 100)
-        # p = stats.norm.pdf(x, mu, std)
-        # plt.plot(x, p, 'k', linewidth=2)
-        # title = "mu = %.2f,  std = %.2f" % (mu, std)
-        # plt.title(title)
-
-        # plt.subplot(133)
-        # plt.hist(_dpos_err[:,2], 50, density=True, facecolor='g', alpha=0.75)
-        # mu, std = stats.norm.fit(_dpos_err[:,2])
-        # xmin, xmax = plt.xlim()
-        # x = np.linspace(xmin, xmax, 100)
-        # p = stats.norm.pdf(x, mu, std)
-        # plt.plot(x, p, 'k', linewidth=2)
-        # title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
-        # plt.title(title)
-        cov = [np.cov(_dpos_err[:,0]), np.cov(_dpos_err[:,1]), np.cov(_dpos_err[:,2])]
-        _cov_pos.append(sqrt(norm(cov)))
-        _cov_yaw.append(sqrt(np.cov(_dyaw_err)))
-        print(f"{_mid} Pos cov {(cov)}, std {sqrt(norm(cov)):3.3f} Yaw cov {sqrt(np.cov(_dyaw_err)):3.3f}")
-    
-    plt.figure()
-    plt.subplot(211)
-    plt.title("PosStd by Distance")
-    plt.plot(_cov_distances, _cov_pos, "+")
-    plt.grid()
-    plt.subplot(212)
-    plt.title("PosStd by Distance")
-    plt.plot(_cov_distances, _cov_yaw, "+")
-    plt.grid()
     # plt.figure()
     # plt.subplot(211)
     # plt.plot(dpos_gt_norms, dpos_errs_norm, 'o', label="GtDistance vs Error")

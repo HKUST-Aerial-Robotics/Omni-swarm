@@ -471,10 +471,12 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
     for (int _dir_new = main_dir_new; _dir_new < main_dir_new + MAX_DIRS; _dir_new ++) {
         int dir_new = _dir_new % MAX_DIRS;
         int dir_old = ((main_dir_old - main_dir_new + MAX_DIRS) % MAX_DIRS + _dir_new)% MAX_DIRS;
-        printf(" [%d: %d](%d:%d) ", dir_old, dir_new, old_frame_desc.images[dir_old].landmark_num, new_frame_desc.images[dir_new].landmark_num );
-        if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num > 0) {
-            dirs_new.push_back(dir_new);
-            dirs_old.push_back(dir_old);
+        if (dir_new < new_frame_desc.images.size() && dir_old < old_frame_desc.images.size()) {
+            printf(" [%d: %d](%d:%d) OK", dir_old, dir_new, old_frame_desc.images[dir_old].landmark_num, new_frame_desc.images[dir_new].landmark_num );
+            if (old_frame_desc.images[dir_old].landmark_num > 0 && new_frame_desc.images[dir_new].landmark_num > 0) {
+                dirs_new.push_back(dir_new);
+                dirs_old.push_back(dir_old);
+            }
         }
     }
 
@@ -498,18 +500,21 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
         std::vector<cv::Point3f> _old_3d;
         std::vector<int> _old_idx;
 
-        compute_correspond_features(
-            new_frame_desc.images[dir_new],
-            old_frame_desc.images[dir_old],
-            _new_norm_2d,
-            _new_3d,
-            _new_idx,
-            _old_norm_2d,
-            _old_3d,
-            _old_idx
-        );
-
-        ROS_INFO("compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, _new_3d.size());
+        if (dir_new < new_frame_desc.images.size() && dir_old < old_frame_desc.images.size()) {
+            compute_correspond_features(
+                new_frame_desc.images[dir_new],
+                old_frame_desc.images[dir_old],
+                _new_norm_2d,
+                _new_3d,
+                _new_idx,
+                _old_norm_2d,
+                _old_3d,
+                _old_idx
+            );
+            ROS_INFO("[SWARM_LOOP] compute_correspond_features on direction %d:%d gives %d common features", dir_old, dir_new, _new_3d.size());
+        } else {
+            ROS_INFO("[SWARM_LOOP]  compute_correspond_features on direction %d:%d failed: no such image");
+        }
 
         if ( _new_3d.size() >= MIN_MATCH_PRE_DIR ) {
             matched_dir_count ++;            
@@ -554,7 +559,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
         std::vector<cv::Point2f> &old_norm_2d,
         std::vector<cv::Point3f> &old_3d,
         std::vector<int> &old_idx) {
-
+    // ROS_INFO("[SWARM_LOOP](LoopDetector::compute_correspond_features) %d %d ", new_img_desc.landmarks_2d.size(), new_img_desc.feature_descriptor.size());
     assert(new_img_desc.landmarks_2d.size() * FEATURE_DESC_SIZE == new_img_desc.feature_descriptor.size() && "Desciptor size of new img desc must equal to to landmarks*256!!!");
     assert(old_img_desc.landmarks_2d.size() * FEATURE_DESC_SIZE == old_img_desc.feature_descriptor.size() && "Desciptor size of old img desc must equal to to landmarks*256!!!");
 

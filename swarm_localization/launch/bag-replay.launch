@@ -55,7 +55,7 @@
     </include>
 
     <include file="$(find swarm_loop)/launch/node-sfisheye.launch" unless="$(arg outdoor)">
-        <arg name="output" value="log" />
+        <arg name="output" value="screen" />
         <arg name="show" value="false" />
         <arg name="width" value="$(arg width)" />
         <arg name="height" value="$(arg height)" />

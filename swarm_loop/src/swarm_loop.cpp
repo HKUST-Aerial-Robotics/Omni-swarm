@@ -54,7 +54,7 @@ StereoFrame SwarmLoop::find_images_raw(const nav_msgs::Odometry & odometry) {
 
 void SwarmLoop::flatten_raw_callback(const vins::FlattenImages & stereoframe) {
     raw_stereo_image_lock.lock();
-    ROS_INFO("(SwarmLoop::flatten_raw_callback) Received flatten_raw %f", stereoframe.header.stamp.toSec());
+    // ROS_INFO("(SwarmLoop::flatten_raw_callback) Received flatten_raw %f", stereoframe.header.stamp.toSec());
     raw_stereo_images.push(StereoFrame(stereoframe, self_id));
     raw_stereo_image_lock.unlock();
 }
@@ -107,7 +107,7 @@ void SwarmLoop::odometry_callback(const nav_msgs::Odometry & odometry) {
         // ROS_INFO("VIO Non Keyframe callback!!");
         VIOnonKF_callback(_stereoframe);
     } else {
-        ROS_WARN("(SwarmLoop::odometry_callback) Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
+        ROS_WARN("[SwarmLoop] (odometry_callback) Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
     }
 }
 
@@ -117,7 +117,7 @@ void SwarmLoop::odometry_keyframe_callback(const nav_msgs::Odometry & odometry) 
     if (_imagesraw.stamp.toSec() > 1000) {
         VIOKF_callback(_imagesraw);
     } else {
-        ROS_WARN("(SwarmLoop::odometry_keyframe_callback) Flattened images correspond to this Keyframe not found: %f", odometry.header.stamp.toSec());
+        ROS_WARN("[SWARM_LOOP] (odometry_keyframe_callback) Flattened images correspond to this Keyframe not found: %f", odometry.header.stamp.toSec());
     }
 }
 
@@ -127,7 +127,7 @@ void SwarmLoop::VIOnonKF_callback(const StereoFrame & stereoframe) {
         
     if (!recived_image && (stereoframe.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
         //
-        ROS_INFO("(SwarmLoop::VIOnonKF_callback) USE non vio kf as KF at first keyframe!");
+        ROS_INFO("[SWARM_LOOP] (VIOnonKF_callback) USE non vio kf as KF at first keyframe!");
         VIOKF_callback(stereoframe);
         return;
     }
@@ -157,7 +157,7 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
     ret.prevent_adding_db = nonkeyframe && dpos < min_movement_keyframe;
 
     if (ret.landmark_num == 0) {
-        ROS_WARN("Null img desc, CNN no ready");
+        ROS_WARN("[SWARM_LOOP] Null img desc, CNN no ready");
         return;
     }
 
@@ -272,7 +272,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         fsSettings["depth_topic"] >> DEPTH_TOPIC;
     } else {
         MAX_DIRS = 0;
-        ROS_ERROR("Camera configuration %d not implement yet.", camera_configuration);
+        ROS_ERROR("[SWARM_LOOP] Camera configuration %d not implement yet.", camera_configuration);
         exit(-1);
     }
 
@@ -331,13 +331,13 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     } else if (camera_configuration == CameraConfig::STEREO_PINHOLE) {
         //Subscribe stereo pinhole, probrably is 
         if (is_comp_images) {
-            ROS_INFO("Input: compressed images %s and %s", COMP_IMAGE0_TOPIC.c_str(), COMP_IMAGE1_TOPIC.c_str());
+            ROS_INFO("[SWARM_LOOP] Input: compressed images %s and %s", COMP_IMAGE0_TOPIC.c_str(), COMP_IMAGE1_TOPIC.c_str());
             comp_image_sub_l = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             comp_image_sub_r = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             comp_sync = new message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> (*comp_image_sub_l, *comp_image_sub_r, 1000);
             comp_sync->registerCallback(boost::bind(&SwarmLoop::comp_stereo_images_callback, this, _1, _2));
         } else {
-            ROS_INFO("Input: raw images %s and %s", IMAGE0_TOPIC.c_str(), IMAGE1_TOPIC.c_str());
+            ROS_INFO("[SWARM_LOOP] Input: raw images %s and %s", IMAGE0_TOPIC.c_str(), IMAGE1_TOPIC.c_str());
             image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE1_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
@@ -345,13 +345,13 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         }
     } else if (camera_configuration == CameraConfig::PINHOLE_DEPTH) {
         if (is_comp_images) {
-            ROS_INFO("Input: compressed images %s and depth %s", COMP_IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
+            ROS_INFO("[SWARM_LOOP] Input: compressed images %s and depth %s", COMP_IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
             comp_image_sub_l = new message_filters::Subscriber<sensor_msgs::CompressedImage> (nh, COMP_IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, DEPTH_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             comp_depth_sync = new message_filters::TimeSynchronizer<sensor_msgs::CompressedImage, sensor_msgs::Image> (*comp_image_sub_l, *image_sub_r, 1000);
             comp_depth_sync->registerCallback(boost::bind(&SwarmLoop::comp_depth_images_callback, this, _1, _2));
         } else {
-            ROS_INFO("Input: raw images %s and depth %s", IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
+            ROS_INFO("[SWARM_LOOP] Input: raw images %s and depth %s", IMAGE0_TOPIC.c_str(), DEPTH_TOPIC.c_str());
             image_sub_l = new message_filters::Subscriber<sensor_msgs::Image> (nh, IMAGE0_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             image_sub_r = new message_filters::Subscriber<sensor_msgs::Image> (nh, DEPTH_TOPIC, 1000, ros::TransportHints().tcpNoDelay(true));
             sync = new message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> (*image_sub_l, *image_sub_r, 1000);
@@ -366,7 +366,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
     
     if (enable_sub_remote_frame) {
-        ROS_INFO("Subscribing remote image from bag");
+        ROS_INFO("[SWARM_LOOP] Subscribing remote image from bag");
         remote_img_sub = nh.subscribe("/swarm_loop/remote_frame_desc", 1, &SwarmLoop::on_remote_frame_ros, this, ros::TransportHints().tcpNoDelay());
     }
 
