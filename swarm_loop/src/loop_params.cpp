@@ -23,3 +23,5 @@ double DEPTH_FAR_THRES;
 
 int MIN_DIRECTION_LOOP;
 double DETECTOR_MATCH_THRES;
+double loop_std_pos;
+double loop_std_ang;

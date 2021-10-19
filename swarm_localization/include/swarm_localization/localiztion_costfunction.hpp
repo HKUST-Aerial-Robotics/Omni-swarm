@@ -251,7 +251,7 @@ public:
 protected:
     template<typename T>
     inline int loop_relpose_residual(T const *const *_poses, T *_residual) const {
-        Pose _rel_pose = loop->relative_pose;
+        const Pose & _rel_pose = loop->relative_pose;
         T rel_pose[4];
         _rel_pose.to_vector_xyzyaw(rel_pose);
 

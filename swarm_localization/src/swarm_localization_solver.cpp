@@ -1214,7 +1214,7 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
                     _nf.position_std_to_last = Eigen::Vector3d::Ones() * traj_length * params.VO_METER_STD_TRANSLATION;
                     _nf.yaw_std_to_last = traj_length * params.VO_METER_STD_ANGLE;
 
-                    ROS_INFO("[SWARM_LOCAL] Traj length %3.3fm pos std %3.3e, yaw std %3.3e", traj_length, _nf.position_std_to_last.x(), _nf.yaw_std_to_last);
+                    // ROS_INFO("[SWARM_LOCAL] Traj length %3.3fm pos std %3.3e, yaw std %3.3e", traj_length, _nf.position_std_to_last.x(), _nf.yaw_std_to_last);
                 }
                 nf_win.push_back(_nf);
                 ts2poseindex[ts] = nf_win.size() - 1;

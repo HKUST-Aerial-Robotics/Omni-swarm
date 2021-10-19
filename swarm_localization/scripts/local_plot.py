@@ -209,13 +209,17 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
         # if msg.ts_a.to_sec() - t0 < -100 or msg.ts_b.to_sec() - t0 < -100:
         #     print(msg.ts_a.to_sec() - t0, msg.ts_b.to_sec() - t0)
         #     continue
+        pos = msg.relative_pose.position
+        q = msg.relative_pose.orientation
+        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
+
         loop = {
             "ts_a": msg.ts_a.to_sec() - t0,
             "ts_b": msg.ts_b.to_sec() - t0,
             "id_a":msg.id_a,
             "id_b":msg.id_b,
-            "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
-            "dyaw":msg.dyaw,
+            "dpos":np.array([pos.x, pos.y, pos.z]),
+            "dyaw":y,
             "pnp_inlier_num": msg.pnp_inlier_num
         }
         loops.append(loop)
