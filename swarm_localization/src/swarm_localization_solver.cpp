@@ -63,6 +63,8 @@ using namespace std::chrono;
 
 #define DISTANCE_CROSS_THRESS 0.15
 
+#define FULL_PATH_STEP 10
+
 
 float VO_METER_STD_TRANSLATION;
 float VO_METER_STD_Z;
@@ -563,10 +565,10 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
             int _id = it.first;
             auto nf = it.second;
             if (nf.vo_available) {
-                if (vo_pathes.find(_id) == vo_pathes.end()) {
-                    vo_pathes[_id] = Swarm::Path(0);
+                if (ego_motion_trajs.find(_id) == ego_motion_trajs.end()) {
+                    ego_motion_trajs.emplace(_id, DroneTrajectory(_id, true));
                 }
-                vo_pathes[_id].push_back(std::make_pair(sf.ts,nf.pose()));
+                ego_motion_trajs[_id].push(nf);
             }
         }
     }
@@ -871,8 +873,8 @@ double SwarmLocalizationSolver::solve() {
 void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_tsid, bool is_init_solve) {
     ROS_INFO("Sync poses to saved while init successful");
     int64_t last_ts = sf_sld_win.back().ts;
-    kf_pathes.clear();
-    full_pathes.clear();
+    keyframe_trajs.clear();
+    full_trajs.clear();
 
     for (const SwarmFrame & sf : sf_sld_win) {
         //Only update param in sf to saved
@@ -880,8 +882,8 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             int _id = it.first;
             const NodeFrame _nf = it.second;
 
-            if (kf_pathes.find(_nf.id) == kf_pathes.end()) {
-                kf_pathes[_nf.id] = Swarm::Path(0);
+            if (keyframe_trajs.find(_nf.id) == keyframe_trajs.end()) {
+                keyframe_trajs.emplace(_id, DroneTrajectory(_nf.id, false));
             }
 
             if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
@@ -907,7 +909,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 memcpy(est_poses_tsid_saved[sf.ts][_id], ptr, 4*sizeof(double));
                 memcpy(est_poses_idts_saved[_id][sf.ts], ptr, 4*sizeof(double));
                 Pose p(ptr, true);
-                kf_pathes[_nf.id].push_back(std::make_pair(_nf.ts, p));
+                keyframe_trajs[_nf.id].push(_nf, p);
                 if (is_init_solve) {
                     last_saved_est_kf_ts.push_back(sf.ts);
                 }
@@ -920,31 +922,32 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
     }
 
     if (generate_full_path) {
-        for (auto & it : kf_pathes) {
+        for (auto & it : keyframe_trajs) {
             int id = it.first;
             auto & _kf_path = it.second;
             int index = 0;
-            full_pathes[id] = Swarm::Path(0);
+            full_trajs.emplace(id, DroneTrajectory(id, false));
 
             int count = 0;
-            for (auto it : vo_pathes[id]) {
-
-                int64_t ts_vo = it.first;
-                int64_t ts_kf = _kf_path[index].first;
+            auto & keyframe_traj = it.second;
+            auto & full_path_traj = full_trajs[id];
+            for (int i = 0; i < ego_motion_trajs[id].trajectory_size(); i ++) {
+                auto & ego_motion_traj = ego_motion_trajs[id];
+                int64_t ts_vo = ego_motion_traj.get_ts(i);
+                int64_t ts_kf = keyframe_traj.get_ts(index);
                 //Found closest KF Pose
-                if (count % 10 == 0 && _kf_path.size() > 0) {
-                    if (_kf_path.size() > 1) {
-                        while (llabs(ts_vo - _kf_path[index].first) > llabs(ts_vo - _kf_path[index + 1].first) && index+1<_kf_path.size()) {
+                if (count % FULL_PATH_STEP == 0 && _kf_path.trajectory_size() > 0) {
+                    if (_kf_path.trajectory_size() > 1) {
+                        while (llabs(ts_vo - _kf_path.get_ts(index)) > llabs(ts_vo - _kf_path.get_ts(index+1)) && index+1<_kf_path.trajectory_size()) {
                             index ++;
                         }
-                        ts_kf = _kf_path[index].first;
+                        ts_kf = _kf_path.get_ts(index);
                     }
 
-                    Pose pose_ref = _kf_path[index].second;
                     Pose vo_ref = all_sf[ts_kf].id2nodeframe[id].pose();
-                    Pose est_ref = _kf_path[index].second;
-                    Pose pose = Predict_By_VO(it.second, vo_ref, est_ref);
-                    full_pathes[id].push_back(std::make_pair(ts_vo, pose));
+                    Pose est_ref = _kf_path.get_pose(index);
+                    Pose pose = Predict_By_VO(ego_motion_traj.get_pose(i), vo_ref, est_ref);
+                    full_path_traj.push(ego_motion_traj.get_node_frame(i), pose);
                 }
                 count ++;
             }
@@ -1825,7 +1828,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     //SPARSE NORMAL 21
     //DENSE NORM DOGLEG 49.31ms
     options.max_num_iterations = 1000;
-    options.linear_solver_type = CGNR;//SPARSE_NORMAL_CHOLESKY;
+    // options.linear_solver_type = SPARSE_NORMAL_CHOLESKY;
     // options.trust_region_strategy_type = ceres::DOGLEG;
 
     if (finish_init) {

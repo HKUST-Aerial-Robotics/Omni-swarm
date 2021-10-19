@@ -229,9 +229,9 @@ public:
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
 
-    std::map<int, Swarm::Path> kf_pathes;
-    std::map<int, Swarm::Path> full_pathes;
-    std::map<int, Swarm::Path> vo_pathes;
+    std::map<int, Swarm::DroneTrajectory> keyframe_trajs;
+    std::map<int, Swarm::DroneTrajectory> full_trajs;
+    std::map<int, Swarm::DroneTrajectory> ego_motion_trajs;
 
     std::string cgraph_path = "";
 

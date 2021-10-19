@@ -185,28 +185,17 @@ protected:
     }
 
     void pub_full_path() {
-        auto pathes = &(swarm_localization_solver->kf_pathes);
+        auto pathes = &(swarm_localization_solver->keyframe_trajs);
 
         if (publish_full_path) {
-            pathes = &(swarm_localization_solver->full_pathes);
+            pathes = &(swarm_localization_solver->full_trajs);
         }
 
         for (auto & it: *pathes) {
             auto id = it.first;
             auto & path = it.second;
 
-            nav_msgs::Path _path;
-            _path.header.frame_id = "world";
-
-            for (auto & pose_stamped: path) {
-                auto & pose = pose_stamped.second;
-                geometry_msgs::PoseStamped _pose_stamped;
-                _pose_stamped.header.stamp.fromNSec(pose_stamped.first);
-                _pose_stamped.header.frame_id = "world";
-                _path.header.stamp = _pose_stamped.header.stamp;
-                _pose_stamped.pose = pose.to_ros_pose();
-                _path.poses.push_back(_pose_stamped);
-            }
+            const nav_msgs::Path & _path = path.get_ros_path();
 
             if (pathes_pubs.find(id) == pathes_pubs.end()) {
                 char name[100] = {0};
