@@ -26,7 +26,6 @@
             init_z_movement : 0.5
             pub_swarm_odom: true
             VO_METER_STD_TRANSLATION: 0.05
-            VO_METER_STD_Z: 0.05
             VO_METER_STD_ANGLE: 0.003
             DISTANCE_STD: 0.07
             #LOOP_XY_STD: 0.5

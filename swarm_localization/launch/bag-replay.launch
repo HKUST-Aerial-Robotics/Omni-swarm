@@ -21,7 +21,7 @@
     </include>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" unless="$(arg outdoor)">
-        <arg name="output" value="log" />
+        <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
     </include>
@@ -55,7 +55,7 @@
     </include>
 
     <include file="$(find swarm_loop)/launch/node-sfisheye.launch" unless="$(arg outdoor)">
-        <arg name="output" value="screen" />
+        <arg name="output" value="log" />
         <arg name="show" value="false" />
         <arg name="width" value="$(arg width)" />
         <arg name="height" value="$(arg height)" />
@@ -68,7 +68,7 @@
 
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="screen" />
+            <arg name="output" value="log" />
             <arg name="sf_queue_max_size" value="40" />
         </include>
 

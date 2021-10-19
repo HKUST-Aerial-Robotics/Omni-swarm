@@ -70,7 +70,7 @@ class SwarmLocalizationNode {
             ROS_ERROR("No such node %d", _nf.id);
             exit(-1);
         }
-        NodeFrame nf(all_node_defs.at(_nf.id), VO_DRIFT_XYZ, VO_METER_STD_ANGLE);
+        NodeFrame nf(all_node_defs.at(_nf.id));
         nf.stamp = _nf.header.stamp;
         nf.ts = nf.stamp.toNSec();
         nf.frame_available = true;
@@ -481,9 +481,8 @@ public:
         nh.param<float>("distance_height_outlier_threshold", solver_params.distance_height_outlier_threshold, 0.5f);
 
 
-        nh.param<float>("VO_METER_STD_TRANSLATION", VO_METER_STD_TRANSLATION, 0.01f);
-        nh.param<float>("VO_METER_STD_Z", VO_METER_STD_Z, 0.02f);
-        nh.param<float>("VO_METER_STD_ANGLE", VO_METER_STD_ANGLE, 0.01f);
+        nh.param<float>("VO_METER_STD_TRANSLATION", solver_params.VO_METER_STD_TRANSLATION, 0.01f);
+        nh.param<float>("VO_METER_STD_ANGLE", solver_params.VO_METER_STD_ANGLE, 0.01f);
         nh.param<float>("DISTANCE_STD", DISTANCE_STD, 0.2f);
 
         nh.param<float>("LOOP_POS_STD_0", LOOP_POS_STD_0, 0.5f);

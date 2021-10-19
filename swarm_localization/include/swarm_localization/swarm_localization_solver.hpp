@@ -81,6 +81,11 @@ struct swarm_localization_solver_params{
     float max_solver_time;
     float distance_outlier_threshold;
     float distance_height_outlier_threshold;
+
+
+    float VO_METER_STD_TRANSLATION = 0.01;
+    float VO_METER_STD_ANGLE = 0.01;
+    float DISTANCE_STD = 0.1;
 };
 
 class SwarmLocalizationSolver {

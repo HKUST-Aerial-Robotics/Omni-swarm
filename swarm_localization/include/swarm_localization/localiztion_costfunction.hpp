@@ -509,9 +509,6 @@ struct SwarmHorizonError {
         return (nf_windows.size()-1)*4;
     }
 
-    Eigen::Vector3d pos_std = Eigen::Vector3d::Ones() * VO_METER_STD_TRANSLATION;
-    double ang_std = VO_METER_STD_ANGLE;
-
     template<typename T>
     bool operator()(T const *const *_poses, T *_residual) const {
 
