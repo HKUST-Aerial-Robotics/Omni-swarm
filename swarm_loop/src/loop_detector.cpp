@@ -123,17 +123,10 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                 }
 
                 if (success) {
-                    ROS_INFO("Adding success matched drone %d to database", flatten_desc.drone_id);
-                    success_loop_nodes.insert(flatten_desc.drone_id);
-
-                    ROS_INFO("\n Loop Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
-                        ret.id_a, ret.id_b,
-                        (ret.ts_b - ret.ts_a).toSec(),
-                        ret.dpos.x, ret.dpos.y, ret.dpos.z,
-                        ret.dyaw*57.3,
-                        ret.pnp_inlier_num
-                    );
-
+                    if (success_loop_nodes.find(flatten_desc.drone_id) == success_loop_nodes.end())  {
+                        ROS_INFO("Adding success matched drone %d to database", flatten_desc.drone_id);
+                        success_loop_nodes.insert(flatten_desc.drone_id);
+                    }
                     on_loop_connection(ret);
                 }
             } else {
@@ -781,10 +774,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     }
 
     if (success) {
-        ret.dpos.x = DP_old_to_new.pos().x();
-        ret.dpos.y = DP_old_to_new.pos().y();
-        ret.dpos.z = DP_old_to_new.pos().z();
-        ret.dyaw = DP_old_to_new.yaw();
+        ret.relative_pose = DP_old_to_new.to_ros_pose();
 
         ret.id_a = old_frame_desc.drone_id;
         ret.ts_a = toROSTime(old_frame_desc.timestamp);
@@ -798,7 +788,23 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.keyframe_id_a = old_frame_desc.msg_id;
         ret.keyframe_id_b = new_frame_desc.msg_id;
 
+        ret.pos_std.x = loop_std_pos;
+        ret.pos_std.y = loop_std_pos;
+        ret.pos_std.z = loop_std_pos;
+
+        ret.ang_std.x = loop_std_ang;
+        ret.ang_std.y = loop_std_ang;
+        ret.ang_std.z = loop_std_ang;
+
         ret.pnp_inlier_num = inlier_num;
+
+        ROS_INFO("[SWARM_LOOP] Loop Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
+            ret.id_a, ret.id_b,
+            (ret.ts_b - ret.ts_a).toSec(),
+            DP_old_to_new.pos().x(), DP_old_to_new.pos().y(), DP_old_to_new.pos().z(),
+            DP_old_to_new.yaw()*57.3,
+            ret.pnp_inlier_num
+        );
 
         return true;
     }
