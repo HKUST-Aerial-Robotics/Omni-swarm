@@ -86,6 +86,7 @@ struct swarm_localization_solver_params{
     float VO_METER_STD_TRANSLATION = 0.01;
     float VO_METER_STD_ANGLE = 0.01;
     float DISTANCE_STD = 0.1;
+    SwarmLocalOutlierRejectionParams outlier_rejection_params;
 };
 
 class SwarmLocalizationSolver {

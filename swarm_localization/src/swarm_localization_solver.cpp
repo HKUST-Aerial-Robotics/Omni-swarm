@@ -101,6 +101,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance),
             loop_outlier_threshold_distance_init(_params.loop_outlier_threshold_distance_init)
     {
+        outlier_rejection = new SwarmLocalOutlierRejection(_params.outlier_rejection_params, ego_motion_trajs);
     }
 
 
@@ -514,19 +515,20 @@ void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge
     auto loc_ret = Swarm::LoopEdge(loop_con);
     auto distance = loc_ret.relative_pose.pos().norm();
     if (!finish_init && distance > loop_outlier_threshold_distance_init || finish_init && distance > loop_outlier_threshold_distance) {
-        ROS_WARN("[SWARM_LOCAL] Add loop failed %d(%d)->%d(%d) Distance too long %f", 
+        ROS_WARN("[SWARM_LOCAL] Add loop %d failed %d(%d)->%d(%d) Distance too long %f", 
+            loc_ret.id,
             loc_ret.id_a, TSShort(loc_ret.ts_a), loc_ret.id_b, TSShort(loc_ret.ts_b), distance);
         return;
     }
     if (enable_loop) {
-#ifndef DEBUG_LOOP_ONLY_INIT
-        all_loops.push_back(loop_con);
-        has_new_keyframe = true;
-#else
+#ifdef DEBUG_LOOP_ONLY_INIT
         if (!finish_init) {
             all_loops.push_back(loop_con);
             has_new_keyframe = true;
         }
+#else
+    all_loops.push_back(loop_con);
+    has_new_keyframe = true;
 #endif
     }
 }
@@ -1672,7 +1674,8 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         Pose dpose_est = Pose::DeltaPose(posea_est, poseb_est, true);
         Pose dpose_err = Pose::DeltaPose(dpose_est, new_loop, true);
         if (dpose_err.pos().norm()>loop_outlier_threshold_pos || fabs(dpose_err.yaw()) > loop_outlier_threshold_yaw) {
-            ROS_WARN("[SWARM_LOCAL] Loop Error %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f ERR P%3.2f Y%3.2f. Delete this loop", 
+            ROS_WARN("[SWARM_LOCAL] Loop %d: %d(%d)->%d(%d) DPOS %3.2f %3.2f %3.2f ERR P%3.2f Y%3.2f. Delete this loop", 
+                loc_ret.id,
                 _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b), 
                 new_loop.pos().x(), new_loop.pos().y(), new_loop.pos().z(),
                 dpose_err.pos().norm(), dpose_err.yaw()*57.3);

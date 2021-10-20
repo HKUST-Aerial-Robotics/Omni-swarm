@@ -7,6 +7,7 @@ using namespace std::chrono;
 
 #define ESTIMATE_AFFINE3D
 #define USE_FUNDMENTAL
+#define MAX_LOOP_ID 100000000
 
 void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
     auto pts = toCV(img_des.landmarks_2d);
@@ -797,8 +798,11 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.ang_std.z = loop_std_ang;
 
         ret.pnp_inlier_num = inlier_num;
+        ret.id =  self_id*MAX_LOOP_ID + loop_count;
+        loop_count ++;
 
-        ROS_INFO("[SWARM_LOOP] Loop Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
+        ROS_INFO("[SWARM_LOOP] Loop %ld Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
+            ret.id,
             ret.id_a, ret.id_b,
             (ret.ts_b - ret.ts_a).toSec(),
             DP_old_to_new.pos().x(), DP_old_to_new.pos().y(), DP_old_to_new.pos().z(),

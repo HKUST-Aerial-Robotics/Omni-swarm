@@ -37,6 +37,7 @@ protected:
     std::vector<cv::Scalar> colors;
 
     double t0 = -1;
+    int loop_count = 0;
     
     bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc,
         int main_dir_new, int main_dir_old,

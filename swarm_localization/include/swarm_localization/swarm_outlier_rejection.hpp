@@ -10,9 +10,10 @@ class SwarmLocalOutlierRejection {
     SwarmLocalOutlierRejectionParams param;
     std::vector<Swarm::LoopEdge> intra_loops;
     std::vector<Swarm::LoopEdge> inter_loops;
+    std::map<int, Swarm::DroneTrajectory>  & ego_motion_trajs;
 public:
-    SwarmLocalOutlierRejection(SwarmLocalOutlierRejectionParams _param):
-        param(_param) {
+    SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs):
+        param(_param), ego_motion_trajs(_ego_motion_trajs) {
     }
 
     std::vector<uint64_t> InterLoopOutlierRejection();
