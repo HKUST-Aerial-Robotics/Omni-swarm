@@ -457,8 +457,8 @@ struct SwarmFrameError {
 //Error for correlation vo drift
 struct SwarmHorizonError {
     const std::vector<NodeFrame> nf_windows;
-    std::map<int64_t, int> ts2nfindex;
-    std::map<int64_t, int> ts2poseindex;
+    std::map<TsType, int> ts2nfindex;
+    std::map<TsType, int> ts2poseindex;
     bool yaw_observability;
     std::vector<double> yaw_init;
 
@@ -467,7 +467,7 @@ struct SwarmHorizonError {
     std::vector<double> delta_ang_stds;
     int _id = -1;
 
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<int64_t, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
+    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<TsType, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
             nf_windows(_nf_win),
             ts2poseindex(_ts2poseindex),
             yaw_observability(_yaw_observability),

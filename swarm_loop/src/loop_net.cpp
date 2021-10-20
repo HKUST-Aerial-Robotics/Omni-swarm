@@ -108,11 +108,10 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     ROS_INFO("Sent Message KEYFRAME %ld with %d/%d landmarks g_desc %d total %d bytes", msg_id, feature_num,img_des.landmark_num, img_desc_header.image_desc_size, byte_sent);
 }
 
-void LoopNet::broadcast_loop_connection(LoopEdge & loop_conn) {
+void LoopNet::broadcast_loop_connection(swarm_msgs::LoopEdge & loop_conn) {
     auto _loop_conn = toLCMLoopEdge(loop_conn);
-    _loop_conn.msg_id = rand() + loop_conn.ts_a.nsec;
 
-    sent_message.insert(_loop_conn.msg_id);
+    sent_message.insert(_loop_conn.id);
     lcm.publish("SWARM_LOOP_CONN", &_loop_conn);
 }
 
@@ -164,7 +163,7 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 
                 const LoopEdge_t* msg) {
 
-    if (sent_message.find(msg->msg_id) != sent_message.end()) {
+    if (sent_message.find(msg->id) != sent_message.end()) {
         // ROS_INFO("Receive self sent Loop message");
         return;
     }

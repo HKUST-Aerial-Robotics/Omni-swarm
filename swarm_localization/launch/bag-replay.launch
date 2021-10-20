@@ -3,8 +3,10 @@
     <arg name="drone_id" default="1" />
     <arg name="viz" default="true" />
     <arg name="vins" default="false" />
-    <arg name="detector" default="false" />
-    <arg name="loop" default="false" />
+    <arg name="detector" default="true" />
+    <arg name="detector_depth" default="false" />
+    <arg name="loop" default="true" />
+    <arg name="distance" default="true" />
     <arg name="bag" default="true" />
     <arg name="bag_path" default="$(env HOME)/bags/swarm_local_pc.bag" />
     <arg name="width" default="600" />
@@ -18,6 +20,10 @@
         <arg name="output" value="log" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
+        <arg name="enable_distance" value="$(arg distance)" />
+        <arg name="enable_detection" value="$(arg detector)" />
+        <arg name="enable_detection_depth" value="$(arg detector_depth)" />
+        <arg name="enable_loop" default="$(arg loop)" />
     </include>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" unless="$(arg outdoor)">

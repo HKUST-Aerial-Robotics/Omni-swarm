@@ -3,6 +3,7 @@
 
 using namespace std;
 using namespace Eigen;
+using namespace Swarm;
 
 #define MIN_DET_THRES 0.5
 #define DET_BASELINE_THRES 0.5

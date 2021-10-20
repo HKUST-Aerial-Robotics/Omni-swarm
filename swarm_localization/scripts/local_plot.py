@@ -21,18 +21,30 @@ def quat2eulers(w, x, y ,z):
     return y, p, r
 
 def RMSE(predictions, targets):
+    if len(predictions) == 0:
+        print("RMSE: no predictions")
+        return 0
     err_sq = (predictions-targets)**2
-    err_sq = err_sq[~numpy.isnan(err_sq)]
-    return np.sqrt(np.mean(err_sq))
+    ret = np.sqrt(np.mean(err_sq))
+    # print(predictions, targets, ret)
+    ret = np.nan_to_num(ret, 0)
+
+    return ret
 
 def ATE_POS(predictions, targets):
     err = predictions-targets
     norm2 = err[:,0]*err[:,0]+err[:,1]*err[:,1]+err[:,2]*err[:,2]
+    if np.isnan(norm2).any():
+        print("ATE_POS has nan")
+
     return np.sqrt(np.mean(norm2))
 
 def yaw_rotate_vec(yaw, vec):
     Re = rotation_matrix(yaw, [0, 0, 1])[0:3, 0:3]
     return np.transpose(np.dot(Re, np.transpose(vec)))
+
+def wrap_pi(data):
+    return (data + np.pi) % (2 * np.pi) - np.pi
 
 def read_pose_swarm_fused(bag, topic, _id, t0):
     pos = []
@@ -301,9 +313,12 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     plat = "pc"
     
     for topic, msg, t in bag.read_messages(topics=["/swarm_drones/swarm_frame"]):
+        if msg.header.stamp.to_sec() < 1e9:
+            continue
+
         if len(msg.node_frames) >= len(nodes):
             t0 = msg.header.stamp.to_sec() + dt
-            # print(t0, msg)
+            # print("t0 is", t0, msg)
             break
     
     for i in nodes:
@@ -645,8 +660,8 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
         yawb_vo = poses_vo[target_id]["ypr_func"](ts)[:, 0]
         
         dp_fused = posb_fused - posa_fused
-        dyaw_fused = yawb_fused - yawa_fused
-        dyaw_vo = yawb_vo - yawa_vo
+        dyaw_fused = wrap_pi(yawb_fused - yawa_fused)
+        dyaw_vo = wrap_pi(yawb_vo - yawa_vo)
         dp_vo = posb_vo - posa_vo
         if groundtruth:
             posa_gt =  poses[main_id]["pos_func"](ts)
@@ -654,7 +669,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             posb_gt =  poses[target_id]["pos_func"](ts)
             yawb_gt = poses[target_id]["ypr_func"](ts)[:,0]
             dp_gt = posb_gt - posa_gt
-            dyaw_gt = yawb_gt - yawa_gt
+            dyaw_gt = wrap_pi(yawb_gt - yawa_gt)
         
         for i in range(len(yawa_fused)):
             yaw = yawa_fused[i]
@@ -670,7 +685,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             dp_vo[i] = yaw_rotate_vec(-yaw, dp_vo[i])
         
         if groundtruth:
-            rmse_yaw = RMSE(yawb_fused - yawa_fused, yawb_gt - yawa_gt)
+            rmse_yaw = RMSE(wrap_pi(yawb_fused - yawa_fused - yawb_gt + yawa_gt), 0)
             rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
             rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
             rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
@@ -684,7 +699,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             #BIAS
             print(f"{np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):+3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):+3.3f}\t{np.mean(dyaw_gt - dyaw_fused)*180/3.14:+3.2f}°",end="\t")
 
-            rmse_yaw = RMSE(yawb_vo - yawa_vo, yawb_gt - yawa_gt)
+            rmse_yaw = RMSE(wrap_pi(yawb_vo - yawa_vo - yawb_gt + yawa_gt), 0)
             rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
             rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
             rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
@@ -724,32 +739,37 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
 
             fig = plt.figure("Relative Pose")
             fig.suptitle(f"Relative Pose {main_id}->{target_ids}")
-            ax1, ax2, ax3 = fig.subplots(3, 1)
+            ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
 
             if groundtruth:
-                ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(i) + "$")
-                ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(i) + "$")
-                ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(i) + "$")
+                ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(target_id) + "$")
+                ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(target_id) + "$")
+                ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(target_id) + "$")
+                ax4.plot(ts, dyaw_gt, label="$Yaw_{gt}^" + str(target_id) + "$")
 
-            ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(i) + "$")
-            ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(i) + "$")
-            ax3.plot(ts, dp_fused[:,2], label="$Z_{fused}^" + str(i) + "$")
+            ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(target_id) + "$")
+            ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(target_id) + "$")
+            ax3.plot(ts, dp_fused[:,2], label="$Z_{fused}^" + str(target_id) + "$")
+            ax4.plot(ts, dyaw_fused, label="$Yaw_{gt}^" + str(target_id) + "$")
             
             ax1.legend()
             ax2.legend()
             ax3.legend()
+            ax4.legend()
             ax1.grid()
             ax2.grid()
             ax3.grid()
+            ax4.grid()
             plt.tight_layout()
                 
             fig = plt.figure("Fused Relative Error")
             fig.suptitle(f"Fused Relative Error {main_id}->{target_ids}")
             ax1, ax2, ax3 = fig.subplots(3, 1)
 
-            ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(i) + f"$ RMSE:{rmse_x:3.3f}")
-            ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(i) + f"$ RMSE:{rmse_y:3.3f}")
-            ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(i) + f"$ RMSE:{rmse_z:3.3f}")
+            ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(target_id) + f"$ RMSE:{rmse_x:3.3f}")
+            ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(target_id) + f"$ RMSE:{rmse_y:3.3f}")
+            ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
+            ax4.plot(ts, wrap_pi(dyaw_gt - dyaw_fused), label="$E_{yawfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
 
             ax1.legend()
             ax2.legend()
@@ -793,6 +813,11 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         rmse_y = RMSE(pos_gt[:,1], pos_fused[:,1])
         rmse_z = RMSE(pos_gt[:,2], pos_fused[:,2])
 
+        if np.isnan(pos_fused).any():
+            print("pos_fused has nan")
+        if np.isnan(pos_gt).any():
+            print("pos_gt has nan")
+        
         ate_fused = ATE_POS(pos_fused, pos_gt)
         rmse_yaw_fused = RMSE(yaw_gt, yaw_fused)
 

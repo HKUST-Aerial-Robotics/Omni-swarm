@@ -11,7 +11,7 @@
 #include <swarm_msgs/swarm_types.hpp>
 #include <mutex>
 #include <swarm_msgs/LoopEdge.h>
-
+#include <swarm_localization/swarm_outlier_rejection.hpp>
 
 
 typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
@@ -45,11 +45,11 @@ Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose es
 
 //Poses is dict of timestamp and then id;
 //state<ts,id>
-typedef std::map<int64_t, std::map<int,double*>> EstimatePoses;
-typedef std::map<int64_t, std::map<int, Eigen::Matrix4d>> EstimateCOV;
-typedef std::map<int, std::map<int64_t,double*>> EstimatePosesIDTS;
-typedef std::vector<std::pair<int64_t, int>> TSIDArray;
-typedef std::map<int, std::map<int64_t, int>>  IDTSIndex;
+typedef std::map<TsType, std::map<int,double*>> EstimatePoses;
+typedef std::map<TsType, std::map<int, Eigen::Matrix4d>> EstimateCOV;
+typedef std::map<int, std::map<TsType,double*>> EstimatePosesIDTS;
+typedef std::vector<std::pair<TsType, int>> TSIDArray;
+typedef std::map<int, std::map<TsType, int>>  IDTSIndex;
 
 
 struct swarm_localization_solver_params{
@@ -93,9 +93,9 @@ class SwarmLocalizationSolver {
     std::mutex solve_lock;
     std::mutex predict_lock;
     std::vector<SwarmFrame> sf_sld_win;
-    std::map<int64_t, SwarmFrame> all_sf;
-    int64_t last_kf_ts = 0;
-    std::vector<int64_t> last_saved_est_kf_ts;
+    std::map<TsType, SwarmFrame> all_sf;
+    TsType last_kf_ts = 0;
+    std::vector<TsType> last_saved_est_kf_ts;
     unsigned int drone_num = 0;
 
     unsigned int solve_count = 0;
@@ -138,9 +138,9 @@ class SwarmLocalizationSolver {
 
     void random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts);
 
-    void init_dynamic_nf_in_keyframe(int64_t ts, NodeFrame &_nf);
+    void init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &_nf);
 
-    void init_static_nf_in_keyframe(int64_t ts, const NodeFrame &_nf);
+    void init_static_nf_in_keyframe(TsType ts, const NodeFrame &_nf);
 
     void sync_est_poses(const EstimatePoses &_est_poses_tsid, bool is_init_solve);
 
@@ -163,7 +163,7 @@ class SwarmLocalizationSolver {
     setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
     CostFunction *
-    _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<int64_t, int> & ts2poseindex, bool is_self) const;
+    _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<TsType, int> & ts2poseindex, bool is_self) const;
     
     void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
@@ -186,7 +186,7 @@ class SwarmLocalizationSolver {
     
     bool solve_with_multiple_init(int max_number = 10);
     
-    std::pair<bool, Swarm::Pose> get_estimated_pose(int _int, int64_t ts) const;
+    std::pair<bool, Swarm::Pose> get_estimated_pose(int _int, TsType ts) const;
 
     inline unsigned int sliding_window_size() const;
     bool NFnotMoving(const NodeFrame & _nf1, const NodeFrame & nf2) const;
@@ -200,6 +200,7 @@ class SwarmLocalizationSolver {
 
     bool generate_full_path = false;
 
+    SwarmLocalOutlierRejection * outlier_rejection = nullptr;
 public:
     int self_id = -1;
     unsigned int thread_num;

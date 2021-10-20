@@ -45,6 +45,11 @@ add_executable(${PROJECT_NAME}_node
         src/swarm_localization_node.cpp
         src/localization_DA_init.cpp
         src/swarm_localization_solver.cpp
+        src/swarm_outlier_rejection/swarm_outlier_rejection.cpp
+        src/swarm_outlier_rejection/third_party/fast_max-clique_finder/src/findClique.cpp
+        src/swarm_outlier_rejection/third_party/fast_max-clique_finder/src/findCliqueHeu.cpp
+        src/swarm_outlier_rejection/third_party/fast_max-clique_finder/src/graphIO.cpp
+        src/swarm_outlier_rejection/third_party/fast_max-clique_finder/src/utils.cpp
 )
 
 

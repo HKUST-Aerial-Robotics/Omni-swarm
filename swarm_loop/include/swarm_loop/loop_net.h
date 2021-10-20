@@ -54,7 +54,7 @@ public:
     void broadcast_img_desc(ImageDescriptor_t & img_des);
     void broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc);
 
-    void broadcast_loop_connection(LoopEdge & loop_conn);
+    void broadcast_loop_connection(swarm_msgs::LoopEdge & loop_conn);
 
     void on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 

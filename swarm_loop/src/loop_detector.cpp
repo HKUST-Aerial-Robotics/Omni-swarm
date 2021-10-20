@@ -109,7 +109,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
             auto stop = high_resolution_clock::now(); 
 
             if (direction_old >= 0 ) {
-                LoopEdge ret;
+                swarm_msgs::LoopEdge ret;
 
                 if (_old_fisheye_img.drone_id == self_id) {
                     success = compute_loop(flatten_desc, _old_fisheye_img, direction, direction_old, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
