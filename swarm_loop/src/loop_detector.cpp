@@ -109,7 +109,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
             auto stop = high_resolution_clock::now(); 
 
             if (direction_old >= 0 ) {
-                LoopConnection ret;
+                LoopEdge ret;
 
                 if (_old_fisheye_img.drone_id == self_id) {
                     success = compute_loop(flatten_desc, _old_fisheye_img, direction, direction_old, imgs, msgid2cvimgs[_old_fisheye_img.msg_id], ret, init_mode);
@@ -636,7 +636,7 @@ bool LoopDetector::compute_correspond_features(const ImageDescriptor_t & new_img
 bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc, const FisheyeFrameDescriptor_t & old_frame_desc,
     int main_dir_new, int main_dir_old,
     std::vector<cv::Mat> imgs_new, std::vector<cv::Mat> imgs_old,
-    LoopConnection & ret, bool init_mode) {
+    LoopEdge & ret, bool init_mode) {
 
     if (new_frame_desc.landmark_num < MIN_LOOP_NUM) {
         return false;
@@ -811,7 +811,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
     return false;
 }
 
-void LoopDetector::on_loop_connection(LoopConnection & loop_conn) {
+void LoopDetector::on_loop_connection(LoopEdge & loop_conn) {
     on_loop_cb(loop_conn);
 }
 

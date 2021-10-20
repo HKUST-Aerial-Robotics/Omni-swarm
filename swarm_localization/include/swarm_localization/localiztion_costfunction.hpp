@@ -226,13 +226,13 @@ public:
     }
 };
 class SwarmLoopError : public GeneralMeasurement2DronesError {
-    const Swarm::LoopConnection* loop;
+    const Swarm::LoopEdge* loop;
 public:
     Eigen::Vector3d loop_std;
     double yaw_std;
     SwarmLoopError(const Swarm::GeneralMeasurement2Drones* _loc) :
         GeneralMeasurement2DronesError(_loc){
-        loop = static_cast<const Swarm::LoopConnection*>(loc);
+        loop = static_cast<const Swarm::LoopEdge*>(loc);
         loop_std = loop->pos_std;
         yaw_std = loop->ang_std.z();
     }

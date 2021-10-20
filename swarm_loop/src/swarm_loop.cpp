@@ -20,7 +20,7 @@ namespace backward
 }
 namespace swarm_localization_pkg {
 
-void SwarmLoop::on_loop_connection (LoopConnection & loop_con, bool is_local) {
+void SwarmLoop::on_loop_connection (LoopEdge & loop_con, bool is_local) {
     if(is_local) {
         loop_net->broadcast_loop_connection(loop_con);
     }
@@ -309,7 +309,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     loop_detector->loop_cam = loop_cam;
     loop_detector->enable_visualize = debug_image;
 
-    loop_detector->on_loop_cb = [&] (LoopConnection & loop_con) {
+    loop_detector->on_loop_cb = [&] (LoopEdge & loop_con) {
         this->on_loop_connection(loop_con, true);
     };
 
@@ -323,8 +323,8 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         }
     };
 
-    loop_net->loopconn_callback = [&] (const LoopConnection_t & loop_conn) {
-        auto loc = toROSLoopConnection(loop_conn);
+    loop_net->loopconn_callback = [&] (const LoopEdge_t & loop_conn) {
+        auto loc = toROSLoopEdge(loop_conn);
         on_loop_connection(loc, false);
     };
 
@@ -365,7 +365,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     odometry_sub  = nh.subscribe("/vins_estimator/odometry", 1, &SwarmLoop::odometry_callback, this, ros::TransportHints().tcpNoDelay());
     keyframe_odometry_sub  = nh.subscribe("/vins_estimator/keyframe_pose", 1, &SwarmLoop::odometry_keyframe_callback, this, ros::TransportHints().tcpNoDelay());
 
-    loopconn_pub = nh.advertise<swarm_msgs::LoopConnection>("loop_connection", 10);
+    loopconn_pub = nh.advertise<swarm_msgs::LoopEdge>("loop_connection", 10);
     
     if (enable_sub_remote_frame) {
         ROS_INFO("[SWARM_LOOP] Subscribing remote image from bag");

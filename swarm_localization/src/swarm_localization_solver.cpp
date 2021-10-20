@@ -507,8 +507,8 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
     }
 }
 
-void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con) {
-    auto loc_ret = Swarm::LoopConnection(loop_con);
+void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
+    auto loc_ret = Swarm::LoopEdge(loop_con);
     auto distance = loc_ret.relative_pose.pos().norm();
     if (!finish_init && distance > loop_outlier_threshold_distance_init || finish_init && distance > loop_outlier_threshold_distance) {
         ROS_WARN("[SWARM_LOCAL] Add loop failed %d(%d)->%d(%d) Distance too long %f", 
@@ -1611,7 +1611,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 }
 
 
-int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const{
+int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopEdge & _loc, Swarm::LoopEdge & loc_ret, double & dt_err, double & dpos) const{
     ros::Time tsa = _loc.ts_a;
     ros::Time tsb = _loc.ts_b;
     
@@ -1636,7 +1636,7 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         return 0;
     }
 
-    loc_ret = Swarm::LoopConnection(_loc);
+    loc_ret = Swarm::LoopEdge(_loc);
     distance = loc_ret.relative_pose.pos().norm();
 
     bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
@@ -1681,15 +1681,15 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
     return 1;
 }
 
-std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopConnection> good_2drone_measurements) {
+std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> good_2drone_measurements) {
     //tuple 
     //    int64_t ts_a, int64_t ts_b, int id_a int id_b;
-    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopConnection>> loop_sets;
-    std::vector<Swarm::LoopConnection*> ret;
+    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
+    std::vector<Swarm::LoopEdge*> ret;
     for (auto & loop : good_2drone_measurements) {
         GeneralMeasurement2DronesKey key = loop.key();
         if (loop_sets.find(key) == loop_sets.end()) {
-            loop_sets[key] = std::vector<Swarm::LoopConnection>();
+            loop_sets[key] = std::vector<Swarm::LoopEdge>();
         }
 
         loop_sets[key].push_back(loop);
@@ -1706,7 +1706,7 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
             yaw_sum = yaw_sum + loop.relative_pose.yaw();
         }
 
-        auto loop = new Swarm::LoopConnection(loop_vec[0]);
+        auto loop = new Swarm::LoopEdge(loop_vec[0]);
         
         loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
         loop->avg_count = loop_vec.size();
@@ -1718,13 +1718,13 @@ std::vector<Swarm::LoopConnection*> average_same_loop(std::vector<Swarm::LoopCon
 
 std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_loops_detections(std::map<int, std::set<int>> & loop_edges) {
     loop_edges.clear();
-    std::vector<Swarm::LoopConnection> good_loops;
+    std::vector<Swarm::LoopEdge> good_loops;
     std::vector<Swarm::DroneDetection> good_detections;
     std::vector<GeneralMeasurement2Drones*> ret;
     std::vector<int> outlier_loops;
     for (int i = 0; i < all_loops.size(); i++) {
         auto _loc = all_loops[i];
-        Swarm::LoopConnection loc_ret;
+        Swarm::LoopEdge loc_ret;
         double dt_err = 0;
         double dpos;
         int ret = loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos);
@@ -2064,7 +2064,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
     for (auto & _loop: good_2drone_measurements) {
         if (_loop->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop)
         {
-            auto loop = static_cast<Swarm::LoopConnection * >(_loop);
+            auto loop = static_cast<Swarm::LoopEdge * >(_loop);
             
             sprintf(edgename, "loop(%d->%d dt %4.1fms); DP [%3.2f,%3.2f,%3.2f] DY %4.3f", 
                 loop->id_a, loop->id_b, (loop->ts_b - loop->ts_a)/1000000.0,

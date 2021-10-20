@@ -3,7 +3,7 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <swarm_msgs/ImageDescriptor.h>
-#include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/LoopEdge.h>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
 #include "swarm_loop/loop_defines.h"
 #include <swarm_loop/loop_cam.h>
@@ -40,7 +40,7 @@ protected:
     
     bool compute_loop(const FisheyeFrameDescriptor_t & new_fisheye_desc, const FisheyeFrameDescriptor_t & old_fisheye_desc,
         int main_dir_new, int main_dir_old,
-        std::vector<cv::Mat> img_new, std::vector<cv::Mat> img_old, LoopConnection & ret, bool init_mode=false);
+        std::vector<cv::Mat> img_new, std::vector<cv::Mat> img_old, LoopEdge & ret, bool init_mode=false);
 
     bool compute_correspond_features(const ImageDescriptor_t & new_img_desc, const ImageDescriptor_t & old_img_desc, 
         std::vector<cv::Point2f> &new_norm_2d,
@@ -94,11 +94,11 @@ protected:
     std::set<int> all_nodes;
 
 public:
-    std::function<void(LoopConnection &)> on_loop_cb;
+    std::function<void(LoopEdge &)> on_loop_cb;
     int self_id = -1;
     LoopDetector();
     void on_image_recv(const FisheyeFrameDescriptor_t & img_des, std::vector<cv::Mat> img = std::vector<cv::Mat>(0));
-    void on_loop_connection(LoopConnection & loop_conn);
+    void on_loop_connection(LoopEdge & loop_conn);
     LoopCam * loop_cam = nullptr;
     bool enable_visualize = true;
     cv::Mat decode_image(const ImageDescriptor_t & _img_desc);

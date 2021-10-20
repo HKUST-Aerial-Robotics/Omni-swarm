@@ -3,7 +3,7 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <swarm_msgs/ImageDescriptor.h>
-#include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/LoopEdge.h>
 #include <camodocal/camera_models/Camera.h>
 #include <camodocal/camera_models/PinholeCamera.h>
 #include <functional>

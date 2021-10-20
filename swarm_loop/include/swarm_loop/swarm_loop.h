@@ -33,7 +33,7 @@ protected:
 
     CameraConfig camera_configuration;
 
-    void on_loop_connection (LoopConnection & loop_con, bool is_local = false);
+    void on_loop_connection (LoopEdge & loop_con, bool is_local = false);
 
     std::queue<StereoFrame> raw_stereo_images;
     std::mutex raw_stereo_image_lock;

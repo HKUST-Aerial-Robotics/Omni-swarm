@@ -2,7 +2,7 @@
 
 #include <ros/ros.h>
 #include <swarm_msgs/ImageDescriptor.h>
-#include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/LoopEdge.h>
 #include <string>
 #include <lcm/lcm-cpp.hpp>
 #include <swarm_msgs/ImageDescriptor_t.hpp>
@@ -47,18 +47,18 @@ public:
     std::map<int64_t, FisheyeFrameDescriptor_t> received_frames;
 
     std::function<void(const FisheyeFrameDescriptor_t &)> frame_desc_callback;
-    std::function<void(const LoopConnection_t &)> loopconn_callback;
+    std::function<void(const LoopEdge_t &)> loopconn_callback;
 
     void image_desc_callback(const ImageDescriptor_t & image);
     void setup_network(std::string _lcm_uri);
     void broadcast_img_desc(ImageDescriptor_t & img_des);
     void broadcast_fisheye_desc(FisheyeFrameDescriptor_t & fisheye_desc);
 
-    void broadcast_loop_connection(LoopConnection & loop_conn);
+    void broadcast_loop_connection(LoopEdge & loop_conn);
 
     void on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 
-                const LoopConnection_t* msg);
+                const LoopEdge_t* msg);
 
     void on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
                 const std::string& chan, 

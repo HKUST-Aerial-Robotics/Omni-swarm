@@ -10,7 +10,7 @@
 #include <functional>
 #include <swarm_msgs/swarm_types.hpp>
 #include <mutex>
-#include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/LoopEdge.h>
 
 
 
@@ -104,7 +104,7 @@ class SwarmLocalizationSolver {
     swarm_localization_solver_params params;
 
     int detection_in_keyframes = 0;
-    std::vector<swarm_msgs::LoopConnection> all_loops;
+    std::vector<swarm_msgs::LoopEdge> all_loops;
     std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
 
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
@@ -149,7 +149,7 @@ class SwarmLocalizationSolver {
 
     bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const;
 
-    int loop_from_src_loop_connection(const swarm_msgs::LoopConnection & _loc, Swarm::LoopConnection & loc_ret, double & dt_err, double & dpos) const;
+    int loop_from_src_loop_connection(const swarm_msgs::LoopEdge & _loc, Swarm::LoopEdge & loc_ret, double & dt_err, double & dpos) const;
 
     bool detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _loc, Swarm::DroneDetection & loc_ret, double & dt_err, double & dpos) const;
 
@@ -244,7 +244,7 @@ public:
     
     void add_new_swarm_frame(const SwarmFrame &sf);
 
-    void add_new_loop_connection(const swarm_msgs::LoopConnection & loop_con);
+    void add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con);
 
     void add_new_detection(const swarm_msgs::node_detected_xyzyaw & detected);
 

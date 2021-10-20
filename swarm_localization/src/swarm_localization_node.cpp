@@ -22,7 +22,7 @@
 #include <std_msgs/Float32.h>
 #include <chrono>
 #include <swarm_msgs/swarm_drone_basecoor.h>
-#include <swarm_msgs/LoopConnection.h>
+#include <swarm_msgs/LoopEdge.h>
 #include <swarm_msgs/swarm_detected.h>
 #include <nav_msgs/Path.h>
 #include "swarm_localization/swarm_localization_params.hpp"
@@ -134,7 +134,7 @@ class SwarmLocalizationNode {
     }
 
 
-    void on_loop_connection_received(const swarm_msgs::LoopConnection & loop_conn) {
+    void on_loop_connection_received(const swarm_msgs::LoopEdge & loop_conn) {
         ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
         this->swarm_localization_solver->add_new_loop_connection(loop_conn);
     }

@@ -720,6 +720,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             ax1.grid()
             ax2.legend()
             ax2.grid()
+            plt.tight_layout()
 
             fig = plt.figure("Relative Pose")
             fig.suptitle(f"Relative Pose {main_id}->{target_ids}")
@@ -740,6 +741,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             ax1.grid()
             ax2.grid()
             ax3.grid()
+            plt.tight_layout()
                 
             fig = plt.figure("Fused Relative Error")
             fig.suptitle(f"Fused Relative Error {main_id}->{target_ids}")
@@ -755,6 +757,8 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             ax1.grid()
             ax2.grid()
             ax3.grid()
+            plt.tight_layout()
+
     if show:
         plt.show()
 
