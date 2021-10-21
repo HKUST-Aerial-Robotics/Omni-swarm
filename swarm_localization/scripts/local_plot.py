@@ -820,25 +820,25 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             print("pos_gt has nan")
         
         ate_fused = ATE_POS(pos_fused, pos_gt)
-        rmse_yaw_fused = RMSE(yaw_gt, yaw_fused)
+        rmse_yaw_fused = RMSE(wrap_pi(yaw_gt-yaw_fused), 0)
 
         ate_fused_sum += ate_fused
         rmse_fused_yaw_sum += rmse_yaw_fused
-        if i in poses_path:
-            pos_gt =  poses[i]["pos_func"](poses_path[i]["t"])
-            rmse_path_x = RMSE(pos_path[:,0] , pos_gt[:,0])
-            rmse_path_y = RMSE(pos_path[:,1] , pos_gt[:,1])
-            rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
+        # if i in poses_path:
+        #     pos_gt =  poses[i]["pos_func"](poses_path[i]["t"])
+        #     rmse_path_x = RMSE(pos_path[:,0] , pos_gt[:,0])
+        #     rmse_path_y = RMSE(pos_path[:,1] , pos_gt[:,1])
+        #     rmse_path_z = RMSE(pos_path[:,2] , pos_gt[:,2])
 
 
-        pos_gt =  poses[i]["pos_func"](poses_vo[i]["t"])
-        yaw_gt =  poses[i]["ypr_func"](poses_vo[i]["t"])[:,0]
-        rmse_vo_x = RMSE(pos_vo[:,0] , pos_gt[:,0])
-        rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt[:,1])
-        rmse_vo_z = RMSE(pos_vo[:,2] , pos_gt[:,2])
+        pos_gt_vo=  poses[i]["pos_func"](poses_vo[i]["t"])
+        yaw_gt_vo =  poses[i]["ypr_func"](poses_vo[i]["t"])[:,0]
+        rmse_vo_x = RMSE(pos_vo[:,0] , pos_gt_vo[:,0])
+        rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt_vo[:,1])
+        rmse_vo_z = RMSE(pos_vo[:,2] , pos_gt_vo[:,2])
 
-        ate_vo = ATE_POS(pos_vo, pos_gt)
-        rmse_yaw_vo = RMSE(yaw_gt, yaw_vo)
+        ate_vo = ATE_POS(pos_vo, pos_gt_vo)
+        rmse_yaw_vo = RMSE(wrap_pi(yaw_vo-yaw_gt_vo), 0)
 
         ate_vo_sum += ate_vo
         rmse_vo_yaw_sum += rmse_yaw_vo
@@ -855,7 +855,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         if show:
             fig = plt.figure(f"Fused Absolute Error {i}")
             fig.suptitle(f"Fused Absolute Error {i}")
-            ax1, ax2, ax3 = fig.subplots(3, 1)
+            ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
             label = f"$errx_{i}$ RMSE{i}:{rmse_x:3.3f}"
             ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
 
@@ -865,14 +865,20 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             label = f"$erry_{i}$ RMSE{i}:{rmse_z:3.3f}"
             ax3.plot(t_,  pos_gt[:,2]  - pos_fused[:,2], label=label)
 
+            label = f"$yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax4.plot(t_, wrap_pi(yaw_gt-yaw_fused), label=label)
+
             label = f"$VO errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
-            ax1.plot(poses_vo[i]["t"], pos_gt[:,0]  - pos_vo[:,0], label=label)
+            ax1.plot(poses_vo[i]["t"], pos_gt_vo[:,0]  - pos_vo[:,0], label=label)
 
             label = f"$VO erry_{i}$ RMSE{i}:{rmse_vo_y:3.3f}"
-            ax2.plot(poses_vo[i]["t"], pos_gt[:,1]  - pos_vo[:,1], label=label)
+            ax2.plot(poses_vo[i]["t"], pos_gt_vo[:,1]  - pos_vo[:,1], label=label)
             
             label = f"$VO errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
-            ax3.plot(poses_vo[i]["t"], pos_gt[:,2]  - pos_vo[:,2], label=label)
+            ax3.plot(poses_vo[i]["t"], pos_gt_vo[:,2]  - pos_vo[:,2], label=label)
+
+            label = f"$VO yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax4.plot(poses_vo[i]["t"], wrap_pi(yaw_gt_vo-yaw_vo), label=label)
 
             # label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
             # ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
