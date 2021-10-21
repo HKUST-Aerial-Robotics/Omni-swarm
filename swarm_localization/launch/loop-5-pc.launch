@@ -9,6 +9,8 @@
     <arg name="enable_detection_depth" default="true" />
     <arg name="enable_loop" default="true" />
     <arg name="bag_replay" default="false" />
+    <arg name="pcm_enable_debug_file" default="false" />
+    <arg name="pcm_enable" default="false" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
@@ -64,6 +66,8 @@
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />
+        <param name="pcm_enable_debug_file" value="$(arg pcm_enable_debug_file)" type="bool" />
+        <param name="pcm_enable" value="$(arg pcm_enable)" type="bool" />
         <param name="cgraph_path" value="$(arg cgraph_path)" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
         <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />

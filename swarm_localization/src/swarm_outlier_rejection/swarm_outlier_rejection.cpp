@@ -3,6 +3,7 @@
 #include "third_party/fast_max-clique_finder/src/graphIO.h"
 #include "third_party/fast_max-clique_finder/src/findClique.h"
 
+// #define PCM_DEBUG_OUTPUT
 
 double computeSquaredMahalanobisDistance(Matrix<double, 6, 1> logmap, Matrix<double, 6, 1> cov_vec) {
     Matrix<double, 6, 1>  inf_vec = cov_vec.cwiseInverse();
@@ -38,6 +39,10 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
     std::map<FrameIdType, int> bad_pair_count;
     std::fstream pcm_errors;
     std::fstream pcm_good;
+
+    if (!param.enable_pcm) {
+        return available_loops;
+    }
 
     if (param.debug_write_pcm_errors) {
         pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
@@ -99,6 +104,7 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                     pcm_graph[j].push_back(i);
                 }
 
+#ifdef PCM_DEBUG_OUTPUT
                 printf("\n");
                 ROS_INFO("[SWARM_LOCAL](OutlierRejection) EdgePair %ld->%ld ", edge1.id, edge2.id);
                 ROS_INFO("[SWARM_LOCAL](OutlierRejection) Edge1 %ld@%d->%ld@%d %s", 
@@ -115,6 +121,7 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                 ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s", odom_b.tostr().c_str());
 
                 printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec %f\n", smd, same_robot_pair == 1, _cov_vec.norm());
+#endif
                 // printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
                 // std::cout << logmap.transpose() << std::endl;
                 if (param.debug_write_pcm_errors) {

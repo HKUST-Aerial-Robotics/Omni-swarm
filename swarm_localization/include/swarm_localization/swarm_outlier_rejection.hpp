@@ -6,6 +6,7 @@ struct SwarmLocalOutlierRejectionParams {
     bool debug_write_pcm_errors = true;
     bool debug_write_pcm_good = true;
     float pcm_thres = 0.6;
+    bool enable_pcm = false;
 };
 
 class SwarmLocalOutlierRejection {
