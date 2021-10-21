@@ -135,14 +135,14 @@ class SwarmLocalizationNode {
 
 
     void on_loop_connection_received(const swarm_msgs::LoopEdge & loop_conn) {
-        ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
+        // ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
         this->swarm_localization_solver->add_new_loop_connection(loop_conn);
     }
 
     double t_last = 0;
 protected:
     void on_swarm_detected(const swarm_msgs::node_detected_xyzyaw & sd) {
-        ROS_INFO("Add new detector from %d to %d", sd.self_drone_id, sd.remote_drone_id);
+        // ROS_INFO("Add new detector from %d to %d", sd.self_drone_id, sd.remote_drone_id);
         this->swarm_localization_solver->add_new_detection(sd);
     }
 
@@ -457,6 +457,7 @@ public:
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
         nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
+        nh.param<float>("pcm_thres", solver_params.outlier_rejection_params.pcm_thres, 0.6f);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("loop_outlier_threshold_distance", solver_params.loop_outlier_threshold_distance, 2.0f);
         nh.param<float>("loop_outlier_threshold_distance_init", solver_params.loop_outlier_threshold_distance_init, 0.5f);

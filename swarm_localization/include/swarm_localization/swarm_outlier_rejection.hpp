@@ -3,7 +3,9 @@
 #include <swarm_msgs/swarm_types.hpp>
 
 struct SwarmLocalOutlierRejectionParams {
-
+    bool debug_write_pcm_errors = true;
+    bool debug_write_pcm_good = true;
+    float pcm_thres = 0.6;
 };
 
 class SwarmLocalOutlierRejection {
@@ -20,6 +22,9 @@ public:
     std::vector<uint64_t> IntraLoopOutlierRejection();
 
     std::vector<Swarm::LoopEdge> OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops);
+    std::vector<Swarm::LoopEdge> OutlierRejectionInterLoopEdges(const std::vector<Swarm::LoopEdge> & inter_loops);
+    std::vector<Swarm::LoopEdge> OutlierRejectionIntraLoopEdges(const std::vector<Swarm::LoopEdge> & intra_loops);
+
 };
 
 #include <chrono>

@@ -232,6 +232,7 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
             "id_b":msg.id_b,
             "dpos":np.array([pos.x, pos.y, pos.z]),
             "dyaw":y,
+            "id":msg.id,
             "pnp_inlier_num": msg.pnp_inlier_num
         }
         loops.append(loop)
@@ -1141,9 +1142,7 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     plt.figure("Yaw")
     plt.plot(ts_a, yawa_gts)
 
-
-
-def plot_loops_error(poses, loops, nodes):
+def plot_loops_error(poses, loops):
     _loops_data = []
     dpos_loops = []
     dpos_gts = []
@@ -1162,9 +1161,13 @@ def plot_loops_error(poses, loops, nodes):
     pnp_inlier_nums = []
     idas = []
     idbs = []
-    print("Total loops", len(loops))
+    count_inter_loop = 0
+
+    loops_error = {}
     for loop in loops:
         # print(loop["id_a"], "->", loop["id_b"])
+        if loop["id_a"] != loop["id_b"]:
+            count_inter_loop += 1
         posa_gt = poses[loop["id_a"]]["pos_func"](loop["ts_a"])
         posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
         yawa_gt = poses[loop["id_a"]]["ypr_func"](loop["ts_a"])[0]
@@ -1182,6 +1185,7 @@ def plot_loops_error(poses, loops, nodes):
         dpos_gt_norms.append(norm(dpos_gt))
         dpos_loop_norms.append(norm(dpos_loop))
         dpos_errs_norm.append(norm(dpos_gt - dpos_loop))
+        loops_error[loop["id"]] = {"pos": norm(dpos_gt - dpos_loop), "yaw": yawb_gt-yawa_gt, "dt": fabs(loop["ts_b"]-loop["ts_a"])}
         posa_gts.append(posa_gt)
         dyaws.append(loop["dyaw"])
         dyaw_gts.append(yawb_gt-yawa_gt)
@@ -1198,9 +1202,10 @@ def plot_loops_error(poses, loops, nodes):
 
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
+    
     outlier_num = (np.array(dpos_errs_norm)>0.5).sum()
     total_loops = len(dpos_errs_norm)
-    print(f"Outlier rate {outlier_num/total_loops*100:3.2f}% total loops {total_loops} outlier_num {outlier_num}")
+    print(f"Outlier rate {outlier_num/total_loops*100:3.2f}% total loops {total_loops} inter_loops {count_inter_loop} outlier_num {outlier_num}")
     posa_gts = np.array(posa_gts)
     dpos_errs = np.array(dpos_errs)
     dyaw_errs = np.array(dyaw_errs)
@@ -1248,7 +1253,7 @@ def plot_loops_error(poses, loops, nodes):
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
         if dpos_errs_norm[i]>0.2:
-            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{idas[i]}->{idbs[i]}", fontsize=12)
+            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{loops[i]['id']}|{idas[i]}->{idbs[i]}", fontsize=12)
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
@@ -1304,6 +1309,105 @@ def plot_loops_error(poses, loops, nodes):
     # plt.grid(which="both")
     # plt.legend()
     # plt.show()
+    return loops_error
+
+def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
+    pcm_errors = {}
+    pcm_errors_sum = {}
+    pcm_out_thres_count = {}
+    good_loop_id = set()
+    with open(pcm_folder+"/pcm_errors.txt", "r") as f:
+        lines = f.readlines()
+        count = 0
+        for line in lines:
+            nums = line.split(" ")
+            if len(nums) > 1:
+                loop_id_a = int(nums[0])
+                loop_id_b = int(nums[1])
+                pcm_error = float(nums[2])
+                if loop_id_a not in pcm_errors:
+                    pcm_errors[loop_id_a] = {}
+                    pcm_errors_sum[loop_id_a] = 0.0
+                    pcm_out_thres_count[loop_id_a] = 0
+                if loop_id_b not in pcm_errors:
+                    pcm_errors[loop_id_b] = {}
+                    pcm_errors_sum[loop_id_b] = 0.0
+                    pcm_out_thres_count[loop_id_b] = 0
+
+                pcm_errors[loop_id_a][loop_id_b] = pcm_error
+                pcm_errors[loop_id_b][loop_id_a] = pcm_error
+                pcm_errors_sum[loop_id_b] += pcm_error
+                pcm_errors_sum[loop_id_a] += pcm_error
+
+                if pcm_error > pcm_threshold:
+                    pcm_out_thres_count[loop_id_a] += 1
+                    pcm_out_thres_count[loop_id_b] += 1
+    with open(pcm_folder+"/pcm_good.txt", "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            good_loop_id.add(int(line))
+    print(f"PCM loops {len(pcm_errors)}")
+    pcm_errors_sum_array = []
+    pcm_out_thres_count_array = []
+    loop_error_T = []
+    loop_error_yaw = []
+    loop_id_array = []
+    loop_dt = []
+    for loop_id in pcm_errors_sum:
+        loop_id_array.append(loop_id)
+        pcm_errors_sum_array.append(pcm_errors_sum[loop_id])
+        pcm_out_thres_count_array.append(pcm_out_thres_count[loop_id])
+        loop_error_T.append(loops_error[loop_id]["pos"])
+        loop_error_yaw.append(loops_error[loop_id]["yaw"])
+        loop_dt.append(loops_error[loop_id]["dt"])
+    loop_error_yaw = np.abs(wrap_pi(np.array(loop_error_yaw)))
+    plt.figure("pcm_errors_sum_array vs loop_error_T")
+    plt.plot(pcm_errors_sum_array, loop_error_T, ".")
+    plt.xlabel("pcm_errors_sum_array")
+    plt.ylabel("loop error T")
+
+    for i in range(len(pcm_errors_sum_array)):
+        if loop_error_T[i]>0.5:
+            plt.text(pcm_errors_sum_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
+        if loop_id_array[i] not in good_loop_id:
+            plt.text(pcm_errors_sum_array[i], loop_error_T[i], "x", fontsize=12, color="red")
+            
+
+    plt.grid()
+
+    plt.figure("pcm_errors_sum_array vs loop_error_yaw")
+    plt.plot(pcm_errors_sum_array, loop_error_yaw, ".")
+    plt.xlabel("pcm_errors_sum_array")
+    plt.ylabel("loop error yaw")
+    plt.grid()
+
+    for i in range(len(pcm_errors_sum_array)):
+        if loop_id_array[i] not in good_loop_id:
+            plt.text(pcm_errors_sum_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
+            
+
+    plt.figure("pcm_errors_count vs loop_error_T")
+    plt.plot(pcm_out_thres_count_array, loop_error_T, ".")
+    plt.xlabel("pcm_out_thres_count_array")
+    plt.ylabel("loop error T")
+    plt.grid()
+    for i in range(len(pcm_errors_sum_array)):
+        if loop_error_T[i]>0.5:
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
+        if loop_id_array[i] not in good_loop_id:
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], "x", fontsize=12, color="red")
+
+    plt.figure("pcm_errors_count vs loop_error_yaw")
+    plt.plot(pcm_out_thres_count_array, loop_error_yaw, ".")
+    for i in range(len(pcm_errors_sum_array)):
+        if loop_id_array[i] not in good_loop_id:
+            plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
+
+    plt.xlabel("pcm_out_thres_count_array")
+    plt.ylabel("loop error yaw")
+    plt.grid()
+    plt.plot()
+    return pcm_errors
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Localization Plot and Accuracy Analysis')
