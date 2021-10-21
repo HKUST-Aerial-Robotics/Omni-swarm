@@ -1353,6 +1353,8 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     loop_error_yaw = []
     loop_id_array = []
     loop_dt = []
+    loop_ta = []
+    loop_tb = []
     for loop_id in pcm_errors_sum:
         loop_id_array.append(loop_id)
         pcm_errors_sum_array.append(pcm_errors_sum[loop_id])
@@ -1367,7 +1369,7 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     plt.ylabel("loop error T")
 
     for i in range(len(pcm_errors_sum_array)):
-        if loop_error_T[i]>0.5:
+        if loop_error_T[i]>0.4:
             plt.text(pcm_errors_sum_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_errors_sum_array[i], loop_error_T[i], "x", fontsize=12, color="red")
@@ -1392,7 +1394,7 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     plt.ylabel("loop error T")
     plt.grid()
     for i in range(len(pcm_errors_sum_array)):
-        if loop_error_T[i]>0.5:
+        if loop_error_T[i]>0.4:
             plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_T[i], "x", fontsize=12, color="red")

@@ -88,6 +88,7 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                     _cov_vec += ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_b, 0.0001, 0.0001);
                     _cov_vec += ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_a, 0.0001, 0.0001);
                 }
+
                 Swarm::Pose err_pose = odom_a*p_edge2*odom_b.inverse()*p_edge1.inverse();
                 auto logmap = err_pose.log_map();
                 double smd = computeSquaredMahalanobisDistance(logmap, _cov_vec);
@@ -98,21 +99,22 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                     pcm_graph[j].push_back(i);
                 }
 
-                // printf("\n");
-                // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Edge1 %ld@%d->%ld@%d %s", 
-                //     edge1.ts_a, edge1.id_a,
-                //     edge1.ts_b, edge1.id_b,
-                //     edge1.relative_pose.tostr().c_str()
-                // );
-                // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Edge2 %ld@%d->%ld@%d %s", 
-                //     edge2.ts_a, edge2.id_a,
-                //     edge2.ts_b, edge2.id_b,
-                //     edge2.relative_pose.tostr().c_str()
-                // );
-                // ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_a %s", odom_a.tostr().c_str());
-                // ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s", odom_b.tostr().c_str());
+                printf("\n");
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) EdgePair %ld->%ld ", edge1.id, edge2.id);
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) Edge1 %ld@%d->%ld@%d %s", 
+                    edge1.ts_a, edge1.id_a,
+                    edge1.ts_b, edge1.id_b,
+                    edge1.relative_pose.tostr().c_str()
+                );
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) Edge2 %ld@%d->%ld@%d %s", 
+                    edge2.ts_a, edge2.id_a,
+                    edge2.ts_b, edge2.id_b,
+                    edge2.relative_pose.tostr().c_str()
+                );
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_a %s", odom_a.tostr().c_str());
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s", odom_b.tostr().c_str());
 
-                // printf("[SWARM_LOCAL](OutlierRejection) EdgePair %ld->%ld squaredMahalanobisDistance %f Same Direction %d\n", edge1.id, edge2.id, smd, same_robot_pair == 1);
+                printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec %f\n", smd, same_robot_pair == 1, _cov_vec.norm());
                 // printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
                 // std::cout << logmap.transpose() << std::endl;
                 if (param.debug_write_pcm_errors) {
