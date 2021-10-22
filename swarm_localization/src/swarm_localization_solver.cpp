@@ -1479,12 +1479,12 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
         //Find suitable timestamp for tsa
         //If the first frame is older than tsa, than useless
 
-        if (sf_sld_win[i].has_node(_ida) && fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec()) < min_ts_err_a) {
+        if (sf_sld_win[i].has_node(_ida) && sf_sld_win[i].id2nodeframe.at(_ida).vo_available && fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec()) < min_ts_err_a) {
             min_ts_err_a = fabs((sf_sld_win.at(i).id2nodeframe.at(_ida).stamp - tsa).toSec());
             _index_a = i;
         }
 
-        if (sf_sld_win[i].has_node(_idb) && fabs((sf_sld_win[i].id2nodeframe.at(_idb).stamp - tsb).toSec()) < min_ts_err_b) {
+        if (sf_sld_win[i].has_node(_idb) && sf_sld_win[i].id2nodeframe.at(_idb).vo_available && fabs((sf_sld_win[i].id2nodeframe.at(_idb).stamp - tsb).toSec()) < min_ts_err_b) {
             min_ts_err_b = fabs((sf_sld_win.at(i).id2nodeframe.at(_idb).stamp - tsb).toSec());
             _index_b = i;
         }
@@ -1519,11 +1519,8 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     bool success = find_node_frame_for_measurement_2drones(&det_ret, _index_a, _index_b, dt_err);
     if (!success) {
-        // ROS_WARN("Detection find failed");
         return false;
-    } else {
     }
-   
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
@@ -1646,7 +1643,6 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
    
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
-
 
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3

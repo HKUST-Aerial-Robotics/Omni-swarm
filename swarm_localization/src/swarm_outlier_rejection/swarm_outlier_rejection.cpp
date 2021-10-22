@@ -17,12 +17,6 @@ double computeSquaredMahalanobisDistance(Vec logmap, Vec cov_vec) {
 }
 
 
-std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionIntraLoopEdges(const std::vector<Swarm::LoopEdge> & intra_loops) {
-    ROS_INFO("[SWARM_LOCAL](OutlierRejection) Intra-LCM");
-    auto good_loops = OutlierRejectionLoopEdgesPCM(intra_loops); 
-    return good_loops;
-}
-
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
     if (param.debug_write_pcm_good) {
         pcm_good.open("/root/output/pcm_good.txt", std::ios::out);
@@ -32,21 +26,33 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
         pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
     }
 
-    std::vector<Swarm::LoopEdge> inter_loops;
-    std::vector<Swarm::LoopEdge> intra_loops;
+    std::map<int, std::map<int, std::vector<Swarm::LoopEdge>>> inter_loops;
+    std::map<int, std::vector<Swarm::LoopEdge >> intra_loops;
+    std::vector<Swarm::LoopEdge> good_loops;
     for (auto & edge: available_loops) {
         if (edge.is_inter_loop()) {
-            inter_loops.emplace_back(edge);
+            inter_loops[edge.id_a][edge.id_b].emplace_back(edge);
+            inter_loops[edge.id_b][edge.id_b].emplace_back(edge);
         } else {
-            intra_loops.emplace_back(edge);
+            intra_loops[edge.id_a].emplace_back(edge);
         }
     }
 
-    auto good_loops = OutlierRejectionIntraLoopEdges(intra_loops);
+    for (auto it : intra_loops) {
+        ROS_INFO("[SWARM_LOCAL](OutlierRejection) Intra-LCM drone %d", it.first);
+        good_loops = OutlierRejectionLoopEdgesPCM(it.second);
+    }
 
-    ROS_INFO("[SWARM_LOCAL](OutlierRejection) Inter-LCM");
-    auto good_inter_loops = OutlierRejectionLoopEdgesPCM(inter_loops);
-    good_loops.insert( good_loops.end(), good_inter_loops.begin(), good_inter_loops.end() );
+
+    for (auto it_a: inter_loops) {
+        for (auto it_b: it_a.second) {
+            if (it_a.first > it_b.first) {
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) Inter-LCM drone%d<->drone%d", it_a.first, it_b.first);
+                auto good_inter_loops = OutlierRejectionLoopEdgesPCM(it_b.second);
+                good_loops.insert( good_loops.end(), good_inter_loops.begin(), good_inter_loops.end() );
+            }
+        }
+    }
 
     if (param.debug_write_pcm_good) {
         pcm_good.close();
@@ -63,7 +69,7 @@ bool SwarmLocalOutlierRejection::check_outlier_by_odometry_consistency(const Swa
     return false;
 }
 
-std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<Swarm::LoopEdge> & available_loops) {
+std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<Swarm::LoopEdge > & available_loops) {
     std::map<FrameIdType, int> bad_pair_count;
 
     if (!param.enable_pcm) {
