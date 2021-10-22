@@ -13,6 +13,9 @@ import copy
 plt.rc('figure', figsize=(10,5))
 #plt.rc('figure', figsize=(20,15))
 
+def short_loop_id(id):
+    return id //100000 + id%100000
+
 def quat2eulers(w, x, y ,z):
     r = atan2(2 * (w * x + y * z),
                     1 - 2 * (x * x + y * y))
@@ -1366,7 +1369,7 @@ def plot_loops_error(poses, loops, outlier_thres=1.0):
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
         if dpos_errs_norm[i]>0.2:
-            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{loops[i]['id']}|{idas[i]}->{idbs[i]}", fontsize=12)
+            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loops[i]['id'])}|{idas[i]}->{idbs[i]}", fontsize=12)
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
@@ -1488,7 +1491,7 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
 
     for i in range(len(pcm_errors_sum_array)):
         if loop_error_T[i]>0.4:
-            plt.text(pcm_errors_sum_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
+            plt.text(pcm_errors_sum_array[i], loop_error_T[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_errors_sum_array[i], loop_error_T[i], "x", fontsize=12, color="red")
             
@@ -1513,7 +1516,7 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     plt.grid()
     for i in range(len(pcm_errors_sum_array)):
         if loop_error_T[i]>0.4:
-            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{loop_id_array[i]},{loop_dt[i]:.1f}s", fontsize=12)
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_T[i], "x", fontsize=12, color="red")
 

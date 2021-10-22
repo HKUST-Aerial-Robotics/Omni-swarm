@@ -458,7 +458,7 @@ public:
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
         nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
         nh.param<float>("pcm_thres", solver_params.outlier_rejection_params.pcm_thres, 0.6f);
-        nh.param<bool>("pcm_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_good, false);
+        nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_good, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_errors, false);
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);

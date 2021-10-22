@@ -514,23 +514,17 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
     auto loc_ret = Swarm::LoopEdge(loop_con);
     auto distance = loc_ret.relative_pose.pos().norm();
-    if (!finish_init && distance > loop_outlier_threshold_distance_init || finish_init && distance > loop_outlier_threshold_distance) 
+    if (distance > loop_outlier_threshold_distance) 
     {
         ROS_WARN("[SWARM_LOCAL] Add loop %d failed %d(%d)->%d(%d) Distance too long %f", 
             loc_ret.id,
             loc_ret.id_a, TSShort(loc_ret.ts_a), loc_ret.id_b, TSShort(loc_ret.ts_b), distance);
         return;
     }
+
     if (enable_loop) {
-#ifdef DEBUG_LOOP_ONLY_INIT
-        if (!finish_init) {
-            all_loops.push_back(loop_con);
-            has_new_keyframe = true;
-        }
-#else
-    all_loops.push_back(loop_con);
-    has_new_keyframe = true;
-#endif
+        all_loops.push_back(loop_con);
+        has_new_keyframe = true;
     }
 }
 

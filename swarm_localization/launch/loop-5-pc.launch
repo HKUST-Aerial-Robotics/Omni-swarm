@@ -27,9 +27,10 @@
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
-            vo_cov_pos_per_meter: 0.05 #Worse VO
+            vo_cov_pos_per_meter: 0.01 #Worse VO
             vo_cov_yaw_per_meter: 0.003 #Worse VO
             DISTANCE_STD: 0.07
+            pcm_thres: 3.455
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
@@ -45,8 +46,8 @@
             distance_outlier_threshold: 1.0
             distance_height_outlier_threshold: 1.0
             loop_outlier_threshold_pos: 0.5
-            loop_outlier_threshold_distance: 1.2
-            loop_outlier_threshold_distance_init: 1.8
+            loop_outlier_threshold_distance: 2.0
+            loop_outlier_threshold_distance_init: 2.0
             loop_outlier_threshold_yaw: 0.5
 
             max_solver_time: 0.15

@@ -23,9 +23,11 @@ public:
     std::vector<uint64_t> IntraLoopOutlierRejection();
 
     std::vector<Swarm::LoopEdge> OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops);
-    std::vector<Swarm::LoopEdge> OutlierRejectionInterLoopEdges(const std::vector<Swarm::LoopEdge> & inter_loops);
+    std::vector<Swarm::LoopEdge> OutlierRejectionLoopEdgesPCM(const std::vector<Swarm::LoopEdge> & inter_loops);
     std::vector<Swarm::LoopEdge> OutlierRejectionIntraLoopEdges(const std::vector<Swarm::LoopEdge> & intra_loops);
 
+    //This should be performed in swarm_loop.
+    bool check_outlier_by_odometry_consistency(const Swarm::LoopEdge & loop);
 };
 
 #include <chrono>

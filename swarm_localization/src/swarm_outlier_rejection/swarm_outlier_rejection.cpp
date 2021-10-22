@@ -3,21 +3,35 @@
 #include "third_party/fast_max-clique_finder/src/graphIO.h"
 #include "third_party/fast_max-clique_finder/src/findClique.h"
 
-#define PCM_DEBUG_OUTPUT
+// #define PCM_DEBUG_OUTPUT
 
-double computeSquaredMahalanobisDistance(Matrix<double, 6, 1> logmap, Matrix<double, 6, 1> cov_vec) {
-    Matrix<double, 6, 1>  inf_vec = cov_vec.cwiseInverse();
-    auto inf_mat = cov_vec.asDiagonal();
-    Eigen::Matrix<double, 1, 1> ret = logmap.transpose() * inf_mat * logmap;
+std::fstream pcm_good;
+std::fstream pcm_errors;
+
+template <typename Vec>
+double computeSquaredMahalanobisDistance(Vec logmap, Vec cov_vec) {
+    auto inf_vec = cov_vec.cwiseInverse();
+    auto inf_mat = inf_vec.asDiagonal();
+    auto ret = logmap.transpose() * inf_mat * logmap;
     return std::sqrt(ret(0, 0));
 }
 
 
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionIntraLoopEdges(const std::vector<Swarm::LoopEdge> & intra_loops) {
-    return intra_loops;
+    ROS_INFO("[SWARM_LOCAL](OutlierRejection) Intra-LCM");
+    auto good_loops = OutlierRejectionLoopEdgesPCM(intra_loops); 
+    return good_loops;
 }
 
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
+    if (param.debug_write_pcm_good) {
+        pcm_good.open("/root/output/pcm_good.txt", std::ios::out);
+    }
+
+    if (param.debug_write_pcm_errors) {
+        pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
+    }
+
     std::vector<Swarm::LoopEdge> inter_loops;
     std::vector<Swarm::LoopEdge> intra_loops;
     for (auto & edge: available_loops) {
@@ -29,40 +43,40 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
     }
 
     auto good_loops = OutlierRejectionIntraLoopEdges(intra_loops);
-    auto good_inter_loops = OutlierRejectionInterLoopEdges(inter_loops);
 
+    ROS_INFO("[SWARM_LOCAL](OutlierRejection) Inter-LCM");
+    auto good_inter_loops = OutlierRejectionLoopEdgesPCM(inter_loops);
     good_loops.insert( good_loops.end(), good_inter_loops.begin(), good_inter_loops.end() );
+
+    if (param.debug_write_pcm_good) {
+        pcm_good.close();
+    }
+
+    if (param.debug_write_pcm_good) {
+        pcm_errors.close();
+    }
+
     return good_loops;
 }
 
-std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
+bool SwarmLocalOutlierRejection::check_outlier_by_odometry_consistency(const Swarm::LoopEdge & loop) {
+    return false;
+}
+
+std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<Swarm::LoopEdge> & available_loops) {
     std::map<FrameIdType, int> bad_pair_count;
-    std::fstream pcm_errors;
-    std::fstream pcm_good;
 
     if (!param.enable_pcm) {
         return available_loops;
     }
 
-    if (param.debug_write_pcm_errors) {
-        pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
-    }
 
-    if (param.debug_write_pcm_good) {
-        pcm_good.open("/root/output/pcm_good.txt", std::ios::out);
-    }
-    
-        
     std::vector<std::vector<int>> pcm_graph(available_loops.size());
     TicToc tic1;
 
     for (size_t i = 0; i < available_loops.size(); i++) {
         auto & edge1 = available_loops[i];
         //Now only process inter-edges
-        if (!edge1.is_inter_loop()) {
-            ROS_ERROR("[SWARM_LOCAL](OutlierRejection) OutlierRejectionInterLoopEdges Accept only inter loops");
-            exit(-1);
-        }
 
         auto p_edge1 = edge1.relative_pose;
         Matrix<double, 6, 1> _cov_vec_1 = edge1.get_cov_vec();
@@ -124,10 +138,10 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                 );
                 ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_a %s cov T [%+3.1e] YPR [%+3.1e]", odom_a.tostr().c_str(), _cov_vec_odom_a(0), _cov_vec_odom_a(3));
                 ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s cov T [%+3.1e] YPR [%+3.1e]", odom_b.tostr().c_str(), _cov_vec_odom_b(0), _cov_vec_odom_b(3));
-                // printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
+                printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
+                // std::cout << logmap.transpose() << std::endl;
                 printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec %.3e\n", smd, same_robot_pair == 1, _cov_vec.norm());
 #endif
-                // std::cout << logmap.transpose() << std::endl;
                 if (param.debug_write_pcm_errors) {
                     pcm_errors << edge1.id << " " << edge2.id << " "  << smd << " " << std::endl;
                 }
@@ -159,11 +173,6 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
         if (param.debug_write_pcm_good) {
             pcm_good << available_loops[i].id << std::endl;
         }
-    }
-
-    if (param.debug_write_pcm_good) {
-        pcm_errors.close();
-        pcm_good.close();
     }
 
     return good_loops;
