@@ -83,8 +83,8 @@ struct swarm_localization_solver_params{
     float distance_height_outlier_threshold;
 
 
-    float VO_METER_STD_TRANSLATION = 0.01;
-    float VO_METER_STD_ANGLE = 0.01;
+    float vo_cov_pos_per_meter = 0.1;
+    float vo_cov_yaw_per_meter = 0.1;
     float DISTANCE_STD = 0.1;
     SwarmLocalOutlierRejectionParams outlier_rejection_params;
 };

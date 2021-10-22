@@ -485,14 +485,10 @@ public:
         nh.param<float>("distance_height_outlier_threshold", solver_params.distance_height_outlier_threshold, 0.5f);
 
 
-        nh.param<float>("VO_METER_STD_TRANSLATION", solver_params.VO_METER_STD_TRANSLATION, 0.01f);
-        nh.param<float>("VO_METER_STD_ANGLE", solver_params.VO_METER_STD_ANGLE, 0.01f);
+        nh.param<float>("vo_cov_pos_per_meter", solver_params.vo_cov_pos_per_meter, 0.01f);
+        nh.param<float>("vo_cov_yaw_per_meter", solver_params.vo_cov_yaw_per_meter, 0.01f);
+        
         nh.param<float>("DISTANCE_STD", DISTANCE_STD, 0.2f);
-
-        nh.param<float>("LOOP_POS_STD_0", LOOP_POS_STD_0, 0.5f);
-        nh.param<float>("LOOP_YAW_STD_0", LOOP_YAW_STD_0, 0.5f);
-        nh.param<float>("LOOP_POS_STD_SLOPE", LOOP_POS_STD_SLOPE, 0.5f);
-        nh.param<float>("LOOP_YAW_STD_SLOPE", LOOP_YAW_STD_SLOPE, 0.5f);
 
         nh.param<float>("DETECTION_SPHERE_STD", DETECTION_SPHERE_STD, 0.1f);
         nh.param<float>("DETECTION_INV_DEP_STD", DETECTION_INV_DEP_STD, 0.5f);

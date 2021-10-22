@@ -2,10 +2,6 @@
 #include <eigen3/Eigen/Dense>
 
 extern float DISTANCE_STD;
-extern float LOOP_POS_STD_0;
-extern float LOOP_YAW_STD_0;
-extern float LOOP_POS_STD_SLOPE;
-extern float LOOP_YAW_STD_SLOPE;
 
 extern float DETECTION_SPHERE_STD;
 extern float DETECTION_INV_DEP_STD;

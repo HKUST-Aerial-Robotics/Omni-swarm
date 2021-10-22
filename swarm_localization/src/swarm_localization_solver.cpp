@@ -514,11 +514,7 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
     auto loc_ret = Swarm::LoopEdge(loop_con);
     auto distance = loc_ret.relative_pose.pos().norm();
-#ifdef OLD_LOOP_OUTLIER_REJECTION
     if (!finish_init && distance > loop_outlier_threshold_distance_init || finish_init && distance > loop_outlier_threshold_distance) 
-#else
-    if (!finish_init) 
-#endif
     {
         ROS_WARN("[SWARM_LOCAL] Add loop %d failed %d(%d)->%d(%d) Distance too long %f", 
             loc_ret.id,
@@ -569,7 +565,7 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
         auto nf = it.second;
         if (nf.vo_available) {
             if (ego_motion_trajs.find(_id) == ego_motion_trajs.end()) {
-                ego_motion_trajs.emplace(_id, DroneTrajectory(_id, true));
+                ego_motion_trajs.emplace(_id, DroneTrajectory(_id, true, params.vo_cov_pos_per_meter, params.vo_cov_yaw_per_meter));
             }
             ego_motion_trajs[_id].push(nf);
         }
@@ -885,7 +881,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             const NodeFrame _nf = it.second;
 
             if (keyframe_trajs.find(_nf.id) == keyframe_trajs.end()) {
-                keyframe_trajs.emplace(_id, DroneTrajectory(_nf.id, false));
+                keyframe_trajs.emplace(_id, DroneTrajectory(_nf.id, false, params.vo_cov_pos_per_meter, params.vo_cov_yaw_per_meter));
             }
 
             if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
@@ -928,7 +924,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             int id = it.first;
             auto & _kf_path = it.second;
             int index = 0;
-            full_trajs.emplace(id, DroneTrajectory(id, false));
+            full_trajs.emplace(id, DroneTrajectory(id, false, params.vo_cov_pos_per_meter, params.vo_cov_yaw_per_meter));
 
             int count = 0;
             auto & keyframe_traj = it.second;
@@ -1221,8 +1217,8 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
                     }
 
                     double traj_length = ego_motion_trajs.at(drone_id).trajectory_length_by_ts(last_ts, ts);
-                    _nf.position_std_to_last = Eigen::Vector3d::Ones() * traj_length * params.VO_METER_STD_TRANSLATION;
-                    _nf.yaw_std_to_last = traj_length * params.VO_METER_STD_ANGLE;
+                    _nf.position_std_to_last = Eigen::Vector3d::Ones() * traj_length * params.vo_cov_pos_per_meter;
+                    _nf.yaw_std_to_last = traj_length * params.vo_cov_yaw_per_meter;
 
                     // ROS_INFO("[SWARM_LOCAL] Traj length %3.3fm pos std %3.3e, yaw std %3.3e", traj_length, _nf.position_std_to_last.x(), _nf.yaw_std_to_last);
                 }
@@ -1769,10 +1765,12 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         all_loops.erase(all_loops.begin() + outlier_loops[i]);
     }
 
-    // auto ret_loops = average_same_loop(good_loops);
+#ifndef OLD_LOOP_OUTLIER_REJECTION
     auto good_loops = outlier_rejection->OutlierRejectionLoopEdges(available_loops);
     auto ret_loops = average_same_loop(good_loops);
-    
+#else
+    auto ret_loops = average_same_loop(available_loops);
+#endif    
     for (auto p : ret_loops) {
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
     }
@@ -1879,7 +1877,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         equv_cost = equv_cost / num_res_sf;
     }
 
-    equv_cost = sqrt(equv_cost)/ERROR_NORMLIZED;
+    equv_cost = sqrt(equv_cost);
     if (!report) {
         return equv_cost;
     }
@@ -1921,10 +1919,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
                     Pose DposeVO = Pose::DeltaPose(pose_vo_last, pose_vo, true);
                     Pose DposeEST = Pose::DeltaPose(Pose(pose_last, true), Pose(pose, true), true);
                     Pose ERRVOEST = Pose::DeltaPose(DposeVO, DposeEST, true);
-                    double ang_err = ERRVOEST.yaw()/ VO_METER_STD_ANGLE;
+                    double ang_err = ERRVOEST.yaw()/ vo_cov_yaw_per_meter;
                     
                     printf("ERRVOEST       %6.5f %6.5f %6.5f ANG  %3.2f\n",
-                            ERRVOEST.pos().x()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().y()/VO_METER_STD_TRANSLATION, ERRVOEST.pos().z()/VO_METER_STD_TRANSLATION, ang_err);
+                            ERRVOEST.pos().x()/vo_cov_pos_per_meter, ERRVOEST.pos().y()/vo_cov_pos_per_meter, ERRVOEST.pos().z()/vo_cov_pos_per_meter, ang_err);
 
                     printf("DPOSVO         %6.5f %6.5f %3.4f YAW %5.4fdeg\n",
                             DposeVO.pos().x(), DposeVO.pos().y(), DposeVO.pos().z(), DposeVO.yaw()*57.3);

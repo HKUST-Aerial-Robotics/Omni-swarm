@@ -20,9 +20,9 @@
             enable_detection_depth: true
             enable_loop: true
             enable_distance: true
-            VO_METER_STD_TRANSLATION: 0.05
+            vo_cov_pos_per_meter: 0.05
             VO_METER_STD_Z: 0.05
-            VO_METER_STD_ANGLE: 0.003
+            vo_cov_yaw_per_meter: 0.003
             DISTANCE_STD: 0.07
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12

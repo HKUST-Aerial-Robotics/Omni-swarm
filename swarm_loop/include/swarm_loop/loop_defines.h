@@ -76,8 +76,8 @@ extern int MIN_MATCH_PRE_DIR;
 
 extern double TRIANGLE_THRES;
 
-extern double loop_std_pos;
-extern double loop_std_ang;
+extern double loop_cov_pos;
+extern double loop_cov_ang;
 
 extern double DETECTOR_MATCH_THRES;
 

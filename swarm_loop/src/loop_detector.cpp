@@ -789,13 +789,13 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.keyframe_id_a = old_frame_desc.msg_id;
         ret.keyframe_id_b = new_frame_desc.msg_id;
 
-        ret.pos_std.x = loop_std_pos;
-        ret.pos_std.y = loop_std_pos;
-        ret.pos_std.z = loop_std_pos;
+        ret.pos_cov.x = loop_cov_pos;
+        ret.pos_cov.y = loop_cov_pos;
+        ret.pos_cov.z = loop_cov_pos;
 
-        ret.ang_std.x = loop_std_ang;
-        ret.ang_std.y = loop_std_ang;
-        ret.ang_std.z = loop_std_ang;
+        ret.ang_cov.x = loop_cov_ang;
+        ret.ang_cov.y = loop_cov_ang;
+        ret.ang_cov.z = loop_cov_ang;
 
         ret.pnp_inlier_num = inlier_num;
         ret.id =  self_id*MAX_LOOP_ID + loop_count;

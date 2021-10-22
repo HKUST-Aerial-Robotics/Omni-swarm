@@ -39,6 +39,104 @@ def ATE_POS(predictions, targets):
 
     return np.sqrt(np.mean(norm2))
 
+def odometry_covariance_per_meter_with_rp(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_length=1.0, gt_outlier_thres=0.1, show=False,step=1):
+    i, j, c = 0, 0, 0
+    sqr_err_pos_per_meter = np.zeros((3, 3))
+    sqr_err_yaw_per_meter = 0
+    ticks = []
+    rp_errors = []
+    dp_vos = []
+    dp_gts = []
+
+    if show:
+        plt.figure()
+        plt.title("rp_errors")
+    while i < len(pos_vo) and j < len(pos_vo):
+        len_ij = 0
+        pos_last = pos_vo[i]
+        j = i
+
+        while j < len(pos_vo) - 1 and len_ij < rp_length:
+            len_ij += np.linalg.norm(pos_vo[j] - pos_last)
+            pos_last = pos_vo[j]
+            j += 1
+            # if i == 800:
+                # print("len_ij", len_ij)
+
+        #Now len ij is approximately rp_length, we compute error of ij
+        pos_vo_i = pos_vo[i]
+        pos_vo_j = pos_vo[j]
+        yaw_vo_i = yaw_vo[i]
+        yaw_vo_j = yaw_vo[j]
+
+        dyaw_vo = wrap_pi(yaw_vo_j - yaw_vo_i)
+        dpos_vo = yaw_rotate_vec(-yaw_vo_i, pos_vo_j - pos_vo_i)
+
+        pos_gt_i = pos_gt[i]
+        pos_gt_j = pos_gt[j]
+        yaw_gt_i = yaw_gt[i]
+        yaw_gt_j = yaw_gt[j]
+        dyaw_gt = wrap_pi(yaw_gt_j - yaw_gt_i)
+        dpos_gt = yaw_rotate_vec(-yaw_gt_i, pos_gt_j - pos_gt_i)
+        dp_vos.append(dpos_vo)
+        dp_gts.append(dpos_gt)
+        ticks.append(i)
+        
+        err = np.transpose(np.array([(dpos_vo - dpos_gt)]))
+
+        if len_ij > 0.01:
+            sqr_err_pos = np.matmul(err, np.transpose(err))/len_ij
+            sqr_err_yaw = ((dyaw_vo-dyaw_gt))*((dyaw_vo-dyaw_gt))/len_ij
+            if np.linalg.norm(sqr_err_pos) < gt_outlier_thres*rp_length:
+                sqr_err_pos_per_meter += sqr_err_pos
+                sqr_err_yaw_per_meter += sqr_err_yaw
+                c += 1
+                rp_errors.append(np.linalg.norm(sqr_err_pos))
+        i += step
+
+    if show:
+        dp_vos = np.array(dp_vos)
+        dp_gts = np.array(dp_gts)
+        # plt.subplot(311)
+        plt.plot(ticks, dp_vos[:,0], label="VO X")
+        plt.plot(ticks, dp_gts[:,0], label="GT X")
+        plt.plot(ticks, dp_vos[:,0] - dp_gts[:,0], label="ERR X")
+        plt.grid()
+        plt.legend()
+        # plt.subplot(312)
+        # plt.plot(ticks, dp_vos[:,1], label="VO Y")
+        # plt.plot(ticks, dp_gts[:,1], label="GT Y")
+        # plt.grid()
+        # plt.legend()
+        # plt.subplot(313)
+        # plt.plot(ticks, dp_vos[:,2], label="VO Z")
+        # plt.plot(ticks, dp_gts[:,2], label="GT Z")
+        # plt.grid()
+        # plt.legend()
+        # plt.grid()
+        # print("RP Length", rp_length)
+        # plt.plot(rp_errors)
+        # plt.grid()
+        plt.show()
+    return sqr_err_pos_per_meter/c, sqr_err_yaw_per_meter/c
+
+def odometry_covariance_per_meter(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_lengths=[0.5, 1.0, 2.0], gt_outlier_thres=1.0, show=False,step=1):
+    pos_covs = []
+    sum_pos_cov = np.zeros((3, 3))
+    sum_yaw_cov = 0
+    for rp in rp_lengths:
+        pos_cov, yaw_cov = odometry_covariance_per_meter_with_rp(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_length=rp, gt_outlier_thres=gt_outlier_thres, show=show, step=step)
+        sum_pos_cov += pos_cov
+        sum_yaw_cov += yaw_cov
+        pos_covs.append(np.linalg.norm(pos_cov))
+    if show:
+        plt.figure()
+        plt.title("RP vs cov")
+        plt.plot(rp_lengths, pos_covs)
+        plt.grid()
+        plt.show()
+    return sum_pos_cov/len(rp_lengths), sum_yaw_cov/len(rp_lengths)
+
 def yaw_rotate_vec(yaw, vec):
     Re = rotation_matrix(yaw, [0, 0, 1])[0:3, 0:3]
     return np.transpose(np.dot(Re, np.transpose(vec)))
@@ -787,7 +885,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
     
 
 
-def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dte=100000,show=True):
+def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dte=100000,show=True, rp_length=1.0):
     #Plot Fused Vs GT absolute error
     ate_vo_sum = 0
     rmse_vo_yaw_sum = 0
@@ -795,7 +893,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
     ate_fused_sum = 0
     rmse_fused_yaw_sum = 0
 
-    print("Absolute Trajectory Statistics\nEST:\tATE_P\tATE_Yaw\tRMSE\t\t\t|\tVO:ATE_P\tATE_Yaw\tRMSE\t")
+    print("Absolute Trajectory Statistics\nEST:\tATE_P\tATE_Yaw\tATE\t\t\tCOV/m\t\tPOS\t\t\tYAW\t\t|\tVO:ATE_P\tYaw\t\t\tATE\t\tCOV/m\t\tPOS\t\tYAW\t")
     for i in nodes:
         t_ = poses_fused[i]["t"]
         mask = t_<dte
@@ -810,9 +908,14 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         yaw_vo = poses_vo[i]["ypr"][:,0]
         _i = str(i) 
 
-        rmse_x = RMSE(pos_gt[:,0], pos_fused[:,0])
-        rmse_y = RMSE(pos_gt[:,1], pos_fused[:,1])
-        rmse_z = RMSE(pos_gt[:,2], pos_fused[:,2])
+        fused_cov_per_meter, fused_yaw_cov_per_meter = odometry_covariance_per_meter(pos_fused, yaw_fused, pos_gt, yaw_gt)
+        rmse_x = RMSE(pos_fused[:,0] , pos_gt[:,0])
+        rmse_y = RMSE(pos_fused[:,1] , pos_gt[:,1])
+        rmse_z = RMSE(pos_fused[:,2] , pos_gt[:,2])
+
+        fused_cov_x = fused_cov_per_meter[0][0]
+        fused_cov_y = fused_cov_per_meter[1][1]
+        fused_cov_z = fused_cov_per_meter[2][2]
 
         if np.isnan(pos_fused).any():
             print("pos_fused has nan")
@@ -837,6 +940,8 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt_vo[:,1])
         rmse_vo_z = RMSE(pos_vo[:,2] , pos_gt_vo[:,2])
 
+        vo_cov_per_meter, vo_yaw_cov_per_meter = odometry_covariance_per_meter(pos_vo, yaw_vo, pos_gt_vo, yaw_gt_vo, show=False,step=100)
+        
         ate_vo = ATE_POS(pos_vo, pos_gt_vo)
         rmse_yaw_vo = RMSE(wrap_pi(yaw_vo-yaw_gt_vo), 0)
 
@@ -847,10 +952,12 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             print(f"Ego{main_id}",end="\t")
         else:
             print(f"{i}by{main_id}",end="\t")
-        print(f"{ate_fused:3.3f}\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t|\t",end="")
+        print(f"{ate_fused:3.3f}\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{fused_cov_x:.1e},{fused_cov_y:.1e},{fused_cov_z:.1e}\t{fused_yaw_cov_per_meter:.1e}rad\t|\t",end="")
         # if i in poses_path:
         #     print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
-        print(f"{ate_vo:3.3f}\t\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}")
+        print(f"{ate_vo:3.3f}\t\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}\t{vo_cov_per_meter[0][0]:.1e},{vo_cov_per_meter[1][1]:.1e},{vo_cov_per_meter[2][2]:.1e}\t{vo_yaw_cov_per_meter:.1e}rad")
+
+        # print("VO COV POS\n", vo_cov_per_meter, 'yaw', vo_yaw_cov_per_meter)
 
         if show:
             fig = plt.figure(f"Fused Absolute Error {i}")
@@ -915,7 +1022,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             ax2.legend() 
         
         num = len(nodes)
-    print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
+    print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
 
 def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, enable_dpose):
     _dets_data = []
@@ -1148,7 +1255,7 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     plt.figure("Yaw")
     plt.plot(ts_a, yawa_gts)
 
-def plot_loops_error(poses, loops):
+def plot_loops_error(poses, loops, outlier_thres=1.0):
     _loops_data = []
     dpos_loops = []
     dpos_gts = []
@@ -1201,7 +1308,7 @@ def plot_loops_error(poses, loops):
             ts_a.append(loop["ts_b"])
         yawa_gts.append(yawa_gt)
         yawb_gts.append(yawb_gt)
-        dyaw_errs.append(yawb_gt-yawa_gt-loop["dyaw"])
+        dyaw_errs.append(wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]))
         pnp_inlier_nums.append(loop["pnp_inlier_num"])
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
@@ -1271,6 +1378,11 @@ def plot_loops_error(poses, loops):
     # for i in range(len(pnp_inlier_nums)):
     #     plt.text(distances[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
 
+
+    mask = np.array(dpos_errs_norm)<outlier_thres
+    dpos_errs=dpos_errs[mask]
+    dyaw_errs = dyaw_errs[mask]
+
     plt.figure("Loop Hist")
     plt.subplot(131)
     plt.hist(dpos_errs[:,0], 50, density=True, facecolor='g', alpha=0.75)
@@ -1280,7 +1392,7 @@ def plot_loops_error(poses, loops):
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
     plt.title(title)
 
     plt.subplot(132)
@@ -1290,7 +1402,7 @@ def plot_loops_error(poses, loops):
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "mu = %.2f,  std = %.2f" % (mu, std)
+    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
     plt.title(title)
 
     plt.subplot(133)
@@ -1300,11 +1412,11 @@ def plot_loops_error(poses, loops):
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
     plt.title(title)
 
-    print(f"Pos cov {np.cov(dpos_errs[:,0]):3.3f}, {np.cov(dpos_errs[:,1]):3.3f}, {np.cov(dpos_errs[:,2]):3.3f}")
-    print(f"Yaw cov {np.cov(dyaw_errs)*57.3:3.3f}")
+    print(f"Pos cov {np.cov(dpos_errs[:,0]):.1e}, {np.cov(dpos_errs[:,1]):.1e}, {np.cov(dpos_errs[:,2]):.1e}")
+    print(f"Yaw cov {np.cov(dyaw_errs):.1e}")
 
     # plt.figure()
     # plt.subplot(211)

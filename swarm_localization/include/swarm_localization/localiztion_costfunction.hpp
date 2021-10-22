@@ -35,10 +35,10 @@ template<typename T>
 inline void pose_error(const T *posea, const T *poseb, T *error,
                        Eigen::Vector3d pos_std = Eigen::Vector3d(0.01, 0.01, 0.01),
                        double ang_std = 0.01) {
-    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_std.x();
-    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_std.y();
-    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_std.z();
-    error[3] = ERROR_NORMLIZED*wrap_angle(poseb[3] - posea[3]) / ang_std;
+    error[0] = (posea[0] - poseb[0]) / pos_std.x();
+    error[1] = (posea[1] - poseb[1]) / pos_std.y();
+    error[2] = (posea[2] - poseb[2]) / pos_std.z();
+    error[3] = wrap_angle(poseb[3] - posea[3]) / ang_std;
 #ifdef DynamicCovarianceScaling
     T X2 = error[0]*error[0] + error[1]*error[1] + error[2]*error[2] + error[3]*error[3];
     T s = sqrt((T)2*DCS_PHI/(DCS_PHI + X2));
@@ -54,9 +54,9 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
 template<typename T>
 inline void position_error(const T *posea, const T *poseb, T *error,
                        Eigen::Vector3d pos_std = Eigen::Vector3d(0.01, 0.01, 0.01)) {
-    error[0] = ERROR_NORMLIZED*(posea[0] - poseb[0]) / pos_std.x();
-    error[1] = ERROR_NORMLIZED*(posea[1] - poseb[1]) / pos_std.y();
-    error[2] = ERROR_NORMLIZED*(posea[2] - poseb[2]) / pos_std.z();
+    error[0] = (posea[0] - poseb[0]) / pos_std.x();
+    error[1] = (posea[1] - poseb[1]) / pos_std.y();
+    error[2] = (posea[2] - poseb[2]) / pos_std.z();
 }
 
 
@@ -64,9 +64,9 @@ template<typename T>
 inline void unit_position_error(const T *posea, const T *poseb, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
     const T _inv_dep = 1.0/sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    const T err0 = ERROR_NORMLIZED*(posea[0]*_inv_dep - poseb[0]);
-    const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
-    const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
+    const T err0 = posea[0]*_inv_dep - poseb[0];
+    const T err1 = posea[1]*_inv_dep - poseb[1];
+    const T err2 = posea[2]*_inv_dep - poseb[2];
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
@@ -76,13 +76,13 @@ template<typename T>
 inline void unit_position_error_inv_dep(const T *posea, const T *poseb, const T inv_dep, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
     const T _inv_dep = 1.0/sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    const T err0 = ERROR_NORMLIZED*(posea[0]*_inv_dep - poseb[0]);
-    const T err1 = ERROR_NORMLIZED*(posea[1]*_inv_dep - poseb[1]);
-    const T err2 = ERROR_NORMLIZED*(posea[2]*_inv_dep - poseb[2]);
+    const T err0 = posea[0]*_inv_dep - poseb[0];
+    const T err1 = posea[1]*_inv_dep - poseb[1];
+    const T err2 = posea[2]*_inv_dep - poseb[2];
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
-    error[2] = (inv_dep - _inv_dep)*ERROR_NORMLIZED / (T)(DETECTION_INV_DEP_STD);
+    error[2] = (inv_dep - _inv_dep) / (T)(DETECTION_INV_DEP_STD);
 
     // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
     // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
@@ -94,13 +94,13 @@ template<typename T>
 inline void unit_position_error(const T *posea, const T *poseb, const T dep, const double * tangent_base, T *error) {
     //For this residual; we assume poseb a unit vector
     const T _dep = sqrt(posea[0]*posea[0] +  posea[1]*posea[1] +  posea[2]*posea[2]);
-    const T err0 = ERROR_NORMLIZED*(posea[0]/_dep - poseb[0]);
-    const T err1 = ERROR_NORMLIZED*(posea[1]/_dep - poseb[1]);
-    const T err2 = ERROR_NORMLIZED*(posea[2]/_dep - poseb[2]);
+    const T err0 = (posea[0]/_dep - poseb[0]);
+    const T err1 = (posea[1]/_dep - poseb[1]);
+    const T err2 = (posea[2]/_dep - poseb[2]);
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
-    error[2] = (_dep - dep)*ERROR_NORMLIZED / (T)(DETECTION_DEP_STD);
+    error[2] = (_dep - dep) / (T)(DETECTION_DEP_STD);
 
     // std::cout << "Pa" << posea[0] << " " << posea[1] << " " << posea[2] << std::endl;
     // std::cout << "Pb" << poseb[0] << " " << poseb[1] << " " << poseb[2] << std::endl;
@@ -233,8 +233,8 @@ public:
     SwarmLoopError(const Swarm::GeneralMeasurement2Drones* _loc) :
         GeneralMeasurement2DronesError(_loc){
         loop = static_cast<const Swarm::LoopEdge*>(loc);
-        loop_std = loop->pos_std;
-        yaw_std = loop->ang_std.z();
+        loop_std = loop->pos_cov.cwiseSqrt();
+        yaw_std = std::sqrt(loop->ang_cov.z());
     }
 
     virtual int residual_count() override { 
@@ -389,7 +389,7 @@ struct SwarmFrameError {
             if (has_id(_idj) && _nf.distance_available(_idj)) {
                 T _dis = T(it.second);
                 //Less accuracy on distance
-                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_STD))*ERROR_NORMLIZED;
+                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_STD));
                 res_count++;
             } else {
             }

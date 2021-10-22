@@ -3,7 +3,7 @@
 #include "third_party/fast_max-clique_finder/src/graphIO.h"
 #include "third_party/fast_max-clique_finder/src/findClique.h"
 
-// #define PCM_DEBUG_OUTPUT
+#define PCM_DEBUG_OUTPUT
 
 double computeSquaredMahalanobisDistance(Matrix<double, 6, 1> logmap, Matrix<double, 6, 1> cov_vec) {
     Matrix<double, 6, 1>  inf_vec = cov_vec.cwiseInverse();
@@ -71,6 +71,8 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
             //Now only process inter-edges
             auto & edge2 = available_loops[j];
             Matrix<double, 6, 1> _cov_vec = _cov_vec_1 + edge2.get_cov_vec();
+            Matrix<double, 6, 1> _cov_vec_odom_a;
+            Matrix<double, 6, 1> _cov_vec_odom_b;
 
             int same_robot_pair = edge2.same_robot_pair(edge1);
             if (same_robot_pair > 0) {
@@ -82,16 +84,19 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_a);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_b);
 
-                    _cov_vec += ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_a, 0.0001, 0.0001);
-                    _cov_vec += ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_b, 0.0001, 0.0001);
+                    _cov_vec_odom_a= ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_a);
+                    _cov_vec_odom_b= ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_b);
+
+                    _cov_vec += _cov_vec_odom_a + _cov_vec_odom_b;
 
                 }  else if (same_robot_pair == 2) {
                     p_edge2 = edge2.relative_pose.inverse();
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_b);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_a);
 
-                    _cov_vec += ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_b, 0.0001, 0.0001);
-                    _cov_vec += ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_a, 0.0001, 0.0001);
+                    _cov_vec_odom_a = ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_b);
+                    _cov_vec_odom_b = ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_a);
+                    _cov_vec += _cov_vec_odom_a + _cov_vec_odom_b;
                 }
 
                 Swarm::Pose err_pose = odom_a*p_edge2*odom_b.inverse()*p_edge1.inverse();
@@ -117,12 +122,11 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionInterLo
                     edge2.ts_b, edge2.id_b,
                     edge2.relative_pose.tostr().c_str()
                 );
-                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_a %s", odom_a.tostr().c_str());
-                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s", odom_b.tostr().c_str());
-
-                printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec %f\n", smd, same_robot_pair == 1, _cov_vec.norm());
-#endif
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_a %s cov T [%+3.1e] YPR [%+3.1e]", odom_a.tostr().c_str(), _cov_vec_odom_a(0), _cov_vec_odom_a(3));
+                ROS_INFO("[SWARM_LOCAL](OutlierRejection) odom_b %s cov T [%+3.1e] YPR [%+3.1e]", odom_b.tostr().c_str(), _cov_vec_odom_b(0), _cov_vec_odom_b(3));
                 // printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
+                printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec %.3e\n", smd, same_robot_pair == 1, _cov_vec.norm());
+#endif
                 // std::cout << logmap.transpose() << std::endl;
                 if (param.debug_write_pcm_errors) {
                     pcm_errors << edge1.id << " " << edge2.id << " "  << smd << " " << std::endl;

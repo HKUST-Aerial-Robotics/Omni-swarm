@@ -9,8 +9,8 @@
     <arg name="enable_detection_depth" default="true" />
     <arg name="enable_loop" default="true" />
     <arg name="bag_replay" default="false" />
-    <arg name="pcm_enable_debug_file" default="false" />
-    <arg name="pcm_enable" default="false" />
+    <arg name="pcm_enable_debug_file" default="true" />
+    <arg name="pcm_enable" default="true" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
@@ -27,16 +27,9 @@
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
-            VO_METER_STD_TRANSLATION: 0.05
-            VO_METER_STD_ANGLE: 0.003
+            vo_cov_pos_per_meter: 0.05 #Worse VO
+            vo_cov_yaw_per_meter: 0.003 #Worse VO
             DISTANCE_STD: 0.07
-            #LOOP_XY_STD: 0.5
-            #LOOP_Z_STD: 0.12
-            
-            LOOP_POS_STD_0: 0.6
-            LOOP_POS_STD_SLOPE: 0.5
-            LOOP_YAW_STD_0: 0.05
-            LOOP_YAW_STD_SLOPE: 0.1
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
