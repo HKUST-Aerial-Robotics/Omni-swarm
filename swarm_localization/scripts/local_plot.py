@@ -1258,7 +1258,14 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     plt.figure("Yaw")
     plt.plot(ts_a, yawa_gts)
 
-def plot_loops_error(poses, loops, outlier_thres=1.0):
+def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
+    good_loop_id = set()
+    if inlier_file != "":
+        with open(inlier_file, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                good_loop_id.add(int(line))
+
     _loops_data = []
     dpos_loops = []
     dpos_gts = []
@@ -1281,6 +1288,8 @@ def plot_loops_error(poses, loops, outlier_thres=1.0):
 
     loops_error = {}
     for loop in loops:
+        if loop["id"] not in good_loop_id:
+            continue
         # print(loop["id_a"], "->", loop["id_b"])
         if loop["id_a"] != loop["id_b"]:
             count_inter_loop += 1

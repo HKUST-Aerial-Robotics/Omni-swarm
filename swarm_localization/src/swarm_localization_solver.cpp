@@ -277,13 +277,6 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &
         p.to_vector_xyzyaw(_p);
     }
 
-    if (est_poses.find(ts) == est_poses.end()) {
-        est_poses[ts] = std::map<int, double*>();
-    }
-
-    if(est_poses2.find(_id) == est_poses2.end()) {
-        est_poses2[_id] = std::map<TsType, double*>();
-    }
     est_poses[ts][_id] = _p;
     est_poses2[_id][ts] = _p;
 }
@@ -305,13 +298,6 @@ void SwarmLocalizationSolver::init_static_nf_in_keyframe(TsType ts, const NodeFr
         _last.to_vector_xyzyaw(_p);
     }
 
-    if (est_poses.find(ts) == est_poses.end()) {
-        est_poses[ts] = std::map<int, double*>();
-    }
-
-    if(est_poses2.find(_id) == est_poses2.end()) {
-        est_poses2[_id] = std::map<TsType, double*>();
-    }
     est_poses[ts][_id] = _p;
     est_poses2[_id][ts] = _p;
 }
@@ -512,7 +498,7 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 }
 
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
-    auto loc_ret = Swarm::LoopEdge(loop_con);
+    auto loc_ret = Swarm::LoopEdge(loop_con, true);
     auto distance = loc_ret.relative_pose.pos().norm();
     if (distance > loop_outlier_threshold_distance) 
     {
@@ -1210,11 +1196,9 @@ void SwarmLocalizationSolver::setup_problem_with_sfherror(const EstimatePosesIDT
                         exit(-1);
                     }
 
-                    double traj_length = ego_motion_trajs.at(drone_id).trajectory_length_by_ts(last_ts, ts);
-                    _nf.position_std_to_last = Eigen::Vector3d::Ones() * traj_length * params.vo_cov_pos_per_meter;
-                    _nf.yaw_std_to_last = traj_length * params.vo_cov_yaw_per_meter;
-
-                    // ROS_INFO("[SWARM_LOCAL] Traj length %3.3fm pos std %3.3e, yaw std %3.3e", traj_length, _nf.position_std_to_last.x(), _nf.yaw_std_to_last);
+                    auto cov_vec = ego_motion_trajs.at(drone_id).covariance_between_ts(last_ts, ts);
+                    _nf.position_std_to_last = cov_vec.block<3, 1>(0, 0).cwiseSqrt();
+                    _nf.yaw_std_to_last = sqrt(cov_vec(5));
                 }
                 nf_win.push_back(_nf);
                 ts2poseindex[ts] = nf_win.size() - 1;
@@ -1687,9 +1671,6 @@ std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> goo
     std::vector<Swarm::LoopEdge*> ret;
     for (auto & loop : good_2drone_measurements) {
         GeneralMeasurement2DronesKey key = loop.key();
-        if (loop_sets.find(key) == loop_sets.end()) {
-            loop_sets[key] = std::vector<Swarm::LoopEdge>();
-        }
 
         loop_sets[key].push_back(loop);
     }
@@ -1737,12 +1718,6 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
                 loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
 #endif
             available_loops.push_back(loc_ret);
-            if (loop_edges.find(loc_ret.id_a) == loop_edges.end()) {
-                loop_edges[loc_ret.id_a] = std::set<int>();
-            }
-            if (loop_edges.find(loc_ret.id_b) == loop_edges.end()) {
-                loop_edges[loc_ret.id_b] = std::set<int>();
-            }
             loop_edges[loc_ret.id_a].insert(loc_ret.id_b);
             loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
         }
@@ -1774,12 +1749,6 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             ROS_INFO("[SWARM_LOCAL] Det [%d]%d -> [%d]%d", TSShort(det_ret.ts_a), det_ret.id_a,  TSShort(det_ret.ts_b), det_ret.id_b);
 #endif
             good_detections.push_back(det_ret);
-            if (loop_edges.find(det_ret.id_a) == loop_edges.end()) {
-                loop_edges[det_ret.id_a] = std::set<int>();
-            }
-            if (loop_edges.find(det_ret.id_b) == loop_edges.end()) {
-                loop_edges[det_ret.id_b] = std::set<int>();
-            }
             loop_edges[det_ret.id_a].insert(det_ret.id_b);
             loop_edges[det_ret.id_b].insert(det_ret.id_a);
         }

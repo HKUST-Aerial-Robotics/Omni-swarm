@@ -241,6 +241,10 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<bool>("lower_cam_as_main", LOWER_CAM_AS_MAIN, false);
     nh.param<bool>("output_raw_superpoint_desc", OUTPUT_RAW_SUPERPOINT_DESC, false);
 
+    nh.param<double>("odometry_consistency_threshold", odometry_consistency_threshold, 2.0);
+    nh.param<double>("pos_covariance_per_meter", pos_covariance_per_meter, 0.01);
+    nh.param<double>("yaw_covariance_per_meter", yaw_covariance_per_meter, 0.003);
+
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
     nh.param<double>("depth_far_thres", DEPTH_FAR_THRES, 10.0);
     nh.param<double>("depth_near_thres", DEPTH_NEAR_THRES, 0.3);
@@ -304,8 +308,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
         superpoint_thres, superpoint_max_num, netvlad_model_path, width, height, self_id, send_img, nh);
         
     loop_cam->show = debug_image; 
-    loop_detector = new LoopDetector();
-    loop_detector->self_id = self_id;
+    loop_detector = new LoopDetector(self_id);
     loop_detector->loop_cam = loop_cam;
     loop_detector->enable_visualize = debug_image;
 

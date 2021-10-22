@@ -10,6 +10,7 @@
 #include <functional>
 #include <swarm_msgs/Pose.h>
 #include <swarm_msgs/FisheyeFrameDescriptor_t.hpp>
+#include <swarm_msgs/swarm_types.hpp>
 #ifdef USE_DEEPNET
 #include <faiss/IndexFlat.h>
 #else
@@ -34,8 +35,6 @@ protected:
 
     std::map<int64_t, std::vector<cv::Mat>> msgid2cvimgs;
     
-    std::vector<cv::Scalar> colors;
-
     double t0 = -1;
     int loop_count = 0;
     
@@ -91,13 +90,15 @@ protected:
     int query_from_database(const ImageDescriptor_t & new_img_desc, faiss::IndexFlatIP & index, bool remote_db, double thres, int max_index, double & distance);
 
 
-    std::set<int> success_loop_nodes;
     std::set<int> all_nodes;
+
+    bool check_loop_odometry_consistency(LoopEdge & loop_conn) const;
+    Swarm::DroneTrajectory ego_motion_traj;
 
 public:
     std::function<void(LoopEdge &)> on_loop_cb;
     int self_id = -1;
-    LoopDetector();
+    LoopDetector(int self_id);
     void on_image_recv(const FisheyeFrameDescriptor_t & img_des, std::vector<cv::Mat> img = std::vector<cv::Mat>(0));
     void on_loop_connection(LoopEdge & loop_conn);
     LoopCam * loop_cam = nullptr;

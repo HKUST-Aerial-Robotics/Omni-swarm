@@ -81,6 +81,8 @@ extern double loop_cov_ang;
 
 extern double DETECTOR_MATCH_THRES;
 
+extern double odometry_consistency_threshold;
+
 extern bool ENABLE_LK_LOOP_DETECTION;
 
 extern bool USE_DEPTH;
@@ -92,6 +94,9 @@ extern bool SEND_ALL_FEATURES;
 extern bool LOWER_CAM_AS_MAIN;
 
 extern bool OUTPUT_RAW_SUPERPOINT_DESC;
+
+extern double pos_covariance_per_meter;
+extern double yaw_covariance_per_meter;
 
 extern std::string OUTPUT_PATH;
 

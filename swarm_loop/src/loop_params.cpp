@@ -25,3 +25,6 @@ int MIN_DIRECTION_LOOP;
 double DETECTOR_MATCH_THRES;
 double loop_cov_pos;
 double loop_cov_ang;
+double odometry_consistency_threshold;
+double pos_covariance_per_meter;
+double yaw_covariance_per_meter;

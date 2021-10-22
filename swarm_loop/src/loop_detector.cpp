@@ -5,21 +5,8 @@
 
 using namespace std::chrono; 
 
-#define ESTIMATE_AFFINE3D
 #define USE_FUNDMENTAL
 #define MAX_LOOP_ID 100000000
-
-void debug_draw_kpts(const ImageDescriptor_t & img_des, cv::Mat img) {
-    auto pts = toCV(img_des.landmarks_2d);
-    for (auto pt : pts) {
-        cv::circle(img, pt, 1, cv::Scalar(255, 0, 0), -1);
-    }
-    cv::resize(img, img, cv::Size(), 3.0, 3.0);
-    cv::imshow("DEBUG", img);
-    cv::waitKey(30);
-}
-
-
 
 void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, std::vector<cv::Mat> imgs) {
     auto start = high_resolution_clock::now();
@@ -29,9 +16,11 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
     }
 
     if (flatten_desc.images.size() == 0) {
-        ROS_WARN("FlattenDesc must carry more than zero images");
+        ROS_WARN("[SWARM_LOOP] FlattenDesc must carry more than zero images");
         return;
     }
+
+    ego_motion_traj.push(toROSTime(flatten_desc.timestamp), Swarm::Pose(flatten_desc.pose_drone));
 
     int drone_id = flatten_desc.drone_id;
     int images_num = flatten_desc.images.size();
@@ -41,19 +30,18 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
     }
     
     if (drone_id!= this->self_id && database_size() == 0) {
-        ROS_INFO("Empty local database, where giveup remote image");
+        ROS_INFO("[SWARM_LOOP] Empty local database, where giveup remote image");
         return;
     } else {
         if (loop_cam->get_camera_configuration() == STEREO_FISHEYE) {
-            ROS_INFO("Detector start process KeyFrame from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
+            ROS_INFO("[SWARM_LOOP] Detector start process KeyFrame from %d with %d images and landmark: %d", drone_id, flatten_desc.images.size(), 
                 flatten_desc.landmark_num);
         } else {
-            ROS_INFO("Detector start process KeyFrame from %d with landmark: %d and lm desc size %d", drone_id,
+            ROS_INFO("[SWARM_LOOP] Detector start process KeyFrame from %d with landmark: %d and lm desc size %d", drone_id,
                 flatten_desc.images[0].landmarks_2d.size(), flatten_desc.images[0].feature_descriptor.size());
         }
     }
 
-    success_loop_nodes.insert(self_id);
     bool new_node = all_nodes.find(flatten_desc.drone_id) == all_nodes.end();
 
     all_nodes.insert(flatten_desc.drone_id);
@@ -66,7 +54,7 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
     }
 
     if (dir_count < MIN_DIRECTION_LOOP) {
-        ROS_INFO("Give up frame_desc with less than %d(%d) available images", MIN_DIRECTION_LOOP, dir_count);
+        ROS_INFO("[SWARM_LOOP] Give up frame_desc with less than %d(%d) available images", MIN_DIRECTION_LOOP, dir_count);
         return;
     }
 
@@ -95,14 +83,14 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
             add_to_database(flatten_desc);
             msgid2cvimgs[flatten_desc.msg_id] = imgs;
         } else {
-            ROS_INFO("This image is prevent to adding to DB");
+            ROS_DEBUG("[SWARM_LOOP] This image is prevent to adding to DB");
         }
 
         bool success = false;
 
         if (database_size() > MATCH_INDEX_DIST || init_mode || drone_id != self_id) {
 
-            ROS_INFO("Querying image from database size %d init_mode %d nonkeyframe %d", database_size(), init_mode, flatten_desc.prevent_adding_db);
+            ROS_INFO("[SWARM_LOOP] Querying image from database size %d init_mode %d nonkeyframe %d", database_size(), init_mode, flatten_desc.prevent_adding_db);
             
             int direction = 1;
             int direction_old = -1;
@@ -119,41 +107,23 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
                     if (flatten_desc.drone_id == self_id) {
                         success = compute_loop(_old_fisheye_img, flatten_desc, direction_old, direction, msgid2cvimgs[_old_fisheye_img.msg_id],  imgs, ret, init_mode);
                     } else {
-                        ROS_WARN("Will not compute loop, drone id is %d(self %d)", flatten_desc.drone_id, self_id);
+                        ROS_WARN("[SWARM_LOOP] Will not compute loop, drone id is %d(self %d)", flatten_desc.drone_id, self_id);
                     }
                 }
 
                 if (success) {
-                    if (success_loop_nodes.find(flatten_desc.drone_id) == success_loop_nodes.end())  {
-                        ROS_INFO("Adding success matched drone %d to database", flatten_desc.drone_id);
-                        success_loop_nodes.insert(flatten_desc.drone_id);
-                    }
                     on_loop_connection(ret);
                 }
             } else {
-                std::cout << "No matched image" << std::endl;
+                std::cout << "[SWARM_LOOP] No matched image" << std::endl;
             }      
         } 
 
         // std::cout << "LOOP Detector cost" << duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0 <<"ms" << std::endl;
     } else {
-        ROS_WARN("Frame contain too less landmark %d, give up", flatten_desc.landmark_num);
+        ROS_WARN("[SWARM_LOOP] Frame contain too less landmark %d, give up", flatten_desc.landmark_num);
     }
 
-}
-
-
-
-std::vector<cv::KeyPoint> cvPoints2Keypoints(std::vector<cv::Point2f> pts) {
-    std::vector<cv::KeyPoint> cvKpts;
-
-    for (auto pt : pts) {
-        cv::KeyPoint kp;
-        kp.pt = pt;
-        cvKpts.push_back(kp);
-    }
-
-    return cvKpts;
 }
 
 
@@ -167,7 +137,6 @@ cv::Mat LoopDetector::decode_image(const ImageDescriptor_t & _img_desc) {
     return ret;
 }
 
-
 int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_desc) {
     for (size_t i = 0; i < new_fisheye_desc.images.size(); i++) {
         auto & img_desc = new_fisheye_desc.images[i];
@@ -175,7 +144,7 @@ int LoopDetector::add_to_database(const FisheyeFrameDescriptor_t & new_fisheye_d
             int index = add_to_database(img_desc);
             imgid2fisheye[index] = new_fisheye_desc.msg_id;
             imgid2dir[index] = i;
-            ROS_INFO("Add keyframe from %d(dir %d) to local keyframe database index: %d", img_desc.drone_id, i, index);
+            // ROS_INFO("[SWARM_LOOP] Add keyframe from %d(dir %d) to local keyframe database index: %d", img_desc.drone_id, i, index);
         }
     }
     fisheyeframe_database[new_fisheye_desc.msg_id] = new_fisheye_desc;
@@ -240,7 +209,7 @@ int LoopDetector::query_from_database(const ImageDescriptor_t & img_desc, faiss:
         }
 
         if (imgid2fisheye.find(labels[i] + index_offset) == imgid2fisheye.end()) {
-            ROS_WARN("Can't find image %d; skipping", labels[i] + index_offset);
+            ROS_WARN("[SWARM_LOOP] Can't find image %d; skipping", labels[i] + index_offset);
             continue;
         }
 
@@ -276,7 +245,7 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
     ) {
         direction_new = 0;
     } else {
-        ROS_ERROR("Camera configuration %d not support yet in query_fisheyeframe_from_database", loop_cam->get_camera_configuration());
+        ROS_ERROR("[SWARM_LOOP] Camera configuration %d not support yet in query_fisheyeframe_from_database", loop_cam->get_camera_configuration());
         exit(-1);
     }
 
@@ -295,7 +264,7 @@ FisheyeFrameDescriptor_t & LoopDetector::query_fisheyeframe_from_database(const 
             int msg_id = imgid2fisheye[best_image_id];
             direction_old = imgid2dir[best_image_id];
             FisheyeFrameDescriptor_t & ret = fisheyeframe_database[msg_id];
-            ROS_INFO("Database return image %d fisheye frame from drone %d with direction %d dist %f", 
+            ROS_INFO("[SWARM_LOOP] Database return image %d fisheye frame from drone %d with direction %d dist %f", 
                 best_image_id, ret.drone_id, direction_old, distance);
             return ret;
         }
@@ -312,6 +281,29 @@ int LoopDetector::database_size() const {
     return local_index.ntotal + remote_index.ntotal;
 }
 
+
+bool LoopDetector::check_loop_odometry_consistency(LoopEdge & loop_conn) const {
+    if (loop_conn.id_a != loop_conn.id_b) {
+        //Is inter_loop, odometry consistency check is disabled.
+        return true;
+    }
+
+    Swarm::LoopEdge edge(loop_conn);
+    auto odom = ego_motion_traj.get_relative_pose_by_ts(edge.ts_a, edge.ts_b);
+    Eigen::Matrix<double, 6, 1> cov_vec = odom.second + edge.get_cov_vec();
+    auto dp = Swarm::Pose::DeltaPose(edge.relative_pose, odom.first);
+    auto md = Swarm::computeSquaredMahalanobisDistance(dp.log_map(), cov_vec);
+    if (md > odometry_consistency_threshold) {
+        ROS_INFO("[SWARM_LOOP] LoopEdge-Odometry consistency check failed %.1f, odom %s loop %s dp %s.", 
+            md, odom.first.tostr().c_str(), edge.relative_pose.tostr().c_str(), dp.tostr().c_str());
+        return false;
+    }
+
+    ROS_INFO("[SWARM_LOOP] LoopEdge-Odometry consistency OK %.1f odom %s loop %s dp %s.", md, 
+        odom.first.tostr().c_str(), edge.relative_pose.tostr().c_str(), dp.tostr().c_str());
+    return true;
+}
+
 bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rperr, const Swarm::Pose & DP_old_to_new) {
     bool success = pnp_success;
     if (!pnp_success) {
@@ -319,7 +311,7 @@ bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rpe
     }
 
     if (rperr > RPERR_THRES) {
-        ROS_INFO("Check failed on RP error %f", rperr*57.3);
+        ROS_INFO("[SWARM_LOOP] Check failed on RP error %f", rperr*57.3);
         return false;
     }
 
@@ -399,21 +391,13 @@ int LoopDetector::compute_relative_pose(
         return 0;
     }
 
-    Swarm::Pose DP_old_to_new_6d = Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
-    // std::cout << "DP_old_to_new_6d inliers" << inliers.size();
-    // DP_old_to_new_6d.print();
-
-    DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
-    //As our pose graph uses 4D pose, here we must solve 4D pose
-    //6D pose could use to verify the result but not give to swarm_localization
-    std::cout << "PnP solved DPose 4D";
-    DP_old_to_new.print();
+    DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
     
     auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
 
     success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
 
-    ROS_INFO("PnPRansac %d inlines %d/%d, dyaw %f dpos %f. Geometry Check %f", success, inliers.rows, matched_2d_norm_old.size(), fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
+    ROS_INFO("[SWARM_LOOP] DPose %f PnPRansac %d inlines %d/%d, dyaw %f dpos %f. Geometry Check %f", DP_old_to_new.tostr(), success, inliers.rows, matched_2d_norm_old.size(), fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
     inlier_num = inliers.rows;
 
     for (int i = 0; i < inlier_num; i++) {
@@ -798,17 +782,21 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         ret.ang_cov.z = loop_cov_ang;
 
         ret.pnp_inlier_num = inlier_num;
-        ret.id =  self_id*MAX_LOOP_ID + loop_count;
-        loop_count ++;
+        ret.id = self_id*MAX_LOOP_ID + loop_count;
 
-        ROS_INFO("[SWARM_LOOP] Loop %ld Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
-            ret.id,
-            ret.id_a, ret.id_b,
-            (ret.ts_b - ret.ts_a).toSec(),
-            DP_old_to_new.pos().x(), DP_old_to_new.pos().y(), DP_old_to_new.pos().z(),
-            DP_old_to_new.yaw()*57.3,
-            ret.pnp_inlier_num
-        );
+        if (check_loop_odometry_consistency(ret)) {
+            loop_count ++;
+            ROS_INFO("[SWARM_LOOP] Loop %ld Detected %d->%d dt %3.3fs DPos %4.3f %4.3f %4.3f Dyaw %3.2fdeg inliers %d. Will publish\n",
+                ret.id,
+                ret.id_a, ret.id_b,
+                (ret.ts_b - ret.ts_a).toSec(),
+                DP_old_to_new.pos().x(), DP_old_to_new.pos().y(), DP_old_to_new.pos().z(),
+                DP_old_to_new.yaw()*57.3,
+                ret.pnp_inlier_num
+            );
+        } else {
+            ROS_INFO("[SWARM_LOOP] Loop not consistency with odometry, give up.");
+        }
 
         return true;
     }
@@ -819,45 +807,6 @@ void LoopDetector::on_loop_connection(LoopEdge & loop_conn) {
     on_loop_cb(loop_conn);
 }
 
-LoopDetector::LoopDetector(): local_index(DEEP_DESC_SIZE), remote_index(DEEP_DESC_SIZE) {
-    cv::RNG rng;
-    for(int i = 0; i < 100; i++)
-    {
-        int r = rng.uniform(0, 256);
-        int g = rng.uniform(0, 256);
-        int b = rng.uniform(0, 256);
-        colors.push_back(cv::Scalar(r,g,b));
-    }
-}
-
-
-
-Swarm::Pose solve_affine_pts3d(std::vector<cv::Point3f> matched_3d_now, std::vector<cv::Point3f> matched_3d_old) {
-    cv::Mat affine;
-    std::vector<uchar> _inliners;
-    Eigen::Matrix<double, 3, Eigen::Dynamic> src (3, matched_3d_now.size ());
-    Eigen::Matrix<double, 3, Eigen::Dynamic> tgt (3, matched_3d_old.size ());
-    
-    for (std::size_t i = 0; i < matched_3d_now.size (); ++i)
-    {
-        src (0, i) = matched_3d_now[i].x;
-        src (1, i) = matched_3d_now[i].y;
-        src (2, i) = matched_3d_now[i].z;
-    
-        tgt (0, i) = matched_3d_old[i].x;
-        tgt (1, i) = matched_3d_old[i].y;
-        tgt (2, i) = matched_3d_old[i].z;
-    }
-    Eigen::Matrix4d transformation_matrix = Eigen::umeyama (src, tgt, false);
-
-    std::cout << transformation_matrix << std::endl;
-    Swarm::Pose p_cam_old_in_new_affine = AffineRestoCamPose(transformation_matrix);
-
-    int c = 0;
-    for (auto i : _inliners) {
-        c += i;
-    }
-
-    std::cout << "Affine gives" << c << " inliers" << std::endl;
-    return p_cam_old_in_new_affine;
+LoopDetector::LoopDetector(int _self_id): self_id(_self_id), local_index(DEEP_DESC_SIZE), remote_index(DEEP_DESC_SIZE), 
+    ego_motion_traj(_self_id, true, pos_covariance_per_meter, yaw_covariance_per_meter) {
 }

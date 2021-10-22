@@ -42,6 +42,10 @@
             min_match_per_dir: 5
             camera_configuration: 1
             output_raw_superpoint_desc: false
+            
+            odometry_consistency_threshold: 3.0
+            pos_covariance_per_meter: 0.01
+            yaw_covariance_per_meter: 0.003
         </rosparam>
         <param name="pca_comp_path" value="$(find swarm_loop)/models/components_.csv" type="string" />
         <param name="pca_mean_path" value="$(find swarm_loop)/models/mean_.csv" type="string" />

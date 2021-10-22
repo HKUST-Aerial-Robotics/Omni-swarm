@@ -105,7 +105,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     }
     
 
-    ROS_INFO("Sent Message KEYFRAME %ld with %d/%d landmarks g_desc %d total %d bytes", msg_id, feature_num,img_des.landmark_num, img_desc_header.image_desc_size, byte_sent);
+    // ROS_INFO("Sent Message KEYFRAME %ld with %d/%d landmarks g_desc %d total %d bytes", msg_id, feature_num,img_des.landmark_num, img_desc_header.image_desc_size, byte_sent);
 }
 
 void LoopNet::broadcast_loop_connection(swarm_msgs::LoopEdge & loop_conn) {

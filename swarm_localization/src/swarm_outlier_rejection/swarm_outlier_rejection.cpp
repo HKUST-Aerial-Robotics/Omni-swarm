@@ -8,15 +8,6 @@
 std::fstream pcm_good;
 std::fstream pcm_errors;
 
-template <typename Vec>
-double computeSquaredMahalanobisDistance(Vec logmap, Vec cov_vec) {
-    auto inf_vec = cov_vec.cwiseInverse();
-    auto inf_mat = inf_vec.asDiagonal();
-    auto ret = logmap.transpose() * inf_mat * logmap;
-    return std::sqrt(ret(0, 0));
-}
-
-
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
     if (param.debug_write_pcm_good) {
         pcm_good.open("/root/output/pcm_good.txt", std::ios::out);
@@ -97,17 +88,16 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
             int same_robot_pair = edge2.same_robot_pair(edge1);
             if (same_robot_pair > 0) {
                 //Now we can compute the consistency error.
-                Swarm::Pose odom_a, odom_b, p_edge2;
+                std::pair<Swarm::Pose, Eigen::Matrix<double, 6, 1>> odom_a, odom_b;
+                Swarm::Pose p_edge2;
+
                 if (same_robot_pair == 1) {
                     p_edge2 = edge2.relative_pose;
                     //ODOM is tsa->tsb
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_a);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_b);
 
-                    _cov_vec_odom_a= ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_a);
-                    _cov_vec_odom_b= ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_b);
-
-                    _cov_vec += _cov_vec_odom_a + _cov_vec_odom_b;
+                    _cov_vec += odom_a.second + odom_b.second;
 
                 }  else if (same_robot_pair == 2) {
                     p_edge2 = edge2.relative_pose.inverse();
@@ -116,12 +106,12 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
 
                     _cov_vec_odom_a = ego_motion_trajs.at(edge1.id_a).covariance_between_ts(edge1.ts_a, edge2.ts_b);
                     _cov_vec_odom_b = ego_motion_trajs.at(edge1.id_b).covariance_between_ts(edge1.ts_b, edge2.ts_a);
-                    _cov_vec += _cov_vec_odom_a + _cov_vec_odom_b;
+                    _cov_vec += odom_a.second + odom_b.second;
                 }
 
-                Swarm::Pose err_pose = odom_a*p_edge2*odom_b.inverse()*p_edge1.inverse();
+                Swarm::Pose err_pose = odom_a.first*p_edge2*odom_b.first.inverse()*p_edge1.inverse();
                 auto logmap = err_pose.log_map();
-                double smd = computeSquaredMahalanobisDistance(logmap, _cov_vec);
+                double smd = Swarm::computeSquaredMahalanobisDistance(logmap, _cov_vec);
 
                 if (smd < param.pcm_thres) {
                     //Add edge i to j

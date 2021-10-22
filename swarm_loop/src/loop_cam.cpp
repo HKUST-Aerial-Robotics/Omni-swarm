@@ -294,7 +294,7 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         }
     }
 
-    ROS_INFO("Image 2d kpts: %ld 3d : %d desc size %ld", ides.landmarks_2d.size(), count_3d, ides.feature_descriptor.size());
+    // ROS_INFO("Image 2d kpts: %ld 3d : %d desc size %ld", ides.landmarks_2d.size(), count_3d, ides.feature_descriptor.size());
 
     if (send_img) {
         encode_image(image_left, ides);
@@ -441,7 +441,7 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
 
     }
 
-    ROS_INFO("Image 2d kpts: %ld 3d : %d", ides.landmarks_2d.size(), count_3d);
+    // ROS_INFO("Image 2d kpts: %ld 3d : %d", ides.landmarks_2d.size(), count_3d);
 
     // ides.feature_descriptor.clear();
     // ides.feature_descriptor = std::vector<float>(desc_new);
