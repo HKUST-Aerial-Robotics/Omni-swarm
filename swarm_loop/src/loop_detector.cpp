@@ -391,7 +391,7 @@ int LoopDetector::compute_relative_pose(
         return 0;
     }
 
-    DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, false);
+    DP_old_to_new =  Swarm::Pose::DeltaPose(p_drone_old_in_new, drone_pose_now, true);
     
     auto RPerr = RPerror(p_drone_old_in_new, drone_pose_old, drone_pose_now);
 

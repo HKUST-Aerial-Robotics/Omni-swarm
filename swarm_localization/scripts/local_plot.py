@@ -1288,7 +1288,7 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
 
     loops_error = {}
     for loop in loops:
-        if loop["id"] not in good_loop_id:
+        if inlier_file!= "" and loop["id"] not in good_loop_id:
             continue
         # print(loop["id_a"], "->", loop["id_b"])
         if loop["id_a"] != loop["id_b"]:
@@ -1310,7 +1310,7 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
         dpos_gt_norms.append(norm(dpos_gt))
         dpos_loop_norms.append(norm(dpos_loop))
         dpos_errs_norm.append(norm(dpos_gt - dpos_loop))
-        loops_error[loop["id"]] = {"pos": norm(dpos_gt - dpos_loop), "yaw": yawb_gt-yawa_gt, "dt": fabs(loop["ts_b"]-loop["ts_a"])}
+        
         posa_gts.append(posa_gt)
         dyaws.append(loop["dyaw"])
         dyaw_gts.append(yawb_gt-yawa_gt)
@@ -1325,6 +1325,11 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
 
+        loops_error[loop["id"]] = {
+            "pos": norm(dpos_gt - dpos_loop), 
+            "yaw": wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]), 
+            "dt": fabs(loop["ts_b"]-loop["ts_a"])
+        }
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
         #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
     
@@ -1486,13 +1491,16 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     loop_ta = []
     loop_tb = []
     for loop_id in pcm_errors_sum:
+        if loop_id not in loops_error:
+            print(f"Loop {loop_id} not found")
+            continue
         loop_id_array.append(loop_id)
         pcm_errors_sum_array.append(pcm_errors_sum[loop_id])
         pcm_out_thres_count_array.append(pcm_out_thres_count[loop_id])
         loop_error_T.append(loops_error[loop_id]["pos"])
         loop_error_yaw.append(loops_error[loop_id]["yaw"])
         loop_dt.append(loops_error[loop_id]["dt"])
-    loop_error_yaw = np.abs(wrap_pi(np.array(loop_error_yaw)))
+    loop_error_yaw = np.abs(wrap_pi(np.array(loop_error_yaw)))*57.3
     plt.figure("pcm_errors_sum_array vs loop_error_T")
     plt.plot(pcm_errors_sum_array, loop_error_T, ".")
     plt.xlabel("pcm_errors_sum_array")
@@ -1516,7 +1524,9 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     for i in range(len(pcm_errors_sum_array)):
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_errors_sum_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
-            
+        if loop_error_yaw[i]>5:
+            plt.text(pcm_errors_sum_array[i], loop_error_yaw[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
+        
 
     plt.figure("pcm_errors_count vs loop_error_T")
     plt.plot(pcm_out_thres_count_array, loop_error_T, ".")
@@ -1534,7 +1544,9 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     for i in range(len(pcm_errors_sum_array)):
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
-
+        if loop_error_yaw[i]>5:
+            plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
+        
     plt.xlabel("pcm_out_thres_count_array")
     plt.ylabel("loop error yaw")
     plt.grid()
