@@ -36,7 +36,7 @@
             #Noise Models.
             vo_cov_pos_per_meter: 1e-2 #Worse VO
             vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
-            DISTANCE_STD: 0.2
+            distance_measurement_cov: 0.1
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07

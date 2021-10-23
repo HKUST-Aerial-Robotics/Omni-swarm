@@ -189,18 +189,40 @@ inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan
     tan_base[5] = T(_tan_base(1, 2));
 }
 
+struct DistanceMeasurementFactor {
+    double distance_measurement;
+    double distance_sqrt_inf;
+    DistanceMeasurementFactor(double _distance_measurement, double _distance_sqrt_inf): 
+        distance_measurement(_distance_measurement), distance_sqrt_inf(_distance_sqrt_inf)
+    {}
+
+public:
+ template<typename T>
+    bool operator()(const T* const p_a_ptr, const T* const p_b_ptr, T *_residual) const {
+        Eigen::Map<const Eigen::Matrix<T, 3, 1>> T_a(p_a_ptr);
+        Eigen::Map<const Eigen::Matrix<T, 3, 1>> T_b(p_b_ptr);
+        _residual[0] = ((T_a - T_b).norm() - distance_measurement)*distance_sqrt_inf;
+        return true;
+    }
+
+    static ceres::CostFunction* Create(double _distance_measurement, double _distance_sqrt_inf) {
+        // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
+        return new ceres::AutoDiffCostFunction<DistanceMeasurementFactor, 1, 4, 4>(
+            new DistanceMeasurementFactor(_distance_measurement, _distance_sqrt_inf));
+    }
+};
+
 class RelativePoseFactor4d {
     Swarm::Pose relative_pose;
     Eigen::Vector4d relative_pose_4d;
     Eigen::Matrix4d sqrt_inf;
-public:
-
     RelativePoseFactor4d(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf):
         relative_pose(_relative_pose), sqrt_inf(_sqrt_inf)
     {
         relative_pose.to_vector_xyzyaw(relative_pose_4d.data());
     }
 
+public:
     template<typename T>
     bool operator()(const T* const p_a_ptr, const T* const p_b_ptr, T *_residual) const {
         Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_a(p_a_ptr);
@@ -237,18 +259,17 @@ public:
     }
 };
 
-/*
-class SwarmDetectionError {
+class DroneDetection4dFactor {
     bool enable_depth;
-    Swarm::DroneDetection det;
+    const Swarm::DroneDetection & det;
     bool enable_dpose;
     Eigen::Vector3d dir;
     double inv_dep;
     double dep;
     bool use_inv_dep = false;
-public:
-    SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) {
-        det = *(static_cast<const Swarm::DroneDetection*>(loc));
+
+    Eigen::Vector4d dposea, dposeb;
+    DroneDetection4dFactor(const Swarm::DroneDetection & _det): det(_det) {
         enable_depth = det.enable_depth;
         enable_dpose = det.enable_dpose;
         dir = det.p;
@@ -256,46 +277,33 @@ public:
         dep = 1/inv_dep;
         // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
         // std::cout << "rel_p" << det.p << std::endl;
-    }
 
-    template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-        int res_count = detection_residual( _poses, _residual);
-        return true;
-    }
-
-    virtual int residual_count() {
         if (enable_depth) {
-            return 3;
-        } else {
-            return 2;
+            det.dpose_self_a.to_vector_xyzyaw(dposea.data());
+            det.dpose_self_b.to_vector_xyzyaw(dposeb.data());
         }
     }
 
-protected:
+public:
     template<typename T>
-    inline int detection_residual(T const *const *_poses, T *_residual) const {
-        T relpose_est[3], posea[4], poseb[4];
-        get_pose_a(_poses, posea);
-        get_pose_b(_poses, poseb);
+    bool operator()(const T* const p_a_ptr, const T* const p_b_ptr, T *_residual) const {
+        T relpose_est[3];
+
+        Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_a(p_a_ptr);
+        Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_b(p_b_ptr);
 
         if (enable_dpose) {
-            T _posea[4], _poseb[4], dposea[4], dposeb[4];
-            
-            det.dpose_self_a.to_vector_xyzyaw(dposea);
-            det.dpose_self_b.to_vector_xyzyaw(dposeb);
-
-            PoseMulti(posea, dposea, _posea);
-            PoseMulti(poseb, dposeb, _poseb);
-            DeltaPose_Naive(_posea, _poseb, relpose_est);
+            Eigen::Matrix<T, 4, 1> _pose_a;
+            Eigen::Matrix<T, 4, 1> _pose_b;
+            const Eigen::Matrix<T, 4, 1> _dposea = dposea.template cast<T>();
+            const Eigen::Matrix<T, 4, 1> _dposeb = dposeb.template cast<T>();
+            PoseMulti(pose_a.data(), _dposea.data(), _pose_a.data());
+            PoseMulti(pose_b.data(), _dposeb.data(), _pose_b.data());
+            DeltaPose_Naive(_pose_a.data(), _pose_b.data(), relpose_est);
         } else {
-            // T extrinsic[3], _posea[3];
-            // extrinsic[0] = T(det.extrinsic.x());
-            // extrinsic[1] = T(det.extrinsic.y());
-            // extrinsic[2] = T(det.extrinsic.z());
-            // PoseMulti_2(posea, extrinsic, _posea);
-            posea[2] = posea[2] + T(det.extrinsic.z());
-            DeltaPose_Naive(posea, poseb, relpose_est);
+            Eigen::Matrix<T, 4, 1> _pose_a = pose_a;
+            _pose_a(2) = _pose_a(2) + T(det.extrinsic.z());
+            DeltaPose_Naive(_pose_a.data(), pose_b.data(), relpose_est);
         }
         
         
@@ -316,116 +324,34 @@ protected:
                 unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
             }
             // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
-            return 3;
         } else {
             unit_position_error(relpose_est, rel_p, tan_base, _residual);
-            return 2;
         }
-    
+
+        return true;    
+    }
+
+
+    static ceres::CostFunction* Create(const Swarm::GeneralMeasurement2Drones* _loc) {
+        auto det = static_cast<const Swarm::DroneDetection*>(_loc);
+        // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
+        int res_count = 3;
+        if (det->enable_depth) {
+            res_count = 2;
+        }
+
+        return new ceres::AutoDiffCostFunction<DroneDetection4dFactor, ceres::DYNAMIC, 4, 4>(
+            new DroneDetection4dFactor(*det), res_count);
+    }
+
+    static ceres::CostFunction* Create(const Swarm::DroneDetection & _det) {
+        // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
+        int res_count = 3;
+        if (_det.enable_depth) {
+            res_count = 2;
+        }
+        return new ceres::AutoDiffCostFunction<DroneDetection4dFactor, ceres::DYNAMIC, 4, 4>(
+            new DroneDetection4dFactor(_det), res_count);
     }
 };
 
-*/
-struct SwarmFrameError {
-    SwarmFrame sf;
-    std::map<int, int> id2poseindex;
-    std::map<int, bool> yaw_observability;
-    std::map<int, double> yaw_init;
-    bool detection_no_scale = false;
-    bool enable_distance = false;
-
-    template<typename T>
-    inline void get_pos(int _id, T const *const *_poses, T * t_pose) const {
-        int index = id2poseindex.at(_id);
-        t_pose[0] =  _poses[index][0];
-        t_pose[1] =  _poses[index][1];
-        t_pose[2] =  _poses[index][2];
-    }
-
-    //Need add anntena position here!
-    template<typename T>
-    inline T node_distance(int idi, int idj, T const *const *_poses) const {
-        //If consider bias here?
-        T posea[3] , poseb[3];
-        get_pos(idi, _poses, posea);
-        get_pos(idj, _poses, poseb);
-
-        return sqrt((poseb[0] - posea[0]) * (poseb[0] - posea[0])
-                    + (poseb[1] - posea[1]) * (poseb[1] - posea[1])
-                    + (poseb[2] - posea[2]) * (poseb[2] - posea[2]));
-    }
-
-    inline bool has_id(const int _id) const {
-        return sf.node_id_list.find(_id) != sf.node_id_list.end();
-    }
-
-    template<typename T>
-    inline int nodeframe_distance_residual(NodeFrame &_nf, T const *const *_poses, T *_residual, int res_count) const {
-        for (const auto &  it : _nf.dis_map) {
-            int _idj = it.first;
-            if (has_id(_idj) && _nf.distance_available(_idj)) {
-                T _dis = T(it.second);
-                //Less accuracy on distance
-                _residual[res_count] = (node_distance(_nf.id, _idj, _poses) - _dis) / ((T)(DISTANCE_STD));
-                res_count++;
-            } else {
-            }
-        }
-        return res_count;
-    }
-
-    int residual_count() {
-        int res_count = 0;
-        for (const auto & it : sf.id2nodeframe) {
-            const NodeFrame &_nf = it.second;
-
-            if (enable_distance && _nf.frame_available && _nf.dists_available) {
-                // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
-                for (auto it : _nf.dis_map) {
-                    if (has_id(it.first) && _nf.distance_available(it.first)) 
-                        res_count++;
-                }
-            }
-        }
-        return res_count;
-    }
-
-
-
-    template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-        int res_count = 0;
-
-        for (auto it : sf.id2nodeframe) {
-//            auto _id = it.first;
-            NodeFrame &_nf = it.second;
-
-            //First we come to distance error
-            if (enable_distance && _nf.frame_available && _nf.dists_available) {
-                    res_count = nodeframe_distance_residual(_nf, _poses, _residual, res_count);
-            }
-
-        }
-        return true;
-    }
-
-
-    bool no_est_yaw_init_mode = false;
-
-    SwarmFrameError(const SwarmFrame &_sf, 
-                    const std::map<int, int> &_id2poseindex, 
-                    const std::map<int, bool> & _yaw_observability, 
-                    const std::map<int, double> & _yaw_init = std::map<int, double> (),
-                    bool _detection_no_scale = false,
-                    bool _enable_distance = false) :
-            sf(_sf),
-            id2poseindex(_id2poseindex),
-            yaw_observability(_yaw_observability),
-            yaw_init(_yaw_init),
-            detection_no_scale(_detection_no_scale),
-            enable_distance(_enable_distance)
-    {}
-};
-
-typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, AUTODIFF_STRIDE>  SFErrorCost;
-// typedef ceres::DynamicAutoDiffCostFunction<SwarmDetectionError, AUTODIFF_STRIDE> DetectionCost;

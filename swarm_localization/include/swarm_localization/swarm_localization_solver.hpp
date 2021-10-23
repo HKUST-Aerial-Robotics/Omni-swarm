@@ -85,7 +85,7 @@ struct swarm_localization_solver_params{
 
     float vo_cov_pos_per_meter = 0.1;
     float vo_cov_yaw_per_meter = 0.1;
-    float DISTANCE_STD = 0.1;
+    float distance_measurement_cov = 0.1;
     SwarmLocalOutlierRejectionParams outlier_rejection_params;
 };
 
@@ -127,6 +127,7 @@ class SwarmLocalizationSolver {
 
     std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
     std::map<int, std::set<int>> loop_edges;
+    int good_loop_num = 0;
 
     bool has_new_keyframe = false;
 

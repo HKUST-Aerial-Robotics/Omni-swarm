@@ -487,7 +487,7 @@ public:
         nh.param<float>("vo_cov_pos_per_meter", solver_params.vo_cov_pos_per_meter, 0.01f);
         nh.param<float>("vo_cov_yaw_per_meter", solver_params.vo_cov_yaw_per_meter, 0.01f);
         
-        nh.param<float>("DISTANCE_STD", DISTANCE_STD, 0.2f);
+        nh.param<float>("distance_measurement_cov", solver_params.distance_measurement_cov, 0.2f);
 
         nh.param<float>("DETECTION_SPHERE_STD", DETECTION_SPHERE_STD, 0.1f);
         nh.param<float>("DETECTION_INV_DEP_STD", DETECTION_INV_DEP_STD, 0.5f);

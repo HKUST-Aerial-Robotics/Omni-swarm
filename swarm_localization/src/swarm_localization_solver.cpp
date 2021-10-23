@@ -15,7 +15,7 @@
 #include <time.h>
 #include <thread>
 #include <unistd.h>
-#include "swarm_localization/localiztion_costfunction.hpp"
+#include "swarm_localization/swarm_localization_factors.hpp"
 #include <functional>
 #include <swarm_msgs/swarm_types.hpp>
 #include <set>
@@ -68,15 +68,9 @@ using namespace Swarm;
 
 // #define OLD_LOOP_OUTLIER_REJECTION
 
-float LOOP_POS_STD_0;
-float LOOP_YAW_STD_0;
-float LOOP_POS_STD_SLOPE;
-float LOOP_YAW_STD_SLOPE;
-
 float DETECTION_SPHERE_STD;
 float DETECTION_INV_DEP_STD;
 float DETECTION_DEP_STD;
-float DISTANCE_STD;
 Eigen::Vector3d CG;
 
 SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver_params & _params) :
@@ -926,41 +920,6 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
 unsigned int SwarmLocalizationSolver::sliding_window_size() const {
     return sf_sld_win.size();
 }
-
-CostFunction *
-SwarmLocalizationSolver::_setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const {
-    //Here we will only send
-    std::map<int, double> yaw_init;
-    for (const auto & it : sf.id2nodeframe) {
-//            auto _id = it.first;
-        const NodeFrame &_nf = it.second;
-        //First we come to distance error
-        if (_nf.frame_available) {
-            yaw_init[_nf.id] = est_poses_tsid.at(_nf.ts).at(_nf.id)[3];
-        }
-    }
-    SwarmFrameError * sferror = new SwarmFrameError(sf, id2poseindex, yaw_observability, yaw_init ,enable_distance);
-    res_num = sferror->residual_count();
-    auto cost_function  = new SFErrorCost(sferror);
-    
-    for (auto it : id2poseindex) {
-        int _id = it.first;
-        if (!yaw_observability.at(_id)) {
-            cost_function->AddParameterBlock(3);
-        } else {
-            cost_function->AddParameterBlock(4);
-        }
-    }
-
-    // assert(res_num > 0 &&"Set cost function with SF has 0 res num");
-    if (res_num > 0) {
-        cost_function->SetNumResiduals(res_num);
-        return cost_function;
-    } else {
-        return nullptr;
-    }
-}
-
     
 CostFunction *
 SwarmLocalizationSolver::_setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loc) const {
@@ -1050,46 +1009,44 @@ int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & sw
     std::map<int, int> id2poseindex;
     std::vector<int> _id_list;
     TsType ts = sf.ts;
-    for(auto it : sf.id2nodeframe) {
-        int _id = it.first;
-        // ROS_INFO("Add TS %d ID %d", TSShort(ts), _id);
-        pose_state.push_back(swarm_est_poses.at(ts).at(_id));
-        _id_list.push_back(_id);
-        id2poseindex[_id] = pose_state.size() - 1;
-        param_indexs.push_back(std::pair<TsType, int>(ts, _id));
-    }
+
     int res_num = 0;
-    auto loss_function = new ceres::HuberLoss(1.0);
-    CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
+    // CostFunction * cost = _setup_cost_function_by_sf(sf, id2poseindex, is_lastest_frame, res_num);
 
-    if (cost != nullptr) {
-        problem.AddResidualBlock(cost, loss_function, pose_state);
-        if (finish_init) {
-            /*
-            printf("SF Evaluate ERROR ts %d", TSShort(ts));
-            double * res = new double[res_num];
-            cost->Evaluate(pose_state.data(), res, nullptr);
-            for (int i = 0; i < res_num; i++) {
-                printf(" %f ", res[i]);
-            }
-            printf("\n");*/
+    for (const auto & it : sf.id2nodeframe) {
+        const NodeFrame &_nf = it.second;
+        auto _ida = it.first;
+        if (est_poses_idts.find(_ida) == est_poses_idts.end() || 
+            est_poses_idts.at(_ida).find(ts) == est_poses_idts.at(_ida).end()) {
+            continue;
         }
-    } else {
-        for (unsigned int i = 0; i < pose_state.size(); i ++) {
-            double * _state = pose_state[i];
-            int _id = _id_list[i];
-            
-            if (!yaw_observability.at(_id)) {
-                problem.AddParameterBlock(_state, 3);
-            } else {
-                problem.AddParameterBlock(_state, 4);
+        double * posea = est_poses_idts.at(_ida).at(ts);
+
+        if (enable_distance && _nf.frame_available && _nf.dists_available) {
+            // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+            for (auto it : _nf.dis_map) {
+                auto _idb = it.first;
+                auto distance_measurement = it.second;
+
+                if (est_poses_idts.find(_idb) == est_poses_idts.end() || 
+                    est_poses_idts.at(_idb).find(ts) == est_poses_idts.at(_idb).end()) {
+                    continue;
+                }
+                double * poseb = est_poses_idts.at(_ida).at(ts);
+                if ( _idb < _ida && sf.node_id_list.find(_idb) != sf.node_id_list.end() && _nf.distance_available(_idb)) {
+                    //Now we setup factor from ida to idb
+                    auto loss_function = new ceres::HuberLoss(1.0);
+                    auto cost = DistanceMeasurementFactor::Create(distance_measurement, 1/sqrt(params.distance_measurement_cov));
+                    double * poseb = est_poses_idts.at(_idb).at(ts);
+                    problem.AddResidualBlock(cost, loss_function, posea, poseb);
+                } 
             }
         }
     }
-
+    
+    //Add detection residual attached to the frame
     if (enable_detection) {
         for (auto it: sf.id2nodeframe) {
-            //Add detection residual attached to the frame
             int _id = it.first;
             auto & nfa = it.second;
             double * posea = swarm_est_poses.at(ts).at(_id);
@@ -1101,10 +1058,8 @@ int SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & sw
                     double * poseb = swarm_est_poses.at(ts).at(_idb);
                     auto & nfb = sf.id2nodeframe.at(_idb);
                     if (check_outlier_detection(nfa, nfb, det)) {
-                        auto cost = _setup_cost_function_by_loop(&det);
+                        auto cost = DroneDetection4dFactor::Create(det);
                         std::vector<double*> pose_state;
-                        pose_state.push_back(posea);
-                        pose_state.push_back(poseb);
                         ceres::LossFunction *loss_function;
                         loss_function = new ceres::HuberLoss(1.0);
                         problem.AddResidualBlock(cost, loss_function, pose_state);
@@ -1682,6 +1637,8 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
     }
 
+    good_loop_num = ret.size();
+
     for (auto _det : all_detections) {
         Swarm::DroneDetection det_ret;
         double dt_err = 0;
@@ -1724,24 +1681,23 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         detection_in_keyframes = this->setup_problem_with_sferror(swarm_est_poses, problem, sf_sld_win[i], param_indexs, i==sf_sld_win.size()-1);
     }
 
-    int num_res_blks_sf = problem.NumResidualBlocks();
-    ROS_INFO("[SWARM_LOCAL] SF residual blocks %d", num_res_blks_sf);
-    num_res_blks_sf = problem.NumResidualBlocks();
+    int num_res_blks = problem.NumResidualBlocks();
+    int distance_res_blks = problem.NumResidualBlocks() - detection_in_keyframes;
+    num_res_blks = problem.NumResidualBlocks();
 
     for (int _id: all_nodes) {
         this->setup_problem_with_ego_motion(est_poses_idts, problem, _id);       
-    }
+    }   
+    int ego_motion_blks = problem.NumResidualBlocks() - num_res_blks;
+    num_res_blks = problem.NumResidualBlocks();
+    this->setup_problem_with_loops(est_poses_idts, problem);
 
-    ROS_INFO("[SWARM_LOCAL] Ego motion residual blocks %d", problem.NumResidualBlocks() - num_res_blks_sf);
+    int det_blks = num_res_blks - num_res_blks - good_loop_num;
+    num_res_blks = problem.NumResidualBlocks();
 
-    num_res_blks_sf = problem.NumResidualBlocks();
+    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d det_in_kf %d det %d", 
+        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, detection_in_keyframes, det_blks);
 
-    setup_problem_with_loops(est_poses_idts, problem);
-    ROS_INFO("[SWARM_LOCAL] Loop residual blocks %d", problem.NumResidualBlocks() - num_res_blks_sf);
-
-    num_res_blks_sf = problem.NumResidualBlocks();
-    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d swarm_est_poses: %d detection_in_keyframes: %d good_2drone_measurements: %ld\n", 
-        solve_count, sliding_window_size(), swarm_est_poses.size(), detection_in_keyframes, good_2drone_measurements.size());
 
     ceres::Solver::Options options;
 
@@ -1773,7 +1729,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     double equv_cost = summary.final_cost;
 
-    if (num_res_blks_sf > 1) {
+    if (num_res_blks > 1) {
         equv_cost = sqrt(equv_cost) / problem.NumResiduals() / sliding_window_size();
     }
 
@@ -1781,7 +1737,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         return equv_cost;
     }
 
-    std::cout << "\nSize:" << sliding_window_size() << "\n" << summary.BriefReport() << " Equv cost : "
+    std::cout << summary.BriefReport() << " Equv cost : "
               << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
     std::cout << summary.message << std::endl;
     //std::cout << summary.FullReport() << std::endl;

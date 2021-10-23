@@ -27,7 +27,7 @@
             pub_swarm_odom: true
             vo_cov_pos_per_meter: 1e-2
             vo_cov_yaw_per_meter: 4e-3
-            DISTANCE_STD: 0.15
+            distance_measurement_cov: 0.15
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12
             

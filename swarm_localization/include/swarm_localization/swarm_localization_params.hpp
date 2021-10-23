@@ -1,7 +1,7 @@
 #pragma once
 #include <eigen3/Eigen/Dense>
 
-extern float DISTANCE_STD;
+extern float distance_measurement_cov;
 
 extern float DETECTION_SPHERE_STD;
 extern float DETECTION_INV_DEP_STD;

@@ -23,14 +23,9 @@
             vo_cov_pos_per_meter: 0.05
             VO_METER_STD_Z: 0.05
             vo_cov_yaw_per_meter: 0.003
-            DISTANCE_STD: 0.07
+            distance_measurement_cov: 0.07
             #LOOP_XY_STD: 0.5
             #LOOP_Z_STD: 0.12
-            
-            LOOP_POS_STD_0: 1.0
-            LOOP_POS_STD_SLOPE: 1.0
-            LOOP_YAW_STD_0: 0.1
-            LOOP_YAW_STD_SLOPE: 0.1
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
