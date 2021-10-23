@@ -1411,8 +1411,9 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     plt.title("DistancVSErr")
     plt.plot(dpos_loop_norms, dpos_errs_norm, "x", label="")
     plt.grid(which="both")
-    # for i in range(len(pnp_inlier_nums)):
-    #     plt.text(distances[i], dpos_errs_norm[i] + 0.2, f"{idas[i]}->{idbs[i]}", fontsize=12)
+    for i in range(len(pnp_inlier_nums)):
+        if dpos_errs_norm[i]>0.2:
+            plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
 
 
     mask = np.array(dpos_errs_norm)<outlier_thres
@@ -1554,7 +1555,8 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     plt.grid()
     for i in range(len(pcm_errors_sum_array)):
         if loop_error_T[i]>0.4:
-            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
+            print(f"{(loop_id_array[i])} {loop_dt[i]:.1f} error T {loop_error_T[i]}")
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_T[i], "x", fontsize=12, color="red")
 
@@ -1565,7 +1567,7 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
             plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
         if loop_error_yaw[i]>5:
             plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
-        
+            print(f"{(loop_id_array[i])} {loop_dt[i]:.1f} error Yaw {loop_error_yaw[i]}")
     plt.xlabel("pcm_out_thres_count_array")
     plt.ylabel("loop error yaw")
     plt.grid()
