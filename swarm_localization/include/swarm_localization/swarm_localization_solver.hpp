@@ -23,7 +23,7 @@ using namespace ceres;
 
 struct SwarmFrameError;
 struct SwarmHorizonError;
-struct SwarmLoopError;
+struct RelativePose4dError;
 
 class LocalizationDAInit;
 
@@ -107,6 +107,7 @@ class SwarmLocalizationSolver {
     int detection_in_keyframes = 0;
     std::vector<swarm_msgs::LoopEdge> all_loops;
     std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
+    std::vector<Swarm::LoopEdge> good_loops;
 
     EstimatePoses est_poses_tsid, est_poses_tsid_saved;
     EstimatePosesIDTS est_poses_idts, est_poses_idts_saved;
@@ -163,10 +164,7 @@ class SwarmLocalizationSolver {
     int
     setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
 
-    CostFunction *
-    _setup_cost_function_by_nf_win(std::vector<NodeFrame> &nf_win, const std::map<TsType, int> & ts2poseindex, bool is_self) const;
-    
-    void setup_problem_with_sfherror(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
+    void setup_problem_with_ego_motion(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
     CostFunction *
     _setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loops) const;

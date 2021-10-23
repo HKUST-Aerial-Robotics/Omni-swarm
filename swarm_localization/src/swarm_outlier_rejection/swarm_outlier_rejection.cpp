@@ -76,17 +76,17 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
         //Now only process inter-edges
 
         auto p_edge1 = edge1.relative_pose;
-        Matrix<double, 6, 1> _cov_vec_1 = edge1.get_cov_vec();
+        Matrix6d _cov_mat_1 = edge1.get_covariance();
 
         for (size_t j = 0; j < i; j ++) {
             //Now only process inter-edges
             auto & edge2 = available_loops[j];
-            Matrix<double, 6, 1> _cov_vec = _cov_vec_1 + edge2.get_cov_vec();
+            Matrix6d _covariance = _cov_mat_1 + edge2.get_covariance();
 
             int same_robot_pair = edge2.same_robot_pair(edge1);
             if (same_robot_pair > 0) {
                 //Now we can compute the consistency error.
-                std::pair<Swarm::Pose, Eigen::Matrix<double, 6, 1>> odom_a, odom_b;
+                std::pair<Swarm::Pose, Matrix6d> odom_a, odom_b;
                 Swarm::Pose p_edge2;
 
                 if (same_robot_pair == 1) {
@@ -95,19 +95,19 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_a);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_b);
 
-                    _cov_vec += odom_a.second + odom_b.second;
+                    _covariance += odom_a.second + odom_b.second;
 
                 }  else if (same_robot_pair == 2) {
                     p_edge2 = edge2.relative_pose.inverse();
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_b);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_a);
 
-                    _cov_vec += odom_a.second + odom_b.second;
+                    _covariance += odom_a.second + odom_b.second;
                 }
 
                 Swarm::Pose err_pose = odom_a.first*p_edge2*odom_b.first.inverse()*p_edge1.inverse();
                 auto logmap = err_pose.log_map();
-                double smd = Swarm::computeSquaredMahalanobisDistance(logmap, _cov_vec);
+                double smd = Swarm::computeSquaredMahalanobisDistance(logmap, _covariance);
 
                 if (smd < param.pcm_thres) {
                     //Add edge i to j
@@ -135,7 +135,7 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
                 printf("[SWARM_LOCAL](OutlierRejection) err_pose %s logmap", err_pose.tostr().c_str());
                 std::cout << logmap.transpose() << std::endl;
                 printf("[SWARM_LOCAL](OutlierRejection) squaredMahalanobisDistance %f Same Direction %d _cov_vec ", smd, same_robot_pair == 1);
-                std::cout << _cov_vec.transpose() << std::endl;
+                std::cout << _covariance.diagonal().transpose() << std::endl;
 #endif
                 if (param.debug_write_pcm_errors) {
                     pcm_errors << edge1.id << " " << edge2.id << " "  << smd << " " << std::endl;

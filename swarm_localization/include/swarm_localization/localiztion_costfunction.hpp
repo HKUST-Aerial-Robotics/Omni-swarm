@@ -22,8 +22,7 @@ using ceres::Covariance;
 using namespace Swarm;
 using namespace Eigen;
 
-// #define DynamicCovarianceScaling
-#define DCS_PHI ((T)(1))
+#define AUTODIFF_STRIDE 4
 // Pose in this file use only x, y, z, yaw
 //                            0  1  2   3
 
@@ -39,17 +38,19 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     error[1] = (posea[1] - poseb[1]) / pos_std.y();
     error[2] = (posea[2] - poseb[2]) / pos_std.z();
     error[3] = wrap_angle(poseb[3] - posea[3]) / ang_std;
-#ifdef DynamicCovarianceScaling
-    T X2 = error[0]*error[0] + error[1]*error[1] + error[2]*error[2] + error[3]*error[3];
-    T s = sqrt((T)2*DCS_PHI/(DCS_PHI + X2));
-    if (s < (T)1) {
-        error[0] = s * error[0];
-        error[1] = s * error[1];
-        error[2] = s * error[2];
-        error[3] = s * error[3];
-    }
-#endif
 }
+
+template<typename T>
+inline void pose_error_4d(const Eigen::Matrix<T, 4, 1> & posea, 
+    const Eigen::Matrix<T, 4, 1> & poseb, 
+    const Eigen::Matrix<T, 4, 4> &_sqrt_inf_mat, 
+    T *error) {
+    Eigen::Map<Eigen::Matrix<T, 4, 1>> err(error);
+    err = poseb - posea;
+    err(3) = wrap_angle(err(3));
+    err.applyOnTheLeft(_sqrt_inf_mat);
+}
+
 
 template<typename T>
 inline void position_error(const T *posea, const T *poseb, T *error,
@@ -188,167 +189,138 @@ inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan
     tan_base[5] = T(_tan_base(1, 2));
 }
 
-class GeneralMeasurement2DronesError {
-protected:
-    const Swarm::GeneralMeasurement2Drones * loc;
-    GeneralMeasurement2DronesError(const Swarm::GeneralMeasurement2Drones* _loc): 
-    loc(_loc){
-
-    }
-    
-    template<typename T>
-    inline void get_pose_a(T const *const *_poses, T * t_pose) const {
-        t_pose[0] =  _poses[0][0];
-        t_pose[1] =  _poses[0][1];
-        t_pose[2] =  _poses[0][2];
-        t_pose[3] =  _poses[0][3];
-    }
-
-    template<typename T>
-    inline void get_pose_b(T const *const *_poses, T * t_pose) const {
-        t_pose[0] =  _poses[1][0];
-        t_pose[1] =  _poses[1][1];
-        t_pose[2] =  _poses[1][2];
-        t_pose[3] =  _poses[1][3];
-    }
-
-    template<typename T>
-    inline void estimate_relpose(T const *const *_poses, T *relpose) const {
-        T posea[4] , poseb[4];
-        get_pose_a(_poses, posea);
-        get_pose_b(_poses, poseb);
-        DeltaPose(posea, poseb, relpose);
-    }
-
+class RelativePose4dError {
+    Swarm::Pose relative_pose;
+    Eigen::Vector4d relative_pose_4d;
+    Eigen::Matrix4d sqrt_inf;
 public:
-    virtual int residual_count() {
-        return 0;
-    }
-};
-class SwarmLoopError : public GeneralMeasurement2DronesError {
-    const Swarm::LoopEdge* loop;
-public:
-    Eigen::Vector3d loop_std;
-    double yaw_std;
-    SwarmLoopError(const Swarm::GeneralMeasurement2Drones* _loc) :
-        GeneralMeasurement2DronesError(_loc){
-        loop = static_cast<const Swarm::LoopEdge*>(loc);
-        loop_std = loop->pos_cov.cwiseSqrt();
-        yaw_std = std::sqrt(loop->ang_cov.z());
-    }
 
-    virtual int residual_count() override { 
-        return 4;
+    RelativePose4dError(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf):
+        relative_pose(_relative_pose), sqrt_inf(_sqrt_inf)
+    {
+        relative_pose.to_vector_xyzyaw(relative_pose_4d.data());
     }
 
     template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-        int res_count = loop_relpose_residual(_poses, _residual);
-        // std::cout << "LOOP RES COUNT " << res_count << std::endl;
+    bool operator()(const T* const p_a_ptr, const T* const p_b_ptr, T *_residual) const {
+        Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_a(p_a_ptr);
+        Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_b(p_b_ptr);
+        Eigen::Matrix<T, 4, 1> relpose_est;
+        const Eigen::Matrix<T, 4, 1> _relative_pose_4d = relative_pose_4d.template cast<T>();
+        const Eigen::Matrix<T, 4, 4> _sqrt_inf = sqrt_inf.template cast<T>();
+        DeltaPose(pose_a.data(), pose_b.data(), relpose_est.data());
+        pose_error_4d(relpose_est, _relative_pose_4d, _sqrt_inf, _residual);
+
         return true;
     }
 
-protected:
-    template<typename T>
-    inline int loop_relpose_residual(T const *const *_poses, T *_residual) const {
-        const Pose & _rel_pose = loop->relative_pose;
-        T rel_pose[4];
-        _rel_pose.to_vector_xyzyaw(rel_pose);
+    static ceres::CostFunction* Create(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf) {
+        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
+            new RelativePose4dError(_relative_pose, _sqrt_inf));
+    }
 
-        T relpose_est[4];
-        estimate_relpose(_poses, relpose_est);
-        pose_error(relpose_est, rel_pose, _residual, loop_std, yaw_std);
-        return 4;
+    static ceres::CostFunction* Create(const Swarm::Pose & _relative_pose, const Eigen::Matrix6d & _sqrt_inf) {
+        Matrix4d _sqrt_inf_4d = Matrix4d::Zero();
+        _sqrt_inf_4d.block<3, 3>(0, 0) = _sqrt_inf.block<3, 3>(0, 0);
+        _sqrt_inf_4d(3, 3) = _sqrt_inf(5, 5);
+        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
+            new RelativePose4dError(_relative_pose, _sqrt_inf_4d));
+    }
+
+    static ceres::CostFunction* Create(const Swarm::GeneralMeasurement2Drones* _loc) {
+        auto loop = static_cast<const Swarm::LoopEdge*>(_loc);
+        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
+            new RelativePose4dError(loop->relative_pose, loop->get_sqrt_information_4d()));
     }
 };
 
-class SwarmDetectionError : public GeneralMeasurement2DronesError{
-    bool enable_depth;
-    Swarm::DroneDetection det;
-    bool enable_dpose;
-    Eigen::Vector3d dir;
-    double inv_dep;
-    double dep;
-    bool use_inv_dep = false;
-public:
-    SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
-        GeneralMeasurement2DronesError(_loc){
-        det = *(static_cast<const Swarm::DroneDetection*>(loc));
-        enable_depth = det.enable_depth;
-        enable_dpose = det.enable_dpose;
-        dir = det.p;
-        inv_dep = det.inv_dep;
-        dep = 1/inv_dep;
-        // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
-        // std::cout << "rel_p" << det.p << std::endl;
-    }
+// class SwarmDetectionError : public GeneralMeasurement2DronesError{
+//     bool enable_depth;
+//     Swarm::DroneDetection det;
+//     bool enable_dpose;
+//     Eigen::Vector3d dir;
+//     double inv_dep;
+//     double dep;
+//     bool use_inv_dep = false;
+// public:
+//     SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
+//         GeneralMeasurement2DronesError(_loc){
+//         det = *(static_cast<const Swarm::DroneDetection*>(loc));
+//         enable_depth = det.enable_depth;
+//         enable_dpose = det.enable_dpose;
+//         dir = det.p;
+//         inv_dep = det.inv_dep;
+//         dep = 1/inv_dep;
+//         // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
+//         // std::cout << "rel_p" << det.p << std::endl;
+//     }
 
-    template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-        int res_count = detection_residual( _poses, _residual);
-        return true;
-    }
+//     template<typename T>
+//     bool operator()(T const *const *_poses, T *_residual) const {
+//         int res_count = detection_residual( _poses, _residual);
+//         return true;
+//     }
 
-    virtual int residual_count() override{
-        if (enable_depth) {
-            return 3;
-        } else {
-            return 2;
-        }
-    }
+//     virtual int residual_count() override{
+//         if (enable_depth) {
+//             return 3;
+//         } else {
+//             return 2;
+//         }
+//     }
 
-protected:
-    template<typename T>
-    inline int detection_residual(T const *const *_poses, T *_residual) const {
-        T relpose_est[3], posea[4], poseb[4];
-        get_pose_a(_poses, posea);
-        get_pose_b(_poses, poseb);
+// protected:
+//     template<typename T>
+//     inline int detection_residual(T const *const *_poses, T *_residual) const {
+//         T relpose_est[3], posea[4], poseb[4];
+//         get_pose_a(_poses, posea);
+//         get_pose_b(_poses, poseb);
 
-        if (enable_dpose) {
-            T _posea[4], _poseb[4], dposea[4], dposeb[4];
+//         if (enable_dpose) {
+//             T _posea[4], _poseb[4], dposea[4], dposeb[4];
             
-            det.dpose_self_a.to_vector_xyzyaw(dposea);
-            det.dpose_self_b.to_vector_xyzyaw(dposeb);
+//             det.dpose_self_a.to_vector_xyzyaw(dposea);
+//             det.dpose_self_b.to_vector_xyzyaw(dposeb);
 
-            PoseMulti(posea, dposea, _posea);
-            PoseMulti(poseb, dposeb, _poseb);
-            DeltaPose_Naive(_posea, _poseb, relpose_est);
-        } else {
-            // T extrinsic[3], _posea[3];
-            // extrinsic[0] = T(det.extrinsic.x());
-            // extrinsic[1] = T(det.extrinsic.y());
-            // extrinsic[2] = T(det.extrinsic.z());
-            // PoseMulti_2(posea, extrinsic, _posea);
-            posea[2] = posea[2] + T(det.extrinsic.z());
-            DeltaPose_Naive(posea, poseb, relpose_est);
-        }
+//             PoseMulti(posea, dposea, _posea);
+//             PoseMulti(poseb, dposeb, _poseb);
+//             DeltaPose_Naive(_posea, _poseb, relpose_est);
+//         } else {
+//             // T extrinsic[3], _posea[3];
+//             // extrinsic[0] = T(det.extrinsic.x());
+//             // extrinsic[1] = T(det.extrinsic.y());
+//             // extrinsic[2] = T(det.extrinsic.z());
+//             // PoseMulti_2(posea, extrinsic, _posea);
+//             posea[2] = posea[2] + T(det.extrinsic.z());
+//             DeltaPose_Naive(posea, poseb, relpose_est);
+//         }
         
         
-        T rel_p[3];
-        rel_p[0] = T(dir.x());
-        rel_p[1] = T(dir.y());
-        rel_p[2] = T(dir.z());
+//         T rel_p[3];
+//         rel_p[0] = T(dir.x());
+//         rel_p[1] = T(dir.y());
+//         rel_p[2] = T(dir.z());
 
-        const double * tan_base = det.detect_tan_base.data();
+//         const double * tan_base = det.detect_tan_base.data();
 
-        if (enable_depth) {
-            // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
-            if (use_inv_dep) {
-                T inv_dep = (T)(this->inv_dep);
-                unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
-            } else {
-                T dep = (T)(this->dep);
-                unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
-            }
-            // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
-            return 3;
-        } else {
-            unit_position_error(relpose_est, rel_p, tan_base, _residual);
-            return 2;
-        }
+//         if (enable_depth) {
+//             // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
+//             if (use_inv_dep) {
+//                 T inv_dep = (T)(this->inv_dep);
+//                 unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
+//             } else {
+//                 T dep = (T)(this->dep);
+//                 unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
+//             }
+//             // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
+//             return 3;
+//         } else {
+//             unit_position_error(relpose_est, rel_p, tan_base, _residual);
+//             return 2;
+//         }
     
-    }
-};
+//     }
+// };
 
 struct SwarmFrameError {
     SwarmFrame sf;
@@ -454,101 +426,5 @@ struct SwarmFrameError {
     }
 };
 
-//Error for correlation vo drift
-struct SwarmHorizonError {
-    const std::vector<NodeFrame> nf_windows;
-    std::map<TsType, int> ts2nfindex;
-    std::map<TsType, int> ts2poseindex;
-    bool yaw_observability;
-    std::vector<double> yaw_init;
-
-    std::vector<Pose> delta_poses;
-    std::vector<Eigen::Vector3d> delta_pose_stds;
-    std::vector<double> delta_ang_stds;
-    int _id = -1;
-
-    SwarmHorizonError(const std::vector<NodeFrame> &_nf_win, const std::map<TsType, int> &_ts2poseindex, bool _yaw_observability, std::vector<double> _yaw_init) :
-            nf_windows(_nf_win),
-            ts2poseindex(_ts2poseindex),
-            yaw_observability(_yaw_observability),
-            yaw_init(_yaw_init){
-        ts2nfindex[_nf_win[0].ts] = 0;
-        for (unsigned int i = 1; i< _nf_win.size(); i++) {
-            auto _nf = _nf_win[i];
-            delta_poses.push_back(Pose::DeltaPose(_nf_win[i-1].pose(), _nf.pose(), true));
-            delta_pose_stds.push_back(_nf_win[i].position_std_to_last);
-            // std::cout << "Delta Pos"<< delta_poses.back().pos() << "Pose STD to last" << _nf_win[i].position_std_to_last << std::endl;
-            delta_ang_stds.push_back(_nf_win[i].yaw_std_to_last);
-            ts2nfindex[_nf.ts] = i;
-        }
-
-        _id = nf_windows.back().id;
-    }
-
-    template<typename T>
-    inline void get_pose(int64_t ts, T const *const *_poses, T * t_pose) const {
-        if (ts2poseindex.find(ts) != ts2poseindex.end()) {
-            int index = ts2poseindex.at(ts);
-            t_pose[0] =  _poses[index][0];
-            t_pose[1] =  _poses[index][1];
-            t_pose[2] =  _poses[index][2];
-            if (yaw_observability) {
-                t_pose[3] =  _poses[index][3];
-            } else {
-                t_pose[3] = T(yaw_init.at(ts2nfindex.at(ts)));
-            }
-        } else {
-            ROS_ERROR("No pose of ID,%d TS %d in swarm horizon error;exit", _id, TSShort(ts));
-            exit(-1);
-        }
-    }
-
-    int residual_count() {
-        return (nf_windows.size()-1)*4;
-    }
-
-    template<typename T>
-    bool operator()(T const *const *_poses, T *_residual) const {
-
-        int res_count = 0;
-        for (unsigned int i = 0; i < nf_windows.size() - 1; i++) {
-            //estimate deltapose
-            Pose _mea_dpose = delta_poses[i]; // i to i + 1 Pose
-            T mea_dpose[4], est_posea[4], est_poseb[4];
-
-            _mea_dpose.to_vector_xyzyaw(mea_dpose);
-
-            int64_t tsa = nf_windows[i].ts;
-            int64_t tsb = nf_windows[i+1].ts;
-
-            get_pose(tsa, _poses, est_posea);
-            get_pose(tsb, _poses, est_poseb);
-
-            T est_dpose[4];
-            DeltaPose(est_posea, est_poseb, est_dpose);
-
-
-            pose_error(est_dpose, mea_dpose, _residual + res_count, delta_pose_stds[i], delta_ang_stds[i]);
-
-
-            /*
-            if (nf_windows[0].id == 0 && i==0 ) {
-                printf("ID %d i %d tsa %d", nf_windows[0].id, i, (tsa/1000000)%1000000);
-                std::cout <<"residual"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_dpose) << std::endl;
-                std::cout <<"esta"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_posea) << std::endl;
-                std::cout <<"estb"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_poseb) << std::endl;
-                std::cout <<"mea dpose"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(mea_dpose) << std::endl;
-                std::cout <<"est dpose"<< Eigen::Map<const Eigen::Matrix<T, 4, 1> >(est_dpose) << "\n\n\n" << std::endl;
-            }*/
-            res_count = res_count + 4;
-
-        }
-        return true;
-    }
-};
-
-#define AUTODIFF_STRIDE 4
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, AUTODIFF_STRIDE>  SFErrorCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmHorizonError, AUTODIFF_STRIDE> HorizonCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmLoopError, AUTODIFF_STRIDE> LoopCost;
-typedef ceres::DynamicAutoDiffCostFunction<SwarmDetectionError, AUTODIFF_STRIDE> DetectionCost;
+// typedef ceres::DynamicAutoDiffCostFunction<SwarmDetectionError, AUTODIFF_STRIDE> DetectionCost;
