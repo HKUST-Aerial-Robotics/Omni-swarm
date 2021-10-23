@@ -18,41 +18,50 @@
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
         <param name="enable_loop" value="$(arg enable_loop)" type="bool" />
         <rosparam>
+            #Performance Parameters
             force_freq: 10
+            thread_num: 1
+            max_solver_time: 0.5
+
             max_accept_cost: 100
             max_keyframe_num: 1000
             min_keyframe_num: 1
-            thread_num: 1
             min_kf_movement : 0.5
+            kf_use_all_nodes: true
+
+            #Initial Configuration
             init_xy_movement : 1.0
             init_z_movement : 0.5
-            pub_swarm_odom: true
+
+            #Noise Models.
             vo_cov_pos_per_meter: 1e-2 #Worse VO
             vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
-            DISTANCE_STD: 0.07
-            pcm_thres: 3.455
+            DISTANCE_STD: 0.2
             
             DETECTION_SPHERE_STD: 0.01
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
-            publish_full_path: false
-            is_pc_replay: true
-            kf_use_all_nodes: true
 
             #OUTLIER REJECTION
             det_dpos_thres: 0.2
             detection_outlier_thres: 0.5
             detection_inv_dep_outlier_thres: 0.5
-            distance_outlier_threshold: 1.0
-            distance_height_outlier_threshold: 1.0
+            
+            range_measurement_outlier_threshold: 0.3
+            range_measurement_outlier_elevation_threshold: 0.6
+
+            loop_outlier_distance_threshold: 2.0
+            pcm_thres: 3.455
+
+            #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5
-            loop_outlier_threshold_distance: 2.0
-            loop_outlier_threshold_distance_init: 2.0
             loop_outlier_threshold_yaw: 0.5
 
-            max_solver_time: 0.15
+            #Output
+            pub_swarm_odom: true
+            is_pc_replay: true
+            publish_full_path: false
 
-            max_solver_time: 0.5
             cg:
                 x: 0.04
                 y: 0.0

@@ -407,7 +407,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
 
 def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0):
     bag = rosbag.Bag(bagname)
-    poses = {}
+    poses_gt = {}
     poses_fused = {}
     poses_vo = {}
     poses_path = {}
@@ -425,7 +425,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     
     for i in nodes:
         if groundtruth:
-            poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+            poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
         if is_pc:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
@@ -446,36 +446,44 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     distances = read_distances_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
     bag.close()
     if groundtruth:
-        fused_offset = poses[main_id]["pos"][0] - poses_fused[main_id]["pos"][0]
-        yaw_offset = (poses[main_id]["ypr"][0] - poses_fused[main_id]["ypr"][0])[0]
-        print("Yaw Offset, ", yaw_offset*57.3, "Fused Offset", fused_offset)
+        offset_gt = - poses_gt[main_id]["pos"][0]
+        yaw_offset_gt = -poses_gt[main_id]["ypr"][0, 0]
+        print("Yaw Offset, ", yaw_offset_gt*57.3, "Fused Offset", offset_gt)
     else:
-        fused_offset = np.array([0, 0, 0])
-        yaw_offset = 0
+        offset_gt = np.array([0, 0, 0])
+        yaw_offset_gt = 0
 
+    fused_offset = - poses_fused[main_id]["pos"][0]
+    fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
     #Pvicon = DP Ppose
     #DP = PviconPpose^-1
     #DP = (PPose^-1 Pvicon)^-1
     #PVicon = DYaw * Pos
     #YawVicon = DYaw + Yaw
     for i in nodes:
-        poses_fused[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_fused[i]["pos"]) + fused_offset
-        poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset, 0, 0])
+        poses_fused[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_fused[i]["pos"]) + fused_offset
+        poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if i in poses_path:
-            poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset, 0, 0])
-            poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_path[i]["pos"]) + fused_offset
+            poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
+            poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_path[i]["pos"]) + fused_offset
             poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
             poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
+        if groundtruth:
+            poses_gt[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_gt[i]["pos"]) + offset_gt
+            poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
+            poses_gt[i]["pos_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["pos"],axis=0,fill_value="extrapolate")
+            poses_gt[i]["ypr_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["ypr"],axis=0,fill_value="extrapolate")
+
     for i in nodes:
         if groundtruth:
-            vo_offset = poses[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
-            yaw_offset = (poses[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
+            vo_offset = poses_gt[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
+            yaw_offset = (poses_gt[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
             print(f"VIO Offset for {i}: {vo_offset}")
-            print(poses[i]["pos"][0], poses_vo[i]["pos_raw"][0])
+            print(poses_gt[i]["pos"][0], poses_vo[i]["pos_raw"][0])
         else:    
             vo_offset = np.array([0, 0, 0])
             yaw_offset = 0
@@ -484,7 +492,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     if groundtruth:
-        return poses, poses_fused, poses_vo, poses_path, loops, detections, distances, t0
+        return poses_gt, poses_fused, poses_vo, poses_path, loops, detections, distances, t0
     else:
         return poses_fused, poses_vo, poses_path, loops, detections, distances, t0
 
@@ -689,7 +697,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax4.grid()
         plt.savefig(output_path+f"est_by_t{i}.png")
 
-def plot_distance_err(poses, poses_fused, distances, main_id, nodes, is_show=False):
+def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {}, is_show=False):
     for main_id in nodes:
         for i in nodes:
             if i == main_id:
@@ -736,23 +744,39 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, is_show=Fal
 
             print(f"Distance {i}->{main_id} RMSE {RMSE(dis_raw, dis_gt)}")
             # z = np.polyfit(dis_gt, dis_raw, 1)
-            z = np.polyfit(dis_raw, dis_gt, 1)
-            print(f"Fit {z[1]}, {z[0]}")
+            if i not in calib:
+                z = np.polyfit(dis_raw, dis_gt, 1)
+                print(f"Fit {z[0]}, {z[1]}")
+            else:
+                z = calib[i]
+                print(f"Use fit {z[0]}, {z[1]}")
+
             dis_calibed = z[1]+z[0]*np.array(dis_raw)
             err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
             err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
 
             mu, std = stats.norm.fit(err_calibed)
-            title = "mu = %.2f,  std = %.2f" % (mu, std)
-            print(title)
-
+            
             if is_show:
-                plt.figure(f"Dist Hist {i}->{main_id}")
+                plt.figure(f"Dist Hist Raw {i}->{main_id}")
+                plt.hist(dis_gt-dis_raw, 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
+                xmin, xmax = plt.xlim()
+                x = np.linspace(xmin, xmax, 100)
+                mu, std = stats.norm.fit(dis_gt-dis_raw)
+                p = stats.norm.pdf(x, mu, std)
+                plt.plot(x, p, 'k', linewidth=2)
+                title = "raw mu = %.2f,  std = %.2f" % (mu, std)
+                plt.title(title)
+                plt.show()
+
+                plt.figure(f"Dist Hist err_calibed {i}->{main_id}")
                 plt.hist(err_calibed, 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
                 xmin, xmax = plt.xlim()
+                mu, std = stats.norm.fit(err_calibed)
                 x = np.linspace(xmin, xmax, 100)
                 p = stats.norm.pdf(x, mu, std)
                 plt.plot(x, p, 'k', linewidth=2)
+                title = "Calibed mu = %.2f,  std = %.2f" % (mu, std)
                 plt.title(title)
                 plt.show()
         

@@ -67,8 +67,7 @@ struct swarm_localization_solver_params{
     bool enable_cgraph_generation = false;
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
-    float loop_outlier_threshold_distance = 2.0;
-    float loop_outlier_threshold_distance_init = 2.0;
+    float loop_outlier_distance_threshold = 2.0;
     float det_dpos_thres = 1.0;
     float detection_outlier_thres;
     float detection_inv_dep_outlier_thres;
@@ -79,8 +78,9 @@ struct swarm_localization_solver_params{
     bool kf_use_all_nodes;
     bool generate_full_path;
     float max_solver_time;
-    float distance_outlier_threshold;
-    float distance_height_outlier_threshold;
+    float range_measurement_outlier_threshold;
+    float range_measurement_outlier_elevation_threshold;
+    float minimum_distance = 0.2;
 
 
     float vo_cov_pos_per_meter = 0.1;
@@ -216,11 +216,7 @@ public:
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
     float detection_inv_dep_outlier_thres;
-    float distance_outlier_threshold;
-    float distance_height_outlier_threshold;
     float detection_outlier_thres;
-    float loop_outlier_threshold_distance;
-    float loop_outlier_threshold_distance_init;
 
     float det_dpos_thres;
 

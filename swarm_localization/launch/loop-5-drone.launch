@@ -41,12 +41,12 @@
             det_dpos_thres: 0.2
             detection_outlier_thres: 0.5
             detection_inv_dep_outlier_thres: 0.5
-            distance_outlier_threshold: 1.0
+            range_measurement_outlier_threshold: 1.0
             distance_height_outlier_threshold: 1.0
             loop_outlier_threshold_pos: 0.5
-            loop_outlier_threshold_distance: 1.8
-            #loop_outlier_threshold_distance: 0.8
-            loop_outlier_threshold_distance_init : 1.8
+            loop_outlier_distance_threshold: 1.8
+            #loop_outlier_distance_threshold: 0.8
+            loop_outlier_distance_threshold_init : 1.8
             loop_outlier_threshold_yaw: 0.5
 
             max_solver_time: 0.5

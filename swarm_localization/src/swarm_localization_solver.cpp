@@ -95,11 +95,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_detection_depth(_params.enable_detection_depth),
             kf_use_all_nodes(_params.kf_use_all_nodes),
             generate_full_path(_params.generate_full_path),
-            max_solver_time(_params.max_solver_time),
-            distance_outlier_threshold(_params.distance_outlier_threshold),
-            distance_height_outlier_threshold(_params.distance_height_outlier_threshold),
-            loop_outlier_threshold_distance(_params.loop_outlier_threshold_distance),
-            loop_outlier_threshold_distance_init(_params.loop_outlier_threshold_distance_init)
+            max_solver_time(_params.max_solver_time)
     {
         outlier_rejection = new SwarmLocalOutlierRejection(_params.outlier_rejection_params, ego_motion_trajs);
     }
@@ -432,7 +428,11 @@ void SwarmLocalizationSolver::outlier_rejection_frame(SwarmFrame & sf) const {
                     Pose posj_est(est_poses_idts.at(_idj).at(ts), true);
                     double est_dis = (posj_est.pos() - poseest.pos()).norm();
                     printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
-                    if (fabs(dis - est_dis) > distance_outlier_threshold || fabs(posj_est.pos().z() - poseest.pos().z()) > distance_height_outlier_threshold || !enable_distance) {
+                    auto dheight = posj_est.pos().z() - poseest.pos().z();
+                    if (fabs(dis - est_dis) > params.range_measurement_outlier_threshold ||
+                        dis < params.minimum_distance ||
+                        fabs(asin(dheight/dis)) > params.range_measurement_outlier_elevation_threshold ||
+                        !enable_distance) {
                         printf("is outlier or distance is disable");
                         _nf.outlier_distance[_idj] = true;
                     } else {
@@ -482,7 +482,7 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
     auto loc_ret = Swarm::LoopEdge(loop_con, true);
     auto distance = loc_ret.relative_pose.pos().norm();
-    if (distance > loop_outlier_threshold_distance) 
+    if (distance > params.loop_outlier_distance_threshold) 
     {
         ROS_WARN("[SWARM_LOCAL] Add loop %d failed %d(%d)->%d(%d) Distance too long %f", 
             loc_ret.id,
