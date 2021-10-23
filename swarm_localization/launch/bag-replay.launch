@@ -31,6 +31,10 @@
         <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
+        <arg name="enable_distance" value="$(arg distance)" />
+        <arg name="enable_detection" value="$(arg detector)" />
+        <arg name="enable_detection_depth" value="$(arg detector_depth)" />
+        <arg name="enable_loop" default="$(arg loop)" />
     </include>
 
     <group unless="$(arg backend_only)">

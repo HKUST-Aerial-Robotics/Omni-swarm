@@ -3,7 +3,7 @@
 #include "third_party/fast_max-clique_finder/src/graphIO.h"
 #include "third_party/fast_max-clique_finder/src/findClique.h"
 
-#define PCM_DEBUG_OUTPUT
+// #define PCM_DEBUG_OUTPUT
 
 std::fstream pcm_good;
 std::fstream pcm_errors;

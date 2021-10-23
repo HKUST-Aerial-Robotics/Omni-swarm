@@ -639,11 +639,12 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         _id = id_map[i]
         fig = plt.figure(f"Drone {i} fused Vs GT 1D")
         #fig.suptitle(f"Drone {i} fused Vs GT 1D")
-        ax1, ax2, ax3 = fig.subplots(3, 1)
+        ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
 
         t_ = poses_fused[i]["t"]
         if groundtruth:
             pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"])
+            yaw_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 0]
         pos_fused = poses_fused[i]["pos"]
         _i = str(i) 
         if groundtruth:
@@ -676,6 +677,16 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1.grid()
         ax2.grid()
         ax3.grid()
+        if groundtruth:
+            ax4.plot(t_, yaw_gt, label=f"Ground Truth ${i}$")
+        #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
+        ax4.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,0], label=f"Aligned VIO ${_id}$")
+        
+        ax4.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,0], label=f"Estimate {_id}")
+        ax4.set_ylabel("Yaw")
+        ax4.set_xlabel("t")
+        ax4.legend()
+        ax4.grid()
         plt.savefig(output_path+f"est_by_t{i}.png")
 
 def plot_distance_err(poses, poses_fused, distances, main_id, nodes, is_show=False):

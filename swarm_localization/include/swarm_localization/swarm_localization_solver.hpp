@@ -23,7 +23,7 @@ using namespace ceres;
 
 struct SwarmFrameError;
 struct SwarmHorizonError;
-struct RelativePose4dError;
+struct RelativePoseFactor4d;
 
 class LocalizationDAInit;
 

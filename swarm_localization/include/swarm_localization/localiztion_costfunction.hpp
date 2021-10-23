@@ -189,13 +189,13 @@ inline void EigenTanbase2T(const Eigen::Matrix<double, 2, 3> & _tan_base, T *tan
     tan_base[5] = T(_tan_base(1, 2));
 }
 
-class RelativePose4dError {
+class RelativePoseFactor4d {
     Swarm::Pose relative_pose;
     Eigen::Vector4d relative_pose_4d;
     Eigen::Matrix4d sqrt_inf;
 public:
 
-    RelativePose4dError(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf):
+    RelativePoseFactor4d(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf):
         relative_pose(_relative_pose), sqrt_inf(_sqrt_inf)
     {
         relative_pose.to_vector_xyzyaw(relative_pose_4d.data());
@@ -215,119 +215,121 @@ public:
     }
 
     static ceres::CostFunction* Create(const Swarm::Pose & _relative_pose, const Eigen::Matrix4d & _sqrt_inf) {
-        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
-            new RelativePose4dError(_relative_pose, _sqrt_inf));
+        return new ceres::AutoDiffCostFunction<RelativePoseFactor4d, 4, 4, 4>(
+            new RelativePoseFactor4d(_relative_pose, _sqrt_inf));
     }
 
     static ceres::CostFunction* Create(const Swarm::Pose & _relative_pose, const Eigen::Matrix6d & _sqrt_inf) {
         Matrix4d _sqrt_inf_4d = Matrix4d::Zero();
         _sqrt_inf_4d.block<3, 3>(0, 0) = _sqrt_inf.block<3, 3>(0, 0);
         _sqrt_inf_4d(3, 3) = _sqrt_inf(5, 5);
-        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
-            new RelativePose4dError(_relative_pose, _sqrt_inf_4d));
+        return new ceres::AutoDiffCostFunction<RelativePoseFactor4d, 4, 4, 4>(
+            new RelativePoseFactor4d(_relative_pose, _sqrt_inf_4d));
     }
 
     static ceres::CostFunction* Create(const Swarm::GeneralMeasurement2Drones* _loc) {
         auto loop = static_cast<const Swarm::LoopEdge*>(_loc);
-        return new ceres::AutoDiffCostFunction<RelativePose4dError, 4, 4, 4>(
-            new RelativePose4dError(loop->relative_pose, loop->get_sqrt_information_4d()));
+        return new ceres::AutoDiffCostFunction<RelativePoseFactor4d, 4, 4, 4>(
+            new RelativePoseFactor4d(loop->relative_pose, loop->get_sqrt_information_4d()));
     }
 };
 
-// class SwarmDetectionError : public GeneralMeasurement2DronesError{
-//     bool enable_depth;
-//     Swarm::DroneDetection det;
-//     bool enable_dpose;
-//     Eigen::Vector3d dir;
-//     double inv_dep;
-//     double dep;
-//     bool use_inv_dep = false;
-// public:
-//     SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) :
-//         GeneralMeasurement2DronesError(_loc){
-//         det = *(static_cast<const Swarm::DroneDetection*>(loc));
-//         enable_depth = det.enable_depth;
-//         enable_dpose = det.enable_dpose;
-//         dir = det.p;
-//         inv_dep = det.inv_dep;
-//         dep = 1/inv_dep;
-//         // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
-//         // std::cout << "rel_p" << det.p << std::endl;
-//     }
+/*
+class SwarmDetectionError {
+    bool enable_depth;
+    Swarm::DroneDetection det;
+    bool enable_dpose;
+    Eigen::Vector3d dir;
+    double inv_dep;
+    double dep;
+    bool use_inv_dep = false;
+public:
+    SwarmDetectionError(const Swarm::GeneralMeasurement2Drones* _loc) {
+        det = *(static_cast<const Swarm::DroneDetection*>(loc));
+        enable_depth = det.enable_depth;
+        enable_dpose = det.enable_dpose;
+        dir = det.p;
+        inv_dep = det.inv_dep;
+        dep = 1/inv_dep;
+        // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
+        // std::cout << "rel_p" << det.p << std::endl;
+    }
 
-//     template<typename T>
-//     bool operator()(T const *const *_poses, T *_residual) const {
-//         int res_count = detection_residual( _poses, _residual);
-//         return true;
-//     }
+    template<typename T>
+    bool operator()(T const *const *_poses, T *_residual) const {
+        int res_count = detection_residual( _poses, _residual);
+        return true;
+    }
 
-//     virtual int residual_count() override{
-//         if (enable_depth) {
-//             return 3;
-//         } else {
-//             return 2;
-//         }
-//     }
+    virtual int residual_count() {
+        if (enable_depth) {
+            return 3;
+        } else {
+            return 2;
+        }
+    }
 
-// protected:
-//     template<typename T>
-//     inline int detection_residual(T const *const *_poses, T *_residual) const {
-//         T relpose_est[3], posea[4], poseb[4];
-//         get_pose_a(_poses, posea);
-//         get_pose_b(_poses, poseb);
+protected:
+    template<typename T>
+    inline int detection_residual(T const *const *_poses, T *_residual) const {
+        T relpose_est[3], posea[4], poseb[4];
+        get_pose_a(_poses, posea);
+        get_pose_b(_poses, poseb);
 
-//         if (enable_dpose) {
-//             T _posea[4], _poseb[4], dposea[4], dposeb[4];
+        if (enable_dpose) {
+            T _posea[4], _poseb[4], dposea[4], dposeb[4];
             
-//             det.dpose_self_a.to_vector_xyzyaw(dposea);
-//             det.dpose_self_b.to_vector_xyzyaw(dposeb);
+            det.dpose_self_a.to_vector_xyzyaw(dposea);
+            det.dpose_self_b.to_vector_xyzyaw(dposeb);
 
-//             PoseMulti(posea, dposea, _posea);
-//             PoseMulti(poseb, dposeb, _poseb);
-//             DeltaPose_Naive(_posea, _poseb, relpose_est);
-//         } else {
-//             // T extrinsic[3], _posea[3];
-//             // extrinsic[0] = T(det.extrinsic.x());
-//             // extrinsic[1] = T(det.extrinsic.y());
-//             // extrinsic[2] = T(det.extrinsic.z());
-//             // PoseMulti_2(posea, extrinsic, _posea);
-//             posea[2] = posea[2] + T(det.extrinsic.z());
-//             DeltaPose_Naive(posea, poseb, relpose_est);
-//         }
+            PoseMulti(posea, dposea, _posea);
+            PoseMulti(poseb, dposeb, _poseb);
+            DeltaPose_Naive(_posea, _poseb, relpose_est);
+        } else {
+            // T extrinsic[3], _posea[3];
+            // extrinsic[0] = T(det.extrinsic.x());
+            // extrinsic[1] = T(det.extrinsic.y());
+            // extrinsic[2] = T(det.extrinsic.z());
+            // PoseMulti_2(posea, extrinsic, _posea);
+            posea[2] = posea[2] + T(det.extrinsic.z());
+            DeltaPose_Naive(posea, poseb, relpose_est);
+        }
         
         
-//         T rel_p[3];
-//         rel_p[0] = T(dir.x());
-//         rel_p[1] = T(dir.y());
-//         rel_p[2] = T(dir.z());
+        T rel_p[3];
+        rel_p[0] = T(dir.x());
+        rel_p[1] = T(dir.y());
+        rel_p[2] = T(dir.z());
 
-//         const double * tan_base = det.detect_tan_base.data();
+        const double * tan_base = det.detect_tan_base.data();
 
-//         if (enable_depth) {
-//             // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
-//             if (use_inv_dep) {
-//                 T inv_dep = (T)(this->inv_dep);
-//                 unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
-//             } else {
-//                 T dep = (T)(this->dep);
-//                 unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
-//             }
-//             // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
-//             return 3;
-//         } else {
-//             unit_position_error(relpose_est, rel_p, tan_base, _residual);
-//             return 2;
-//         }
+        if (enable_depth) {
+            // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
+            if (use_inv_dep) {
+                T inv_dep = (T)(this->inv_dep);
+                unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
+            } else {
+                T dep = (T)(this->dep);
+                unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
+            }
+            // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
+            return 3;
+        } else {
+            unit_position_error(relpose_est, rel_p, tan_base, _residual);
+            return 2;
+        }
     
-//     }
-// };
+    }
+};
 
+*/
 struct SwarmFrameError {
     SwarmFrame sf;
     std::map<int, int> id2poseindex;
     std::map<int, bool> yaw_observability;
     std::map<int, double> yaw_init;
     bool detection_no_scale = false;
+    bool enable_distance = false;
 
     template<typename T>
     inline void get_pos(int _id, T const *const *_poses, T * t_pose) const {
@@ -374,14 +376,11 @@ struct SwarmFrameError {
         for (const auto & it : sf.id2nodeframe) {
             const NodeFrame &_nf = it.second;
 
-            if (_nf.frame_available) {
-
-                if (_nf.dists_available) {
-                    // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
-                    for (auto it : _nf.dis_map) {
-                        if (has_id(it.first) && _nf.distance_available(it.first)) 
-                            res_count++;
-                    }
+            if (enable_distance && _nf.frame_available && _nf.dists_available) {
+                // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+                for (auto it : _nf.dis_map) {
+                    if (has_id(it.first) && _nf.distance_available(it.first)) 
+                        res_count++;
                 }
             }
         }
@@ -399,11 +398,8 @@ struct SwarmFrameError {
             NodeFrame &_nf = it.second;
 
             //First we come to distance error
-            if (_nf.frame_available) {
-
-                if (_nf.dists_available) {
+            if (enable_distance && _nf.frame_available && _nf.dists_available) {
                     res_count = nodeframe_distance_residual(_nf, _poses, _residual, res_count);
-                }
             }
 
         }
@@ -417,13 +413,15 @@ struct SwarmFrameError {
                     const std::map<int, int> &_id2poseindex, 
                     const std::map<int, bool> & _yaw_observability, 
                     const std::map<int, double> & _yaw_init = std::map<int, double> (),
-                    bool _detection_no_scale = false) :
+                    bool _detection_no_scale = false,
+                    bool _enable_distance = false) :
             sf(_sf),
             id2poseindex(_id2poseindex),
             yaw_observability(_yaw_observability),
             yaw_init(_yaw_init),
-            detection_no_scale(_detection_no_scale){
-    }
+            detection_no_scale(_detection_no_scale),
+            enable_distance(_enable_distance)
+    {}
 };
 
 typedef ceres::DynamicAutoDiffCostFunction<SwarmFrameError, AUTODIFF_STRIDE>  SFErrorCost;
