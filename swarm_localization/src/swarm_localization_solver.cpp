@@ -1005,7 +1005,7 @@ void SwarmLocalizationSolver::setup_problem_with_loops(const EstimatePosesIDTS &
         }
         CostFunction * cost = RelativePoseFactor4d::Create(loc);;
         ceres::LossFunction *loss_function = nullptr;
-        // loss_function = new ceres::HuberLoss(1.0);
+        loss_function = new ceres::HuberLoss(1.0);
         problem.AddResidualBlock(cost, loss_function, posea, poseb);
     }
 }
@@ -1138,7 +1138,7 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
                     poses_all_ego.push_back(nfs[ts]);
 
                     if (pose_ptr_1 != pose_ptr_2) {
-                        auto cf = RelativePoseFactor4d::Create(odom.first, odom.second);
+                        auto cf = RelativePoseFactor4d::CreateCov6d(odom.first, odom.second);
                         problem.AddResidualBlock(cf, nullptr, pose_ptr_1, pose_ptr_2);
                     }
                 }
@@ -1605,30 +1605,34 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
 std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> good_2drone_measurements) {
     //tuple 
     //    TsType ts_a, TsType ts_b, int id_a int id_b;
-    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
     std::vector<Swarm::LoopEdge*> ret;
-    for (auto & loop : good_2drone_measurements) {
-        GeneralMeasurement2DronesKey key = loop.key();
+    // std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
+    // for (auto & loop : good_2drone_measurements) {
+    //     GeneralMeasurement2DronesKey key = loop.key();
 
-        loop_sets[key].push_back(loop);
-    }
+    //     loop_sets[key].push_back(loop);
+    // }
     
-    good_2drone_measurements.clear();
+    // good_2drone_measurements.clear();
     
-    for (auto & it : loop_sets) {
-        auto & loop_vec = it.second;
-        Eigen::Vector3d pos_sum(0, 0, 0);
-        double yaw_sum = 0;
-        for (auto loop : loop_vec) {
-            pos_sum = pos_sum + loop.relative_pose.pos();
-            yaw_sum = yaw_sum + loop.relative_pose.yaw();
-        }
+    // for (auto & it : loop_sets) {
+    //     auto & loop_vec = it.second;
+    //     Eigen::Vector3d pos_sum(0, 0, 0);
+    //     double yaw_sum = 0;
+    //     for (auto loop : loop_vec) {
+    //         pos_sum = pos_sum + loop.relative_pose.pos();
+    //         yaw_sum = yaw_sum + loop.relative_pose.yaw(); //May occurs wrap_pi yaw issue....
+    //     }
 
-        auto loop = new Swarm::LoopEdge(loop_vec[0]);
+    //     auto loop = new Swarm::LoopEdge(loop_vec[0]);
         
-        loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
-        loop->avg_count = loop_vec.size();
-        ret.push_back(loop);
+    //     loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
+    //     loop->avg_count = loop_vec.size();
+    //     ret.push_back(loop);
+    // }
+    for (auto & loop : good_2drone_measurements) {
+        auto loop_ptr = new Swarm::LoopEdge(loop);
+        ret.push_back(loop_ptr);
     }
 
     ROS_INFO("[SWARM_LOCAL] Available loops %ld averaged %ld", good_2drone_measurements.size(), ret.size());

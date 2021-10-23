@@ -794,11 +794,10 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
                 DP_old_to_new.yaw()*57.3,
                 ret.pnp_inlier_num
             );
+            return true;
         } else {
             ROS_INFO("[SWARM_LOOP] Loop not consistency with odometry, give up.");
         }
-
-        return true;
     }
     return false;
 }

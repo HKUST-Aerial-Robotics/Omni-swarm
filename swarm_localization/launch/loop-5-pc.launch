@@ -27,8 +27,8 @@
             init_xy_movement : 1.0
             init_z_movement : 0.5
             pub_swarm_odom: true
-            vo_cov_pos_per_meter: 0.01 #Worse VO
-            vo_cov_yaw_per_meter: 0.003 #Worse VO
+            vo_cov_pos_per_meter: 1e-2 #Worse VO
+            vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
             DISTANCE_STD: 0.07
             pcm_thres: 3.455
             

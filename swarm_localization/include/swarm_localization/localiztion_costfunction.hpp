@@ -219,16 +219,19 @@ public:
             new RelativePoseFactor4d(_relative_pose, _sqrt_inf));
     }
 
-    static ceres::CostFunction* Create(const Swarm::Pose & _relative_pose, const Eigen::Matrix6d & _sqrt_inf) {
-        Matrix4d _sqrt_inf_4d = Matrix4d::Zero();
-        _sqrt_inf_4d.block<3, 3>(0, 0) = _sqrt_inf.block<3, 3>(0, 0);
-        _sqrt_inf_4d(3, 3) = _sqrt_inf(5, 5);
+    static ceres::CostFunction* CreateCov6d(const Swarm::Pose & _relative_pose, const Eigen::Matrix6d & cov) {
+        Matrix4d cov4d = Matrix4d::Zero();
+        cov4d.block<3, 3>(0, 0) = cov.block<3, 3>(0, 0);
+        cov4d(3, 3) = cov(5, 5);
+        auto _sqrt_inf_4d = cov4d.inverse().cwiseAbs().cwiseSqrt();;
+        // std::cout << "Odom" << "sqrt_inf\n" << _sqrt_inf_4d << std::endl;
         return new ceres::AutoDiffCostFunction<RelativePoseFactor4d, 4, 4, 4>(
             new RelativePoseFactor4d(_relative_pose, _sqrt_inf_4d));
     }
 
     static ceres::CostFunction* Create(const Swarm::GeneralMeasurement2Drones* _loc) {
         auto loop = static_cast<const Swarm::LoopEdge*>(_loc);
+        // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
         return new ceres::AutoDiffCostFunction<RelativePoseFactor4d, 4, 4, 4>(
             new RelativePoseFactor4d(loop->relative_pose, loop->get_sqrt_information_4d()));
     }

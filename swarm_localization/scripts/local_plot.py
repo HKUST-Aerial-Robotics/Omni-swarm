@@ -1013,27 +1013,30 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             ax1.grid()
             ax2.grid()
             ax3.grid()
-
-            fig = plt.figure("Yaw")
-            plt.title("yaw")
-            ax1, ax2 = fig.subplots(2, 1)
             for i in nodes:
+                fig = plt.figure(f"Yaw {i}")
+                plt.title(f"Yaw {i}")
+                # ax1, ax2 = fig.subplots(1, 1)
+                ax1 = fig.subplots(1, 1)
                 t_ = poses_fused[i]["t"]
                 yaw_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])
                 yaw_fused = poses_fused[i]["ypr"]
+                yaw_vo = poses_vo[i]["ypr_func"](poses_fused[i]["t"])
                 
-                ax1.plot(t_,  yaw_gt[:,0], label=f"$\psi gt{i}$")
-                ax1.plot(t_,  yaw_fused[:,0], label=f"$\psi fused{i}$")
+                ax1.plot(t_,  yaw_gt[:,0]*57.3, label=f"$\psi gt{i}$")
+                ax1.plot(t_,  yaw_fused[:,0]*57.3, label=f"$\psi fused{i}$")
+                ax1.plot(t_,  yaw_vo[:,0]*57.3, label=f"$\psi fused{i}$")
 
-                ax2.plot(t_,  (yaw_fused[:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$\psi_E{i}$")
-                yaw_gt=  poses[i]["ypr_func"](poses_vo[i]["t"])
-                ax2.plot(poses_vo[i]["t"],  (poses_vo[i]["ypr"][:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$VO \psi_E{i}$")
 
-            ax2.set_ylim(-0.5, 0.5)
-            ax1.grid()
-            ax2.grid()
-            ax1.legend()
-            ax2.legend() 
+                ax1.grid()
+                ax1.legend()
+                # ax2.plot(t_,  (yaw_fused[:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$\psi_E{i}$")
+                # yaw_gt =  poses[i]["ypr_func"](poses_vo[i]["t"])
+                # ax2.plot(poses_vo[i]["t"],  (poses_vo[i]["ypr"][:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$VO \psi_E{i}$")
+                # ax2.set_ylim(-0.5, 0.5)
+                # ax2.grid()
+                # ax2.legend() 
+
         
         num = len(nodes)
     print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
@@ -1298,6 +1301,7 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     count_inter_loop = 0
 
     loops_error = {}
+    loop_ids = []
     for loop in loops:
         if inlier_file!= "" and loop["id"] not in good_loop_id:
             continue
@@ -1335,14 +1339,18 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
         pnp_inlier_nums.append(loop["pnp_inlier_num"])
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
+        loop_ids.append(loop["id"])
 
-        loops_error[loop["id"]] = {
-            "pos": norm(dpos_gt - dpos_loop), 
-            "yaw": wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]), 
-            "dt": fabs(loop["ts_b"]-loop["ts_a"])
-        }
+        if loop["id"] in loops_error:
+            print("Duplicate loop", loop["id"])
+        else:
+            loops_error[loop["id"]] = {
+                "pos": norm(dpos_gt - dpos_loop), 
+                "yaw": wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]), 
+                "dt": fabs(loop["ts_b"]-loop["ts_a"])
+            }
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
-        #     print("Error", np.linalg.norm(dpos_gt - dpos_loop) , loop)
+            # print(loop["id"], loops_error[loop["id"]])
     
     outlier_num = (np.array(dpos_errs_norm)>0.5).sum()
     total_loops = len(dpos_errs_norm)
@@ -1394,7 +1402,7 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
         if dpos_errs_norm[i]>0.2:
-            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loops[i]['id'])}|{idas[i]}->{idbs[i]}", fontsize=12)
+            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}|{idas[i]}->{idbs[i]}", fontsize=12)
     # plt.figure()
     # plt.subplot(141)
     # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
