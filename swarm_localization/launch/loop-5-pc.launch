@@ -47,11 +47,11 @@
             detection_outlier_thres: 0.5
             detection_inv_dep_outlier_thres: 0.5
             
-            range_measurement_outlier_threshold: 0.3
-            range_measurement_outlier_elevation_threshold: 0.6
+            distance_measurement_outlier_threshold: 0.3
+            distance_measurement_outlier_elevation_threshold: 0.6
 
             loop_outlier_distance_threshold: 2.0
-            pcm_thres: 3.455
+            pcm_thres: 2.204
 
             #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5

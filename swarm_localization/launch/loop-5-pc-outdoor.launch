@@ -43,7 +43,7 @@
             det_dpos_thres: 0.6
             detection_outlier_thres: 0.8
             detection_inv_dep_outlier_thres: 0.8
-            range_measurement_outlier_threshold: 1.0
+            distance_measurement_outlier_threshold: 1.0
             distance_height_outlier_threshold: 1.0
             loop_outlier_threshold_pos: 10
             loop_outlier_distance_threshold: 2.5

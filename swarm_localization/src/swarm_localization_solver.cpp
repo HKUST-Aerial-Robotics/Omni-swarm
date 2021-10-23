@@ -429,9 +429,9 @@ void SwarmLocalizationSolver::outlier_rejection_frame(SwarmFrame & sf) const {
                     double est_dis = (posj_est.pos() - poseest.pos()).norm();
                     printf("ID %d DIS %4.2f EST %4.2f ",_idj, dis, est_dis);
                     auto dheight = posj_est.pos().z() - poseest.pos().z();
-                    if (fabs(dis - est_dis) > params.range_measurement_outlier_threshold ||
+                    if (fabs(dis - est_dis) > params.distance_measurement_outlier_threshold ||
                         dis < params.minimum_distance ||
-                        fabs(asin(dheight/dis)) > params.range_measurement_outlier_elevation_threshold ||
+                        fabs(asin(dheight/dis)) > params.distance_measurement_outlier_elevation_threshold ||
                         !enable_distance) {
                         printf("is outlier or distance is disable");
                         _nf.outlier_distance[_idj] = true;

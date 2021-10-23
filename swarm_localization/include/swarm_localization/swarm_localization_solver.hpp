@@ -78,8 +78,8 @@ struct swarm_localization_solver_params{
     bool kf_use_all_nodes;
     bool generate_full_path;
     float max_solver_time;
-    float range_measurement_outlier_threshold;
-    float range_measurement_outlier_elevation_threshold;
+    float distance_measurement_outlier_threshold;
+    float distance_measurement_outlier_elevation_threshold;
     float minimum_distance = 0.2;
 
 

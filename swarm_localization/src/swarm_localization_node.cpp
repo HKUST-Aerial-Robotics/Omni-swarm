@@ -480,8 +480,8 @@ public:
         nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
         nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
         nh.param<float>("max_solver_time", solver_params.max_solver_time, 0.05f);
-        nh.param<float>("range_measurement_outlier_threshold", solver_params.range_measurement_outlier_threshold, 0.3f);
-        nh.param<float>("range_measurement_outlier_elevation_threshold", solver_params.range_measurement_outlier_elevation_threshold, 0.5f);
+        nh.param<float>("distance_measurement_outlier_threshold", solver_params.distance_measurement_outlier_threshold, 0.3f);
+        nh.param<float>("distance_measurement_outlier_elevation_threshold", solver_params.distance_measurement_outlier_elevation_threshold, 0.5f);
 
 
         nh.param<float>("vo_cov_pos_per_meter", solver_params.vo_cov_pos_per_meter, 0.01f);
