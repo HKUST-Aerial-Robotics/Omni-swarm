@@ -728,6 +728,7 @@ class LocalProxy {
             q.x() = self_odom.pose.pose.orientation.x;
             q.y() = self_odom.pose.pose.orientation.y;
             q.z() = self_odom.pose.pose.orientation.z;
+            self_nf.quat = self_odom.pose.pose.orientation;
             Eigen::Vector3d rpy = quat2eulers(q);
             self_nf.yaw = rpy.z();
             self_nf.position.x = self_odom.pose.pose.position.x;
@@ -781,6 +782,7 @@ class LocalProxy {
             q.z() = self_odom.pose.pose.orientation.z;
             Eigen::Vector3d rpy = quat2eulers(q);
             self_nf.yaw = rpy.z();
+            self_nf.quat = self_odom.pose.pose.orientation;
             self_nf.position.x = self_odom.pose.pose.position.x;
             self_nf.position.y = self_odom.pose.pose.position.y;
             self_nf.position.z = self_odom.pose.pose.position.z;

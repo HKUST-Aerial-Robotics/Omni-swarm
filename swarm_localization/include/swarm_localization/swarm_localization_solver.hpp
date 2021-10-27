@@ -40,7 +40,7 @@ inline Eigen::Vector3d rand_FloatRange_vec(float a, float b) {
 }
 
 
-Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only = true);
+Swarm::Pose Predict_By_VO(const Swarm::Pose & vo_now, const Swarm::Pose & vo_ref, const Swarm::Pose & est_pose_ref, bool is_yaw_only);
 
 
 //Poses is dict of timestamp and then id;

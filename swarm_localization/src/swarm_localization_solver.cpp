@@ -95,7 +95,7 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
     }
 
 
-Swarm::Pose Predict_By_VO(Swarm::Pose vo_now, Swarm::Pose vo_ref, Swarm::Pose est_pose_ref, bool is_yaw_only) {
+Swarm::Pose Predict_By_VO(const Swarm::Pose & vo_now, const Swarm::Pose & vo_ref, const Swarm::Pose & est_pose_ref, bool is_yaw_only) {
     return est_pose_ref * Pose::DeltaPose(vo_ref, vo_now, is_yaw_only);
 }
 
@@ -236,7 +236,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &
                 delete _p;
                 _p = est_poses_tsid[last_ts_4node][_id];
             } else {
-                Pose predict_now = Predict_By_VO(now_vo, last_vo, est_last);
+                Pose predict_now = Predict_By_VO(now_vo, last_vo, est_last, true);
                 predict_now.to_vector_xyzyaw(_p);
             }
             // ROS_INFO("Init ID %d at %d with predict value", _nf.id, TSShort(ts));
@@ -580,13 +580,13 @@ bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Ei
 
                 //Use last solve relative res, e.g init with last
                 int _id = nf.id;
-                Pose est_last = Pose(est_poses_tsid_saved.at(_ts).at(_id), true);
-                Pose last_vo = all_sf.at(_ts).id2nodeframe.at(_id).pose();
-                Pose now_vo = nf.pose();
+                Pose est_last_4d = Pose(est_poses_tsid_saved.at(_ts).at(_id), true);
+                Pose last_vo_4d = all_sf.at(_ts).id2nodeframe.at(_id).pose();
+                last_vo_4d.set_yaw_only();
+                Pose now_vo_6d = nf.pose();
 
-                _pose = Predict_By_VO(now_vo, last_vo, est_last);
-
-                _pose = est_last * Pose::DeltaPose(last_vo, now_vo, true);
+                // _pose = Predict_By_VO(now_vo_6d, last_vo_6d, est_last_4d, true);
+                _pose = est_last_4d * Pose::DeltaPose(last_vo_4d, now_vo_6d, false);
                 cov = Eigen::Matrix4d::Zero();
                 return true;
             }
@@ -905,7 +905,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
 
                     Pose vo_ref = all_sf[ts_kf].id2nodeframe[id].pose();
                     Pose est_ref = _kf_path.get_pose(index);
-                    Pose pose = Predict_By_VO(ego_motion_traj.get_pose(i), vo_ref, est_ref);
+                    Pose pose = Predict_By_VO(ego_motion_traj.get_pose(i), vo_ref, est_ref, true);
                     full_path_traj.push(ego_motion_traj.get_node_frame(i), pose);
                 }
                 count ++;
@@ -1084,7 +1084,7 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
                 poses_all_ego.push_back(nfs[ts]);
             } else {
                 if (ts_last != ts) {
-                    auto odom = ego_motion_trajs.at(drone_id).get_relative_pose_by_ts(ts_last, ts);
+                    auto odom = ego_motion_trajs.at(drone_id).get_relative_pose_by_ts(ts_last, ts, true);
                     double * pose_ptr_1 = nfs[ts_last];
                     double * pose_ptr_2 = nfs[ts];
                     poses_all_ego.push_back(nfs[ts]);
@@ -1967,9 +1967,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
     agwrite(g,f);
     agclose(g);
     fclose(f);
-    ROS_INFO("[SWARM_LOCAL] Generated cgraph to %s", cgraph_path.c_str());
     double dt = duration_cast<microseconds>(high_resolution_clock::now() - start).count()/1000.0;
-
-    ROS_INFO("[SWARM_LOCAL] Generate cgraph cost %4.3fms\n", dt);
+    ROS_INFO("[SWARM_LOCAL] Generated cgraph to %s, cost %.1fms\n", cgraph_path.c_str(), dt);
 
 }

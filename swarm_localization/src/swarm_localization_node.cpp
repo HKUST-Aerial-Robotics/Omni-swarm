@@ -89,7 +89,7 @@ class SwarmLocalizationNode {
         }
 
         if (nf.vo_available) {
-            nf.self_pose = Pose(_nf.position, _nf.yaw);
+            nf.self_pose = Pose(_nf.position, _nf.quat);
             // ROS_WARN("Node %d vo valid", _nf.id);
             nf.is_valid = true;
 
@@ -359,6 +359,7 @@ private:
             sf.ids.push_back(id);
             sf.local_drone_position.push_back(_pose.to_ros_pose().position);
             sf.local_drone_yaw.push_back(_pose.yaw());
+            sf.local_drone_rotation.push_back(_pose.to_ros_pose().orientation);
 
             geometry_msgs::Vector3 pcov;
             pcov.x = _sfs.node_covs.at(id)(0, 0);
