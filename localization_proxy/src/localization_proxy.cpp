@@ -333,6 +333,11 @@ class LocalProxy {
                 nf.roll = eul.x();
                 nf.vo_available = true;
                 nf.header.stamp = _time;
+                auto quat = eulers2quat(eul);
+                nf.quat.x = quat.x();
+                nf.quat.y = quat.y();
+                nf.quat.z = quat.z();
+                nf.quat.w = quat.w();
                 
                 for (auto it : _dis) {
                     nf.dismap_ids.push_back(it.first);

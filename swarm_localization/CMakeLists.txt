@@ -5,7 +5,7 @@ project(swarm_localization)
 set(CMAKE_BUILD_TYPE "Release")
 add_compile_options(-std=c++14)
 #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -Wno-write-strings -Wno-format-overflow")
 
 
 ## Find catkin macros and libraries
@@ -40,7 +40,7 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}_node
-        include/swarm_localization/localiztion_costfunction.hpp
+        include/swarm_localization/swarm_localization_factors.hpp
         include/swarm_localization/swarm_localization_solver.hpp
         src/swarm_localization_node.cpp
         src/localization_DA_init.cpp

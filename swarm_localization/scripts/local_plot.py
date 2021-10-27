@@ -467,10 +467,11 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if i in poses_path:
-            poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
-            poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_path[i]["pos"]) + fused_offset
-            poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
-            poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
+            if len(poses_path[i]["pos"]) > 1:
+                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
+                poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_path[i]["pos"]) + fused_offset
+                poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
+                poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if groundtruth:
             poses_gt[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_gt[i]["pos"]) + offset_gt
@@ -1065,7 +1066,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         num = len(nodes)
     print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
 
-def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, enable_dpose):
+def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -1089,8 +1090,8 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
         yawa_gt = poses[det["id_a"]]["ypr_func"](det["ts"])[0]
         yawb_gt = poses[det["id_b"]]["ypr_func"](det["ts"])[0]
 
-        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"] + t_calib[det["id_b"]])
-        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"] + t_calib[det["id_b"]])# + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
+        posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
+        posb_gt = poses[det["id_b"]]["pos_func"](det["ts"]) # + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
 
         posa_vo = poses_vo[det["id_a"]]["pos_raw_func"](det["ts"])
         yawa_vo = poses_vo[det["id_a"]]["ypr_raw_func"](det["ts"])[0]
@@ -1233,68 +1234,10 @@ def plot_detections_error(poses, poses_vo, detections, nodes, main_id, t_calib, 
     print("INV DEPS ERR Variance", np.mean((np.array(inv_deps) - np.array(inv_deps_gt))**2))
 
     plt.title(title)
-
-
-    plt.legend()
-    plt.grid()
-
-    plt.figure("DEPS")
-    plt.title("DEPS")
-    plt.plot(ts_a, 1/np.array(inv_deps), "+", label="DEP DET")
-    plt.plot(ts_a, 1/np.array(inv_deps_gt), "x", label="DEP GT")
     plt.legend()
     plt.grid()
 
 
-    plt.figure("DEPS ERR")
-    plt.plot(ts_a, 1/np.array(inv_deps) - 1/np.array(inv_deps_gt), "+", label="DEP ERR")
-    plt.legend()
-    plt.grid()
-
-    plt.figure("DEPS ERR HIST")
-    mu, std = stats.norm.fit(1/np.array(inv_deps) - 1/np.array(inv_deps_gt))
-    x = np.linspace(xmin, xmax, 100)
-    p = stats.norm.pdf(x, mu, std)
-    plt.hist(1/np.array(inv_deps) - 1/np.array(inv_deps_gt), 50, (-0.5, 0.5), density=True, facecolor='g', alpha=0.75)
-    xmin, xmax = plt.xlim()
-    plt.plot(x, p, 'k', linewidth=2)
-    title = "DEPS ERR Fit results: mu = %.2f,  std = %.2f" % (mu, std)
-    plt.title(title)
-    plt.legend()
-    plt.grid()
-    print("Dep ERR MEAN", np.mean(1/np.array(inv_deps_gt) - 1/np.array(inv_deps)))
-    print("DEPS ERR Variance", np.mean((1/np.array(inv_deps) - 1/np.array(inv_deps_gt))**2))
-
-    
-    plt.figure("Self Pose Plot")
-    plt.subplot(311)
-    plt.title("VO X")
-    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,0], label="VO1")
-    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,0], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,0], 'o', label="SelfPose1")
-    plt.plot(ts_a, self_pos_b[:,0], '+', label="SelfPose2")
-    plt.legend()
-    plt.grid()
-    
-    plt.subplot(312)
-    plt.title("VO Y")
-    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,1], label="VO1")
-    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,1], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,1], 'o', label="SelfPose1")
-    plt.plot(ts_a, self_pos_b[:,1], '+', label="SelfPose2")
-
-    plt.legend()
-    plt.grid()
-    
-    plt.subplot(313)
-    plt.title("VO Z")
-    plt.plot(poses_vo[1]["t"], poses_vo[1]["pos_raw"][:,2], label="VO1")
-    plt.plot(poses_vo[2]["t"], poses_vo[2]["pos_raw"][:,2], label="VO2")
-    plt.plot(ts_a, self_pos_a[:,2], 'o', label="SelfPose1")
-    plt.plot(ts_a, self_pos_b[:,2], '+', label="SelfPose2")
-
-    plt.figure("Yaw")
-    plt.plot(ts_a, yawa_gts)
 
 def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     good_loop_id = set()

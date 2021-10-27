@@ -162,8 +162,8 @@ class SwarmLocalizationSolver {
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
 
 
-    int
-    setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame) const;
+    void
+    setup_problem_with_sferror(const EstimatePoses &swarm_est_poses, Problem &problem, const SwarmFrame &sf, TSIDArray & param_indexs, bool is_lastest_frame);
 
     void setup_problem_with_ego_motion(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     

@@ -68,7 +68,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
         }
     }*/
 
-    ROS_INFO("The sliding window contain %d unidentified drones", unidentified.size());
+    ROS_INFO("The sliding window contain %ld unidentified drones", unidentified.size());
 
     if (unidentified.size() == 0) {
         return false;
