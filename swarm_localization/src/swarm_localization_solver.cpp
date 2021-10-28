@@ -1353,8 +1353,13 @@ bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, c
         #ifdef DEBUG_OUTPUT_DETS
 
             ROS_INFO("%d->%d@%d detection!", det_ret.id_a, det_ret.id_b, TSShort(det_ret.ts_a));
-            std::cout << "EST PoseA" << posea.tostr() << std::endl;
-            std::cout << "EST PoseB" << poseb.tostr() << std::endl;
+            std::cout << "EST PoseA" << reta.second.tostr() << std::endl;
+            std::cout << "EST PoseB" << retb.second.tostr() << std::endl;
+            
+            std::cout << "_posea" << posea.tostr() << std::endl;
+            std::cout << "_poseb" << poseb.tostr() << std::endl;
+            std::cout << "est_rel_pose" << est_rel_pose.tostr() << std::endl;
+            
             std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
             std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
             std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
@@ -1414,8 +1419,9 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     Pose extrinsic = det_ret.extrinsic;
     extrinsic.set_yaw_only();
+    std::cout << "Cam extrinsic" << extrinsic << std::endl;
 
-    det_ret.dpose_self_a = egomotion_self_a*extrinsic; //egomotion_self_a: ego_motion from keyframe to detection ts. extrinsic: extrinsic of camera in 4D frame.
+    det_ret.dpose_self_a = egomotion_self_a*extrinsic; //egomotion_self_a: ego_motion from keyframe to detection ts. extrinsic: extrinsic of camera in 4D frame. Extrinsic may occurs double counting here!!!!
     det_ret.dpose_self_b = egomotion_self_b*det_ret.GC;
 
     det_ret.ts_a = _nf_a.ts;
