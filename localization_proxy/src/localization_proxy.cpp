@@ -180,9 +180,9 @@ class LocalProxy {
         nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
         int32_t tn = ROSTIME2LPS(ros::Time::now());
         int32_t dt = tn - mdetected.lps_time;
+        ROS_WARN("[LOCAL_PROXY] ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         if (dt < 100) {
             ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
-            // ROS_INFO("[LOCAL_PROXY] ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         } else {
             ROS_WARN_THROTTLE(1.0, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         }
@@ -196,6 +196,13 @@ class LocalProxy {
         nd.local_pose_self.position.y = mdetected.local_pose_self_y;
         nd.local_pose_self.position.z = mdetected.local_pose_self_z;
         nd.local_pose_self.orientation = Yaw2ROSQuat(mdetected.local_pose_self_yaw);
+        nd.camera_extrinsic.orientation.w = 1;
+        nd.camera_extrinsic.orientation.x = 0;
+        nd.camera_extrinsic.orientation.y = 0;
+        nd.camera_extrinsic.orientation.z = 0;
+        nd.camera_extrinsic.position.x = mdetected.cam_x;
+        nd.camera_extrinsic.position.y = mdetected.cam_y;
+        nd.camera_extrinsic.position.z = mdetected.cam_z;
         if (mdetected.inv_dep != 0) {
             nd.inv_dep = mdetected.inv_dep / 10000.0;
             nd.enable_scale = true;                    
@@ -235,6 +242,9 @@ class LocalProxy {
             (float)(nd.dpos.z),
             (int)(nd.probaility*10000),
             inv_dep,
+            (float)(nd.camera_extrinsic.position.x),
+            (float)(nd.camera_extrinsic.position.y),
+            (float)(nd.camera_extrinsic.position.z),
             (float)(nd.local_pose_self.position.x),
             (float)(nd.local_pose_self.position.y),
             (float)(nd.local_pose_self.position.z),
@@ -243,69 +253,10 @@ class LocalProxy {
         send_mavlink_message(msg, true);
     }
 
-    void on_node_detcted_xyzyaw_recv(node_detected_xyzyaw nd) {
-        ros::Time ts = nd.header.stamp;
-        int s_index = find_sf_swarm_detected(ts);
-
-#ifdef SWARM_DETECTION_ON_FRAME
-        int sd_self_id = nd.self_drone_id;
-        if (sd_self_id < 0) {
-            sd_self_id = self_id;
-        }
-        if (s_index < 0 && sf_queue.size() > 2) {
-            // ROS_WARN("ND not found %d->%d TS %5.1f(%5.1f) sf to frame %d/%ld ts - sf_queue.front %f ts - sf_queue.back %f", 
-            //     nd.self_drone_id,
-            //     nd.remote_drone_id,
-            //     (ts - this->tsstart).toSec(), 
-            //     (ros::Time::now() - this->tsstart).toSec(), 
-            //     s_index, sf_queue.size(), 
-            //     (ts - sf_queue.front().header.stamp).toSec(),
-            //     (ts - sf_queue.back().header.stamp).toSec()
-            // );
-            return;
-        }
-        swarm_frame &_sf = sf_queue[s_index];
-
-        // ROS_INFO("[LOCAL_PROXY] SF node size %ld", _sf.node_frames.size());
-        for (int j = 0; j < _sf.node_frames.size(); j++) {
-            // ROS_INFO("[LOCAL_PROXY] NF id %d", _sf.node_frames[j].id);
-            if (_sf.node_frames[j].id == sd_self_id) {
-                _sf.node_frames[j].detected_xyzyaws.push_back(nd);
-                // ROS_INFO("[LOCAL_PROXY] SF BUF %d got detection", j);
-                break;
-            }
-        }
-#else
-        if (s_index >= 0) {
-            auto & sf = sf_queue[s_index];
-            for (node_frame & nf : sf.node_frames) {
-                if (nf.id == nd.remote_drone_id) {
-                    if (nf.vo_available) {
-                        nd.local_pose_remote.position.x = nf.position.x;
-                        nd.local_pose_remote.position.y = nf.position.y;
-                        nd.local_pose_remote.position.z = nf.position.z;
-
-                        Eigen::Quaterniond quat(Eigen::AngleAxisd(nf.yaw, Eigen::Vector3d::UnitZ()));
-                        nd.local_pose_remote.orientation.w = quat.w();
-                        nd.local_pose_remote.orientation.x = quat.x();
-                        nd.local_pose_remote.orientation.y = quat.y();
-                        nd.local_pose_remote.orientation.z = quat.z();
-
-                        swarm_detect_pub.publish(nd);
-                        return;
-                    } else {
-                        ROS_WARN("Failed to publish, remote %d VO is unavailable now.", nd.remote_drone_id, s_index);
-                    }
-                }
-            }
-        }
-        ROS_WARN("Failed to publish, remote %d not found in frame %d", nd.remote_drone_id, s_index);
-#endif
-    }
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {
         node_detected_xyzyaw nd = on_node_detected_msg(_id, msg);
-        on_node_detcted_xyzyaw_recv(nd);
+        swarm_detect_pub.publish(nd);
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
@@ -314,10 +265,10 @@ class LocalProxy {
         }
 
         auto node_xyzyaws = sd.detected_nodes_xyz_yaw;
-        
+        ROS_WARN("[LOCAL_PROXY] Broadcast detecteds");
         for (node_detected_xyzyaw nd : node_xyzyaws) {
             send_node_detected(nd);
-            on_node_detcted_xyzyaw_recv(nd);
+            // on_node_detcted_xyzyaw_recv(nd);
         }
     }
 
@@ -452,7 +403,6 @@ class LocalProxy {
                         parse_node_detected(msg, _id);
                         break;
                     }
-
                 }
             } else {
                 if (ret == MAVLINK_FRAMING_BAD_CRC) {
@@ -922,8 +872,8 @@ public:
         swarm_fused_sub = nh.subscribe("/swarm_drones/swarm_drone_fused", 1,
                                      &LocalProxy::on_swarm_fused_recv, this, ros::TransportHints().tcpNoDelay());
 
-        // swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected_raw", 10, &LocalProxy::on_swarm_detected, this,
-        //                                 ros::TransportHints().tcpNoDelay());
+        swarm_detect_sub = nh.subscribe("/swarm_detection/swarm_detected_raw", 10, &LocalProxy::on_swarm_detected, this,
+                                        ros::TransportHints().tcpNoDelay());
 
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 10);

@@ -1344,6 +1344,12 @@ bool SwarmLocalizationSolver::check_outlier_detection(const NodeFrame & _nf_a, c
         if (err.norm() > detection_outlier_thres || inv_dep_err > detection_inv_dep_outlier_thres) {
         #ifdef DEBUG_OUTPUT_DETECTION_OUTLIER
             ROS_WARN("[SWARM_LOCAL] Outlier %d->%d@%d detection detected!", det_ret.id_a, det_ret.id_b, TSShort(det_ret.ts_a));
+            std::cout << "EST PoseA" << reta.second.tostr() << std::endl;
+            std::cout << "EST PoseB" << retb.second.tostr() << std::endl;
+            
+            std::cout << "_posea" << posea.tostr() << std::endl;
+            std::cout << "_poseb" << poseb.tostr() << std::endl;
+            
             std::cout << "EST DPOS" << est_dpos.transpose() << " INV DEP " << est_inv_dep << std::endl;
             std::cout << "DET DPOS" << det_ret.p.transpose() << " INV DEP " << det_ret.inv_dep << std::endl;
             std::cout << "Error sphere" << err << " inv_dep " << inv_dep_err << std::endl;
