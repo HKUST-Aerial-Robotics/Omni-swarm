@@ -62,10 +62,10 @@
             is_pc_replay: true
             publish_full_path: false
 
-            cg:
-                x: 0.04
+            cg: #In IMU Frame.
+                x: -0.06
                 y: 0.0
-                z: -0.02
+                z: 0.0
         </rosparam>
         <param name="swarm_nodes_config" value="$(find swarm_localization)/config/swarm_nodes5.yaml" type="string" />
         <param name="initial_random_noise" value="$(arg rand)" type="double" />

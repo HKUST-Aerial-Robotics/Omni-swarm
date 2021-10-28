@@ -480,8 +480,8 @@ bool LoopDetector::compute_correspond_features(const FisheyeFrameDescriptor_t & 
 
         if (dir_new < new_frame_desc.images.size() && dir_old < old_frame_desc.images.size()) {
             compute_correspond_features(
-                new_frame_desc.images[dir_new],
-                old_frame_desc.images[dir_old],
+                new_frame_desc.images.at(dir_new),
+                old_frame_desc.images.at(dir_old),
                 _new_norm_2d,
                 _new_3d,
                 _new_idx,

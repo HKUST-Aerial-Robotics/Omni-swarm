@@ -268,9 +268,10 @@ class DroneDetection4dFactor {
     Eigen::Vector3d dir;
     double inv_dep;
     double dep;
-    bool use_inv_dep = false;
+    bool use_inv_dep = true;
 
     Eigen::Vector4d dposea, dposeb;
+    bool enable_dpose_b = false;
     DroneDetection4dFactor(const Swarm::DroneDetection & _det): det(_det) {
         enable_depth = det.enable_depth;
         enable_dpose = det.enable_dpose;
@@ -278,16 +279,21 @@ class DroneDetection4dFactor {
         inv_dep = det.inv_dep;
         dep = 1/inv_dep;
 
-        if (enable_depth) {
+        if (enable_dpose) {
             det.dpose_self_a.to_vector_xyzyaw(dposea.data());
             det.dpose_self_b.to_vector_xyzyaw(dposeb.data());
         }
+
+        // ROS_INFO("[SWARM_LOCAL](DetectionFactor) Detection %d->%d@%ld enable_depth %d inv_dep %d dir [%+3.2f, %+3.2f, %+3.2f] enable_dpose %d dposea %s dposeb %s", 
+        //     _det.id_a, _det.id_b, TSShort(_det.ts_a), enable_depth, use_inv_dep,
+        //     dir.x(), dir.y(), dir.z(), 
+        //     enable_dpose, det.dpose_self_a.tostr().c_str(), det.dpose_self_b.tostr().c_str());
     }
 
 public:
     template<typename T>
     bool operator()(const T* const p_a_ptr, const T* const p_b_ptr, T *_residual) const {
-        T relpose_est[3];
+        Eigen::Matrix<T, 3, 1> relpose_est;
 
         Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_a(p_a_ptr);
         Eigen::Map<const Eigen::Matrix<T, 4, 1>> pose_b(p_b_ptr);
@@ -296,37 +302,32 @@ public:
             Eigen::Matrix<T, 4, 1> _pose_a;
             Eigen::Matrix<T, 4, 1> _pose_b;
             const Eigen::Matrix<T, 4, 1> _dposea = dposea.template cast<T>();
-            const Eigen::Matrix<T, 4, 1> _dposeb = dposeb.template cast<T>();
             PoseMulti(pose_a.data(), _dposea.data(), _pose_a.data());
+            const Eigen::Matrix<T, 4, 1> _dposeb = dposeb.template cast<T>();
             PoseMulti(pose_b.data(), _dposeb.data(), _pose_b.data());
-            DeltaPose_Naive(_pose_a.data(), _pose_b.data(), relpose_est);
+            DeltaPose_Naive(_pose_a.data(), _pose_b.data(), relpose_est.data());
         } else {
             Eigen::Matrix<T, 4, 1> _pose_a = pose_a;
-            _pose_a(2) = _pose_a(2) + T(det.extrinsic.z());
-            DeltaPose_Naive(_pose_a.data(), pose_b.data(), relpose_est);
+            _pose_a(2) = _pose_a(2) + T(det.extrinsic.pos().z()); //Not accurate
+            DeltaPose_Naive(_pose_a.data(), pose_b.data(), relpose_est.data());
         }
         
         
-        T rel_p[3];
-        rel_p[0] = T(dir.x());
-        rel_p[1] = T(dir.y());
-        rel_p[2] = T(dir.z());
+        Eigen::Matrix<T, 3, 1> rel_p = dir.template cast<T>();
 
         const double * tan_base = det.detect_tan_base.data();
 
         if (enable_depth) {
-            // std::cout << "rel_p " << rel_p[0]  << " " << rel_p[1] << " " << rel_p[2] << std::endl;
             if (use_inv_dep) {
                 T inv_dep = (T)(this->inv_dep);
-                unit_position_error_inv_dep(relpose_est, rel_p, inv_dep, tan_base, _residual);
+                unit_position_error_inv_dep(relpose_est.data(), rel_p.data(), inv_dep, tan_base, _residual);
             } else {
                 T dep = (T)(this->dep);
-                unit_position_error(relpose_est, rel_p, dep, tan_base, _residual);
+                unit_position_error(relpose_est.data(), rel_p.data(), dep, tan_base, _residual);
             }
-            // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
         } else {
-            //TODO: Looks like this cause the NaN problem.
-            unit_position_error(relpose_est, rel_p, tan_base, _residual);
+            // std::cout << "relpose_est normed" << relpose_est.transpose()/relpose_est.norm() << "rel_p" << rel_p.transpose() << std::endl;
+            unit_position_error(relpose_est.data(), rel_p.data(), tan_base, _residual);
         }
 
         return true;    
@@ -336,9 +337,9 @@ public:
     static ceres::CostFunction* Create(const Swarm::GeneralMeasurement2Drones* _loc) {
         auto det = static_cast<const Swarm::DroneDetection*>(_loc);
         // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
-        int res_count = 3;
+        int res_count = 2;
         if (det->enable_depth) {
-            res_count = 2;
+            res_count = 3;
         }
 
         return new ceres::AutoDiffCostFunction<DroneDetection4dFactor, ceres::DYNAMIC, 4, 4>(

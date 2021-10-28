@@ -168,10 +168,7 @@ class SwarmLocalizationSolver {
 
     void setup_problem_with_ego_motion(const EstimatePosesIDTS & est_poses_idts, Problem &problem, int _id) const;
     
-    CostFunction *
-    _setup_cost_function_by_loop(const Swarm::GeneralMeasurement2Drones* loops) const;
-
-    void setup_problem_with_loops(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
+    void setup_problem_with_loops_and_detections(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const;
     
     
     void cutting_edges();

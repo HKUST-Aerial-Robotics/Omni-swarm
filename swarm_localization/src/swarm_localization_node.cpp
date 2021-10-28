@@ -431,19 +431,6 @@ private:
 public:
     SwarmLocalizationNode(ros::NodeHandle &_nh) :
             nh(_nh) {
-        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 1000,
-                                          &SwarmLocalizationNode::on_swarmframe_recv, this,
-                                          ros::TransportHints().tcpNoDelay());
-        
-        recv_sf_predict = nh.subscribe("/swarm_drones/swarm_frame_predict", 1,
-                                          &SwarmLocalizationNode::predict_swarm, this,
-                                          ros::TransportHints().tcpNoDelay());
-        
-        loop_connection_sub = nh.subscribe("/swarm_loop/loop_connection", 10, 
-                                    &SwarmLocalizationNode::on_loop_connection_received, this, 
-                                    ros::TransportHints().tcpNoDelay());
-        
-        swarm_detected_sub = nh.subscribe("/swarm_drones/node_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
         std::string swarm_node_config;
 
         swarm_localization_solver_params solver_params;
@@ -509,7 +496,22 @@ public:
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
 
 
+        recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 1000,
+                                          &SwarmLocalizationNode::on_swarmframe_recv, this,
+                                          ros::TransportHints().tcpNoDelay());
+        
+        recv_sf_predict = nh.subscribe("/swarm_drones/swarm_frame_predict", 1,
+                                          &SwarmLocalizationNode::predict_swarm, this,
+                                          ros::TransportHints().tcpNoDelay());
+        
+        loop_connection_sub = nh.subscribe("/swarm_loop/loop_connection", 10, 
+                                    &SwarmLocalizationNode::on_loop_connection_received, this, 
+                                    ros::TransportHints().tcpNoDelay());
+        
+        swarm_detected_sub = nh.subscribe("/swarm_drones/node_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
+
         ROS_INFO("Max Keyframe %d. Generate CGraph %d path %s\n", solver_params.max_frame_number, solver_params.enable_cgraph_generation, solver_params.cgraph_path.c_str());
+
     }
 };
 
