@@ -348,6 +348,7 @@ def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
             "id_b":msg.remote_drone_id,
             "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
             "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
+            "extrinsic" : np.array([msg.camera_extrinsic.position.x, msg.camera_extrinsic.position.y, msg.camera_extrinsic.position.z]),
             "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
             "inv_dep":msg.inv_dep
         }
@@ -365,6 +366,7 @@ def read_detections_raw(bag, t0, topic="/swarm_detection/swarm_detected_raw"):
                 "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
                 "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
                 "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
+                "extrinsic" : np.array([msg.camera_extrinsic.position.x, msg.camera_extrinsic.position.y, msg.camera_extrinsic.position.z]),
                 "inv_dep":msg.inv_dep
             }
             dets.append(det)
@@ -1084,6 +1086,7 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     self_pos_b = []
     inv_deps_gt = []
     print("Total detection", len(detections))
+    CG = np.array([-0.06, 0, 0])
     for det in detections:
         if det["id_a"] != main_id:
             continue
@@ -1093,11 +1096,10 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
         posa_gt = poses[det["id_a"]]["pos_func"](det["ts"])
         posb_gt = poses[det["id_b"]]["pos_func"](det["ts"]) # + yaw_rotate_vec(yawb_gt, np.array([-0.04, 0, 0.02]))
 
-        posa_vo = poses_vo[det["id_a"]]["pos_raw_func"](det["ts"])
-        yawa_vo = poses_vo[det["id_a"]]["ypr_raw_func"](det["ts"])[0]
-        
         if enable_dpose:
-            posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, det["pos_a"] - posa_vo))
+            # dpose_self_a = yaw_rotate_vec(yawa_gt, yaw_rotate_vec(-yawa_vo, posa_vo - det["pos_a"]))
+            posa_gt = posa_gt + yaw_rotate_vec(yawa_gt, det["extrinsic"])
+            posb_gt = posb_gt + yaw_rotate_vec(yawb_gt, CG)
 
         dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         inv_dep_gt = 1/norm(dpos_gt)

@@ -1419,7 +1419,6 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 
     Pose extrinsic = det_ret.extrinsic;
     extrinsic.set_yaw_only();
-    std::cout << "Cam extrinsic" << extrinsic << std::endl;
 
     det_ret.dpose_self_a = egomotion_self_a*extrinsic; //egomotion_self_a: ego_motion from keyframe to detection ts. extrinsic: extrinsic of camera in 4D frame. Extrinsic may occurs double counting here!!!!
     det_ret.dpose_self_b = egomotion_self_b*det_ret.GC;
@@ -1532,34 +1531,35 @@ std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> goo
     //tuple 
     //    TsType ts_a, TsType ts_b, int id_a int id_b;
     std::vector<Swarm::LoopEdge*> ret;
-    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
-    for (auto & loop : good_2drone_measurements) {
-        GeneralMeasurement2DronesKey key = loop.key();
-
-        loop_sets[key].push_back(loop);
-    }
-    
-    good_2drone_measurements.clear();
-    
-    for (auto & it : loop_sets) {
-        auto & loop_vec = it.second;
-        Eigen::Vector3d pos_avg(0, 0, 0);
-        double yaw_avg = 0;
-        for (auto loop : loop_vec) {
-            pos_avg = pos_avg + loop.relative_pose.pos()/loop_vec.size();
-            yaw_avg = wrap_angle(yaw_avg + loop.relative_pose.yaw()/loop_vec.size());
-        }
-
-        auto loop = new Swarm::LoopEdge(loop_vec[0]);
-        
-        loop->relative_pose = Swarm::Pose(pos_avg, yaw_avg);
-        loop->avg_count = loop_vec.size();
-        ret.push_back(loop);
-    }
+    // std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
     // for (auto & loop : good_2drone_measurements) {
-    //     auto loop_ptr = new Swarm::LoopEdge(loop);
-    //     ret.push_back(loop_ptr);
+    //     GeneralMeasurement2DronesKey key = loop.key();
+
+    //     loop_sets[key].push_back(loop);
     // }
+    
+    // good_2drone_measurements.clear();
+    
+    // for (auto & it : loop_sets) {
+    //     auto & loop_vec = it.second;
+    //     Eigen::Vector3d pos_avg(0, 0, 0);
+    //     double yaw_avg = 0;
+    //     for (auto loop : loop_vec) {
+    //         pos_avg = pos_avg + loop.relative_pose.pos()/loop_vec.size();
+    //         yaw_avg = wrap_angle(yaw_avg + loop.relative_pose.yaw()/loop_vec.size());
+    //     }
+
+    //     auto loop = new Swarm::LoopEdge(loop_vec[0]);
+        
+    //     loop->relative_pose = Swarm::Pose(pos_avg, yaw_avg);
+    //     loop->avg_count = loop_vec.size();
+    //     loop->set_covariance(loop_vec[0].cov_mat/loop_vec.size());
+    //     ret.push_back(loop);
+    // }
+    for (auto & loop : good_2drone_measurements) {
+        auto loop_ptr = new Swarm::LoopEdge(loop);
+        ret.push_back(loop_ptr);
+    }
 
     ROS_INFO("[SWARM_LOCAL] Available loops %ld averaged %ld", good_2drone_measurements.size(), ret.size());
 
@@ -1665,8 +1665,8 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     this->setup_problem_with_loops_and_detections(est_poses_idts, problem);
     num_res_blks = problem.NumResidualBlocks();
 
-    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d det_in_kf %d det_not_in_kf %d", 
-        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, detection_in_keyframes, good_det_not_in_kf);
+    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d all_dets %ld det_not_in_kf %d", 
+        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, all_detections.size(), good_det_not_in_kf);
 
 
     ceres::Solver::Options options;

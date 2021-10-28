@@ -38,12 +38,12 @@
             vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
             distance_measurement_cov: 0.1
             
-            DETECTION_SPHERE_STD: 0.01
+            DETECTION_SPHERE_STD: 0.1
             DETECTION_INV_DEP_STD: 0.07
             DETECTION_DEP_STD: 0.08
 
             #OUTLIER REJECTION
-            det_dpos_thres: 0.2
+            det_dpos_thres: 0.3
             detection_outlier_thres: 0.5
             detection_inv_dep_outlier_thres: 0.5
             

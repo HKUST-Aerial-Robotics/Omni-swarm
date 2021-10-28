@@ -17,6 +17,7 @@
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
+    <arg name="cam_up_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/up.yaml"/>
 
     <include file="$(find swarm_localization)/launch/loop-5-pc-outdoor.launch" if="$(arg outdoor)">
         <arg name="output" value="log" />
@@ -43,7 +44,7 @@
 
     <group unless="$(arg backend_only)">
         <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
-            <arg name="output" value="log" />
+            <arg name="output" value="screen" />
             <arg name="show" value="true" />
             <arg name="drone_id" value="$(arg drone_id)" />
             <arg name="detect_duration" value="0.5" />
@@ -51,6 +52,7 @@
             <arg name="width" value="$(arg width)" />
             <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
             <arg name="enable_rear" value="true" />
+            <arg name="cam_file" value="$(arg cam_up_config_file)" />
         </include>
 
         <include file="$(find vins)/launch/fisheye_node.launch" if="$(arg vins)">
