@@ -54,11 +54,11 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
         pcm_good.close();
     }
 
-    if (param.debug_write_pcm_good) {
+    if (param.debug_write_pcm_errors) {
         pcm_errors.close();
+        fclose(f_logs);
     }
 
-    fclose(f_logs);
 
     return good_loops;
 }

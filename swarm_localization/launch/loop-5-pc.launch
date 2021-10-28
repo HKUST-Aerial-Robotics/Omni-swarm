@@ -12,7 +12,7 @@
     <arg name="pcm_enable_debug_file" default="true" />
     <arg name="pcm_enable" default="true" />
 
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)">
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)" >
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />

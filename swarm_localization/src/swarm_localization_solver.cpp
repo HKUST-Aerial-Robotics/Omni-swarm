@@ -1049,6 +1049,9 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         for (auto it: sf.id2nodeframe) {
             int _id = it.first;
             auto & nfa = it.second;
+            if (swarm_est_poses.find(ts) == swarm_est_poses.end() || swarm_est_poses.at(ts).find(_id) == swarm_est_poses.at(ts).end()) {
+                continue;
+            }
             double * posea = swarm_est_poses.at(ts).at(_id);
             for (auto & det: nfa.detected_nodes) {
                 int _idb = det.id_b;
@@ -1063,6 +1066,14 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
                         loss_function = new ceres::HuberLoss(1.0);
                         problem.AddResidualBlock(cost, loss_function, posea, poseb);
                         detection_in_keyframes += 1;
+#ifdef DEBUG_OUTPUT_DETS
+                        ROS_INFO("Add Res. by detection %d->%d dir [%+3.1f,%+3.1f,%+3.1f] cam_extrisinc %.1f %.1f %.1f enable_dpose %d enable_depth %d depth %.1fm dpose_a %s dpose_b %s TanBase.",
+                            _id, _idb, det.p.x(), det.p.y(), det.p.z(), det.extrinsic.x(), det.extrinsic.y(), det.extrinsic.z(),
+                            det.enable_dpose, det.enable_depth,
+                            1/det.inv_dep, det.dpose_self_a.tostr().c_str(), det.dpose_self_b.tostr().c_str()
+                        );
+                        std::cout << det.detect_tan_base << std::endl;
+#endif
                     }
                 }
             }
@@ -1550,36 +1561,36 @@ std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> goo
     //tuple 
     //    TsType ts_a, TsType ts_b, int id_a int id_b;
     std::vector<Swarm::LoopEdge*> ret;
-    // std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
-    // for (auto & loop : good_2drone_measurements) {
-    //     GeneralMeasurement2DronesKey key = loop.key();
-
-    //     loop_sets[key].push_back(loop);
-    // }
-    
-    // good_2drone_measurements.clear();
-    
-    // for (auto & it : loop_sets) {
-    //     auto & loop_vec = it.second;
-    //     Eigen::Vector3d pos_sum(0, 0, 0);
-    //     double yaw_sum = 0;
-    //     for (auto loop : loop_vec) {
-    //         pos_sum = pos_sum + loop.relative_pose.pos();
-    //         yaw_sum = yaw_sum + loop.relative_pose.yaw(); //May occurs wrap_pi yaw issue....
-    //     }
-
-    //     auto loop = new Swarm::LoopEdge(loop_vec[0]);
-        
-    //     loop->relative_pose = Swarm::Pose(pos_sum/loop_vec.size(), yaw_sum/loop_vec.size());
-    //     loop->avg_count = loop_vec.size();
-    //     ret.push_back(loop);
-    // }
+    std::map<Swarm::GeneralMeasurement2DronesKey, std::vector<Swarm::LoopEdge>> loop_sets;
     for (auto & loop : good_2drone_measurements) {
-        auto loop_ptr = new Swarm::LoopEdge(loop);
-        ret.push_back(loop_ptr);
-    }
+        GeneralMeasurement2DronesKey key = loop.key();
 
-    // ROS_INFO("[SWARM_LOCAL] Available loops %ld averaged %ld", good_2drone_measurements.size(), ret.size());
+        loop_sets[key].push_back(loop);
+    }
+    
+    good_2drone_measurements.clear();
+    
+    for (auto & it : loop_sets) {
+        auto & loop_vec = it.second;
+        Eigen::Vector3d pos_avg(0, 0, 0);
+        double yaw_avg = 0;
+        for (auto loop : loop_vec) {
+            pos_avg = pos_avg + loop.relative_pose.pos()/loop_vec.size();
+            yaw_avg = wrap_angle(yaw_avg + loop.relative_pose.yaw()/loop_vec.size());
+        }
+
+        auto loop = new Swarm::LoopEdge(loop_vec[0]);
+        
+        loop->relative_pose = Swarm::Pose(pos_avg, yaw_avg);
+        loop->avg_count = loop_vec.size();
+        ret.push_back(loop);
+    }
+    // for (auto & loop : good_2drone_measurements) {
+    //     auto loop_ptr = new Swarm::LoopEdge(loop);
+    //     ret.push_back(loop_ptr);
+    // }
+
+    ROS_INFO("[SWARM_LOCAL] Available loops %ld averaged %ld", good_2drone_measurements.size(), ret.size());
 
     return ret;
 }
@@ -1648,11 +1659,13 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
     }
 
-    ROS_INFO("[SWARM_LOCAL] good detections %ld(KF+NonKF %d + %ld) good_loops %ld averaged %ld good_2drone_measurements %ld ",
-        detection_in_keyframes + good_detections.size(),
-        detection_in_keyframes, good_detections.size(),
-        good_loops.size(), ret_loops.size(),
-        ret.size());
+    good_det_not_in_kf = good_detections.size();
+
+    // ROS_INFO("[SWARM_LOCAL] good detections %ld(KF+NonKF %d + %ld) good_loops %ld averaged %ld good_2drone_measurements %ld ",
+    //     detection_in_keyframes + good_detections.size(),
+    //     detection_in_keyframes, good_detections.size(),
+    //     good_loops.size(), ret_loops.size(),
+    //     ret.size());
     return ret;
 }
 
@@ -1682,12 +1695,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     int ego_motion_blks = problem.NumResidualBlocks() - num_res_blks;
     num_res_blks = problem.NumResidualBlocks();
     this->setup_problem_with_loops(est_poses_idts, problem);
-
-    int det_blks = num_res_blks - num_res_blks - good_loop_num;
     num_res_blks = problem.NumResidualBlocks();
 
-    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d det_in_kf %d det %d", 
-        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, detection_in_keyframes, det_blks);
+    ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d det_in_kf %d det_not_in_kf %d", 
+        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, detection_in_keyframes, good_det_not_in_kf);
 
 
     ceres::Solver::Options options;
@@ -1714,6 +1725,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
 
     if (summary.termination_type == ceres::TerminationType::FAILURE) {
+        std::cout << summary.FullReport() << std::endl;
         ROS_ERROR("Ceres critical failure. Exiting...");
         exit(-1);
     }
@@ -1728,13 +1740,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
         return equv_cost;
     }
 
-    std::cout << summary.BriefReport() << " Equv cost : "
-              << equv_cost << " Time : " << summary.total_time_in_seconds * 1000 << "ms\n";
-    std::cout << summary.message << std::endl;
-    //std::cout << summary.FullReport() << std::endl;
-    // for (auto & sf: sf_sld_win) {
-        // print_frame(sf);
-    // }
 
 #ifdef DEBUG_OUTPUT_POSES
     //if (finish_init) 
@@ -1804,7 +1809,9 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     solve_time_count += summary.total_time_in_seconds;
     solve_count++;
 
-    ROS_INFO("[SWARM_LOCAL] AVG Solve %3.2fms Dt1 %3.2f ms TOTAL %3.2fms\n", solve_time_count *1000 / solve_count, 
+    ROS_INFO("[SWARM_LOCAL] %s avg_cost %.2e time %.1fms. Message %s.", summary.BriefReport().c_str(), equv_cost, summary.total_time_in_seconds * 1000, summary.message.c_str());
+
+    ROS_INFO("[SWARM_LOCAL] Time average %3.2fms Dt1 %3.2f ms TOTAL %3.2fms\n", solve_time_count *1000 / solve_count, 
     (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000);
 
     return equv_cost;
@@ -1894,13 +1901,17 @@ void SwarmLocalizationSolver::generate_cgraph() {
             for (auto & detected: nf.detected_nodes) {
                 auto _ida = detected.id_a;
                 auto _idb = detected.id_b;
-                auto node1 = AGNodes[ts][_ida];
-                auto node2 = AGNodes[ts][_idb];
-
-                auto edge = agedge(g, node1, node2, "Det",1);
-                agattrsym (edge, "label");
-                sprintf(edgename, "Detected");
-                agset(edge, "label", edgename);
+                if (AGNodes.find(ts) != AGNodes.end() &&
+                    AGNodes[ts].find(_ida) != AGNodes[ts].end() &&
+                    AGNodes[ts].find(_idb) != AGNodes[ts].end()
+                ) {
+                    auto node1 = AGNodes[ts][_ida];
+                    auto node2 = AGNodes[ts][_idb];
+                    auto edge = agedge(g, node1, node2, "Det",1);
+                    agattrsym (edge, "label");
+                    sprintf(edgename, "Detected");
+                    agset(edge, "label", edgename);
+                }
             }
 
             for (auto & it: nf.dis_map) {
@@ -1908,13 +1919,18 @@ void SwarmLocalizationSolver::generate_cgraph() {
                 if(sf.node_id_list.find(_idj) != sf.node_id_list.end() &&
                     nf.distance_available(_idj)) {
                     auto _ida = nf.id;
-                    auto node1 = AGNodes[ts][_ida];
-                    auto node2 = AGNodes[ts][_idj];
+                    if (AGNodes.find(ts) != AGNodes.end() &&
+                        AGNodes[ts].find(_ida) != AGNodes[ts].end() &&
+                        AGNodes[ts].find(_idj) != AGNodes[ts].end()){
 
-                    auto edge = agedge(g, node1, node2, "Dis",1);
-                    agattrsym (edge, "label");
-                    sprintf(edgename, "Dis %3.2f", it.second);
-                    agset(edge, "label", edgename);
+                        auto node1 = AGNodes[ts][_ida];
+                        auto node2 = AGNodes[ts][_idj];
+
+                        auto edge = agedge(g, node1, node2, "Dis",1);
+                        agattrsym (edge, "label");
+                        sprintf(edgename, "Dis %3.2f", it.second);
+                        agset(edge, "label", edgename);
+                    }
                 }
             }
         }

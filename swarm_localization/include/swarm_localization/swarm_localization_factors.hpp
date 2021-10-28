@@ -71,6 +71,8 @@ inline void unit_position_error(const T *posea, const T *poseb, const double * t
 
     error[0] = (tangent_base[0] * err0 + tangent_base[1] * err1 + tangent_base[2] * err2) / (T)(DETECTION_SPHERE_STD);
     error[1] = (tangent_base[3] * err0 + tangent_base[4] * err1 + tangent_base[5] * err2) / (T)(DETECTION_SPHERE_STD);
+    // std::cout << "invdep\t" << _inv_dep << "\tErr0\t" << err0 << "\tEr1\t" << err1 << "\tErr2\t" << err2 <<std::endl;
+    // std::cout << "error[0]\t" << error[0] << "\terror[1]\t" << error[1] <<std::endl;
 }
 
 template<typename T>
@@ -261,7 +263,7 @@ public:
 
 class DroneDetection4dFactor {
     bool enable_depth;
-    const Swarm::DroneDetection & det;
+    Swarm::DroneDetection det;
     bool enable_dpose;
     Eigen::Vector3d dir;
     double inv_dep;
@@ -275,8 +277,6 @@ class DroneDetection4dFactor {
         dir = det.p;
         inv_dep = det.inv_dep;
         dep = 1/inv_dep;
-        // ROS_INFO("SwarmDetectionError Enable dpose %d Enable Depth %d", enable_dpose, enable_depth);
-        // std::cout << "rel_p" << det.p << std::endl;
 
         if (enable_depth) {
             det.dpose_self_a.to_vector_xyzyaw(dposea.data());
@@ -325,6 +325,7 @@ public:
             }
             // std::cout << "_residual " << _residual[0]  << " " << _residual[1] << " " << _residual[2] << std::endl;
         } else {
+            //TODO: Looks like this cause the NaN problem.
             unit_position_error(relpose_est, rel_p, tan_base, _residual);
         }
 
@@ -346,9 +347,9 @@ public:
 
     static ceres::CostFunction* Create(const Swarm::DroneDetection & _det) {
         // std::cout << "Loop" << "sqrt_inf\n" << loop->get_sqrt_information_4d() << std::endl;
-        int res_count = 3;
+        int res_count = 2;
         if (_det.enable_depth) {
-            res_count = 2;
+            res_count = 3;
         }
         return new ceres::AutoDiffCostFunction<DroneDetection4dFactor, ceres::DYNAMIC, 4, 4>(
             new DroneDetection4dFactor(_det), res_count);

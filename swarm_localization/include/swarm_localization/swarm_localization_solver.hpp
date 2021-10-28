@@ -128,6 +128,7 @@ class SwarmLocalizationSolver {
     std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
     std::map<int, std::set<int>> loop_edges;
     int good_loop_num = 0;
+    int good_det_not_in_kf = 0;
 
     bool has_new_keyframe = false;
 

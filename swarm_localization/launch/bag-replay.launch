@@ -13,6 +13,7 @@
     <arg name="height" default="312" />
     <arg name="outdoor" default="false" />
     <arg name="backend_only" default="false" />
+    <arg name="cgraph" default="true" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -21,6 +22,7 @@
         <arg name="output" value="log" />
         <arg name="viz" value="$(arg viz)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
+        <arg name="cgraph" value="$(arg cgraph)" />
         <arg name="enable_distance" value="$(arg distance)" />
         <arg name="enable_detection" value="$(arg detector)" />
         <arg name="enable_detection_depth" value="$(arg detector_depth)" />
@@ -30,23 +32,24 @@
     <include file="$(find swarm_localization)/launch/loop-5-pc.launch" unless="$(arg outdoor)">
         <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
-        <arg name="cgraph_path" value="/root/output/graph.dot" />
+        <arg name="cgraph_path" value="/home/xuhao/graph.dot" />
+        <arg name="cgraph" value="$(arg cgraph)" />
         <arg name="enable_distance" value="$(arg distance)" />
         <arg name="enable_detection" value="$(arg detector)" />
         <arg name="enable_detection_depth" value="$(arg detector_depth)" />
         <arg name="enable_loop" default="$(arg loop)" />
+        <arg name="pcm_enable_debug_file" value="false" />
     </include>
 
     <group unless="$(arg backend_only)">
         <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
-            <arg name="output" value="screen" />
+            <arg name="output" value="log" />
             <arg name="show" value="true" />
             <arg name="drone_id" value="$(arg drone_id)" />
             <arg name="detect_duration" value="0.5" />
             <arg name="extrinsic_path" value="$(arg vins_config_file)"/>
             <arg name="width" value="$(arg width)" />
             <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
-            <arg name="swarm_fused_relative" value="/swarm_drones/swarm_drone_fused_relative_pc"/>
             <arg name="enable_rear" value="true" />
         </include>
 
