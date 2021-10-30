@@ -13,7 +13,10 @@
     <arg name="height" default="312" />
     <arg name="outdoor" default="false" />
     <arg name="backend_only" default="false" />
+    <arg name="debug_loop_initial_only" default="false" />
     <arg name="cgraph" default="true" />
+    <arg name="max_keyframe_num" default="100" />
+    <arg name="debug_no_relocalization" default="false" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -40,7 +43,10 @@
         <arg name="enable_detection" value="$(arg detector)" />
         <arg name="enable_detection_depth" value="$(arg detector_depth)" />
         <arg name="enable_loop" default="$(arg loop)" />
+        <arg name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" />
         <arg name="pcm_enable_debug_file" value="false" />
+        <arg name="max_keyframe_num" value="$(arg max_keyframe_num)" />
+        <arg name="debug_no_relocalization" value="$(arg debug_no_relocalization)" />
     </include>
 
     <group unless="$(arg backend_only)">

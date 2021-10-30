@@ -457,6 +457,8 @@ public:
         nh.param<bool>("enable_cgraph_generation", solver_params.enable_cgraph_generation, false);
         nh.param<bool>("enable_detection", solver_params.enable_detection, true);
         nh.param<bool>("enable_loop", solver_params.enable_loop, true);
+        nh.param<bool>("debug_loop_initial_only", solver_params.debug_loop_initial_only, false);
+        nh.param<bool>("debug_no_relocalization", solver_params.debug_no_relocalization, false);
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);
         nh.param<bool>("enable_detection_depth", solver_params.enable_detection_depth, true);
         nh.param<bool>("publish_full_path", publish_full_path, false);

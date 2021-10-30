@@ -34,11 +34,11 @@ using namespace Swarm;
 // #define DEBUG_OUTPUT_SLD_WIN
 // #define DEBUG_OUTPUT_LOOP_OUTLIER
 
-// #define DEBUG_LOOP_ONLY_INIT
+#define DEBUG_LOOP_ONLY_INIT
 // #define DEBUG_NO_RELOCALIZATION
 #define RANDOM_DELETE_KF 
 
-#define DEBUG_OUTPUT_DETECTION_OUTLIER
+// #define DEBUG_OUTPUT_DETECTION_OUTLIER
 
 #define SMALL_MOVEMENT_SPD 0.1
 #define REPLACE_MIN_DURATION 0.1
@@ -483,17 +483,17 @@ void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge
         return;
     }
 
-#ifdef DEBUG_LOOP_ONLY_INIT
-    if (!finish_init && enable_loop) {
-        all_loops.push_back(loop_con);
-        has_new_keyframe = true;
+    if (params.debug_loop_initial_only) {
+        if (!finish_init && enable_loop) {
+            all_loops.push_back(loop_con);
+            has_new_keyframe = true;
+        }
+    } else {
+        if (enable_loop) {
+            all_loops.push_back(loop_con);
+            has_new_keyframe = true;
+        }
     }
-#else
-    if (enable_loop) {
-        all_loops.push_back(loop_con);
-        has_new_keyframe = true;
-    }
-#endif
 }
 
 
@@ -1060,12 +1060,11 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
 
     if (drone_id == self_id) {
         problem.SetParameterBlockConstant(poses_all_ego[0]);
-
-#ifdef DEBUG_NO_RELOCALIZATION
-        for (int i = 0; i < pose_win.size(); i ++) {
-            problem.SetParameterBlockConstant(poses_all_ego[i]);
+        if (params.debug_no_relocalization) {
+            for (int i = 1; i < poses_all_ego.size(); i ++) {
+                problem.SetParameterBlockConstant(poses_all_ego[i]);
+            }
         }
-#endif
     }
 
     if (nfs.size() < 2) {
@@ -1414,7 +1413,7 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
     // Pose dpose_self_b = Pose::DeltaPose(_nf_b.self_pose, det_ret.self_pose_b, true); 
     double dt = 0;
     if (dt > DET_SELF_POSE_THRES) {
-        ROS_WARN("self_pose_b for det %d->%d @%ld not found, dt: %.1fms", _ida, _idb, TSShort(ts.toNSec()), dt);
+        ROS_WARN("self_pose_b for det %d->%d @%d not found, dt: %.1fms", _ida, _idb, TSShort(ts.toNSec()), dt);
         return false;
     }
     
@@ -1662,14 +1661,16 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     int num_res_blks = problem.NumResidualBlocks();
     int distance_res_blks = problem.NumResidualBlocks() - detection_in_keyframes;
     num_res_blks = problem.NumResidualBlocks();
+    this->setup_problem_with_loops_and_detections(est_poses_idts, problem);
+    num_res_blks = problem.NumResidualBlocks();
+
+
+    num_res_blks = problem.NumResidualBlocks();
 
     for (int _id: all_nodes) {
         this->setup_problem_with_ego_motion(est_poses_idts, problem, _id);       
     }   
     int ego_motion_blks = problem.NumResidualBlocks() - num_res_blks;
-    num_res_blks = problem.NumResidualBlocks();
-    this->setup_problem_with_loops_and_detections(est_poses_idts, problem);
-    num_res_blks = problem.NumResidualBlocks();
 
     ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d all_dets %ld det_not_in_kf %d", 
         solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, all_detections.size(), good_det_not_in_kf);

@@ -71,6 +71,8 @@ struct swarm_localization_solver_params{
     float det_dpos_thres = 1.0;
     float detection_outlier_thres;
     float detection_inv_dep_outlier_thres;
+    bool debug_loop_initial_only = false;
+    bool debug_no_relocalization = false;
     bool enable_detection;
     bool enable_loop;
     bool enable_distance;

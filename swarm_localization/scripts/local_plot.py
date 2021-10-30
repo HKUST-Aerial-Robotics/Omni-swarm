@@ -1144,6 +1144,7 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     dpos_dets = np.array(dpos_dets)
     self_pos_a = np.array(self_pos_a)
     self_pos_b = np.array(self_pos_b)
+    ts_a = np.array(ts_a)
     fig = plt.figure()
 
     plt.subplot(311)
@@ -1212,6 +1213,8 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     print("Pos cov", np.cov(dpos_errs[:,0]), np.cov(dpos_errs[:,1]), np.cov(dpos_errs[:,2]) )
 
 
+    inv_dep_err = np.array(inv_deps) - np.array(inv_deps_gt)
+    mask = np.fabs(inv_dep_err) < 0.3
     plt.figure("INV DEPS")
     plt.title("INV DEPS")
     plt.plot(ts_a, np.array(inv_deps), "+", label="INV DEP DET")
@@ -1219,15 +1222,16 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     plt.legend()
     plt.grid()
 
-    plt.figure("INV DEPS ERR")
-    plt.title("INV DEPS ERR")
-    plt.plot(ts_a, np.array(inv_deps) - np.array(inv_deps_gt), "+", label="INV DEP DET")
+    plt.figure("INV DEPS ERR Inliers")
+    plt.title("INV DEPS ERR Inliers")
+    plt.plot(ts_a[mask], inv_dep_err[mask], "+", label="INV DEP DET")
     plt.legend()
     plt.grid()
 
-    plt.figure("INV DEPS ERR HIST")
-    plt.hist(np.array(inv_deps) - np.array(inv_deps_gt), 50, (-0.3, 0.3), density=True, facecolor='g', alpha=0.75)
-    mu, std = stats.norm.fit(np.array(inv_deps) - np.array(inv_deps_gt))
+
+    plt.figure("INV DEPS ERR HIST of inliners")
+    plt.hist(np.array(inv_deps)[mask] - np.array(inv_deps_gt)[mask], 50, (-0.3, 0.3), density=True, facecolor='g', alpha=0.75)
+    mu, std = stats.norm.fit(np.array(inv_deps)[mask] - np.array(inv_deps_gt)[mask])
     xmin, xmax = plt.xlim()
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
