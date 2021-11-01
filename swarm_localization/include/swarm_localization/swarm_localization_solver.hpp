@@ -12,10 +12,8 @@
 #include <mutex>
 #include <swarm_msgs/LoopEdge.h>
 #include <swarm_localization/swarm_outlier_rejection.hpp>
+#include <swarm_localization/swarm_localization_params.hpp>
 
-
-typedef std::map<int, Eigen::Vector3d> ID2Vector3d;
-typedef std::map<int, Eigen::Quaterniond> ID2Quat;
 
 using namespace Swarm;
 using namespace Eigen;
@@ -51,45 +49,6 @@ typedef std::map<int, std::map<TsType,double*>> EstimatePosesIDTS;
 typedef std::vector<std::pair<TsType, int>> TSIDArray;
 typedef std::map<int, std::map<TsType, int>>  IDTSIndex;
 
-
-struct swarm_localization_solver_params{
-    int max_frame_number = 100;
-    int min_frame_number = 5;
-    int dense_frame_number = 20;
-    float acpt_cost = 10;
-    int thread_num = 1;
-    float kf_movement = 0.2;
-    float init_xy_movement = 2.0;
-    float init_z_movement = 1.0;
-    int self_id = -1;
-    std::string cgraph_path;
-    float DA_TRI_accept_thres = 0.1;
-    bool enable_cgraph_generation = false;
-    float loop_outlier_threshold_pos = 1.0;
-    float loop_outlier_threshold_yaw = 1.0;
-    float loop_outlier_distance_threshold = 2.0;
-    float det_dpos_thres = 1.0;
-    float detection_outlier_thres;
-    float detection_inv_dep_outlier_thres;
-    bool debug_loop_initial_only = false;
-    bool debug_no_relocalization = false;
-    bool enable_detection;
-    bool enable_loop;
-    bool enable_distance;
-    bool enable_detection_depth;
-    bool kf_use_all_nodes;
-    bool generate_full_path;
-    float max_solver_time;
-    float distance_measurement_outlier_threshold;
-    float distance_measurement_outlier_elevation_threshold;
-    float minimum_distance = 0.2;
-
-
-    float vo_cov_pos_per_meter = 0.1;
-    float vo_cov_yaw_per_meter = 0.1;
-    float distance_measurement_cov = 0.1;
-    SwarmLocalOutlierRejectionParams outlier_rejection_params;
-};
 
 class SwarmLocalizationSolver {
 
