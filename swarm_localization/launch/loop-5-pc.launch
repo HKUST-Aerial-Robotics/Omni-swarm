@@ -2,7 +2,7 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph_path" default="/home/dji/swarm_log_latest/graph.dot" />
+    <arg name="cgraph_path" default="/home/xuhao/graph.dot" />
     <arg name="cgraph" default="true" />
     <arg name="enable_distance" default="true" />
     <arg name="enable_detection" default="true" />
@@ -17,7 +17,7 @@
     <arg name="enable_random_keyframe_deletetion" default="false" />
     <arg name="distance_measurement_outlier_threshold" default="0.3" />
 
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)" >
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  >
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
@@ -60,6 +60,7 @@
 
             loop_outlier_distance_threshold: 2.0
             pcm_thres: 2.204
+            pcm_thres_det: 3.5
 
             #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5

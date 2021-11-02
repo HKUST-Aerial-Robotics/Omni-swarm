@@ -26,8 +26,8 @@
 using namespace std::chrono;
 using namespace Swarm;
 
-#define DEBUG_OUTPUT_POSES
-#define DEBUG_OUTPUT_ALL_RES
+// #define DEBUG_OUTPUT_POSES
+// #define DEBUG_OUTPUT_ALL_RES
 // #define DEBUG_OUTPUT_LOOPS
 // #define DEBUG_OUTPUT_COV
 // #define DEBUG_OUTPUT_NEW_KF
@@ -467,6 +467,8 @@ void SwarmLocalizationSolver::add_as_keyframe(SwarmFrame sf) {
 
 void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_xyzyaw & detected) {
     if (enable_detection) {
+        static int count = 0;
+        count ++;
         all_detections.push_back(detected);
         has_new_keyframe = true;
     }
@@ -1584,7 +1586,7 @@ std::vector<Swarm::LoopEdge*> average_same_loop(std::vector<Swarm::LoopEdge> goo
     //     double yaw_avg = 0;
     //     for (auto loop : loop_vec) {
     //         pos_avg = pos_avg + loop.relative_pose.pos()/loop_vec.size();
-    //         yaw_avg = wrap_angle(yaw_avg + loop.relative_pose.yaw()/loop_vec.size());
+    //         yaw_avg = NormalizeAngle(yaw_avg + loop.relative_pose.yaw()/loop_vec.size());
     //     }
 
     //     auto loop = new Swarm::LoopEdge(loop_vec[0]);
@@ -1637,8 +1639,8 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
     }
 
 #ifndef OLD_LOOP_OUTLIER_REJECTION
-    good_loops = outlier_rejection->OutlierRejectionLoopEdges(good_loops);
-    auto ret_loops = average_same_loop(good_loops);
+        good_loops = outlier_rejection->OutlierRejectionLoopEdges(good_loops);
+        auto ret_loops = average_same_loop(good_loops);
 #else
     auto ret_loops = average_same_loop(good_loops);
 #endif    
@@ -1648,6 +1650,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
 
     good_loop_num = ret.size();
 
+    
     for (auto & _det : all_detections) {
         Swarm::DroneDetection det_ret;
         double dt_err = 0;
@@ -1657,9 +1660,17 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
             loop_edges[det_ret.id_a].insert(det_ret.id_b);
             loop_edges[det_ret.id_b].insert(det_ret.id_a);
         }
-    }
 
-    // auto ret_loops = average_same_loop(good_loops);
+    }
+    
+    // //Debugging...
+    // std::vector<Swarm::DroneDetection> _all_detections;
+    // for (auto & _det : all_detections) {
+    //     auto det_ret = Swarm::DroneDetection(_det, true, CG, enable_detection_depth);
+    //     _all_detections.emplace_back(det_ret);
+    // }
+    // outlier_rejection->OutlierRejectionDetections(_all_detections);
+
     for (auto p : good_detections) {
         auto ptr = new Swarm::DroneDetection(p);
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
@@ -1695,10 +1706,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     this->setup_problem_with_loops_and_detections(est_poses_idts, problem);
     num_res_blks = problem.NumResidualBlocks();
-
-
-    num_res_blks = problem.NumResidualBlocks();
-
     for (int _id: all_nodes) {
         this->setup_problem_with_ego_motion(est_poses_idts, problem, _id);       
     }   
@@ -1706,7 +1713,6 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
 
     ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d all_dets %ld det_not_in_kf %d", 
         solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, all_detections.size(), good_det_not_in_kf);
-
 
     ceres::Solver::Options options;
 
@@ -1765,7 +1771,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
                 double * pose = est_poses_tsid[ts][id];
                 auto pose_vo = all_sf[ts].id2nodeframe[id].pose();
                 auto poseest = Pose(pose, true);
-                printf("TS %d POS %3.4f %3.4f %3.4f YAW %5.4fdeg Ptr %p\n", TSShort(ts), pose[0], pose[1], pose[2], wrap_angle(pose[3])*57.3, pose);
+                printf("TS %d POS %3.4f %3.4f %3.4f YAW %5.4fdeg Ptr %p\n", TSShort(ts), pose[0], pose[1], pose[2], NormalizeAngle(pose[3])*57.3, pose);
                 printf("POSVO        %3.4f %3.4f %3.4f YAW %5.4fdeg\n",
                         pose_vo.pos().x(), pose_vo.pos().y(), pose_vo.pos().z(), pose_vo.yaw()*57.3);
                 printf("POSVOEST     %3.4f %3.4f %3.4f YAW %5.4fdeg\n",

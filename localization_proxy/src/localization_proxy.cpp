@@ -188,6 +188,7 @@ class LocalProxy {
         }
 
         nd.self_drone_id = _id;
+        nd.id = mdetected.id;
         nd.remote_drone_id = mdetected.target_id;
         nd.dpos.x = mdetected.x;
         nd.dpos.y = mdetected.y;
@@ -236,7 +237,7 @@ class LocalProxy {
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
 
-        mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.remote_drone_id, 
+        mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.id, nd.remote_drone_id, 
             (float)(nd.dpos.x),
             (float)(nd.dpos.y),
             (float)(nd.dpos.z),

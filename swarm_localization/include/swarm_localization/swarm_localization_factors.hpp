@@ -30,6 +30,15 @@ using namespace Eigen;
 typedef std::map<int64_t, std::map<int, int>> IDStampPose;
 
 
+
+template <typename T>
+inline T NormalizeAngle(const T& angle_radians) {
+  // Use ceres::floor because it is specialized for double and Jet types.
+  T two_pi(2.0 * M_PI);
+  return angle_radians -
+         two_pi * ceres::floor((angle_radians + T(M_PI)) / two_pi);
+}
+
 template<typename T>
 inline void pose_error(const T *posea, const T *poseb, T *error,
                        Eigen::Vector3d pos_std = Eigen::Vector3d(0.01, 0.01, 0.01),
@@ -37,7 +46,7 @@ inline void pose_error(const T *posea, const T *poseb, T *error,
     error[0] = (posea[0] - poseb[0]) / pos_std.x();
     error[1] = (posea[1] - poseb[1]) / pos_std.y();
     error[2] = (posea[2] - poseb[2]) / pos_std.z();
-    error[3] = wrap_angle(poseb[3] - posea[3]) / ang_std;
+    error[3] = NormalizeAngle(poseb[3] - posea[3]) / ang_std;
 }
 
 template<typename T>
@@ -47,7 +56,7 @@ inline void pose_error_4d(const Eigen::Matrix<T, 4, 1> & posea,
     T *error) {
     Eigen::Map<Eigen::Matrix<T, 4, 1>> err(error);
     err = poseb - posea;
-    err(3) = wrap_angle(err(3));
+    err(3) = NormalizeAngle(err(3));
     err.applyOnTheLeft(_sqrt_inf_mat);
 }
 
@@ -129,7 +138,7 @@ inline void PoseTransformPoint(const T * pose, const T * point, T * ret) {
 //dpose = a^-1.b
 template<typename T>
 inline void DeltaPose(const T *posea, const T *poseb, T *dpose) {
-    dpose[3] = wrap_angle(poseb[3] - posea[3]);
+    dpose[3] = NormalizeAngle(poseb[3] - posea[3]);
     T tmp[3];
 
     tmp[0] = poseb[0] - posea[0];
@@ -154,7 +163,7 @@ inline void DeltaPose_Naive(const T *posea, const T *poseb, T *dpose) {
 //dpose = a.b
 template<typename T>
 inline void PoseMulti(const T *posea, const T *poseb, T *pose) {
-    pose[3] = wrap_angle(poseb[3] + posea[3]);
+    pose[3] = NormalizeAngle(poseb[3] + posea[3]);
     T tmp[3];
     YawRotatePoint(posea[3], poseb, tmp);
     pose[0] = tmp[0] + posea[0];

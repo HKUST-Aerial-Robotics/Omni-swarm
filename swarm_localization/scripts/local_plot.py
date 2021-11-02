@@ -345,6 +345,7 @@ def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
         det = {
             "ts": msg.header.stamp.to_sec() - t0,
             "id_a":msg.self_drone_id,
+            "id": msg.id,
             "id_b":msg.remote_drone_id,
             "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
             "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
@@ -362,6 +363,7 @@ def read_detections_raw(bag, t0, topic="/swarm_detection/swarm_detected_raw"):
             det = {
                 "ts": msg.header.stamp.to_sec() - t0,
                 "id_a":msg.self_drone_id,
+                "id": msg.id,
                 "id_b":msg.remote_drone_id,
                 "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
                 "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
@@ -1068,7 +1070,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
         num = len(nodes)
     print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
 
-def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
+def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose, inlier_file=""):
     _dets_data = []
     dpos_dets = []
     dpos_gts = []
@@ -1085,8 +1087,17 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     self_pos_a = []
     self_pos_b = []
     inv_deps_gt = []
+    det_ids = []
     print("Total detection", len(detections))
     CG = np.array([-0.06, 0, 0])
+    good_det_id = set()
+    if inlier_file != "":
+        with open(inlier_file, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                good_det_id.add(int(line))
+
+
     for det in detections:
         if det["id_a"] != main_id:
             continue
@@ -1129,6 +1140,7 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
         posa_gts.append(posa_gt)
         ts_a.append(det["ts"])
         yawa_gts.append(yawa_gt)
+        det_ids.append(det["id"])
 
         # pa = det['pos_a']
         # pb = det["pos_b"]
@@ -1219,12 +1231,19 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose):
     plt.title("INV DEPS")
     plt.plot(ts_a, np.array(inv_deps), "+", label="INV DEP DET")
     plt.plot(ts_a, np.array(inv_deps_gt), "x", label="INV DEP GT")
+
+    if len(good_det_id) > 0:
+        for i in range(len(ts_a)):
+            if det_ids[i] not in good_det_id:
+                plt.text(ts_a[i], inv_deps[i], "x", color="red")
+
     plt.legend()
     plt.grid()
 
     plt.figure("INV DEPS ERR Inliers")
     plt.title("INV DEPS ERR Inliers")
     plt.plot(ts_a[mask], inv_dep_err[mask], "+", label="INV DEP DET")
+
     plt.legend()
     plt.grid()
 
