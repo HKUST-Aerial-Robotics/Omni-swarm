@@ -36,11 +36,21 @@ void TensorRTInferenceGeneric::init(const std::string & engine_path) {
 }
 
 void TensorRTInferenceGeneric::doInference(const cv::Mat & input) {
-    assert(input.channels() == 1 && "Only support 1 channel now");
+    // assert(input.channels() == 1 && "Only support 1 channel now");
     TicToc inference;
     //This function is very slow event on i7, we need to optimize it
     //But not now.
-    doInference(input.data, 1);
+    if (input.channels() == 1) {
+        doInference(input.data, 1);
+    } else {
+        cv::Mat bgr[3];
+        cv::split(input, bgr);
+        static float * data_buf = new float[3*input.rows*input.cols];
+        memcpy(data_buf, bgr[2].data, input.rows*input.cols*sizeof(float));
+        memcpy(data_buf+input.rows*input.cols, bgr[1].data, input.rows*input.cols*sizeof(float));
+        memcpy(data_buf+input.rows*input.cols*2, bgr[0].data, input.rows*input.cols*sizeof(float));
+        doInference((unsigned char*)data_buf, 1);
+    }
     //printf("doInference %fms\n", inference.toc());
 }
 
