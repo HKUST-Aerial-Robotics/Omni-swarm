@@ -2,6 +2,8 @@
 #include "swarm_loop/loop_defines.h"
 #include "swarm_loop/mobilenetvlad_tensorrt.h"
 #include "swarm_loop/utils.h"
+#include "swarm_msgs/swarm_types.hpp"
+using namespace Swarm;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {

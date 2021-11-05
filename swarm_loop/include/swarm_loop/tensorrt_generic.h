@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <trt_utils.h>
 
+namespace Swarm {
 struct TensorInfo
 {
     std::string blobName;
@@ -44,4 +45,5 @@ public:
     void init(const std::string & engine_path);
 };
 
+}
 #endif

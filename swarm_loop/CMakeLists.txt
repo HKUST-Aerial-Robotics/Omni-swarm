@@ -45,7 +45,7 @@ endif()
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES swarm_loop
+  LIBRARIES loop_cnn
   CATKIN_DEPENDS std_msgs cv_bridge roscpp rosmsg rospy swarm_msgs
   #DEPENDS system_lib
 )

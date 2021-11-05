@@ -85,8 +85,8 @@ class LoopCam {
     CameraConfig camera_configuration;
     std::fstream fsp;
 #ifdef USE_TENSORRT
-    SuperPointTensorRT superpoint_net;
-    MobileNetVLADTensorRT netvlad_net;
+    Swarm::SuperPointTensorRT superpoint_net;
+    Swarm::MobileNetVLADTensorRT netvlad_net;
 #endif
 
     bool send_img;

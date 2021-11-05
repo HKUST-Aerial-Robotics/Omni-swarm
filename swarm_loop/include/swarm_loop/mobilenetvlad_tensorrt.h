@@ -2,7 +2,7 @@
 
 #ifdef USE_TENSORRT
 #include "swarm_loop/tensorrt_generic.h"
-
+namespace Swarm {
 class MobileNetVLADTensorRT: public TensorRTInferenceGeneric {
 public:
     bool enable_perf;
@@ -20,4 +20,5 @@ public:
 
     std::vector<float> inference(const cv::Mat & input);
 };
+}
 #endif

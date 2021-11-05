@@ -1,4 +1,5 @@
 #include "swarm_loop/mobilenetvlad_tensorrt.h"
+using namespace Swarm;
 
 std::vector<float> MobileNetVLADTensorRT::inference(const cv::Mat & input) {
     cv::Mat _input;

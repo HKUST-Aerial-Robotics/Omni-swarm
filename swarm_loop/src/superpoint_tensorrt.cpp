@@ -2,8 +2,10 @@
 #include "swarm_loop/loop_defines.h"
 #include "ATen/Parallel.h"
 #include "swarm_loop/utils.h"
+#include "swarm_msgs/swarm_types.hpp"
 
 #define USE_PCA
+using namespace Swarm;
 //NMS code is modified from https://github.com/KinglittleQ/SuperPoint_SLAM
 void NMS2(std::vector<cv::Point2f> det, cv::Mat conf, std::vector<cv::Point2f>& pts,
             int border, int dist_thresh, int img_width, int img_height, int max_num);

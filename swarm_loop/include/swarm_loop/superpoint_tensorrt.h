@@ -8,6 +8,7 @@
 #include <Eigen/Dense>
 
 #define SP_DESC_RAW_LEN 256
+namespace Swarm {
 class SuperPointTensorRT: public TensorRTInferenceGeneric {
     Eigen::MatrixXf pca_comp_T;
     Eigen::RowVectorXf pca_mean;
@@ -26,4 +27,5 @@ public:
 
     void inference(const cv::Mat & input, std::vector<cv::Point2f> & keypoints, std::vector<float> & local_descriptors);
 };
+}
 #endif
