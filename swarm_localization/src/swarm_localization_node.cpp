@@ -145,6 +145,11 @@ protected:
         ROS_INFO("Add new detection %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
         this->swarm_localization_solver->add_new_detection(sd);
     }
+    
+    void on_swarm_detected_6d(const swarm_msgs::node_detected & sd) {
+        ROS_INFO("Add new detection 4d %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
+        this->swarm_localization_solver->add_new_detection(sd);
+    }
 
     void on_swarmframe_recv(const swarm_msgs::swarm_frame &_sf) {
         SwarmFrame sf = swarm_frame_from_msg(_sf);
@@ -512,7 +517,7 @@ public:
                                     &SwarmLocalizationNode::on_loop_connection_received, this, 
                                     ros::TransportHints().tcpNoDelay());
         
-        swarm_detected_sub = nh.subscribe("/swarm_drones/node_detected", 10, &SwarmLocalizationNode::on_swarm_detected, this, ros::TransportHints().tcpNoDelay());
+        swarm_detected_sub = nh.subscribe("/swarm_drones/node_detected_6d", 10, &SwarmLocalizationNode::on_swarm_detected_6d, this, ros::TransportHints().tcpNoDelay());
 
         ROS_INFO("Max Keyframe %d. Generate CGraph %d path %s\n", solver_params.max_frame_number, solver_params.enable_cgraph_generation, solver_params.cgraph_path.c_str());
 

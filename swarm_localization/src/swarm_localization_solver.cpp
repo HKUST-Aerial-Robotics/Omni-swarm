@@ -474,6 +474,18 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected_
     }
 }
 
+
+void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected & detected) {
+    if (enable_detection) {
+        static int count = 0;
+        count ++;
+        Swarm::LoopEdge det_ret(detected);
+        all_detections_6d.push_back(det_ret);
+        has_new_keyframe = true;
+    }
+}
+
+
 void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge & loop_con) {
     auto loc_ret = Swarm::LoopEdge(loop_con, true);
     auto distance = loc_ret.relative_pose.pos().norm();
@@ -487,12 +499,12 @@ void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge
 
     if (params.debug_loop_initial_only) {
         if (!finish_init && enable_loop) {
-            all_loops.push_back(loop_con);
+            all_loops.push_back(loc_ret);
             has_new_keyframe = true;
         }
     } else {
         if (enable_loop) {
-            all_loops.push_back(loop_con);
+            all_loops.push_back(loc_ret);
             has_new_keyframe = true;
         }
     }
@@ -1115,7 +1127,7 @@ void SwarmLocalizationSolver::cutting_edges() {
 
     int distance_count = 0;
     int total_distance_count = 0;
-    int total_detection_count = all_detections.size();
+    int total_detection_count = all_detections.size() + all_detections_6d.size();
 
     SwarmFrame & sf0 = sf_sld_win[0];
     for (auto & it : sf0.id2nodeframe) {
@@ -1491,9 +1503,11 @@ bool SwarmLocalizationSolver::detection_from_src_node_detection(const swarm_msgs
 }
 
 
-int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::LoopEdge & _loc, Swarm::LoopEdge & loc_ret, double & dt_err, double & dpos) const{
-    ros::Time tsa = _loc.ts_a;
-    ros::Time tsb = _loc.ts_b;
+int SwarmLocalizationSolver::loop_from_src_loop_connection(const Swarm::LoopEdge & _loc, Swarm::LoopEdge & loc_ret, double & dt_err, double & dpos) const{
+    loc_ret = _loc;
+    
+    ros::Time tsa = _loc.stamp_a;
+    ros::Time tsb = _loc.stamp_b;
     
     int _ida = _loc.id_a;
     int _idb = _loc.id_b;
@@ -1516,7 +1530,6 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const swarm_msgs::Loo
         return 0;
     }
 
-    loc_ret = Swarm::LoopEdge(_loc);
     distance = loc_ret.relative_pose.pos().norm();
 
     bool success = find_node_frame_for_measurement_2drones(&loc_ret, _index_a, _index_b, dt_err);
@@ -1634,9 +1647,33 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         }
     }
 
+
+    good_det_not_in_kf = 0;
+    for (int i = 0; i < all_detections_6d.size(); i++) {
+        auto _loc = all_detections_6d[i];
+        Swarm::LoopEdge loc_ret;
+        double dt_err = 0;
+        double dpos;
+        int ret = loop_from_src_loop_connection(_loc, loc_ret, dt_err, dpos);
+        if( ret == 1) {
+#ifdef DEBUG_OUTPUT_DETS
+            ROS_INFO("[SWARM_LOCAL] Det6d [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
+                loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
+                loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
+                loc_ret.self_pose_b.pos().x(), loc_ret.self_pose_b.pos().y(), loc_ret.self_pose_b.pos().z(),  loc_ret.self_pose_b.yaw());
+#endif
+            good_loops.push_back(loc_ret);
+            loop_edges[loc_ret.id_a].insert(loc_ret.id_b);
+            loop_edges[loc_ret.id_b].insert(loc_ret.id_a);
+            good_det_not_in_kf++;
+        }
+    }
+
+
     for (int i = outlier_loops.size() - 1; i >= 0; i--) {
         all_loops.erase(all_loops.begin() + outlier_loops[i]);
     }
+
 
 #ifndef OLD_LOOP_OUTLIER_REJECTION
         good_loops = outlier_rejection->OutlierRejectionLoopEdges(good_loops);
@@ -1651,32 +1688,23 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
     good_loop_num = ret.size();
 
     
-    for (auto & _det : all_detections) {
-        Swarm::DroneDetection det_ret;
-        double dt_err = 0;
-        double dpos;
-        if(detection_from_src_node_detection(_det, det_ret, dt_err, dpos)) {
-            good_detections.push_back(det_ret);
-            loop_edges[det_ret.id_a].insert(det_ret.id_b);
-            loop_edges[det_ret.id_b].insert(det_ret.id_a);
-        }
-
-    }
-    
-    // //Debugging...
-    // std::vector<Swarm::DroneDetection> _all_detections;
     // for (auto & _det : all_detections) {
-    //     auto det_ret = Swarm::DroneDetection(_det, true, CG, enable_detection_depth);
-    //     _all_detections.emplace_back(det_ret);
+    //     Swarm::DroneDetection det_ret;
+    //     double dt_err = 0;
+    //     double dpos;
+    //     if(detection_from_src_node_detection(_det, det_ret, dt_err, dpos)) {
+    //         good_detections.push_back(det_ret);
+    //         loop_edges[det_ret.id_a].insert(det_ret.id_b);
+    //         loop_edges[det_ret.id_b].insert(det_ret.id_a);
+    //     }
     // }
-    // outlier_rejection->OutlierRejectionDetections(_all_detections);
 
-    for (auto p : good_detections) {
-        auto ptr = new Swarm::DroneDetection(p);
-        ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
-    }
+    // for (auto p : good_detections) {
+    //     auto ptr = new Swarm::DroneDetection(p);
+    //     ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(ptr));
+    // }
 
-    good_det_not_in_kf = good_detections.size();
+    // good_det_not_in_kf = good_detections.size();
 
     // ROS_INFO("[SWARM_LOCAL] good detections %ld(KF+NonKF %d + %ld) good_loops %ld averaged %ld good_2drone_measurements %ld ",
     //     detection_in_keyframes + good_detections.size(),
@@ -1712,7 +1740,7 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     int ego_motion_blks = problem.NumResidualBlocks() - num_res_blks;
 
     ROS_INFO("[SWARM_LOCAL] TICK: %d sliding_window_size: %d Residual blocks %d distance %d ego-motion %d loops %d all_dets %ld det_not_in_kf %d", 
-        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, all_detections.size(), good_det_not_in_kf);
+        solve_count, sliding_window_size(), num_res_blks, distance_res_blks, ego_motion_blks, good_loop_num, all_detections.size() + all_detections_6d.size(), good_det_not_in_kf);
 
     ceres::Solver::Options options;
 

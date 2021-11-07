@@ -21,6 +21,7 @@
     <arg name="distance_measurement_outlier_threshold" default="0.3" />
     <arg name="pub_track_result" default="false" />
     <arg name="debug_save_tracked_raw" default="false" />
+    <arg name="down_as_main" default="false" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -57,8 +58,9 @@
 
     <group unless="$(arg backend_only)">
         <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
-            <arg name="output" value="log" />
+            <arg name="output" value="screen" />
             <arg name="show" value="true" />
+            <arg name="down_as_main" value="$(arg down_as_main)" />
             <arg name="drone_id" value="$(arg drone_id)" />
             <arg name="detect_duration" value="0.5" />
             <arg name="extrinsic_path" value="$(arg vins_config_file)"/>
