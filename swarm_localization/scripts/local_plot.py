@@ -158,10 +158,12 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
             for i in range(len(msg.ids)):
                 _i = msg.ids[i]
                 if _i == _id:
+                    q = msg.local_drone_rotation[i]
+                    y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
                     ts.append(msg.header.stamp.to_sec() - t0)
                     pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
-                    ypr.append([msg.local_drone_yaw[i], 0, 0])
-                    quat.append(quaternion_from_euler(0, 0, msg.local_drone_yaw[i]))
+                    ypr.append([y, p, r])
+                    quat.append([q.w, q.x, q.y, q.z])
 
     ret = {
         "t": np.array(ts) ,
@@ -185,9 +187,10 @@ def read_pose_swarm_frame(bag, topic, _id, t0):
                 _i = node.id
                 if _i == _id and node.vo_available:
                     ts.append(node.header.stamp.to_sec() - t0)
+                    y, p, r = quat2eulers(node.quat.w, node.quat.x, node.quat.y, node.quat.z)
                     pos.append([node.position.x, node.position.y, node.position.z])
-                    ypr.append([node.yaw, 0, 0])
-                    quat.append(quaternion_from_euler(0, 0, node.yaw))
+                    ypr.append([y, p, r])
+                    quat.append([node.quat.w, node.quat.x, node.quat.y, node.quat.z])
     ret = {
         "t": np.array(ts),
         "pos_raw": np.array(pos),
@@ -244,7 +247,7 @@ def read_distances_remote_nodes(bag, topic, t0, main_id):
     return distances
 
 
-def read_pose(bag, topic, t0):
+def read_pose(bag, topic, t0, P_vicon_in_imu=None):
     pos = []
     ypr = []
     ts = []
@@ -263,11 +266,21 @@ def read_pose(bag, topic, t0):
         quat.append([q.w, q.x, q.y, q.z])
         ypr.append([y, p, r])
         ts.append(msg.header.stamp.to_sec() - t0)
+    
+    # T_viconc_now = quat*viconc_in_imu + T_imu_vicon
+            # T_imu_vicon = T_viconc_now - quat*viconc_in_imu
+
+    pos = np.array(pos)
+    ypr = np.array(ypr)
+    if P_vicon_in_imu is not None: #CVT to IMU
+        for j in range(len(pos)):
+            pos[j] = pos[j] - yaw_rotate_vec(ypr[j,0], P_vicon_in_imu) #Roll pitch is ignored since they are small.
+
     ret = {
         "t": np.array(ts),
-        "pos": np.array(pos),
+        "pos": pos,
         "pos_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "ypr": np.array(ypr),
+        "ypr": ypr,
         "ypr_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
         "quat": np.array(quat)
     }
@@ -339,19 +352,22 @@ def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
         loops.append(loop)
     return loops 
 
-def read_detections(bag, t0, topic="/swarm_drones/node_detected"):
+def read_detections_6d(bag, t0, topic="/swarm_drones/node_detected_6d"):
     dets = []
     for topic, msg, t in bag.read_messages(topics=[topic]):
+        pos = msg.relative_pose.pose.position
+        q = msg.relative_pose.pose.orientation
+        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
         det = {
             "ts": msg.header.stamp.to_sec() - t0,
+            "ts_a": msg.header.stamp.to_sec() - t0,
+            "ts_b": msg.header.stamp.to_sec() - t0,
             "id_a":msg.self_drone_id,
             "id": msg.id,
             "id_b":msg.remote_drone_id,
-            "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
-            "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
-            "extrinsic" : np.array([msg.camera_extrinsic.position.x, msg.camera_extrinsic.position.y, msg.camera_extrinsic.position.z]),
-            "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
-            "inv_dep":msg.inv_dep
+            "dpos":np.array([pos.x, pos.y, pos.z]),
+            "dyaw":y,
+            "pnp_inlier_num": 0
         }
         dets.append(det)
     return dets
@@ -409,7 +425,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}):
     bag = rosbag.Bag(bagname)
     poses_gt = {}
     poses_fused = {}
@@ -429,7 +445,11 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     
     for i in nodes:
         if groundtruth:
-            poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+            if i in P_vicon_in_imu:
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, P_vicon_in_imu[i])
+            else:
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+            
         if is_pc:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
@@ -443,22 +463,24 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         if i not in poses_path or poses_path[i] is None:
             poses_path[i] = copy.copy(poses_fused[i])
 
+
     loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
-    # detections = read_detections(bag, t0, "/swarm_drones/node_detected")
-    detections = read_detections_raw(bag, t0)
+    detections = read_detections_6d(bag, t0, "/swarm_drones/node_detected_6d")
+    # detections = read_detections_raw(bag, t0)
     # distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     distances = read_distances_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
     bag.close()
     if groundtruth:
         offset_gt = - poses_gt[main_id]["pos"][0]
         yaw_offset_gt = -poses_gt[main_id]["ypr"][0, 0]
-        print("Yaw Offset, ", yaw_offset_gt*57.3, "Fused Offset", offset_gt)
+        print("GT Yaw Offset, ", yaw_offset_gt*57.3, "pos", offset_gt)
     else:
         offset_gt = np.array([0, 0, 0])
         yaw_offset_gt = 0
 
     fused_offset = - poses_fused[main_id]["pos"][0]
     fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
+    print("fused_offset", fused_offset, ", ", fused_yaw_offset)
     #Pvicon = DP Ppose
     #DP = PviconPpose^-1
     #DP = (PPose^-1 Pvicon)^-1
@@ -478,8 +500,10 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
                 poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if groundtruth:
+            #Align by initial
             poses_gt[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_gt[i]["pos"]) + offset_gt
             poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
+
             poses_gt[i]["pos_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["pos"],axis=0,fill_value="extrapolate")
             poses_gt[i]["ypr_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["ypr"],axis=0,fill_value="extrapolate")
 
@@ -501,8 +525,9 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     else:
         return poses_fused, poses_vo, poses_path, loops, detections, distances, t0
 
-def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, groundtruth = True, use_offline=False, output_path="/home/xuhao/output/", id_map = None):
-    fig = plt.figure("Traj2", figsize=(6, 6))
+def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, groundtruth = True, \
+    use_offline=False, output_path="/home/xuhao/output/", id_map = None, figsize=(6, 6)):
+    fig = plt.figure("Traj2", figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
     if id_map is None:
@@ -532,7 +557,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     for det in detections:
         posa_ = poses_fused[det["id_a"]]["pos_func"](det["ts"])
         yawa_ = poses_fused[det["id_a"]]["ypr_func"](det["ts"])[0]
-        dpos = yaw_rotate_vec(yawa_, det["dpos"]/det["inv_dep"])
+        dpos = yaw_rotate_vec(yawa_, det["dpos"])
         quivers_det.append([posa_[0], posa_[1], posa_[2], dpos[0], dpos[1], dpos[2]])
     
     quivers = np.array(quivers)
@@ -577,7 +602,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax.set_zlabel('$Z$')
     plt.savefig(output_path+"FusedVsGT3D.pdf")
 
-    fig = plt.figure("Fused Multi 2d", figsize=(6, 6))
+    fig = plt.figure("Fused Multi 2d", figsize=figsize)
     plt.gca().set_aspect('equal')
     
     step_det = 1
@@ -631,7 +656,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         i = nodes[k]
         _id = id_map[i]
 
-        fig = plt.figure(f"Fused Vs GT 2D {i}", figsize=(6, 6))
+        fig = plt.figure(f"Fused Vs GT 2D {i}", figsize=figsize)
         plt.gca().set_aspect('equal', adjustable="datalim", anchor="SE")
 
         if groundtruth:
@@ -650,14 +675,16 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
 
     for i in nodes:
         _id = id_map[i]
-        fig = plt.figure(f"Drone {i} fused Vs GT 1D")
+        fig = plt.figure(f"Drone {i} fused Vs GT Pos")
         #fig.suptitle(f"Drone {i} fused Vs GT 1D")
-        ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
+        ax1, ax2, ax3 = fig.subplots(3, 1)
 
         t_ = poses_fused[i]["t"]
         if groundtruth:
             pos_gt =  poses[i]["pos_func"](poses_fused[i]["t"])
             yaw_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 0]
+            pitch_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 1]
+            roll_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 2]
         pos_fused = poses_fused[i]["pos"]
         _i = str(i) 
         if groundtruth:
@@ -690,17 +717,40 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1.grid()
         ax2.grid()
         ax3.grid()
+        plt.savefig(output_path+f"est_by_t{i}_position.png")
+
+        fig = plt.figure(f"Drone {i} fused Vs GT Attitud", figsize=figsize)
+        ax1, ax2, ax3 = fig.subplots(3, 1)
+
         if groundtruth:
-            ax4.plot(t_, yaw_gt, label=f"Ground Truth ${i}$")
-        #ax3.plot(poses_path[i]["t"], poses_path[i]["pos"][:,2], '.', label=f"Fused Offline Traj{i}")
-        ax4.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,0], label=f"Aligned VIO ${_id}$")
+            ax1.plot(t_, yaw_gt*57.3, label=f"Ground Truth ${i}$")
+        ax1.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,0]*57.3, label=f"Aligned VIO ${_id}$")
         
-        ax4.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,0], label=f"Estimate {_id}")
-        ax4.set_ylabel("Yaw")
-        ax4.set_xlabel("t")
-        ax4.legend()
-        ax4.grid()
-        plt.savefig(output_path+f"est_by_t{i}.png")
+        ax1.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,0]*57.3, label=f"Estimate {_id}")
+        ax1.set_ylabel("Yaw (deg)")
+        ax1.set_xlabel("t")
+        ax1.legend()
+        ax1.grid()
+        
+        if groundtruth:
+            ax2.plot(t_, pitch_gt*57.3, label=f"Ground Truth ${i}$")
+        ax2.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,1]*57.3, label=f"Aligned VIO ${_id}$")
+        ax2.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,1]*57.3, label=f"Estimate {_id}")
+        ax2.set_ylabel("Pitch (deg)")
+        ax2.set_xlabel("t")
+        ax2.legend()
+        ax2.grid()
+
+        if groundtruth:
+            ax3.plot(t_, roll_gt*57.3, label=f"Ground Truth ${i}$")
+        ax3.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,2]*57.3, label=f"Aligned VIO ${_id}$")
+        
+        ax3.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,2]*57.3, label=f"Estimate {_id}")
+        ax3.set_ylabel("Roll (deg)")
+        ax3.set_xlabel("t")
+        ax3.legend()
+        ax3.grid()
+        plt.savefig(output_path+f"est_by_t{i}_attitude.png")
 
 def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {}, is_show=False):
     for main_id in nodes:
@@ -1351,8 +1401,13 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     dpos_errs = np.array(dpos_errs)
     dyaw_errs = np.array(dyaw_errs)
     distances = np.array(distances)
+    dpos_loops = np.array(dpos_loops)
+    dpos_gts = np.array(dpos_gts)
+    dyaws = np.array(dyaws)
+    dyaw_gts = np.array(dyaw_gts)
+
     fig = plt.figure("Loop Error")
-    plt.subplot(411)
+    plt.subplot(211)
     plt.tight_layout()
     plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
     plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
@@ -1363,30 +1418,46 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     plt.grid(which="both")
     plt.legend()
 
-    plt.subplot(412)
-    plt.plot(ts_a, dyaws, '.', label="DYaw Gt")
-    plt.plot(ts_a, dyaw_gts, '+', label="DYaw Loop")
-    plt.plot(ts_a, np.abs(dyaw_errs), "x", label="DYaw Error")
+    plt.subplot(212)
+    plt.plot(ts_a, dyaws*57.3, '.', label="DYaw Gt")
+    plt.plot(ts_a, dyaw_gts*57.3, '+', label="DYaw Loop")
+    plt.plot(ts_a, np.abs(dyaw_errs)*57.3, "x", label="DYaw Error")
     
-    plt.title("Error Yaw Loop vs Vicon")
+    plt.title("Loop Yaw (deg)")
     plt.grid(which="both")
     plt.legend()
 
-    plt.subplot(413)
-    plt.plot(ts_a, pnp_inlier_nums, "x", label="pnp_inlier_nums")
-    plt.grid()
+    # plt.subplot(313)
+    # plt.plot(ts_a, pnp_inlier_nums, "x", label="pnp_inlier_nums")
+    # plt.grid()
 
+    fig = plt.figure("Loop Comp")
 
-    plt.subplot(414)
-    plt.plot(ts_a, posa_gts[:,0], '+', label="Vicon X")
-    plt.plot(ts_a, posa_gts[:,1], '+', label="Vicon Y")
-    plt.plot(ts_a, posa_gts[:,2], '+', label="Vicon Z")
+    plt.subplot(311)
+    plt.plot(ts_a, dpos_loops[:,0], '+', label="RelPose Est")
+    plt.plot(ts_a, dpos_gts[:,0], '.', label="RelPose GT")
+    plt.grid(which="both")
+    plt.ylabel("X")
+    plt.legend()
+
+    plt.subplot(312)
+    plt.plot(ts_a, dpos_loops[:,1], '+', label="RelPose Est")
+    plt.plot(ts_a, dpos_gts[:,1], '.', label="RelPose GT")
+    plt.grid(which="both")
+    plt.legend()
+    plt.ylabel("Y")
+
+    plt.subplot(313)
+    plt.plot(ts_a, dpos_loops[:,2], '+', label="RelPose Est")
+    plt.plot(ts_a, dpos_gts[:,2], '.', label="RelPose GT")
+    plt.ylabel("Z")
+
+    plt.grid(which="both")
+    plt.legend()
+
     # plt.plot(poses[i]["t"], poses[i]["pos"][:,0], label="Vicon X")
     # plt.plot(poses[i]["t"], poses[i]["pos"][:,1], label="Vicon Y")
     # plt.plot(poses[i]["t"], poses[i]["pos"][:,2], label="Vicon Z")
-
-    plt.grid(which="both")
-    plt.legend()
 
     plt.figure("InliersVSErr")
     plt.title("InliersVSErr")
@@ -1447,15 +1518,6 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     print(f"Pos cov {np.cov(dpos_errs[:,0]):.1e}, {np.cov(dpos_errs[:,1]):.1e}, {np.cov(dpos_errs[:,2]):.1e}")
     print(f"Yaw cov {np.cov(dyaw_errs):.1e}")
 
-    # plt.figure()
-    # plt.subplot(211)
-    # plt.plot(dpos_gt_norms, dpos_errs_norm, 'o', label="GtDistance vs Error")
-    # plt.grid(which="both")
-    # plt.subplot(212)
-    # plt.plot(dpos_loop_norms, dpos_errs_norm, 'o', label="LoopDistance vs Error")
-    # plt.grid(which="both")
-    # plt.legend()
-    # plt.show()
     return loops_error
 
 def debugging_pcm(pcm_folder, loops_error, pcm_threshold):

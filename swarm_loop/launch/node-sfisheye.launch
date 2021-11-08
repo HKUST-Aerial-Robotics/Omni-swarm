@@ -42,7 +42,7 @@
             min_match_per_dir: 5
             camera_configuration: 1
             output_raw_superpoint_desc: false
-            
+            loop_cov_pos: 0.1
             odometry_consistency_threshold: 3.0
             pos_covariance_per_meter: 0.01
             yaw_covariance_per_meter: 0.003
