@@ -2,22 +2,22 @@
     <arg name="rand" default="10.0" />
     <arg name="viz" default="false" />
     <arg name="output" default="screen" />
-    <arg name="cgraph_path" default="/home/xuhao/graph.dot" />
+    <arg name="cgraph_path" default="/home/dji/swarm_log_latest/graph.dot" />
     <arg name="cgraph" default="false" />
     <arg name="enable_distance" default="true" />
     <arg name="enable_detection" default="true" />
     <arg name="enable_detection_depth" default="true" />
     <arg name="enable_loop" default="true" />
     <arg name="bag_replay" default="false" />
-    <arg name="pcm_enable_debug_file" default="true" />
+    <arg name="pcm_enable_debug_file" default="false" />
     <arg name="pcm_enable" default="true" />
     <arg name="debug_loop_initial_only" default="false" />
-    <arg name="max_keyframe_num" default="50" />
+    <arg name="max_keyframe_num" default="100" />
     <arg name="debug_no_relocalization" default="false" />
     <arg name="enable_random_keyframe_deletetion" default="true" />
     <arg name="distance_measurement_outlier_threshold" default="0.3" />
 
-    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  >
+    <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)" >
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
@@ -34,10 +34,10 @@
             max_solver_time: 0.5
 
             max_accept_cost: 100
-            min_keyframe_num: 1
+            min_keyframe_num: 5
             min_kf_movement : 0.5
             kf_use_all_nodes: false
-
+            kf_time_with_half_movement: 10.0
             #Initial Configuration
             init_xy_movement : 0.1 #Debug
             init_z_movement : -0.01 #Debug 
@@ -68,7 +68,7 @@
 
             #Output
             pub_swarm_odom: true
-            is_pc_replay: true
+            is_pc_replay: false
             publish_full_path: false
 
             cg: #In IMU Frame.
@@ -82,8 +82,6 @@
         <param name="pcm_enable" value="$(arg pcm_enable)" type="bool" />
         <param name="cgraph_path" value="$(arg cgraph_path)" type="string" />
         <param name="enable_cgraph_generation" value="$(arg cgraph)" type="bool" />
-        <remap from="/swarm_drones/swarm_drone_fused" to="/swarm_drones/swarm_drone_fused_pc" />
-        <remap from="/swarm_drones/swarm_drone_fused_relative" to="/swarm_drones/swarm_drone_fused_relative_pc" />
     </node>
     <group if="$(arg viz)">
         <node name="rvizvisualisation" pkg="rviz" type="rviz" output="log" args="-d $(find swarm_localization)/config/5drone.rviz" />
