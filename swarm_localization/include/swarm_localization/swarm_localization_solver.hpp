@@ -88,7 +88,6 @@ class SwarmLocalizationSolver {
 
     std::map<unsigned int, unsigned int> node_kf_count;
 
-    std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
     std::map<int, std::set<int>> loop_edges;
     int good_loop_num = 0;
     int good_det_not_in_kf = 0;
@@ -215,8 +214,13 @@ public:
         return finish_init;
     }
 
+    const std::vector<int64_t> get_good_loops() const { 
+        return outlier_rejection->good_loops();
+    };
+
 
     double solve_time_count = 0;
+    std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
 
 
     double solve();

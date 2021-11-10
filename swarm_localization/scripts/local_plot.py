@@ -2,528 +2,11 @@
 import rosbag
 import matplotlib.pyplot as plt
 import numpy as np
-from math import *
-from scipy.interpolate import interp1d
 from transformations import * 
 import argparse
 from numpy.linalg import norm
 import scipy.stats as stats
-import copy
-
-plt.rc('figure', figsize=(10,5))
-#plt.rc('figure', figsize=(20,15))
-
-def short_loop_id(id):
-    return id //100000 + id%100000
-
-def quat2eulers(w, x, y ,z):
-    r = atan2(2 * (w * x + y * z),
-                    1 - 2 * (x * x + y * y))
-    p = asin(2 * (w * y - z * x))
-    y = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
-    return y, p, r
-
-def RMSE(predictions, targets):
-    if len(predictions) == 0:
-        print("RMSE: no predictions")
-        return 0
-    err_sq = (predictions-targets)**2
-    ret = np.sqrt(np.mean(err_sq))
-    # print(predictions, targets, ret)
-    ret = np.nan_to_num(ret, 0)
-
-    return ret
-
-def ATE_POS(predictions, targets):
-    err = predictions-targets
-    norm2 = err[:,0]*err[:,0]+err[:,1]*err[:,1]+err[:,2]*err[:,2]
-    if np.isnan(norm2).any():
-        print("ATE_POS has nan")
-
-    return np.sqrt(np.mean(norm2))
-
-def odometry_covariance_per_meter_with_rp(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_length=1.0, gt_outlier_thres=0.1, show=False,step=1):
-    i, j, c = 0, 0, 0
-    sqr_err_pos_per_meter = np.zeros((3, 3))
-    sqr_err_yaw_per_meter = 0
-    ticks = []
-    rp_errors = []
-    dp_vos = []
-    dp_gts = []
-
-    if show:
-        plt.figure()
-        plt.title("rp_errors")
-    while i < len(pos_vo) and j < len(pos_vo):
-        len_ij = 0
-        pos_last = pos_vo[i]
-        j = i
-
-        while j < len(pos_vo) - 1 and len_ij < rp_length:
-            len_ij += np.linalg.norm(pos_vo[j] - pos_last)
-            pos_last = pos_vo[j]
-            j += 1
-            # if i == 800:
-                # print("len_ij", len_ij)
-
-        #Now len ij is approximately rp_length, we compute error of ij
-        pos_vo_i = pos_vo[i]
-        pos_vo_j = pos_vo[j]
-        yaw_vo_i = yaw_vo[i]
-        yaw_vo_j = yaw_vo[j]
-
-        dyaw_vo = wrap_pi(yaw_vo_j - yaw_vo_i)
-        dpos_vo = yaw_rotate_vec(-yaw_vo_i, pos_vo_j - pos_vo_i)
-
-        pos_gt_i = pos_gt[i]
-        pos_gt_j = pos_gt[j]
-        yaw_gt_i = yaw_gt[i]
-        yaw_gt_j = yaw_gt[j]
-        dyaw_gt = wrap_pi(yaw_gt_j - yaw_gt_i)
-        dpos_gt = yaw_rotate_vec(-yaw_gt_i, pos_gt_j - pos_gt_i)
-        dp_vos.append(dpos_vo)
-        dp_gts.append(dpos_gt)
-        ticks.append(i)
-        
-        err = np.transpose(np.array([(dpos_vo - dpos_gt)]))
-
-        if len_ij > 0.01:
-            sqr_err_pos = np.matmul(err, np.transpose(err))/len_ij
-            sqr_err_yaw = ((dyaw_vo-dyaw_gt))*((dyaw_vo-dyaw_gt))/len_ij
-            if np.linalg.norm(sqr_err_pos) < gt_outlier_thres*rp_length:
-                sqr_err_pos_per_meter += sqr_err_pos
-                sqr_err_yaw_per_meter += sqr_err_yaw
-                c += 1
-                rp_errors.append(np.linalg.norm(sqr_err_pos))
-        i += step
-
-    if show:
-        dp_vos = np.array(dp_vos)
-        dp_gts = np.array(dp_gts)
-        # plt.subplot(311)
-        plt.plot(ticks, dp_vos[:,0], label="VO X")
-        plt.plot(ticks, dp_gts[:,0], label="GT X")
-        plt.plot(ticks, dp_vos[:,0] - dp_gts[:,0], label="ERR X")
-        plt.grid()
-        plt.legend()
-        # plt.subplot(312)
-        # plt.plot(ticks, dp_vos[:,1], label="VO Y")
-        # plt.plot(ticks, dp_gts[:,1], label="GT Y")
-        # plt.grid()
-        # plt.legend()
-        # plt.subplot(313)
-        # plt.plot(ticks, dp_vos[:,2], label="VO Z")
-        # plt.plot(ticks, dp_gts[:,2], label="GT Z")
-        # plt.grid()
-        # plt.legend()
-        # plt.grid()
-        # print("RP Length", rp_length)
-        # plt.plot(rp_errors)
-        # plt.grid()
-        plt.show()
-    return sqr_err_pos_per_meter/c, sqr_err_yaw_per_meter/c
-
-def odometry_covariance_per_meter(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_lengths=[0.5, 1.0, 2.0], gt_outlier_thres=1.0, show=False,step=1):
-    pos_covs = []
-    sum_pos_cov = np.zeros((3, 3))
-    sum_yaw_cov = 0
-    for rp in rp_lengths:
-        pos_cov, yaw_cov = odometry_covariance_per_meter_with_rp(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_length=rp, gt_outlier_thres=gt_outlier_thres, show=show, step=step)
-        sum_pos_cov += pos_cov
-        sum_yaw_cov += yaw_cov
-        pos_covs.append(np.linalg.norm(pos_cov))
-    if show:
-        plt.figure()
-        plt.title("RP vs cov")
-        plt.plot(rp_lengths, pos_covs)
-        plt.grid()
-        plt.show()
-    return sum_pos_cov/len(rp_lengths), sum_yaw_cov/len(rp_lengths)
-
-def yaw_rotate_vec(yaw, vec):
-    Re = rotation_matrix(yaw, [0, 0, 1])[0:3, 0:3]
-    return np.transpose(np.dot(Re, np.transpose(vec)))
-
-def wrap_pi(data):
-    return (data + np.pi) % (2 * np.pi) - np.pi
-
-def read_pose_swarm_fused(bag, topic, _id, t0):
-    pos = []
-    ypr = []
-    ts = []
-    quat = []
-    print(f"Read poses from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
-            for i in range(len(msg.ids)):
-                _i = msg.ids[i]
-                if _i == _id:
-                    q = msg.local_drone_rotation[i]
-                    y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-                    ts.append(msg.header.stamp.to_sec() - t0)
-                    pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
-                    ypr.append([y, p, r])
-                    quat.append([q.w, q.x, q.y, q.z])
-
-    ret = {
-        "t": np.array(ts) ,
-        "pos": np.array(pos),
-        "ypr": np.array(ypr),
-        "quat": np.array(quat)
-    }
-    return ret
-
-def read_pose_swarm_frame(bag, topic, _id, t0):
-    pos = []
-    ypr = []
-    ts = []
-    quat = []
-    print(f"Read poses from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
-            if msg.header.stamp.to_sec() < t0:
-                    continue
-            for node in msg.node_frames:
-                _i = node.id
-                if _i == _id and node.vo_available:
-                    ts.append(node.header.stamp.to_sec() - t0)
-                    y, p, r = quat2eulers(node.quat.w, node.quat.x, node.quat.y, node.quat.z)
-                    pos.append([node.position.x, node.position.y, node.position.z])
-                    ypr.append([y, p, r])
-                    quat.append([node.quat.w, node.quat.x, node.quat.y, node.quat.z])
-    ret = {
-        "t": np.array(ts),
-        "pos_raw": np.array(pos),
-        "pos": np.array(pos),
-        "quat": np.array(quat),
-        "pos_raw_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "ypr_raw": np.array(ypr),
-        "ypr_raw_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
-    }
-    return ret
-
-# def read_distance_swarm_frame(bag, topic, _id, to)
-def read_distances_swarm_frame(bag, topic, t0):
-    distances = {
-    }
-    ts = []
-    print(f"Read distances from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
-            for node in msg.node_frames:
-                _ida = node.id
-                if not (_ida in distances):
-                    distances[_ida] = {}
-                for i in range(len(node.dismap_ids)):
-                    _id = node.dismap_ids[i]
-                    _dis = node.dismap_dists[i]
-                    if not (_id in distances[_ida]):
-                        distances[_ida][_id] = {
-                            "t": [],
-                            "dis": []
-                        }
-                    distances[_ida][_id]["t"].append(msg.header.stamp.to_sec() - t0)
-                    distances[_ida][_id]["dis"].append(_dis)
-    return distances
-
-def read_distances_remote_nodes(bag, topic, t0, main_id):
-    distances = {
-    }
-    ts = []
-    print(f"Read distances from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
-            for i in range(len(msg.node_ids)):
-                if msg.active[i]:
-                    _id = msg.node_ids[i]
-                    _dis = msg.node_dis[i]
-                    if not (_id in distances):
-                        distances[_id] = {
-                            "t" : [],
-                            "dis" : []
-                        }
-                    distances[_id]["t"].append(msg.header.stamp.to_sec() - t0)
-                    distances[_id]["dis"].append(_dis)
-    return distances
-
-
-def read_pose(bag, topic, t0, P_vicon_in_imu=None):
-    pos = []
-    ypr = []
-    ts = []
-    quat = []
-    print(f"Read poses from topic {topic}")
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t0 == 0:
-            t0 = msg.header.stamp.to_sec()
-        else:
-            if msg.header.stamp.to_sec() < t0:
-                continue
-        p = msg.pose.position
-        q = msg.pose.orientation
-        pos.append([p.x, p.y, p.z])
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-        quat.append([q.w, q.x, q.y, q.z])
-        ypr.append([y, p, r])
-        ts.append(msg.header.stamp.to_sec() - t0)
-    
-    # T_viconc_now = quat*viconc_in_imu + T_imu_vicon
-            # T_imu_vicon = T_viconc_now - quat*viconc_in_imu
-
-    pos = np.array(pos)
-    ypr = np.array(ypr)
-    if P_vicon_in_imu is not None: #CVT to IMU
-        for j in range(len(pos)):
-            pos[j] = pos[j] - yaw_rotate_vec(ypr[j,0], P_vicon_in_imu) #Roll pitch is ignored since they are small.
-
-    ret = {
-        "t": np.array(ts),
-        "pos": pos,
-        "pos_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "ypr": ypr,
-        "ypr_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "quat": np.array(quat)
-    }
-    
-    print("Trajectory total length ", poses_length(ret))
-    return ret, t0
-
-
-def parse_path(path, t0):
-    pos = []
-    ypr = []
-    ts = []
-    
-    for msg in path.poses:
-        p = msg.pose.position
-        q = msg.pose.orientation
-        pos.append([p.x, p.y, p.z])
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-        ypr.append([y, p, r])
-        ts.append(msg.header.stamp.to_sec() - t0)
-          
-    ret = {
-        "t": np.array(ts),
-        "pos": np.array(pos),
-        "ypr": np.array(ypr)
-    }
-
-    return ret
-
-def read_path_all(bag, topic, t0):
-    pathes = []
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        pathes.append(parse_path(msg, t0))
-    return pathes
-
-def read_path(bag, topic, t0):
-    path = None
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        path = msg
-    if path is not None:
-        return parse_path(path, t0)
-    return None
-
-def poses_length(poses):
-    dp = np.diff(poses["pos"], axis=0)
-    length = np.sum(np.linalg.norm(dp,axis=1))
-    return length
-
-def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
-    loops = []
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        # if msg.ts_a.to_sec() - t0 < -100 or msg.ts_b.to_sec() - t0 < -100:
-        #     print(msg.ts_a.to_sec() - t0, msg.ts_b.to_sec() - t0)
-        #     continue
-        pos = msg.relative_pose.position
-        q = msg.relative_pose.orientation
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-
-        loop = {
-            "ts_a": msg.ts_a.to_sec() - t0,
-            "ts_b": msg.ts_b.to_sec() - t0,
-            "id_a":msg.id_a,
-            "id_b":msg.id_b,
-            "dpos":np.array([pos.x, pos.y, pos.z]),
-            "dyaw":y,
-            "id":msg.id,
-            "pnp_inlier_num": msg.pnp_inlier_num
-        }
-        loops.append(loop)
-    return loops 
-
-def read_detections_6d(bag, t0, topic="/swarm_drones/node_detected_6d"):
-    dets = []
-    for topic, msg, t in bag.read_messages(topics=[topic]):
-        pos = msg.relative_pose.pose.position
-        q = msg.relative_pose.pose.orientation
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-        det = {
-            "ts": msg.header.stamp.to_sec() - t0,
-            "ts_a": msg.header.stamp.to_sec() - t0,
-            "ts_b": msg.header.stamp.to_sec() - t0,
-            "id_a":msg.self_drone_id,
-            "id": msg.id,
-            "id_b":msg.remote_drone_id,
-            "dpos":np.array([pos.x, pos.y, pos.z]),
-            "dyaw":y,
-            "pnp_inlier_num": 0
-        }
-        dets.append(det)
-    return dets
-
-def read_detections_raw(bag, t0, topic="/swarm_detection/swarm_detected_raw"):
-    dets = []
-    for topic, _msg, t in bag.read_messages(topics=[topic]):
-        for msg in _msg.detected_nodes_xyz_yaw:
-            det = {
-                "ts": msg.header.stamp.to_sec() - t0,
-                "id_a":msg.self_drone_id,
-                "id": msg.id,
-                "id_b":msg.remote_drone_id,
-                "dpos":np.array([msg.dpos.x, msg.dpos.y, msg.dpos.z]),
-                "pos_a" : np.array([msg.local_pose_self.position.x, msg.local_pose_self.position.y, msg.local_pose_self.position.z]),
-                "pos_b" : np.array([msg.local_pose_remote.position.x, msg.local_pose_remote.position.y, msg.local_pose_remote.position.z]),
-                "extrinsic" : np.array([msg.camera_extrinsic.position.x, msg.camera_extrinsic.position.y, msg.camera_extrinsic.position.z]),
-                "inv_dep":msg.inv_dep
-            }
-            dets.append(det)
-    return dets
-
-def output_pose_to_csv(filename, poses, skip = 1):
-    with open(filename, 'w') as writer:
-        for i in range(len(poses["t"])):
-            if i % skip == 0:
-                ts = poses["t"][i]
-                t = poses["pos"][i]
-                q = poses["quat"][i]
-                writer.write(f"{ts} {t[0]} {t[1]} {t[2]} {q[1]} {q[2]} {q[3]} {q[0]}\n")
-
-
-def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, trial = 0):
-    bag = rosbag.Bag(bagname)
-    poses = {}
-    poses_fused = {}
-    poses_vo = {}
-    poses_path = {}
-    t0 = 0
-    plat = "pc"
-    for i in nodes:
-        poses[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
-        output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_groundtruth.txt", poses[i])
-        output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_groundtruth.txt", poses[i])
-        if is_pc:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
-            output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_traj_estimate{trial}.txt", poses_fused[i])
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
-        else:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
-            output_pose_to_csv(f"data/{plat}/{alg}/{plat}_{alg}_drone{i}/stamped_traj_estimate{trial}.txt", poses_fused[i])
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
-
-        poses_fused[i]["t"] = poses_fused[i]["t"]
-        poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
-        output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
-
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}):
-    bag = rosbag.Bag(bagname)
-    poses_gt = {}
-    poses_fused = {}
-    poses_vo = {}
-    poses_path = {}
-    t0 = 0
-    plat = "pc"
-    
-    for topic, msg, t in bag.read_messages(topics=["/swarm_drones/swarm_frame"]):
-        if msg.header.stamp.to_sec() < 1e9:
-            continue
-
-        if len(msg.node_frames) >= len(nodes):
-            t0 = msg.header.stamp.to_sec() + dt
-            # print("t0 is", t0, msg)
-            break
-    
-    for i in nodes:
-        if groundtruth:
-            if i in P_vicon_in_imu:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, P_vicon_in_imu[i])
-            else:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
-            
-        if is_pc:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
-        else:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
-            #poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
-
-        poses_fused[i]["t"] = poses_fused[i]["t"]
-        poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
-
-        if i not in poses_path or poses_path[i] is None:
-            poses_path[i] = copy.copy(poses_fused[i])
-
-
-    loops = read_loops(bag, t0, "/swarm_loop/loop_connection")
-    detections = read_detections_6d(bag, t0, "/swarm_drones/node_detected_6d")
-    # detections = read_detections_raw(bag, t0)
-    # distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
-    distances = read_distances_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
-    bag.close()
-    if groundtruth:
-        offset_gt = - poses_gt[main_id]["pos"][0]
-        yaw_offset_gt = -poses_gt[main_id]["ypr"][0, 0]
-        print("GT Yaw Offset, ", yaw_offset_gt*57.3, "pos", offset_gt)
-    else:
-        offset_gt = np.array([0, 0, 0])
-        yaw_offset_gt = 0
-
-    fused_offset = - poses_fused[main_id]["pos"][0]
-    fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
-    print("fused_offset", fused_offset, ", ", fused_yaw_offset)
-    #Pvicon = DP Ppose
-    #DP = PviconPpose^-1
-    #DP = (PPose^-1 Pvicon)^-1
-    #PVicon = DYaw * Pos
-    #YawVicon = DYaw + Yaw
-    for i in nodes:
-        poses_fused[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_fused[i]["pos"]) + fused_offset
-        poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
-        poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
-        poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
-
-        if i in poses_path:
-            if len(poses_path[i]["pos"]) > 1:
-                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
-                poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_path[i]["pos"]) + fused_offset
-                poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
-                poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
-
-        if groundtruth:
-            #Align by initial
-            poses_gt[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_gt[i]["pos"]) + offset_gt
-            poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
-
-            poses_gt[i]["pos_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["pos"],axis=0,fill_value="extrapolate")
-            poses_gt[i]["ypr_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["ypr"],axis=0,fill_value="extrapolate")
-
-    for i in nodes:
-        if groundtruth:
-            vo_offset = poses_gt[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
-            yaw_offset = (poses_gt[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
-            print(f"VIO Offset for {i}: {vo_offset}")
-            print(poses_gt[i]["pos"][0], poses_vo[i]["pos_raw"][0])
-        else:    
-            vo_offset = np.array([0, 0, 0])
-            yaw_offset = 0
-        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
-        poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
-        poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
-        poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
-    if groundtruth:
-        return poses_gt, poses_fused, poses_vo, poses_path, loops, detections, distances, t0
-    else:
-        return poses_fused, poses_vo, poses_path, loops, detections, distances, t0
+from bagparse import *
 
 def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, groundtruth = True, \
     use_offline=False, output_path="/home/xuhao/output/", id_map = None, figsize=(6, 6)):
@@ -675,7 +158,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
 
     for i in nodes:
         _id = id_map[i]
-        fig = plt.figure(f"Drone {i} fused Vs GT Pos")
+        fig = plt.figure(f"Drone {i} fused Vs GT Pos", figsize=figsize)
         #fig.suptitle(f"Drone {i} fused Vs GT 1D")
         ax1, ax2, ax3 = fig.subplots(3, 1)
 
@@ -836,7 +319,7 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {},
                 plt.show()
         
 
-def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dte=1000000, groundtruth = True, show=True):
+def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, outlier_thres=0.5, dte=1000000, groundtruth = True, show=True, figsize=(6, 6)):
     ts = poses_fused[main_id]["t"]
     ts = ts[ts<dte]
     posa_vo =  poses_vo[main_id]["pos_func"](ts)
@@ -875,26 +358,23 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
         for i in range(len(yawa_vo)):
             yaw = yawa_vo[i]
             dp_vo[i] = yaw_rotate_vec(-yaw, dp_vo[i])
-        
+        mask = np.linalg.norm(dp_gt - dp_vo, axis=1) < outlier_thres
         if groundtruth:
             rmse_yaw = RMSE(wrap_pi(yawb_fused - yawa_fused - yawb_gt + yawa_gt), 0)
-            rmse_x = RMSE(dp_gt[:,0] , dp_fused[:,0])
-            rmse_y = RMSE(dp_gt[:,1] , dp_fused[:,1])
-            rmse_z = RMSE(dp_gt[:,2] , dp_fused[:,2])
+            rmse_x = RMSE(dp_gt[mask,0] , dp_fused[mask,0])
+            rmse_y = RMSE(dp_gt[mask,1] , dp_fused[mask,1])
+            rmse_z = RMSE(dp_gt[mask,2] , dp_fused[mask,2])
 
 
-            rmse_x_no_bias = RMSE(dp_gt[:,0] - np.mean(dp_gt[:,0] - dp_fused[:,0]), dp_fused[:,0])
-            rmse_y_no_bias = RMSE(dp_gt[:,1] - np.mean(dp_gt[:,1] - dp_fused[:,1]), dp_fused[:,1])
-            rmse_z_no_bias = RMSE(dp_gt[:,2] - np.mean(dp_gt[:,2] - dp_fused[:,2]), dp_fused[:,2])
             #ERROR
             print(f"{main_id}->{target_id}\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.2f}°", end="\t|")
             #BIAS
-            print(f"{np.mean(dp_gt[:,0] - dp_fused[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_fused[:,1]):+3.3f},{np.mean(dp_gt[:,2] - dp_fused[:,2]):+3.3f}\t{np.mean(dyaw_gt - dyaw_fused)*180/3.14:+3.2f}°",end="\t")
+            print(f"{np.mean(dp_gt[mask,0] - dp_fused[mask,0]):3.3f},{np.mean(dp_gt[mask,1] - dp_fused[mask,1]):+3.3f},{np.mean(dp_gt[mask,2] - dp_fused[mask,2]):+3.3f}\t{np.mean(dyaw_gt - dyaw_fused)*180/3.14:+3.2f}°",end="\t")
 
             rmse_yaw = RMSE(wrap_pi(yawb_vo - yawa_vo - yawb_gt + yawa_gt), 0)
-            rmse_x = RMSE(dp_gt[:,0] , dp_vo[:,0])
-            rmse_y = RMSE(dp_gt[:,1] , dp_vo[:,1])
-            rmse_z = RMSE(dp_gt[:,2] , dp_vo[:,2])
+            rmse_x = RMSE(dp_gt[mask,0] , dp_vo[mask,0])
+            rmse_y = RMSE(dp_gt[mask,1] , dp_vo[mask,1])
+            rmse_z = RMSE(dp_gt[mask,2] , dp_vo[mask,2])
 
             print(f"|\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.1f}°")
             # print(f"\t{np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
@@ -902,7 +382,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
     
 
         if show:
-            fig = plt.figure(f"Relative Pose 2D {main_id}->{target_ids}")
+            fig = plt.figure(f"Relative Pose 2D {main_id}->{target_ids}", figsize=figsize)
 
             if groundtruth:
                 plt.plot(dp_gt[:, 0], dp_gt[:, 1], label=f"Relative Pose GT {main_id}->{target_id}")
@@ -911,7 +391,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             if target_id == target_ids[0]:
                 plt.grid()
 
-            fig = plt.figure("Relative Pose Polar")
+            fig = plt.figure("Relative Pose Polar", figsize=figsize)
             fig.suptitle("Relative Pose Polar")
             ax1, ax2 = fig.subplots(2, 1)
 
@@ -929,7 +409,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             ax2.grid()
             plt.tight_layout()
 
-            fig = plt.figure("Relative Pose")
+            fig = plt.figure("Relative Pose", figsize=figsize)
             fig.suptitle(f"Relative Pose {main_id}->{target_ids}")
             ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
 
@@ -954,14 +434,14 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, dt
             ax4.grid()
             plt.tight_layout()
                 
-            fig = plt.figure("Fused Relative Error")
+            fig = plt.figure("Fused Relative Error", figsize=figsize)
             fig.suptitle(f"Fused Relative Error {main_id}->{target_ids}")
             ax1, ax2, ax3 = fig.subplots(3, 1)
 
-            ax1.plot(ts, dp_gt[:,0] - dp_fused[:,0], label="$E_{xfused}^" + str(target_id) + f"$ RMSE:{rmse_x:3.3f}")
-            ax2.plot(ts, dp_gt[:,1] - dp_fused[:,1], label="$E_{yfused}^" + str(target_id) + f"$ RMSE:{rmse_y:3.3f}")
-            ax3.plot(ts, dp_gt[:,2] - dp_fused[:,2], label="$E_{zfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
-            ax4.plot(ts, wrap_pi(dyaw_gt - dyaw_fused), label="$E_{yawfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
+            ax1.plot(ts[mask], dp_gt[mask,0] - dp_fused[mask,0], label="$E_{xfused}^" + str(target_id) + f"$ RMSE:{rmse_x:3.3f}")
+            ax2.plot(ts[mask], dp_gt[mask,1] - dp_fused[mask,1], label="$E_{yfused}^" + str(target_id) + f"$ RMSE:{rmse_y:3.3f}")
+            ax3.plot(ts[mask], dp_gt[mask,2] - dp_fused[mask,2], label="$E_{zfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
+            ax4.plot(ts[mask], wrap_pi(dyaw_gt[mask] - dyaw_fused[mask]), label="$E_{yawfused}^" + str(target_id) + f"$ RMSE:{rmse_z:3.3f}")
 
             ax1.legend()
             ax2.legend()
@@ -986,22 +466,22 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
     ate_fused_sum = 0
     rmse_fused_yaw_sum = 0
 
-    print("Absolute Trajectory Statistics\nEST:\tATE_P\tATE_Yaw\tATE\t\t\tCOV/m\t\tPOS\t\t\tYAW\t\t|\tVO:ATE_P\tYaw\t\t\tATE\t\tCOV/m\t\tPOS\t\tYAW\t")
+    print("Absolute Trajectory Statistics\nEST:\tATE P\tYaw\tPitch\tRoll\t\tRMSE\t\t\tCOV/m\t\tPOS\t\t\tYAW\t\t|\tVO:ATE_P\tYaw\t\t\tATE\t\tCOV/m\t\tPOS\t\tYAW\t")
     for i in nodes:
         t_ = poses_fused[i]["t"]
         mask = t_<dte
         t_ = t_[t_<dte]
         pos_gt =  poses[i]["pos_func"](t_)
         pos_fused = poses_fused[i]["pos"][mask]
-        yaw_fused = poses_fused[i]["ypr"][mask][:,0]
+        ypr_fused = poses_fused[i]["ypr"][mask]
         pos_vo = poses_vo[i]["pos"]
         if i in poses_path:
             pos_path = poses_path[i]["pos"]
-        yaw_gt = poses[i]["ypr_func"](t_)[:,0]
-        yaw_vo = poses_vo[i]["ypr"][:,0]
+        ypr_gt = poses[i]["ypr_func"](t_)
+        ypr_vo = poses_vo[i]["ypr"]
         _i = str(i) 
 
-        fused_cov_per_meter, fused_yaw_cov_per_meter = odometry_covariance_per_meter(pos_fused, yaw_fused, pos_gt, yaw_gt)
+        fused_cov_per_meter, fused_yaw_cov_per_meter = odometry_covariance_per_meter(pos_fused, ypr_fused[:,0], pos_gt, ypr_gt[:,0])
         rmse_x = RMSE(pos_fused[:,0] , pos_gt[:,0])
         rmse_y = RMSE(pos_fused[:,1] , pos_gt[:,1])
         rmse_z = RMSE(pos_fused[:,2] , pos_gt[:,2])
@@ -1016,7 +496,9 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             print("pos_gt has nan")
         
         ate_fused = ATE_POS(pos_fused, pos_gt)
-        rmse_yaw_fused = RMSE(wrap_pi(yaw_gt-yaw_fused), 0)
+        rmse_yaw_fused = RMSE(wrap_pi(ypr_gt[:,0]-ypr_fused[:,0]), 0)
+        rmse_pitch_fused = RMSE(wrap_pi(ypr_gt[:,1]-ypr_fused[:,1]), 0)
+        rmse_roll_fused = RMSE(wrap_pi(ypr_gt[:,2]-ypr_fused[:,2]), 0)
 
         ate_fused_sum += ate_fused
         rmse_fused_yaw_sum += rmse_yaw_fused
@@ -1028,15 +510,17 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
 
 
         pos_gt_vo=  poses[i]["pos_func"](poses_vo[i]["t"])
-        yaw_gt_vo =  poses[i]["ypr_func"](poses_vo[i]["t"])[:,0]
+        ypr_gt_vo =  poses[i]["ypr_func"](poses_vo[i]["t"])
         rmse_vo_x = RMSE(pos_vo[:,0] , pos_gt_vo[:,0])
         rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt_vo[:,1])
         rmse_vo_z = RMSE(pos_vo[:,2] , pos_gt_vo[:,2])
 
-        vo_cov_per_meter, vo_yaw_cov_per_meter = odometry_covariance_per_meter(pos_vo, yaw_vo, pos_gt_vo, yaw_gt_vo, show=False,step=100)
+        vo_cov_per_meter, vo_yaw_cov_per_meter = odometry_covariance_per_meter(pos_vo, ypr_vo[:,0], pos_gt_vo, ypr_gt_vo[:,0], show=False,step=100)
         
         ate_vo = ATE_POS(pos_vo, pos_gt_vo)
-        rmse_yaw_vo = RMSE(wrap_pi(yaw_vo-yaw_gt_vo), 0)
+        rmse_yaw_vo = RMSE(wrap_pi(ypr_vo[:,0]-ypr_gt_vo[:,0]), 0)
+        rmse_pitch_vo = RMSE(wrap_pi(ypr_vo[:,1]-ypr_gt_vo[:,1]), 0)
+        rmse_roll_vo = RMSE(wrap_pi(ypr_vo[:,2]-ypr_gt_vo[:,2]), 0)
 
         ate_vo_sum += ate_vo
         rmse_vo_yaw_sum += rmse_yaw_vo
@@ -1045,17 +529,17 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             print(f"Ego{main_id}",end="\t")
         else:
             print(f"{i}by{main_id}",end="\t")
-        print(f"{ate_fused:3.3f}\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{fused_cov_x:.1e},{fused_cov_y:.1e},{fused_cov_z:.1e}\t{fused_yaw_cov_per_meter:.1e}rad\t|\t",end="")
+        print(f"{ate_fused:3.3f}\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_pitch_fused*180/pi:3.3f}°\t{rmse_roll_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{fused_cov_x:.1e},{fused_cov_y:.1e},{fused_cov_z:.1e}\t{fused_yaw_cov_per_meter:.1e}rad\t|\t",end="")
         # if i in poses_path:
         #     print(f"RMSE Fused Offline Path {rmse_path_x:3.3f},{rmse_path_y:3.3f},{rmse_path_z:3.3f}")
-        print(f"{ate_vo:3.3f}\t\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}\t{vo_cov_per_meter[0][0]:.1e},{vo_cov_per_meter[1][1]:.1e},{vo_cov_per_meter[2][2]:.1e}\t{vo_yaw_cov_per_meter:.1e}rad")
+        print(f"{ate_vo:3.3f}\t\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_pitch_vo*180/pi:3.3f}°\t{rmse_roll_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}\t{vo_cov_per_meter[0][0]:.1e},{vo_cov_per_meter[1][1]:.1e},{vo_cov_per_meter[2][2]:.1e}\t{vo_yaw_cov_per_meter:.1e}rad")
 
         # print("VO COV POS\n", vo_cov_per_meter, 'yaw', vo_yaw_cov_per_meter)
 
         if show:
-            fig = plt.figure(f"Fused Absolute Error {i}")
-            fig.suptitle(f"Fused Absolute Error {i}")
-            ax1, ax2, ax3, ax4 = fig.subplots(4, 1)
+            fig = plt.figure(f"Fused Absolute Error Pos {i}")
+            fig.suptitle(f"Fused Absolute Error Pos {i}")
+            ax1, ax2, ax3 = fig.subplots(3, 1)
             label = f"$errx_{i}$ RMSE{i}:{rmse_x:3.3f}"
             ax1.plot(t_, pos_gt[:,0]  - pos_fused[:,0], label=label)
 
@@ -1065,8 +549,6 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             label = f"$erry_{i}$ RMSE{i}:{rmse_z:3.3f}"
             ax3.plot(t_,  pos_gt[:,2]  - pos_fused[:,2], label=label)
 
-            label = f"$yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
-            ax4.plot(t_, wrap_pi(yaw_gt-yaw_fused), label=label)
 
             label = f"$VO errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
             ax1.plot(poses_vo[i]["t"], pos_gt_vo[:,0]  - pos_vo[:,0], label=label)
@@ -1077,9 +559,37 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             label = f"$VO errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
             ax3.plot(poses_vo[i]["t"], pos_gt_vo[:,2]  - pos_vo[:,2], label=label)
 
-            label = f"$VO yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
-            ax4.plot(poses_vo[i]["t"], wrap_pi(yaw_gt_vo-yaw_vo), label=label)
+            ax1.legend()
+            ax2.legend()
+            ax3.legend()
+            ax1.grid()
+            ax2.grid()
+            ax3.grid()
 
+            fig = plt.figure(f"Fused Absolute Error Pos {i}")
+            fig.suptitle(f"Fused Absolute Error Pos {i}")
+            ax1, ax2, ax3 = fig.subplots(3, 1)
+            label = f"$VO yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax1.plot(poses_vo[i]["t"], wrap_pi(ypr_vo[:,0]-ypr_gt_vo[:,0]), label=label)
+            label = f"$yaw_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax1.plot(t_, wrap_pi(ypr_gt[:,0]-ypr_fused[:,0]), label=label)
+
+            label = f"$VO pitch_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax1.plot(poses_vo[i]["t"], wrap_pi(ypr_vo[:,1]-ypr_gt_vo[:,1]), label=label)
+            label = f"$pitch_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax1.plot(t_, wrap_pi(ypr_gt[:,1]-ypr_fused[:,1]), label=label)
+
+            label = f"$VO pitch_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax2.plot(poses_vo[i]["t"], wrap_pi(ypr_vo[:,2]-ypr_gt_vo[:,2]), label=label)
+            label = f"$pitch_{i}$ RMSE{i}:{rmse_z:3.3f}"
+            ax2.plot(t_, wrap_pi(ypr_gt[:,2]-ypr_fused[:,2]), label=label)
+
+            # ax1.legend()
+            # ax2.legend()
+            # ax3.legend()
+            ax1.grid()
+            ax2.grid()
+            ax3.grid()
             # label = f"$Path errx_{i}$ RMSE{i}:{rmse_vo_x:3.3f}"
             # ax1.plot(poses_path[i]["t"], pos_gt[:,0]  - pos_path[:,0], label=label)
 
@@ -1088,33 +598,7 @@ def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dt
             
             # label = f"$Path errz_{i}$ RMSE{i}:{rmse_vo_z:3.3f}"
             # ax3.plot(poses_path[i]["t"], pos_gt[:,2]  - pos_path[:,2], label=label)
-            ax3.legend()
-            ax1.grid()
-            ax2.grid()
-            ax3.grid()
-            for i in nodes:
-                fig = plt.figure(f"Yaw {i}")
-                plt.title(f"Yaw {i}")
-                # ax1, ax2 = fig.subplots(1, 1)
-                ax1 = fig.subplots(1, 1)
-                t_ = poses_fused[i]["t"]
-                yaw_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])
-                yaw_fused = poses_fused[i]["ypr"]
-                yaw_vo = poses_vo[i]["ypr_func"](poses_fused[i]["t"])
-                
-                ax1.plot(t_,  yaw_gt[:,0]*57.3, label=f"$\psi gt{i}$")
-                ax1.plot(t_,  yaw_fused[:,0]*57.3, label=f"$\psi fused{i}$")
-                ax1.plot(t_,  yaw_vo[:,0]*57.3, label=f"$\psi fused{i}$")
 
-
-                ax1.grid()
-                ax1.legend()
-                # ax2.plot(t_,  (yaw_fused[:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$\psi_E{i}$")
-                # yaw_gt =  poses[i]["ypr_func"](poses_vo[i]["t"])
-                # ax2.plot(poses_vo[i]["t"],  (poses_vo[i]["ypr"][:,0] -  yaw_gt[:,0] + np.pi) % (2 * np.pi) - np.pi, label=f"$VO \psi_E{i}$")
-                # ax2.set_ylim(-0.5, 0.5)
-                # ax2.grid()
-                # ax2.legend() 
 
         
         num = len(nodes)
@@ -1313,15 +797,7 @@ def plot_detections_error(poses, poses_vo, detections, main_id, enable_dpose, in
     plt.grid()
 
 
-
-def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
-    good_loop_id = set()
-    if inlier_file != "":
-        with open(inlier_file, "r") as f:
-            lines = f.readlines()
-            for line in lines:
-                good_loop_id.add(int(line))
-
+def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, show_outlier=True):
     _loops_data = []
     dpos_loops = []
     dpos_gts = []
@@ -1345,8 +821,6 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     loops_error = {}
     loop_ids = []
     for loop in loops:
-        if inlier_file!= "" and loop["id"] not in good_loop_id:
-            continue
         # print(loop["id_a"], "->", loop["id_b"])
         if loop["id_a"] != loop["id_b"]:
             count_inter_loop += 1
@@ -1409,10 +883,16 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     fig = plt.figure("Loop Error")
     plt.subplot(211)
     plt.tight_layout()
-    plt.plot(ts_a, dpos_errs_norm, 'x', label="Loop Error")
-    plt.plot(ts_a, dpos_errs[:,0], '1', label="Loop Error X")
-    plt.plot(ts_a, dpos_errs[:,1], '2', label="Loop Error Y")
-    plt.plot(ts_a, dpos_errs[:,2], '3', label="Loop Error Z")
+    plt.plot(ts_a, dpos_errs_norm, '.', label="Loop Error")
+    plt.plot(ts_a, dpos_errs[:,0], '.', label="Loop Error X")
+    plt.plot(ts_a, dpos_errs[:,1], '.', label="Loop Error Y")
+    plt.plot(ts_a, dpos_errs[:,2], '.', label="Loop Error Z")
+    for i in range(len(loop_ids)):
+        if loop_ids[i] not in good_loop_id:
+            plt.text(ts_a[i], dpos_errs[i,0], "x", fontsize=12, color="red")
+            plt.text(ts_a[i], dpos_errs[i,1], "x", fontsize=12, color="red")
+            plt.text(ts_a[i], dpos_errs[i,2], "x", fontsize=12, color="red")
+
     plt.title(f"Error Pos Loop vs Vicon. ErrNorm max {np.max(dpos_errs_norm):.2f}m")
     plt.ylim(-np.min(dpos_errs_norm)*1.2, np.max(dpos_errs_norm)*1.2)
     plt.grid(which="both")
@@ -1455,31 +935,27 @@ def plot_loops_error(poses, loops, outlier_thres=1.0, inlier_file=""):
     plt.grid(which="both")
     plt.legend()
 
-    # plt.plot(poses[i]["t"], poses[i]["pos"][:,0], label="Vicon X")
-    # plt.plot(poses[i]["t"], poses[i]["pos"][:,1], label="Vicon Y")
-    # plt.plot(poses[i]["t"], poses[i]["pos"][:,2], label="Vicon Z")
-
-    plt.figure("InliersVSErr")
-    plt.title("InliersVSErr")
-    plt.plot(pnp_inlier_nums, dpos_errs_norm, "x", label="")
-    plt.grid(which="both")
-    for i in range(len(pnp_inlier_nums)):
-        if dpos_errs_norm[i]>0.2:
-            plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}|{idas[i]}->{idbs[i]}", fontsize=12)
-    # plt.figure()
-    # plt.subplot(141)
-    # plt.hist(dpos_errs_norm, 5, density=True, facecolor='g', alpha=0.75)
+    # plt.figure("InliersVSErr")
+    # plt.title("InliersVSErr")
+    # plt.plot(pnp_inlier_nums, dpos_errs_norm, "x", label="")
+    # plt.grid(which="both")
+    # for i in range(len(pnp_inlier_nums)):
+    #     if dpos_errs_norm[i]>0.2:
+    #         plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}|{idas[i]}->{idbs[i]}", fontsize=12)
 
     plt.figure("DistanceVSErr")
     plt.title("DistancVSErr")
-    plt.plot(dpos_loop_norms, dpos_errs_norm, "x", label="")
+    plt.plot(dpos_loop_norms, dpos_errs_norm, ".", label="")
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
-        if dpos_errs_norm[i]>0.2:
+        if dpos_errs_norm[i]>outlier_show_thres:
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
+        if loop_ids[i] not in good_loop_id:
+            plt.text(dpos_loop_norms[i], dpos_errs_norm[i], "x", fontsize=12, color="red")
 
-
-    mask = np.array(dpos_errs_norm)<outlier_thres
+    mask = []
+    for i in range(len(loop_ids)):
+        mask.append(loop_ids[i] in good_loop_id)
     dpos_errs=dpos_errs[mask]
     dyaw_errs = dyaw_errs[mask]
 

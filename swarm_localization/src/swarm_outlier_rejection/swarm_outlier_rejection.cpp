@@ -123,7 +123,7 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
                     pcm_graph[j].push_back(_all_loops.size());
                 }
 
-                if (param.debug_write_pcm_errors) {
+                if (param.debug_write_debug) {
                     fprintf(f_logs, "\n");
                     fprintf(f_logs, "EdgePair %ld->%ld\n", edge1.id, edge2.id);
                     fprintf(f_logs, "Edge1 %ld@%d->%ld@%d DOF %d Pose %s\n", 
@@ -149,7 +149,10 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
                         _covariance(3, 3),
                         _covariance(4, 4),
                         _covariance(5, 5));
-                        pcm_errors << edge1.id << " " << edge2.id << " "  << smd << " " << std::endl;
+                }
+                
+                if (param.debug_write_pcm_errors) {
+                    pcm_errors << edge1.id << " " << edge2.id << " "  << smd << " " << std::endl;
                 }
 
             }

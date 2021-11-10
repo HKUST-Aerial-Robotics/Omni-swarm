@@ -23,9 +23,11 @@
 #include <chrono>
 #include <swarm_msgs/swarm_drone_basecoor.h>
 #include <swarm_msgs/LoopEdge.h>
+#include <swarm_msgs/LoopEdges.h>
 #include <swarm_msgs/swarm_detected.h>
 #include <nav_msgs/Path.h>
 #include "swarm_localization/swarm_localization_params.hpp"
+#include <std_msgs/Int64MultiArray.h>
 
 #define BACKWARD_HAS_DW 1
 #include <backward.hpp>
@@ -184,9 +186,22 @@ protected:
             t_last = t_now;
             if (cost.data >= 0) {
                 solving_cost_pub.publish(cost);
-            pub_full_path();
+                pub_full_path();
+                publish_goodloops(_sf.header.stamp);
+            }
         }
     }
+
+    void publish_goodloops(ros::Time stamp) {
+        if (debug_publish_goodloops) {
+            swarm_msgs::LoopEdges goodloops;
+            goodloops.header.stamp = stamp;
+            for (auto & loc: swarm_localization_solver->good_2drone_measurements) {
+                auto loop = static_cast<Swarm::LoopEdge * >(loc);
+                goodloops.loops.emplace_back(loop->toros());
+            }
+            loop_debug_pub.publish(goodloops);
+        }
     }
 
     void pub_full_path() {
@@ -257,7 +272,7 @@ private:
     ros::Subscriber recv_drone_odom_now;
     ros::Subscriber loop_connection_sub;
     ros::Subscriber swarm_detected_sub;
-    ros::Publisher fused_drone_data_pub, fused_drone_basecoor_pub, solving_cost_pub, fused_drone_rel_data_pub;
+    ros::Publisher fused_drone_data_pub, fused_drone_basecoor_pub, solving_cost_pub, fused_drone_rel_data_pub, loop_inliers_pub, loop_debug_pub;
 
     std::string frame_id = "";
 
@@ -275,6 +290,7 @@ private:
     bool pub_swarm_odom = false;
     bool publish_full_path = false;
     bool is_pc_replay = false;
+    bool debug_publish_goodloops = false;
 
 
     int self_id = -1;
@@ -399,6 +415,10 @@ private:
         fused_drone_rel_data_pub.publish(sfr);
         fused_drone_data_pub.publish(sf);
         fused_drone_basecoor_pub.publish(sdb);
+        std_msgs::Int64MultiArray inliers;
+        inliers.data = swarm_localization_solver->get_good_loops();
+        loop_inliers_pub.publish(inliers);
+
     }
 
 
@@ -454,6 +474,7 @@ public:
         nh.param<float>("pcm_thres_det", solver_params.outlier_rejection_params.pcm_thres_det, 1.2f);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_good, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_errors, false);
+        nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_debug, false);
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("loop_outlier_distance_threshold", solver_params.loop_outlier_distance_threshold, 2.0f);
@@ -473,6 +494,7 @@ public:
         nh.param<float>("det_dpos_thres", solver_params.det_dpos_thres, 0.2f);
         nh.param<bool>("kf_use_all_nodes", solver_params.kf_use_all_nodes, false);
         nh.param<bool>("is_pc_replay", is_pc_replay, false);
+        nh.param<bool>("debug_publish_goodloops", debug_publish_goodloops, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/xuhao/cgraph.dot");
         nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
         nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
@@ -503,6 +525,8 @@ public:
         fused_drone_rel_data_pub = nh.advertise<swarm_msgs::swarm_fused_relative>(
                 "/swarm_drones/swarm_drone_fused_relative", 10);
         solving_cost_pub = nh.advertise<std_msgs::Float32>("/swarm_drones/solving_cost", 10);
+        loop_inliers_pub = nh.advertise<std_msgs::Int64MultiArray>("/swarm_drones/loop_inliers", 10);
+        loop_debug_pub = nh.advertise<swarm_msgs::LoopEdges>("/swarm_drones/goodloops", 10);
 
 
         recv_sf_est = nh.subscribe("/swarm_drones/swarm_frame", 1000,

@@ -43,8 +43,11 @@
             init_z_movement : -0.01 #Debug 
 
             #Noise Models.
-            vo_cov_pos_per_meter: 1e-2 #Worse VO
-            vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
+            vo_cov_pos_per_meter: 3e-2
+            vo_cov_yaw_per_meter: 4e-5
+            #vo_cov_pos_per_meter: 1e-2 #Worse VO
+            #vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
+
             distance_measurement_cov: 0.1
             
             DETECTION_SPHERE_STD: 0.07
@@ -70,6 +73,7 @@
             pub_swarm_odom: true
             is_pc_replay: true
             publish_full_path: false
+            debug_publish_goodloops: true
 
             cg: #In IMU Frame.
                 x: -0.06

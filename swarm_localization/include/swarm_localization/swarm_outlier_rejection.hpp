@@ -4,6 +4,7 @@
 
 struct SwarmLocalOutlierRejectionParams {
     bool debug_write_pcm_errors = true;
+    bool debug_write_debug = true;
     bool debug_write_pcm_good = true;
     float pcm_thres = 0.6;
     float pcm_thres_det = 1.2;
@@ -30,5 +31,17 @@ public:
 
     //This should be performed in swarm_loop.
     bool check_outlier_by_odometry_consistency(const Swarm::LoopEdge & loop);
+    
+    const std::vector<int64_t> good_loops() const {
+        std::vector<int64_t> ret;
+        for (auto & it1: good_loops_set) {
+            for (auto & it2: it1.second) {
+                for (auto it3: it2.second) {
+                    ret.push_back(it3);
+                }
+            }
+        }
+        return ret;
+    }
 };
 
