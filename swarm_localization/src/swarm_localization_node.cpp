@@ -425,7 +425,7 @@ private:
     double t_last_predict_swarm = 0;
 
     void predict_swarm(const swarm_frame &_sf) {
-        double t_now = ros::Time::now().toSec();
+        double t_now = _sf.header.stamp.toSec();
         if (t_now - t_last_predict_swarm > 1.0/predict_freq) {
             t_last_predict_swarm = t_now;
             high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -440,7 +440,7 @@ private:
                     }
                     pub_fused_relative(_sfs, sf.stamp);
                 } else {
-                    pub_zero_base_coor(ros::Time::now());
+                    pub_zero_base_coor(_sf.header.stamp);
                     ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
                     //ROS_WARN("Unable to predict swarm");
                 }
@@ -467,6 +467,7 @@ public:
         nh.param<float>("predict_freq", predict_freq, 10.0f);
         nh.param<float>("max_accept_cost", solver_params.acpt_cost, 10.0f);
         nh.param<float>("min_kf_movement", solver_params.kf_movement, 0.4f);
+        nh.param<float>("kf_time_with_half_movement", solver_params.kf_time_with_half_movement, 1.0f);
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
         nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);

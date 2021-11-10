@@ -147,7 +147,7 @@ int SwarmLocalizationSolver::judge_is_key_frame(const SwarmFrame &sf) {
         if (self_nf.vo_available && last_sf.has_node(self_id) && last_sf.has_odometry(self_id)) {
             Eigen::Vector3d _diff = sf.position(self_id) - last_sf.position(self_id);
             double dt = (sf.ts - last_sf.ts)/1e9;
-            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/2 && dt > 0.2) ||
+            if (_diff.norm() > min_accept_keyframe_movement || (_diff.norm() > min_accept_keyframe_movement/2 && dt > params.kf_time_with_half_movement) ||
                 _diff.norm() > min_accept_keyframe_movement/3 && self_nf.has_detection()  //here shall be some one see him or he see someone
             ) {
                 ret.push_back(self_id);
@@ -821,7 +821,9 @@ double SwarmLocalizationSolver::solve() {
             ROS_INFO("[SWARM_LOCAL] Not init before, try to init");
             finish_init = solve_with_multiple_init(INIT_TRIAL);
             if (finish_init) {
-                generate_cgraph();
+                if (enable_cgraph_generation) {
+                    generate_cgraph();
+                }
                 last_drone_num = drone_num;
                 ROS_INFO("Finish init\n");
             }

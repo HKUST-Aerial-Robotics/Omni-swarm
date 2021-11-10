@@ -15,6 +15,7 @@ struct swarm_localization_solver_params {
     float acpt_cost = 10;
     int thread_num = 1;
     float kf_movement = 0.2;
+    float kf_time_with_half_movement = 1.0;
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
     int self_id = -1;
