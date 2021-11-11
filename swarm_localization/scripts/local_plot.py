@@ -894,10 +894,8 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     plt.plot(ts_a, dpos_errs[:,1], '.', label="Loop Error Y")
     plt.plot(ts_a, dpos_errs[:,2], '.', label="Loop Error Z")
     for i in range(len(loop_ids)):
-        if good_loop_id is not None and loop_ids[i] not in good_loop_id:
-            plt.text(ts_a[i], dpos_errs[i,0], "x", fontsize=12, color="red")
-            plt.text(ts_a[i], dpos_errs[i,1], "x", fontsize=12, color="red")
-            plt.text(ts_a[i], dpos_errs[i,2], "x", fontsize=12, color="red")
+        if (good_loop_id is not None and loop_ids[i] not in good_loop_id) or dpos_errs_norm[i] > outlier_show_thres:
+            plt.text(ts_a[i], dpos_errs_norm[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
 
     plt.title(f"Error Pos Loop vs Vicon. ErrNorm max {np.max(dpos_errs_norm):.2f}m")
     plt.ylim(-np.min(dpos_errs_norm)*1.2, np.max(dpos_errs_norm)*1.2)
@@ -1003,11 +1001,10 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
 
     return loops_error
 
-def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
+def debugging_pcm(pcm_folder, good_loop_id, loops_error, pcm_threshold):
     pcm_errors = {}
     pcm_errors_sum = {}
     pcm_out_thres_count = {}
-    good_loop_id = set()
     with open(pcm_folder+"/pcm_errors.txt", "r") as f:
         lines = f.readlines()
         count = 0
@@ -1034,11 +1031,6 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
                 if pcm_error > pcm_threshold:
                     pcm_out_thres_count[loop_id_a] += 1
                     pcm_out_thres_count[loop_id_b] += 1
-    with open(pcm_folder+"/pcm_good.txt", "r") as f:
-        lines = f.readlines()
-        for line in lines:
-            good_loop_id.add(int(line))
-    print(f"PCM loops {len(pcm_errors)}")
     pcm_errors_sum_array = []
     pcm_out_thres_count_array = []
     loop_error_T = []
@@ -1049,13 +1041,13 @@ def debugging_pcm(pcm_folder, loops_error, pcm_threshold):
     loop_tb = []
     for loop_id in pcm_errors_sum:
         if loop_id not in loops_error:
-            print(f"Loop {loop_id} not found")
+            # print(f"Loop {loop_id} not found")
             continue
         loop_id_array.append(loop_id)
         pcm_errors_sum_array.append(pcm_errors_sum[loop_id])
         pcm_out_thres_count_array.append(pcm_out_thres_count[loop_id])
-        loop_error_T.append(loops_error[loop_id]["pos"])
-        loop_error_yaw.append(loops_error[loop_id]["yaw"])
+        loop_error_T.append(loops_error[loop_id]["err_pos"])
+        loop_error_yaw.append(loops_error[loop_id]["err_yaw"])
         loop_dt.append(loops_error[loop_id]["dt"])
     loop_error_yaw = np.abs(wrap_pi(np.array(loop_error_yaw)))*57.3
     plt.figure("pcm_errors_sum_array vs loop_error_T")

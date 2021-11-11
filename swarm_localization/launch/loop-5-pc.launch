@@ -60,9 +60,8 @@
             distance_measurement_outlier_elevation_threshold: 0.6
 
             loop_outlier_distance_threshold: 2.0
-            #pcm_thres: 0.872 1.635 2.204 5.348 7.840
+            #pcm_thres: 0.872 1.635 2.204 3.455 5.348 7.840
             pcm_thres: 2.204
-            pcm_thres_det: 3.5
 
             #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5
