@@ -65,9 +65,6 @@ class SwarmLocalizationSolver {
 
     swarm_localization_solver_params params;
 
-    int detection_in_keyframes = 0;
-    std::vector<swarm_msgs::node_detected_xyzyaw> all_detections;
-    
     std::vector<Swarm::LoopEdge> all_detections_6d; //Actually 4d
     std::vector<Swarm::LoopEdge> good_loops;
     std::vector<Swarm::LoopEdge> all_loops;
@@ -116,10 +113,6 @@ class SwarmLocalizationSolver {
     bool find_node_frame_for_measurement_2drones(const Swarm::GeneralMeasurement2Drones * loc, int & _index_a, int &_index_b, double & dt_err) const;
 
     int loop_from_src_loop_connection(const Swarm::LoopEdge & _loc, Swarm::LoopEdge & loc_ret, double & dt_err, double & dpos) const;
-
-    bool detection_from_src_node_detection(const swarm_msgs::node_detected_xyzyaw & _loc, Swarm::DroneDetection & loc_ret, double & dt_err, double & dpos) const;
-
-    bool check_outlier_detection(const NodeFrame & _nf_a, const NodeFrame & _nf_b, const DroneDetection & det_ret) const;
 
     CostFunction *
     _setup_cost_function_by_sf(const SwarmFrame &sf, std::map<int, int> id2poseindex, bool is_lastest_frame, int & res_num) const;
