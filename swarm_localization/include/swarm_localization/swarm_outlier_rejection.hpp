@@ -22,9 +22,7 @@ class SwarmLocalOutlierRejection {
     std::set<int64_t> all_loops_set;
     std::map<int, std::map<int, std::set<int64_t>>> good_loops_set;
 public:
-    SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs):
-        param(_param), ego_motion_trajs(_ego_motion_trajs) {
-    }
+    SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs);
 
     std::vector<Swarm::LoopEdge> OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops);
     void OutlierRejectionLoopEdgesPCM(const std::vector<Swarm::LoopEdge > & inter_loops, int id_a, int id_b);

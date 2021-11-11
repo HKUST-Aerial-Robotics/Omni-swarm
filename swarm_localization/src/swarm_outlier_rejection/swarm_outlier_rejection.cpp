@@ -7,22 +7,24 @@
 
 #define PCM_DEBUG_OUTPUT
 
-std::fstream pcm_good;
-std::fstream pcm_good_detection;
 std::fstream pcm_errors;
 FILE * f_logs;
 
-
+SwarmLocalOutlierRejection::SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs):
+        param(_param), ego_motion_trajs(_ego_motion_trajs) {
+    if (param.debug_write_pcm_errors) {
+        f_logs = fopen("/root/output/pcm_logs.txt", "w");
+        pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
+        pcm_errors.close();
+        fclose(f_logs);
+    }
+}
 
 
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
-    if (param.debug_write_pcm_good) {
-        pcm_good.open("/root/output/pcm_good.txt", std::ios::out);
-    }
-
     if (param.debug_write_pcm_errors) {
-        pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
-        f_logs = fopen("/root/output/pcm_logs.txt", "w");
+        pcm_errors.open("/root/output/pcm_errors.txt", std::ios::app);
+        f_logs = fopen("/root/output/pcm_logs.txt", "a");
     }
 
     std::map<int, std::map<int, std::vector<Swarm::LoopEdge>>> new_loops;
@@ -49,10 +51,6 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
         if (_good_loops_set.find(loop.id) != _good_loops_set.end()) {
             good_loops.emplace_back(loop);
         }
-    }
-
-    if (param.debug_write_pcm_good) {
-        pcm_good.close();
     }
 
     if (param.debug_write_pcm_errors) {
@@ -89,19 +87,25 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
 
         for (size_t j = 0; j < _all_loops.size(); j++) {
             auto & edge2 = _all_loops[j];
-            Matrix6d _covariance = _cov_mat_1 + edge2.get_covariance();
+            auto _cov_mat_2 = edge2.get_covariance();;
+            Matrix6d _covariance = _cov_mat_1 + _cov_mat_2;
 
             int same_robot_pair = edge2.same_robot_pair(edge1);
             if (same_robot_pair > 0) {
                 //Now we can compute the consistency error.
                 std::pair<Swarm::Pose, Matrix6d> odom_a, odom_b;
                 Swarm::Pose p_edge2;
+                double traj_a = 0, traj_b = 0;
 
                 if (same_robot_pair == 1) {
                     p_edge2 = edge2.relative_pose;
                     //ODOM is tsa->tsb
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_a, true);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_b, true);
+                    if (param.debug_write_debug) {
+                        traj_a = ego_motion_trajs.at(edge1.id_a).trajectory_length_by_ts(edge1.ts_a, edge2.ts_a);
+                        traj_b = ego_motion_trajs.at(edge1.id_b).trajectory_length_by_ts(edge1.ts_b, edge2.ts_b);
+                    }
 
                     _covariance += odom_a.second + odom_b.second;
 
@@ -109,6 +113,11 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
                     p_edge2 = edge2.relative_pose.inverse();
                     odom_a = ego_motion_trajs.at(edge1.id_a).get_relative_pose_by_ts(edge1.ts_a, edge2.ts_b, true);
                     odom_b = ego_motion_trajs.at(edge1.id_b).get_relative_pose_by_ts(edge1.ts_b, edge2.ts_a, true);
+                    
+                    if (param.debug_write_debug) {
+                        traj_a = ego_motion_trajs.at(edge1.id_a).trajectory_length_by_ts(edge1.ts_a, edge2.ts_b);
+                        traj_b = ego_motion_trajs.at(edge1.id_b).trajectory_length_by_ts(edge1.ts_b, edge2.ts_a);
+                    }
 
                     _covariance += odom_a.second + odom_b.second;
                 }
@@ -126,23 +135,22 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
                 if (param.debug_write_debug) {
                     fprintf(f_logs, "\n");
                     fprintf(f_logs, "EdgePair %ld->%ld\n", edge1.id, edge2.id);
-                    fprintf(f_logs, "Edge1 %ld@%d->%ld@%d DOF %d Pose %s\n", 
-                        edge1.ts_a, edge1.id_a,
-                        edge1.ts_b, edge1.id_b,
-                        edge1.res_count,
-                        edge1.relative_pose.tostr().c_str()
-                    );
-                    fprintf(f_logs, "Edge2 %ld@%d->%ld@%d DOF %d Pose %s\n", 
-                        edge2.ts_a, edge2.id_a,
-                        edge2.ts_b, edge2.id_b,
-                        edge1.res_count,
-                        edge2.relative_pose.tostr().c_str()
-                    );
-                    fprintf(f_logs, "odom_a %s cov YPR [%+3.1e] T [%+3.1e]\n", odom_a.first.tostr().c_str(), odom_a.second(0), odom_a.second(3));
-                    fprintf(f_logs, "odom_b %s cov YPR [%+3.1e] T [%+3.1e]\n", odom_b.first.tostr().c_str(), odom_b.second(0), odom_b.second(3));
+                    fprintf(f_logs, "Edge1 %ld@%d->%ld@%d DOF %d Pose %s cov_1 [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", 
+                        edge1.id_a, TSShort(edge1.ts_a), edge1.id_b, TSShort(edge1.ts_b), edge1.res_count, edge1.relative_pose.tostr().c_str(),
+                        _cov_mat_1(0, 0), _cov_mat_1(1, 1), _cov_mat_1(2, 2), _cov_mat_1(3, 3), _cov_mat_1(4, 4), _cov_mat_1(5, 5));
+                    fprintf(f_logs, "Edge2 %ld@%d->%ld@%d DOF %d Pose %s cov_2 [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", 
+                        edge2.id_a, TSShort(edge2.ts_a), edge2.id_b, TSShort(edge2.ts_b), edge2.res_count, edge2.relative_pose.tostr().c_str(),
+                        _cov_mat_2(0, 0), _cov_mat_2(1, 1), _cov_mat_2(2, 2), _cov_mat_2(3, 3), _cov_mat_2(4, 4), _cov_mat_2(5, 5));
+                        
+                    auto cov = odom_a.second;
+                    fprintf(f_logs, "odom_a %s traj len %.2f cov (T, Q) [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", odom_a.first.tostr().c_str(), 
+                        traj_a, cov(0, 0), cov(1, 1), cov(2, 2), cov(3, 3), cov(4, 4), cov(5, 5));
+                    cov = odom_b.second;
+                    fprintf(f_logs, "odom_b %s traj len %.2f cov (T, Q) [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", odom_b.first.tostr().c_str(), 
+                        traj_b, cov(0, 0), cov(1, 1), cov(2, 2), cov(3, 3), cov(4, 4), cov(5, 5));
                     fprintf(f_logs, "err_pose %s logmap [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", err_pose.tostr().c_str(), 
                         logmap(0), logmap(1), logmap(2), logmap(3), logmap(4), logmap(5));
-                    fprintf(f_logs, "squaredMahalanobisDistance %f Same Direction %d _cov  [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", smd, same_robot_pair == 1,
+                    fprintf(f_logs, "squaredMahalanobisDistance %f Same Direction %d _cov(T, Q)  [%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e,%+3.1e]\n", smd, same_robot_pair == 1,
                         _covariance(0, 0),
                         _covariance(1, 1),
                         _covariance(2, 2),
@@ -184,8 +192,5 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
     for (auto i : max_clique_data) {
         good_loops_set[id_a][id_b].insert(_all_loops[i].id);
         good_loops_set[id_b][id_a].insert(_all_loops[i].id);
-        if (param.debug_write_pcm_good) {
-            pcm_good << _all_loops[i].id << std::endl;
-        }
     }
 }

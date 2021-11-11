@@ -952,9 +952,9 @@ void SwarmLocalizationSolver::setup_problem_with_loops_and_detections(const Esti
         if (posea == poseb) {
             continue;
         }
-        if (loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop ||
-            loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection4d ||
-            loc->meaturement_type == Swarm::GeneralMeasurement2Drones::Detection6d) {
+        if (loc->measurement_type == Swarm::GeneralMeasurement2Drones::Loop ||
+            loc->measurement_type == Swarm::GeneralMeasurement2Drones::Detection4d ||
+            loc->measurement_type == Swarm::GeneralMeasurement2Drones::Detection6d) {
             CostFunction * cost = RelativePoseFactor4d::Create(loc);;
             ceres::LossFunction *loss_function = nullptr;
             loss_function = new ceres::HuberLoss(1.0);
@@ -1548,10 +1548,15 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const Swarm::LoopEdge
     Matrix6d cov_odom = ego_motion_trajs.at(_nf_a.id).covariance_between_appro_ts(_nf_a.ts, loc_ret.ts_a);
     cov_odom += ego_motion_trajs.at(_nf_b.id).covariance_between_appro_ts(_nf_b.ts, loc_ret.ts_b);
     double dt = 0;
-    loc_ret.self_pose_a = ego_motion_trajs.at(_ida).pose_by_appro_ts(tsa.toNSec(), dt);//
-    loc_ret.self_pose_b = ego_motion_trajs.at(_idb).pose_by_appro_ts(tsb.toNSec(), dt);//
-    loc_ret.self_pose_a.set_yaw_only();
-    loc_ret.self_pose_b.set_yaw_only();
+
+    if (_loc.measurement_type == GeneralMeasurement2Drones::Detection4d || _loc.measurement_type == GeneralMeasurement2Drones::Detection6d) {
+        loc_ret.self_pose_a = ego_motion_trajs.at(_ida).pose_by_appro_ts(tsa.toNSec(), dt);//
+        loc_ret.self_pose_b = ego_motion_trajs.at(_idb).pose_by_appro_ts(tsb.toNSec(), dt);//
+        if (_loc.measurement_type == GeneralMeasurement2Drones::Detection4d) {
+            loc_ret.self_pose_a.set_yaw_only();
+            loc_ret.self_pose_b.set_yaw_only();
+        }
+    }
         
     if (dt > DET_SELF_POSE_THRES) {
         ROS_WARN("self_pose_b for det %d->%d @%d not found, dt: %.1fms", _ida, _idb, TSShort(tsb.toNSec()), dt);
@@ -1561,15 +1566,24 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const Swarm::LoopEdge
     Pose dpose_self_a = Pose::DeltaPose(_nf_a.self_pose, loc_ret.self_pose_a, true); //2->0
     Pose dpose_self_b = Pose::DeltaPose(loc_ret.self_pose_b, _nf_b.self_pose, true); //1->3
 
-
     Pose new_loop = dpose_self_a * loc_ret.relative_pose * dpose_self_b;
 
-    // ROS_INFO("_nf_a.self_pose %s loc_ret.self_pose_a %s loc_ret.self_pose_b %s _nf_b.self_pose %s loc_ret.relative_pose %s new_loop %s",
-    //     _nf_a.self_pose.tostr().c_str(), loc_ret.self_pose_a.tostr().c_str(), loc_ret.self_pose_b.tostr().c_str(),
-    //     _nf_b.self_pose.tostr().c_str(), loc_ret.relative_pose.tostr().c_str(), new_loop.tostr().c_str());
+#ifdef DEBUG_OUTPUT_LOOPS
+    double l1 = ego_motion_trajs.at(_ida).trajectory_length_by_appro_ts(tsa.toNSec(), _nf_a.ts);//
+    double l2 = ego_motion_trajs.at(_idb).trajectory_length_by_appro_ts(tsb.toNSec(), _nf_b.ts);//
+
+    printf("id: %ld %d@%d->%d@%d traj %.2f %.2f\n\t\t_nf_a.self_pose %s loc_ret.self_pose_a %s traj %.2f\n\t\t_nf_b.self_pose %s loc_ret.self_pose_b %s traj %.2f\n\t\tloc_ret.relative_pose %s new_loop %s\n\n",
+        _loc.id, _ida, TSShort(loc_ret.ts_a), _idb, TSShort(loc_ret.ts_b),
+        ego_motion_trajs.at(_ida).trajectory_length_by_appro_ts(tsa.toNSec(), tsb.toNSec()),
+        ego_motion_trajs.at(_idb).trajectory_length_by_appro_ts(tsa.toNSec(), tsb.toNSec()),
+        _nf_a.self_pose.tostr().c_str(), loc_ret.self_pose_a.tostr().c_str(), l1,
+        _nf_b.self_pose.tostr().c_str(), loc_ret.self_pose_b.tostr().c_str(), l2, loc_ret.relative_pose.tostr().c_str(), new_loop.tostr().c_str());
+#endif
 
     loc_ret.ts_a = _nf_a.ts;
     loc_ret.ts_b = _nf_b.ts;
+    loc_ret.stamp_a = _nf_a.stamp;
+    loc_ret.stamp_b = _nf_b.stamp;
     loc_ret.self_pose_a = _nf_a.pose();
     loc_ret.self_pose_b = _nf_b.pose();
     loc_ret.relative_pose = new_loop;
@@ -1660,7 +1674,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
 #endif
 
 #ifdef DEBUG_OUTPUT_DETS
-            if (loc_ret.meaturement_type == GeneralMeasurement2Drones::Detection4d || loc_ret.meaturement_type == GeneralMeasurement2Drones::Detection6d)
+            if (loc_ret.measurement_type == GeneralMeasurement2Drones::Detection4d || loc_ret.measurement_type == GeneralMeasurement2Drones::Detection6d)
                 ROS_INFO("[SWARM_LOCAL] Det [%d]%d -> [%d]%d [%3.2f, %3.2f, %3.2f] %f Pa [%3.2f, %3.2f, %3.2f] %f Pb [%3.2f, %3.2f, %3.2f] %f ", TSShort(loc_ret.ts_a), loc_ret.id_a,  TSShort(loc_ret.ts_b), loc_ret.id_b,
                         loc_ret.relative_pose.pos().x(), loc_ret.relative_pose.pos().y(), loc_ret.relative_pose.pos().z(),  loc_ret.relative_pose.yaw(),
                         loc_ret.self_pose_a.pos().x(), loc_ret.self_pose_a.pos().y(), loc_ret.self_pose_a.pos().z(),  loc_ret.self_pose_a.yaw(),
@@ -2006,7 +2020,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
     //
     int count = 0;
     for (auto & _loop: good_2drone_measurements) {
-        if (_loop->meaturement_type == Swarm::GeneralMeasurement2Drones::Loop)
+        if (_loop->measurement_type == Swarm::GeneralMeasurement2Drones::Loop)
         {
             auto loop = static_cast<Swarm::LoopEdge * >(_loop);
             

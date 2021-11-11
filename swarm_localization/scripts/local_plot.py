@@ -861,8 +861,14 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
             print("Duplicate loop", loop["id"])
         else:
             loops_error[loop["id"]] = {
-                "pos": norm(dpos_gt - dpos_loop), 
-                "yaw": wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]), 
+                "ida": loop["id_a"],
+                "idb": loop["id_b"],
+                "gt_pos": dpos_gt, 
+                "gt_pos_a": posa_gt,
+                "gt_pos_b": posb_gt,
+                "est_pos": dpos_loop, 
+                "err_pos": norm(dpos_gt - dpos_loop), 
+                "err_yaw": wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]), 
                 "dt": fabs(loop["ts_b"]-loop["ts_a"])
             }
         # if np.linalg.norm(dpos_gt - dpos_loop) > 1.0:
@@ -888,7 +894,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     plt.plot(ts_a, dpos_errs[:,1], '.', label="Loop Error Y")
     plt.plot(ts_a, dpos_errs[:,2], '.', label="Loop Error Z")
     for i in range(len(loop_ids)):
-        if loop_ids[i] not in good_loop_id:
+        if good_loop_id is not None and loop_ids[i] not in good_loop_id:
             plt.text(ts_a[i], dpos_errs[i,0], "x", fontsize=12, color="red")
             plt.text(ts_a[i], dpos_errs[i,1], "x", fontsize=12, color="red")
             plt.text(ts_a[i], dpos_errs[i,2], "x", fontsize=12, color="red")
@@ -948,16 +954,17 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     plt.plot(dpos_loop_norms, dpos_errs_norm, ".", label="")
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
-        if dpos_errs_norm[i]>outlier_show_thres:
+        if good_loop_id is not None and loop_ids[i] not in good_loop_id:
+            plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
+        elif dpos_errs_norm[i]>outlier_show_thres:
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
-        if loop_ids[i] not in good_loop_id:
-            plt.text(dpos_loop_norms[i], dpos_errs_norm[i], "x", fontsize=12, color="red")
-
+        
     mask = []
-    for i in range(len(loop_ids)):
-        mask.append(loop_ids[i] in good_loop_id)
-    dpos_errs=dpos_errs[mask]
-    dyaw_errs = dyaw_errs[mask]
+    if good_loop_id is not None:
+        for i in range(len(loop_ids)):
+            mask.append(loop_ids[i] in good_loop_id)
+        dpos_errs=dpos_errs[mask]
+        dyaw_errs = dyaw_errs[mask]
 
     plt.figure("Loop Hist")
     plt.subplot(131)
@@ -968,7 +975,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
+    title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,0], 0)**2)
     plt.title(title)
 
     plt.subplot(132)
@@ -978,7 +985,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
+    title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,1], 0)**2)
     plt.title(title)
 
     plt.subplot(133)
@@ -988,7 +995,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     x = np.linspace(xmin, xmax, 100)
     p = stats.norm.pdf(x, mu, std)
     plt.plot(x, p, 'k', linewidth=2)
-    title = "mu = %.2f,  std = %.2f cov = %.2f" % (mu, std, std*std)
+    title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,2], 0)**2)
     plt.title(title)
 
     print(f"Pos cov {np.cov(dpos_errs[:,0]):.1e}, {np.cov(dpos_errs[:,1]):.1e}, {np.cov(dpos_errs[:,2]):.1e}")

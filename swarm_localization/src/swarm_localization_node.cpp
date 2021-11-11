@@ -516,7 +516,6 @@ public:
         nh.param<double>("cg/y", CG.y(), 0);
         nh.param<double>("cg/z", CG.z(), 0);
 
-
         nh.param<std::string>("swarm_nodes_config", swarm_node_config, "/home/xuhao/swarm_ws/src/swarm_localization/swarm_localization/config/swarm_nodes5.yaml");
 
         load_nodes_from_file(swarm_node_config);
