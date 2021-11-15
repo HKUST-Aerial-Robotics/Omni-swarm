@@ -479,7 +479,7 @@ public:
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
         nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("loop_outlier_distance_threshold", solver_params.loop_outlier_distance_threshold, 2.0f);
-        nh.param<float>("triangulate_thres", solver_params.DA_TRI_accept_thres, 0.01f);
+        nh.param<float>("DA_accept_thres", solver_params.DA_accept_thres, 3.345f);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
         nh.param<bool>("enable_cgraph_generation", solver_params.enable_cgraph_generation, false);

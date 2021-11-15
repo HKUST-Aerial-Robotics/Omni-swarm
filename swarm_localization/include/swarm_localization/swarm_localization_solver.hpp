@@ -87,7 +87,7 @@ class SwarmLocalizationSolver {
 
     std::map<int, std::set<int>> loop_edges;
     int good_loop_num = 0;
-    int good_det_not_in_kf = 0;
+    int good_dets = 0;
 
     bool has_new_keyframe = false;
 
@@ -169,10 +169,6 @@ public:
     float init_z_movement = 1.0;
     float loop_outlier_threshold_pos = 1.0;
     float loop_outlier_threshold_yaw = 1.0;
-    float detection_inv_dep_outlier_thres;
-    float detection_outlier_thres;
-
-    float det_dpos_thres;
 
     bool enable_detection;
     bool enable_loop;

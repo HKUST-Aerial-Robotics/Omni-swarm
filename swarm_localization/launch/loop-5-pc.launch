@@ -50,12 +50,10 @@
             
             DETECTION_SPHERE_STD: 0.07
             DETECTION_INV_DEP_STD: 0.07
+            DA_accept_thres: 3.345
 
             #OUTLIER REJECTION
             det_dpos_thres: 0.3
-            detection_outlier_thres: 1.0
-            #detection_inv_dep_outlier_thres: 0.2
-            detection_inv_dep_outlier_thres: 1.0
             
             distance_measurement_outlier_elevation_threshold: 0.6
 

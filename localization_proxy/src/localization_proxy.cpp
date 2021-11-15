@@ -171,11 +171,11 @@ class LocalProxy {
         // ROS_INFO("[LOCAL_PROXY] ODOM OK");
     }
 
-    node_detected_xyzyaw on_node_detected_msg(int _id, mavlink_message_t &msg) {
+    node_detected on_node_detected_msg(int _id, mavlink_message_t &msg) {
         //process remode node detected
         //Wait for new inf driver to be used
         mavlink_node_detected_t mdetected;
-        node_detected_xyzyaw nd;
+        node_detected nd;
         mavlink_msg_node_detected_decode(&msg, &mdetected);
         nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
         int32_t tn = ROSTIME2LPS(ros::Time::now());
@@ -187,89 +187,67 @@ class LocalProxy {
             ROS_WARN_THROTTLE(1.0, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
         }
 
+        
         nd.self_drone_id = _id;
         nd.id = mdetected.id;
         nd.remote_drone_id = mdetected.target_id;
-        nd.dpos.x = mdetected.x;
-        nd.dpos.y = mdetected.y;
-        nd.dpos.z = mdetected.z;
-        nd.local_pose_self.position.x = mdetected.local_pose_self_x;
-        nd.local_pose_self.position.y = mdetected.local_pose_self_y;
-        nd.local_pose_self.position.z = mdetected.local_pose_self_z;
-        nd.local_pose_self.orientation = Yaw2ROSQuat(mdetected.local_pose_self_yaw);
-        nd.camera_extrinsic.orientation.w = 1;
-        nd.camera_extrinsic.orientation.x = 0;
-        nd.camera_extrinsic.orientation.y = 0;
-        nd.camera_extrinsic.orientation.z = 0;
-        nd.camera_extrinsic.position.x = mdetected.cam_x;
-        nd.camera_extrinsic.position.y = mdetected.cam_y;
-        nd.camera_extrinsic.position.z = mdetected.cam_z;
-        if (mdetected.inv_dep != 0) {
-            nd.inv_dep = mdetected.inv_dep / 10000.0;
-            nd.enable_scale = true;                    
-        } else {
-            nd.enable_scale = false;                    
-        }
+        auto & pos = nd.relative_pose.pose.position;
+        pos.x = mdetected.rel_x;
+        pos.y = mdetected.rel_y;
+        pos.z = mdetected.rel_z;
+        nd.is_yaw_valid = true;   
 
-        //Update with swarm detection should be same
-        nd.dpos_std.x = 0.02;
-        nd.dpos_std.y = 0.01;   
-        nd.dpos_std.z = 0.01;
-
-        nd.dyaw_cov = 10/57.3;
-        nd.is_yaw_valid = false;                    
+        Eigen::Map<Eigen::Matrix<double,6,6,RowMajor>> cov(nd.relative_pose.covariance.data());
+        cov.setZero();
+        cov(0, 0) = mdetected.cov_x;
+        cov(1, 1) = mdetected.cov_y;
+        cov(2, 2) = mdetected.cov_z;
+        cov(3, 3) = mdetected.cov_yaw;
+        cov(4, 4) = mdetected.cov_yaw;
+        cov(5, 5) = mdetected.cov_yaw;
         return nd;
     }
 
-    void send_node_detected(const swarm_msgs::node_detected_xyzyaw & nd) {
+    void send_node_detected(const swarm_msgs::node_detected & nd) {
         mavlink_message_t msg;
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
         // ROS_INFO("[LOCAL_PROXY] SEND ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
         int inv_dep = 0;
-        if (nd.enable_scale) {
-            inv_dep = nd.inv_dep * 10000.0;
-            if (inv_dep > 65535) {
-                inv_dep = 65535;
-            }
-        }
         
         auto quat = nd.local_pose_self.orientation;
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
+        auto pos = nd.relative_pose.pose.position;
+        const Eigen::Map<const Eigen::Matrix<double,6,6,RowMajor>> cov(nd.relative_pose.covariance.data());
 
         mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.id, nd.remote_drone_id, 
-            (float)(nd.dpos.x),
-            (float)(nd.dpos.y),
-            (float)(nd.dpos.z),
-            (int)(nd.probaility*10000),
-            inv_dep,
-            (float)(nd.camera_extrinsic.position.x),
-            (float)(nd.camera_extrinsic.position.y),
-            (float)(nd.camera_extrinsic.position.z),
-            (float)(nd.local_pose_self.position.x),
-            (float)(nd.local_pose_self.position.y),
-            (float)(nd.local_pose_self.position.z),
-            (float)(eulers(2)));
+            (float)(pos.x),
+            (float)(pos.y),
+            (float)(pos.z),
+            (float)(eulers(2)),
+            cov(0, 0),
+            cov(1, 1),
+            cov(2, 2),
+            cov(5, 5));
         
         send_mavlink_message(msg, true);
     }
 
 
     void parse_node_detected(mavlink_message_t & msg, int _id) {
-        node_detected_xyzyaw nd = on_node_detected_msg(_id, msg);
+        ROS_INFO("Node detected recv");
+        auto nd = on_node_detected_msg(_id, msg);
         swarm_detect_pub.publish(nd);
     }
 
     void on_swarm_detected(const swarm_msgs::swarm_detected & sd) {
-        if (sd.detected_nodes_xyz_yaw.size() == 0) {
+        if (sd.detected_nodes_xyz_yaw.size() + sd.detected_nodes.size() == 0) {
             return;
         }
 
-        auto node_xyzyaws = sd.detected_nodes_xyz_yaw;
         ROS_WARN("[LOCAL_PROXY] Broadcast detecteds");
-        for (node_detected_xyzyaw nd : node_xyzyaws) {
+        for (auto nd : sd.detected_nodes) {
             send_node_detected(nd);
-            // on_node_detcted_xyzyaw_recv(nd);
         }
     }
 
@@ -400,7 +378,6 @@ class LocalProxy {
                     }
 
                     case MAVLINK_MSG_ID_NODE_DETECTED: {
-                        //TODO: handle node detected
                         parse_node_detected(msg, _id);
                         break;
                     }
@@ -881,7 +858,7 @@ public:
         swarm_frame_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame", 10);
         swarm_frame_nosd_pub = nh.advertise<swarm_frame>("/swarm_drones/swarm_frame_predict", 10);
 
-        swarm_detect_pub = nh.advertise<node_detected_xyzyaw>("/swarm_drones/node_detected", 10);
+        swarm_detect_pub = nh.advertise<node_detected>("/swarm_drones/node_detected_6d", 10);
         
         based_sub = nh.subscribe("/swarm_drones/swarm_drone_basecoor", 1, &LocalProxy::on_swarm_fused_basecoor_recv, this, ros::TransportHints().tcpNoDelay());
 
