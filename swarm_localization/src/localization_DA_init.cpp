@@ -12,19 +12,17 @@ using namespace Swarm;
 #define POSITION_LIM 30
 // #define DFS_BEBUG_OUTPUT
 
-LocalizationDAInit::LocalizationDAInit(int _self_id, const std::map<int, Swarm::DroneTrajectory> & _egomotions, std::vector<Swarm::LoopEdge> & _drone_dets_6d, double _accept_thres):
+LocalizationDAInit::LocalizationDAInit(int _self_id, const std::map<int, Swarm::DroneTrajectory> & _egomotions,
+        const std::map<int, Swarm::DroneTrajectory> & _est_keyframes,
+        std::vector<Swarm::LoopEdge> & _drone_dets_6d, double _accept_thres):
         self_id(_self_id),
         drone_dets_6d(_drone_dets_6d),
-        accept_thres(_accept_thres) {
+        accept_thres(_accept_thres),
+        ego_motions(_egomotions),
+        est_keyframes(_est_keyframes) {
     for (auto & traj : _egomotions) { 
         available_nodes.push_back(traj.first);
     }
-
-    for (auto it: _egomotions) {
-        ego_motions[it.first] = it.second.pose_by_index(0);
-    }
-
-    
 }
 
 bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
@@ -50,12 +48,31 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     //Secondly, we start give guess
 
     std::map<int, int> guess;
-    std::map<int, Swarm::Pose> est_poses;
+    std::map<int, Swarm::Pose> est_poses_t0;
     if (ego_motions.find(self_id) == ego_motions.end()) {
         return false;
     }
-    est_poses[self_id] = ego_motions.at(self_id);
-    auto ret = DFS(est_poses, guess, unidentified);
+    TsType t0 = 0;
+    for (auto & p : ego_motions) {
+        auto _t0 = p.second.ts_by_index(0);
+        if (_t0 > t0) {
+            t0 = _t0;
+        }
+    }
+
+    est_poses_t0[self_id] = ego_motions.at(self_id).pose_by_appro_ts(t0);
+
+    //Update known poses here.
+    for (auto & p : est_keyframes) {
+        int _id = p.first;
+        TsType t1;
+        auto pose_t1 = p.second.pose_by_appro_ts(t0, t1); //Est pose at t1
+        auto rp_t1tot0 = ego_motions.at(_id).get_relative_pose_by_ts(t1, t0);
+        auto pose_est_t0 = pose_t1 * rp_t1tot0.first;
+        est_poses_t0[_id] = pose_est_t0;
+    }
+
+    auto ret = DFS(est_poses_t0, guess, unidentified, t0);
     if (ret.first) {
         ROS_INFO("Initial guess is OK cost %f the assoication", ret.second);
         for (auto it : guess) {
@@ -74,7 +91,7 @@ bool LocalizationDAInit::try_data_association(std::map<int, int> &mapper) {
     return false;
 }
 
-double LocalizationDAInit::verify(int new_undenified, const std::map<int, Swarm::Pose> & est_poses, const std::map<int, int> & guess) const {
+double LocalizationDAInit::verify(int new_undenified, const std::map<int, Swarm::Pose> & est_poses, const std::map<int, int> & guess, TsType t0) const {
     //First we assume all static
     //Ignore verify now
     int new_id = guess.at(new_undenified);
@@ -108,7 +125,7 @@ double LocalizationDAInit::verify(int new_undenified, const std::map<int, Swarm:
     return max_dis;
 }
 
-double LocalizationDAInit::verify(const std::map<int, Swarm::Pose> & est_pathes, const std::map<int, int> & guess) const {
+double LocalizationDAInit::verify(const std::map<int, Swarm::Pose> & est_pathes, const std::map<int, int> & guess, TsType t0) const {
     //Here we verify each drone_dets_pair
     double max_dis = 0;
 
@@ -132,7 +149,7 @@ double LocalizationDAInit::verify(const std::map<int, Swarm::Pose> & est_pathes,
     return max_dis;
 }
 
-std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est_poses, std::map<int, int> & guess, const std::set<int> & unidentified) {
+std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est_poses_t0, std::map<int, int> & guess, const std::set<int> & unidentified, TsType t0) {
 #ifdef DFS_BEBUG_OUTPUT
     ROS_INFO("DFS Unidentified num %ld guess ", unidentified.size());
     
@@ -144,8 +161,8 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est
 #endif
 
     if (unidentified.size() == 0) {
-        double cost = verify(est_poses, guess);
-        if (cost >= 0 && cost < accept_thres && est_poses.size() == available_nodes.size()) {
+        double cost = verify(est_poses_t0, guess, t0);
+        if (cost >= 0 && cost < accept_thres && est_poses_t0.size() == available_nodes.size()) {
 #ifdef DFS_BEBUG_OUTPUT
             ROS_INFO("Guess verified, final cost %f, return.", cost);
 #endif
@@ -160,11 +177,11 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est
 
     for (auto _uniden : unidentified) {
         auto uniden_det = uniden_detector[_uniden];
-        if (est_poses.find(uniden_det) == est_poses.end() || guess.find(_uniden) != guess.end()) {
+        if (est_poses_t0.find(uniden_det) == est_poses_t0.end() || guess.find(_uniden) != guess.end()) {
             //Choose the drones which it's detector has been identified.
             continue;
         }
-        std::map<int, Swarm::Pose> best_poses;
+        std::map<int, Swarm::Pose> best_poses_t0;
         std::map<int, int> best_guess;
         double best_cost = 1000000;
 
@@ -191,14 +208,14 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est
             std::set<int> this_unidentified(unidentified);
             this_unidentified.erase(_uniden);
 
-            std::map<int, Swarm::Pose> new_est_poses(est_poses);
+            std::map<int, Swarm::Pose> new_est_poses_t0(est_poses_t0);
             
             //We will try to estimate this position and verify it.
             //Here we should estimate all unknow nodes
             if (new_id>0) {
-                new_est_poses[new_id] = estimate_path(_uniden, new_guess, new_est_poses);
+                new_est_poses_t0[new_id] = estimate_path(_uniden, new_guess, new_est_poses_t0, t0);
 
-                double ret = verify(_uniden, new_est_poses, new_guess);
+                double ret = verify(_uniden, new_est_poses_t0, new_guess, t0);
                 if (ret > accept_thres) {
 #ifdef DFS_BEBUG_OUTPUT
                     ROS_WARN("Estimate path failed: %3.1f; The guess result wrong result.", ret);
@@ -207,19 +224,19 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est
                 }
             }
 
-            auto result = DFS(new_est_poses, new_guess, this_unidentified);
+            auto result = DFS(new_est_poses_t0, new_guess, this_unidentified, t0);
 
             if (result.first && result.second < best_cost) {
                 //Here we assume only one result
                 best_cost = result.second;
                 best_guess = new_guess;
-                best_poses = new_est_poses;
+                best_poses_t0 = new_est_poses_t0;
             }
         }
 
         if(best_cost < 1000000) {
             guess = best_guess;
-            est_poses = best_poses;
+            est_poses_t0 = best_poses_t0;
             return make_pair(true, best_cost);
         }
     }
@@ -228,18 +245,21 @@ std::pair<bool, double> LocalizationDAInit::DFS(std::map<int, Swarm::Pose> & est
     return make_pair(false, -1);
 }
 
-Swarm::Pose LocalizationDAInit::estimate_path(int _uniden, map<int, int> & guess, const map<int, Swarm::Pose> est_poses) const {
+//We get the pose by t0
+Swarm::Pose LocalizationDAInit::estimate_path(int _uniden, map<int, int> & guess, const map<int, Swarm::Pose> est_poses_t0, TsType t0) const {
     //Assume static now
     int new_id = guess.at(_uniden);
     auto it = drone_dets_by_pair.at(_uniden).begin();
-    auto det_id = it->first;
+    auto det_id_a = it->first;
     auto edge = it->second[0]; //Only use first detection
-    Swarm::Pose pose = ego_motions.at(det_id)*edge.relative_pose;
+    Swarm::Pose odoma_0_to_1 = ego_motions.at(edge.id_b).get_relative_pose_by_ts(t0, edge.ts_a).first;
+    Swarm::Pose odomb_1_to_0 = ego_motions.at(edge.id_a).get_relative_pose_by_ts(edge.ts_b, t0).first;
+    Swarm::Pose pose = est_poses_t0.at(edge.id_a)*odoma_0_to_1*edge.relative_pose*odomb_1_to_0;
     return pose;
 }
 
 double LocalizationDAInit::verify_with_measurements(const vector<pair<Pose, Vector3d>> & dets, 
-    const vector<pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d) {
+    const vector<pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d, TsType t0) {
     double error = 0;
 
     //Also verify with distance
