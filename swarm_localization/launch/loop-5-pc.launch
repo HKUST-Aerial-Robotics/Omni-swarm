@@ -53,7 +53,7 @@
             DA_accept_thres: 3.345
 
             #OUTLIER REJECTION
-            det_dpos_thres: 0.3
+            det_dpos_thres: 1.0
             
             distance_measurement_outlier_elevation_threshold: 0.6
 

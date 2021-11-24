@@ -163,7 +163,9 @@ public:
 
     bool finish_init = false;
 
-    bool enable_to_init = false;
+    bool enable_to_solve_master = false;
+    bool first_init = true;
+    std::map<int, bool> enable_to_init_by_drone;
     ros::Time last_est_time_tick = ros::Time::now();
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
@@ -176,9 +178,11 @@ public:
     bool enable_detection_depth;
 
     bool kf_use_all_nodes;
+    bool system_is_initied_by_motion = false;
 
     std::map <int, bool> yaw_observability;
     std::map <int, bool> pos_observability;
+    std::map<int, int> anyoumos_det_mapper;
 
     std::map<int, Swarm::DroneTrajectory> keyframe_trajs;
     std::map<int, Swarm::DroneTrajectory> full_trajs;

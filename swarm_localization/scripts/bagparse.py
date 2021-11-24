@@ -337,22 +337,22 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     #PVicon = DYaw * Pos
     #YawVicon = DYaw + Yaw
     for i in nodes:
-        poses_fused[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_fused[i]["pos"]) + fused_offset
-        poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
+        poses_fused[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_fused[i]["pos"]) + fused_offset+ yaw_rotate_vec(fused_yaw_offset, fused_offset)
+        poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if i in poses_path:
             if len(poses_path[i]["pos"]) > 1:
-                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
-                poses_path[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_path[i]["pos"]) + fused_offset
+                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([fused_yaw_offset, 0, 0]) + yaw_rotate_vec(fused_yaw_offset, fused_offset)
+                poses_path[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_path[i]["pos"]) + fused_offset
                 poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
                 poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if groundtruth:
             #Align by initial
-            poses_gt[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_gt[i]["pos"]) + offset_gt
-            poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
+            poses_gt[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_gt[i]["pos"]) + yaw_rotate_vec(yaw_offset_gt, offset_gt)
+            poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
 
             poses_gt[i]["pos_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["pos"],axis=0,fill_value="extrapolate")
             poses_gt[i]["ypr_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["ypr"],axis=0,fill_value="extrapolate")
@@ -366,8 +366,9 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         else:    
             vo_offset = np.array([0, 0, 0])
             yaw_offset = 0
-        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + vo_offset
+        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + yaw_rotate_vec(yaw_offset, vo_offset)
         poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
+        
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     if groundtruth:

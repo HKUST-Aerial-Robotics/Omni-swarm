@@ -180,22 +180,15 @@ class LocalProxy {
         nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
         int32_t tn = ROSTIME2LPS(ros::Time::now());
         int32_t dt = tn - mdetected.lps_time;
-        ROS_WARN("[LOCAL_PROXY] ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
-        if (dt < 100) {
-            ROS_INFO_THROTTLE(1.0, "ND RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
-        } else {
-            ROS_WARN_THROTTLE(1.0, "NodeDetected RECV %d now %d DT %d", mdetected.lps_time, tn, tn - mdetected.lps_time);
-        }
-
+        ROS_INFO("[LOCAL_PROXY] Recv NodeDetcted ID %d  XYZ %lf %lf %lf YAW %lfdeg", mdetected.id, mdetected.rel_x, mdetected.rel_y, mdetected.rel_z, mdetected.rel_yaw*57.3);
         
         nd.self_drone_id = _id;
         nd.id = mdetected.id;
         nd.remote_drone_id = mdetected.target_id;
-        auto & pos = nd.relative_pose.pose.position;
-        pos.x = mdetected.rel_x;
-        pos.y = mdetected.rel_y;
-        pos.z = mdetected.rel_z;
+        Swarm::Pose pose(Eigen::Vector3d(mdetected.rel_x, mdetected.rel_y, mdetected.rel_z), mdetected.rel_yaw);
+        nd.relative_pose.pose = pose.to_ros_pose();
         nd.is_yaw_valid = true;   
+
 
         Eigen::Map<Eigen::Matrix<double,6,6,RowMajor>> cov(nd.relative_pose.covariance.data());
         cov.setZero();
@@ -211,7 +204,6 @@ class LocalProxy {
     void send_node_detected(const swarm_msgs::node_detected & nd) {
         mavlink_message_t msg;
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
-        // ROS_INFO("[LOCAL_PROXY] SEND ND ts %d now %d", ts, ROSTIME2LPS(ros::Time::now()));
         int inv_dep = 0;
         
         auto quat = nd.local_pose_self.orientation;
@@ -219,6 +211,7 @@ class LocalProxy {
         Eigen::Vector3d eulers = quat2eulers(_q);
         auto pos = nd.relative_pose.pose.position;
         const Eigen::Map<const Eigen::Matrix<double,6,6,RowMajor>> cov(nd.relative_pose.covariance.data());
+        ROS_INFO("[LOCAL_PROXY] Send NodeDetected ID %d XYZ %lf %lf %lf YAW %lfdeg quat (WXYZ) %lf %lf %lf %lf", nd.id, pos.x, pos.y, pos.z, eulers(2)*57.3, quat.w, quat.x, quat.y, quat.z);
 
         mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.id, nd.remote_drone_id, 
             (float)(pos.x),
@@ -360,7 +353,7 @@ class LocalProxy {
         // ROS_INFO("[LOCAL_PROXY] incoming data ts %d", income_data.lps_time);
         int _id = income_data.remote_id;
         if (_id == self_id) {
-            ROS_WARN("Receive self message %d/%d; Return", _id, self_id);
+            ROS_WARN("[LOCAL_PROXY] Receive self message %d/%d; Return", _id, self_id);
             return;
         }
         auto buf = income_data.data;
@@ -596,7 +589,7 @@ class LocalProxy {
         nf.position.x += _nf.velocity.x * dt;
         nf.position.y += _nf.velocity.y * dt;
         nf.position.z += _nf.velocity.z * dt;
-        ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms DX %3.2f %3.2f %3.2f mm with vel %3.2f %3.2f %3.2f mm/s", _nf.id, dt*1000,
+        ROS_INFO_THROTTLE_NAMED(1.0, "[LOCAL_PROXY] PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms DX %3.2f %3.2f %3.2f mm with vel %3.2f %3.2f %3.2f mm/s", _nf.id, dt*1000,
             _nf.velocity.x * dt*1000, _nf.velocity.y * dt*1000, _nf.velocity.z * dt*1000,
             _nf.velocity.x*1000,_nf.velocity.y*1000, _nf.velocity.z*1000
             );
@@ -622,7 +615,7 @@ class LocalProxy {
                 sf.node_frames.push_back(nf);
                 // ROS_INFO_THROTTLE_NAMED(1.0, "PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms", _id, (tnow - _nf->header.stamp).toSec()*1000 );
             } else {
-                ROS_WARN_THROTTLE(1.0, "Node %d can't find in queue %ld", _id, sf_queue.size());
+                ROS_WARN_THROTTLE(1.0, "[LOCAL_PROXY] Node %d can't find in queue %ld", _id, sf_queue.size());
             }
 
         }
@@ -749,7 +742,7 @@ class LocalProxy {
     }
 
     void on_uwb_distance_measurement(remote_uwb_info info) {
-        ROS_INFO_THROTTLE(1.0, "Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
+        ROS_INFO_THROTTLE(1.0, "[LOCAL_PROXY] Recv RTnode LPS  time %d now %d", info.sys_time, ROSTIME2LPS(ros::Time::now()));
         // ROS_INFO("[LOCAL_PROXY] Recv RTnode LPS T %d stamp %d now %d", info.sys_time, ROSTIME2LPS(info.header.stamp), ROSTIME2LPS(ros::Time::now()));
         //TODO: Deal with rssi here
 
@@ -769,7 +762,7 @@ class LocalProxy {
             if (_id < MAX_DRONE_SIZE) {
                 self_dis[_id] = info.node_dis[i];
             } else {
-                ROS_WARN_THROTTLE(1.0, "Node %d:%f is out of max drone size, not sending", _id, info.node_dis[i]);
+                ROS_WARN_THROTTLE(1.0, "[LOCAL_PROXY] Node %d:%f is out of max drone size, not sending", _id, info.node_dis[i]);
             }
         }
 

@@ -39,9 +39,9 @@ public:
 private:
 
     double verify_with_measurements(const std::vector<std::pair<Swarm::Pose, Eigen::Vector3d>> & dets, 
-        const std::vector<std::pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d, TsType t0);
+        const std::vector<std::pair<Eigen::Vector3d, double>> &diss, const Eigen::Vector3d &point_3d, const std::map<int, Swarm::LoopEdge> & raw_dets, TsType t0);
     
-    std::pair<bool, double> DFS(std::map<int, Swarm::Pose> & est_pathes, std::map<int, int> & guess, const std::set<int> & unidentified, TsType t0);
+    std::pair<bool, double> DFS(std::map<int, Swarm::Pose> & est_pathes, std::map<int, int> & guess, const std::set<int> & unidentified, const std::map<int, Swarm::LoopEdge> & raw_dets, TsType t0);
 
     double verify(int new_undenified, const std::map<int, Swarm::Pose> & est_pathes, const std::map<int, int> & guess, TsType t0) const;
     double verify(const std::map<int, Swarm::Pose> & est_pathes, const std::map<int, int> & guess, TsType t0) const;

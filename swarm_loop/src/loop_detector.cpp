@@ -693,7 +693,9 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         _matched_imgs.resize(imgs_old.size());
         for (size_t i = 0; i < imgs_old.size(); i ++) {
             int dir_new = ((-main_dir_old + main_dir_new + MAX_DIRS) % MAX_DIRS + i)% MAX_DIRS;
-            cv::vconcat(imgs_old[i], imgs_new[dir_new], _matched_imgs[i]);
+            if (!imgs_old[i].empty() && imgs_new[dir_new].empty()) {
+                cv::vconcat(imgs_old[i], imgs_new[dir_new], _matched_imgs[i]);
+            }
         } 
 
         for (size_t i = 0; i < new_norm_2d.size(); i ++) {
@@ -721,7 +723,9 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
             int new_dir_id = index2dirindex_new[idi].first;
             auto pt_old = toCV(old_frame_desc.images[old_dir_id].landmarks_2d[old_pt_id]);
             auto pt_new = toCV(new_frame_desc.images[new_dir_id].landmarks_2d[new_pt_id]);
-
+            if (_matched_imgs[old_dir_id].empty()) {
+                continue;
+            }
             if (_matched_imgs[old_dir_id].channels() != 3) {
                 cv::cvtColor(_matched_imgs[old_dir_id], _matched_imgs[old_dir_id], cv::COLOR_GRAY2BGR);
             }
@@ -734,6 +738,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
 
         show = _matched_imgs[0];
         for (size_t i = 1; i < _matched_imgs.size(); i ++) {
+            if (_matched_imgs[i].empty()) continue;
             cv::line(_matched_imgs[i], cv::Point2f(0, 0), cv::Point2f(0, _matched_imgs[i].rows), cv::Scalar(255, 255, 0), 2);
             cv::hconcat(show, _matched_imgs[i], show);
         }
@@ -751,11 +756,14 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         static int loop_match_count = 0;
         loop_match_count ++;
         char PATH[100] = {0};
-        sprintf(PATH, "loop/match%d.png", loop_match_count);
-        cv::imwrite(OUTPUT_PATH+PATH, show);
-        
-        cv::imshow("Matches", show);
-        cv::waitKey(10);
+
+        if (!show.empty()) {
+            sprintf(PATH, "loop/match%d.png", loop_match_count);
+            cv::imwrite(OUTPUT_PATH+PATH, show);
+            
+            cv::imshow("Matches", show);
+            cv::waitKey(10);
+        }
     }
 
     if (success) {

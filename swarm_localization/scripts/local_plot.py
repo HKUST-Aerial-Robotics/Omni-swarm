@@ -824,12 +824,16 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
         # print(loop["id_a"], "->", loop["id_b"])
         if loop["id_a"] != loop["id_b"]:
             count_inter_loop += 1
+        if loop["id_a"] not in poses or loop["id_b"] not in poses:
+            continue
         posa_gt = poses[loop["id_a"]]["pos_func"](loop["ts_a"])
         posb_gt = poses[loop["id_b"]]["pos_func"](loop["ts_b"])
         yawa_gt = poses[loop["id_a"]]["ypr_func"](loop["ts_a"])[0]
         yawb_gt = poses[loop["id_b"]]["ypr_func"](loop["ts_b"])[0]
         dpos_gt = yaw_rotate_vec(-yawa_gt, posb_gt - posa_gt)
         dpos_loop = np.array(loop["dpos"])
+        if np.linalg.norm(dpos_gt - dpos_loop) > outlier_show_thres and good_loop_id is not None and loop["id"] not in good_loop_id:
+            continue
         _loops_data.append({
             "dpos_loop": dpos_loop,
             "dpos_gt": dpos_gt,
@@ -843,14 +847,14 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
         dpos_errs_norm.append(norm(dpos_gt - dpos_loop))
         
         posa_gts.append(posa_gt)
-        dyaws.append(loop["dyaw"])
-        dyaw_gts.append(yawb_gt-yawa_gt)
+        dyaws.append(wrap_pi(loop["dyaw"]))
+        dyaw_gts.append(wrap_pi(yawb_gt-yawa_gt))
         if loop["ts_a"] > loop["ts_b"]:
             ts_a.append(loop["ts_a"])
         else:
             ts_a.append(loop["ts_b"])
-        yawa_gts.append(yawa_gt)
-        yawb_gts.append(yawb_gt)
+        yawa_gts.append(wrap_pi(yawa_gt))
+        yawb_gts.append(wrap_pi(yawb_gt))
         dyaw_errs.append(wrap_pi(yawb_gt-yawa_gt-loop["dyaw"]))
         pnp_inlier_nums.append(loop["pnp_inlier_num"])
         idas.append(loop["id_a"])

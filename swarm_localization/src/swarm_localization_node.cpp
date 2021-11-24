@@ -441,7 +441,7 @@ private:
                     pub_fused_relative(_sfs, sf.stamp);
                 } else {
                     pub_zero_base_coor(_sf.header.stamp);
-                    ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
+                    // ROS_WARN_THROTTLE(1.0, "Unable to predict swarm");
                     //ROS_WARN("Unable to predict swarm");
                 }
                 
