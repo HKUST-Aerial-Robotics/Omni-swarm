@@ -43,7 +43,7 @@
             init_z_movement : -0.01 #Debug 
 
             #Noise Models.
-            vo_cov_pos_per_meter: 0.003 #OK VO on PC, 600 width
+            vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
             vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
 
             distance_measurement_cov: 0.1
@@ -59,7 +59,7 @@
 
             loop_outlier_distance_threshold: 2.0
             #pcm_thres: 0.872 1.635 2.204 3.455 5.348 7.840
-            pcm_thres: 2.204
+            pcm_thres: 2.8
 
             #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5

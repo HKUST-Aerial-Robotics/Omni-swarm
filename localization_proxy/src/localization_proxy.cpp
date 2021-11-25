@@ -180,7 +180,7 @@ class LocalProxy {
         nd.header.stamp = LPS2ROSTIME(mdetected.lps_time);
         int32_t tn = ROSTIME2LPS(ros::Time::now());
         int32_t dt = tn - mdetected.lps_time;
-        ROS_INFO("[LOCAL_PROXY] Recv NodeDetcted ID %d  XYZ %lf %lf %lf YAW %lfdeg", mdetected.id, mdetected.rel_x, mdetected.rel_y, mdetected.rel_z, mdetected.rel_yaw*57.3);
+        ROS_INFO("[LOCAL_PROXY] Recv node_detected ID %d  XYZ %lf %lf %lf YAW %lfdeg", mdetected.id, mdetected.rel_x, mdetected.rel_y, mdetected.rel_z, mdetected.rel_yaw*57.3);
         
         nd.self_drone_id = _id;
         nd.id = mdetected.id;
@@ -206,12 +206,12 @@ class LocalProxy {
         int32_t ts = ROSTIME2LPS(nd.header.stamp);
         int inv_dep = 0;
         
-        auto quat = nd.local_pose_self.orientation;
+        auto quat = nd.relative_pose.pose.orientation;
         Eigen::Quaterniond _q(quat.w, quat.x, quat.y, quat.z);
         Eigen::Vector3d eulers = quat2eulers(_q);
         auto pos = nd.relative_pose.pose.position;
         const Eigen::Map<const Eigen::Matrix<double,6,6,RowMajor>> cov(nd.relative_pose.covariance.data());
-        ROS_INFO("[LOCAL_PROXY] Send NodeDetected ID %d XYZ %lf %lf %lf YAW %lfdeg quat (WXYZ) %lf %lf %lf %lf", nd.id, pos.x, pos.y, pos.z, eulers(2)*57.3, quat.w, quat.x, quat.y, quat.z);
+        ROS_INFO("[LOCAL_PROXY] Send node_detected ID %d XYZ %lf %lf %lf YAW %lfdeg quat (WXYZ) %lf %lf %lf %lf", nd.id, pos.x, pos.y, pos.z, eulers(2)*57.3, quat.w, quat.x, quat.y, quat.z);
 
         mavlink_msg_node_detected_pack(self_id, 0, &msg, ts, nd.id, nd.remote_drone_id, 
             (float)(pos.x),

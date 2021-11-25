@@ -365,7 +365,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             rmse_y = RMSE(dp_gt[mask,1] , dp_fused[mask,1])
             rmse_z = RMSE(dp_gt[mask,2] , dp_fused[mask,2])
 
-
             #ERROR
             print(f"{main_id}->{target_id}\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.2f}°", end="\t|")
             #BIAS
@@ -387,21 +386,34 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             if groundtruth:
                 plt.plot(dp_gt[:, 0], dp_gt[:, 1], label=f"Relative Pose GT {main_id}->{target_id}")
             plt.plot(dp_fused[:, 0], dp_fused[:, 1], label=f"Relative Pose EST {main_id}->{target_id}")
+            # plt.plot(dp_vo[:, 0], dp_vo[:, 1], label=f"Relative Pose VO {main_id}->{target_id}")
             plt.legend()
             if target_id == target_ids[0]:
                 plt.grid()
 
-            fig = plt.figure("Relative Pose Polar", figsize=figsize)
-            fig.suptitle("Relative Pose Polar")
+            # fig = plt.figure("Relative Pose Polar", figsize=figsize)
+            # fig.suptitle("Relative Pose Polar")
+            # ax1, ax2 = fig.subplots(2, 1)
+
+            # if groundtruth:
+            #     ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label=f"Relative Pose Angular GT {main_id}->{target_id}")
+            # ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label=f"Relative Pose Angular Fused {main_id}->{target_id}")
+
+            # if groundtruth:
+            #     ax2.plot(ts, norm(dp_gt, axis=1), label=f"Relative Pose Length GT {main_id}->{target_id}")
+            # ax2.plot(ts, norm(dp_fused, axis=1), label=f"Relative Pose Length Fused {main_id}->{target_id}")
+
+
+            fig = plt.figure("Relative Pose PolarErr", figsize=figsize)
+            fig.suptitle("Relative Pose PolarErr")
             ax1, ax2 = fig.subplots(2, 1)
 
             if groundtruth:
-                ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label=f"Relative Pose Angular GT {main_id}->{target_id}")
-            ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label=f"Relative Pose Angular Fused {main_id}->{target_id}")
+                ax1.plot(ts[mask], wrap_pi(np.arctan2(dp_gt[:, 0], dp_gt[:, 1]) - np.arctan2(dp_fused[:, 0], dp_fused[:, 1]))[mask], label=f"Relative Pose Angular Err {main_id}->{target_id}")
 
             if groundtruth:
-                ax2.plot(ts, norm(dp_gt, axis=1), label=f"Relative Pose Length GT {main_id}->{target_id}")
-            ax2.plot(ts, norm(dp_fused, axis=1), label=f"Relative Pose Length Fused {main_id}->{target_id}")
+                ax2.plot(ts[mask], (norm(dp_gt, axis=1) - norm(dp_fused, axis=1))[mask], label=f"Relative Pose Length Err {main_id}->{target_id}")
+
 
             ax1.legend()
             ax1.grid()
@@ -417,13 +429,18 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
                 ax1.plot(ts, dp_gt[:,0], label="$X_{gt}^" + str(target_id) + "$")
                 ax2.plot(ts, dp_gt[:,1], label="$Y_{gt}^" + str(target_id) + "$")
                 ax3.plot(ts, dp_gt[:,2], label="$Z_{gt}^" + str(target_id) + "$")
-                ax4.plot(ts, dyaw_gt, label="$Yaw_{gt}^" + str(target_id) + "$")
+                ax4.plot(ts, wrap_pi(dyaw_gt), label="$Yaw_{gt}^" + str(target_id) + "$")
 
             ax1.plot(ts, dp_fused[:,0], label="$X_{fused}^" + str(target_id) + "$")
             ax2.plot(ts, dp_fused[:,1], label="$Y_{fused}^" + str(target_id) + "$")
             ax3.plot(ts, dp_fused[:,2], label="$Z_{fused}^" + str(target_id) + "$")
-            ax4.plot(ts, dyaw_fused, label="$Yaw_{gt}^" + str(target_id) + "$")
+            ax4.plot(ts, wrap_pi(dyaw_fused), label="$Yaw_{fused}^" + str(target_id) + "$")
             
+            ax1.plot(ts, dp_vo[:,0], label="$X_{vo}^" + str(target_id) + "$")
+            ax2.plot(ts, dp_vo[:,1], label="$Y_{vo}^" + str(target_id) + "$")
+            ax3.plot(ts, dp_vo[:,2], label="$Z_{vo}^" + str(target_id) + "$")
+            ax4.plot(ts, wrap_pi(dyaw_vo), label="$Yaw_{vo}^" + str(target_id) + "$")
+
             ax1.legend()
             ax2.legend()
             ax3.legend()
@@ -453,9 +470,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
 
     if show:
         plt.show()
-
-
-    
 
 
 def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dte=100000,show=True, rp_length=1.0):
@@ -951,8 +965,8 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     #     if dpos_errs_norm[i]>0.2:
     #         plt.text(pnp_inlier_nums[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}|{idas[i]}->{idbs[i]}", fontsize=12)
 
-    plt.figure("DistanceVSErr")
-    plt.title("DistancVSErr")
+    plt.figure("Distance vs PosErr")
+    plt.title("Distance vs PosErr")
     plt.plot(dpos_loop_norms, dpos_errs_norm, ".", label="")
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
@@ -960,7 +974,17 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
         elif dpos_errs_norm[i]>outlier_show_thres:
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
-        
+
+    plt.figure("Distance vs YawErr")
+    plt.title("Distance vs YawErr")
+    plt.plot(dpos_loop_norms, dyaw_errs, ".", label="")
+    plt.grid(which="both")
+    for i in range(len(pnp_inlier_nums)):
+        if good_loop_id is not None and loop_ids[i] not in good_loop_id:
+            plt.text(dpos_loop_norms[i], dyaw_errs[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
+        elif dpos_errs_norm[i]>outlier_show_thres:
+            plt.text(dpos_loop_norms[i], dyaw_errs[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
+
     mask = []
     if good_loop_id is not None:
         for i in range(len(loop_ids)):
@@ -1002,6 +1026,9 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
 
     print(f"Pos cov {np.cov(dpos_errs[:,0]):.1e}, {np.cov(dpos_errs[:,1]):.1e}, {np.cov(dpos_errs[:,2]):.1e}")
     print(f"Yaw cov {np.cov(dyaw_errs):.1e}")
+
+    print(f"Pos std {np.sqrt(np.cov(dpos_errs[:,0])):.1e}, {np.sqrt(np.cov(dpos_errs[:,1])):.1e}, {np.sqrt(np.cov(dpos_errs[:,2])):.1e}")
+    print(f"Yaw std {np.sqrt(np.cov(dyaw_errs)):.1e}")
 
     return loops_error
 
