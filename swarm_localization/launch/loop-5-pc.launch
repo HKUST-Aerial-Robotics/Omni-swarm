@@ -8,6 +8,7 @@
     <arg name="enable_detection" default="true" />
     <arg name="enable_detection_depth" default="true" />
     <arg name="enable_loop" default="true" />
+    <arg name="enable_da" default="true" />
     <arg name="bag_replay" default="false" />
     <arg name="pcm_enable_debug_file" default="true" />
     <arg name="pcm_enable" default="true" />
@@ -22,6 +23,7 @@
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
         <param name="enable_loop" value="$(arg enable_loop)" type="bool" />
+        <param name="enable_data_association" value="$(arg enable_da)" type="bool" />
         <param name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" type="bool" />
         <param name="max_keyframe_num" value="$(arg max_keyframe_num)" type="int" />
         <param name="debug_no_relocalization" value="$(arg debug_no_relocalization)" type="bool" />
@@ -39,14 +41,14 @@
             kf_use_all_nodes: false
 
             #Initial Configuration
-            init_xy_movement : 0.1 #Debug
-            init_z_movement : -0.01 #Debug 
+            init_xy_movement : 1.5 #Debug
+            init_z_movement : 0.8 #Debug 
 
             #Noise Models.
             vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
             vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
 
-            distance_measurement_cov: 0.1
+            distance_measurement_cov: 0.00122
             
             DETECTION_SPHERE_STD: 0.07
             DETECTION_INV_DEP_STD: 0.07

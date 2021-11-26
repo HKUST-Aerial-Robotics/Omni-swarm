@@ -241,6 +241,8 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {},
             if i == main_id:
                 continue
             t_ = np.array(distances[i][main_id]["t"])
+            mask = t_ > poses_fused[i]["t"][0]
+            t_ = t_[mask]
             pos_gt = poses[i]["pos_func"](t_)
             pos_fused = poses_fused[i]["pos_func"](t_)
 
@@ -250,7 +252,7 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {},
             #pos_vo = poses_vo[i]["pos"]
             #pos_path = poses_path[i]["pos"](t_)
             
-            dis_raw = distances[i][main_id]["dis"]
+            dis_raw = np.array(distances[i][main_id]["dis"])[mask]
             dis_gt = norm(pos_gt  - main_pos_gt, axis=1)
             dis_fused = norm(pos_fused  - main_pos_fused, axis=1)
             #dis_vo = norm(pos_path  - main_pos_path, axis=0)
@@ -292,6 +294,8 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {},
             dis_calibed = z[1]+z[0]*np.array(dis_raw)
             err_calibed_filter = np.fabs(dis_gt-dis_calibed) < 1.0
             err_calibed = (dis_gt-dis_calibed)[err_calibed_filter]
+            print("Cov Fitted", np.cov(err_calibed))
+            print("Cov Raw", np.cov(dis_gt-dis_raw))
 
             mu, std = stats.norm.fit(err_calibed)
             

@@ -35,6 +35,9 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
             if (edge.id_a!=edge.id_b){
                 new_loops[edge.id_b][edge.id_a].emplace_back(edge);
             }
+            if (all_loop_map.find(edge.id) == all_loop_map.end()) {
+                all_loop_map[edge.id] = edge;
+            }
         }
     }
 

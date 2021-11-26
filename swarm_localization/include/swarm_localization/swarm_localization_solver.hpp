@@ -80,6 +80,7 @@ class SwarmLocalizationSolver {
     float max_solver_time;
 
     std::set<int> all_nodes;
+    std::set<int> estimated_nodes;
 
     unsigned int last_drone_num = 0;
 
@@ -99,7 +100,9 @@ class SwarmLocalizationSolver {
 
     void process_frame_clear();
 
-    void random_init_pose(EstimatePoses &swarm_est_poses, EstimatePosesIDTS &est_poses_idts);
+    void random_init_pose(EstimatePoses &swarm_est_poses, std::set<int> ids_to_init);
+    void init_pose_by_loops(EstimatePoses &swarm_est_poses, std::set<int> ids_to_init);
+    void init_pose_by_loop(EstimatePoses &swarm_est_poses, int _id, int id_estimated, Swarm::LoopEdge loc);
 
     void init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &_nf);
 
@@ -137,7 +140,7 @@ class SwarmLocalizationSolver {
     void print_frame(const SwarmFrame & sf) const;
     void replace_last_kf(const SwarmFrame & sf);
     
-    bool solve_with_multiple_init(int max_number = 10);
+    bool solve_with_multiple_init(int max_number, std::set<int> new_init_ids);
     
     std::pair<bool, Swarm::Pose> get_estimated_pose(int _int, TsType ts) const;
 
@@ -146,7 +149,7 @@ class SwarmLocalizationSolver {
 
     std::pair<Eigen::Vector3d, Eigen::Vector3d> boundingbox_sldwin(int _id) const;
 
-    void estimate_observability();
+    std::set<int> estimate_observability();
     std::set<int> loop_observable_set(const std::map<int, std::set<int>> & loop_edges) const;
 
     void generate_cgraph();

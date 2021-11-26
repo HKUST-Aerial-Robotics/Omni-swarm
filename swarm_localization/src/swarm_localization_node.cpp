@@ -486,6 +486,7 @@ public:
         nh.param<bool>("enable_detection", solver_params.enable_detection, true);
         nh.param<bool>("enable_loop", solver_params.enable_loop, true);
         nh.param<bool>("enable_random_keyframe_deletetion", solver_params.enable_random_keyframe_deletetion, true);
+        nh.param<bool>("enable_data_association", solver_params.enable_data_association, true);
         nh.param<bool>("debug_loop_initial_only", solver_params.debug_loop_initial_only, false);
         nh.param<bool>("debug_no_relocalization", solver_params.debug_no_relocalization, false);
         nh.param<bool>("enable_distance", solver_params.enable_distance, true);

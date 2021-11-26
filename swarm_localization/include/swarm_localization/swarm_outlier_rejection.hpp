@@ -18,10 +18,11 @@ class SwarmLocalOutlierRejection {
     //Drone  ida           idb            index_det       linked dets
     std::map<int, std::map<int, DisjointGraph>> loop_pcm_graph;
     std::map<int, std::map<int, std::vector<Swarm::LoopEdge>>> all_loops;
-    std::map<int, std::map<int, std::set<int64_t>>> all_loops_set_by_pair;
     std::set<int64_t> all_loops_set;
-    std::map<int, std::map<int, std::set<int64_t>>> good_loops_set;
+    std::map<int, std::map<int, std::set<int64_t>>> all_loops_set_by_pair;
 public:
+    std::map<int, std::map<int, std::set<int64_t>>> good_loops_set;
+    std::map<int64_t, Swarm::LoopEdge> all_loop_map;
     SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs);
 
     std::vector<Swarm::LoopEdge> OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops);

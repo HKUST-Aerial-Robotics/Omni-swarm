@@ -22,6 +22,7 @@
     <arg name="pub_track_result" default="false" />
     <arg name="debug_save_tracked_raw" default="false" />
     <arg name="down_as_main" default="false" />
+    <arg name="enable_da" default="true" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -38,16 +39,17 @@
         <arg name="enable_detection_depth" value="$(arg detector_depth)" />
         <arg name="enable_loop" default="$(arg loop)" />
         <arg name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" />
-        <arg name="pcm_enable_debug_file" value="true" />
+        <arg name="pcm_enable_debug_file" value="false" />
         <arg name="max_keyframe_num" value="$(arg max_keyframe_num)" />
         <arg name="debug_no_relocalization" value="$(arg debug_no_relocalization)" />
         <arg name="enable_random_keyframe_deletetion" value="$(arg enable_random_keyframe_deletetion)" />
         <arg name="distance_measurement_outlier_threshold" value="$(arg distance_measurement_outlier_threshold)" />
+        <arg name="enable_da" value="$(arg enable_da)" />
     </include>
 
     <group unless="$(arg backend_only)">
         <include file="$(find swarm_detector)/launch/detector.launch"  if="$(arg detector)" >
-            <arg name="output" value="screen" />
+            <arg name="output" value="log" />
             <arg name="show" value="true" />
             <arg name="down_as_main" value="$(arg down_as_main)" />
             <arg name="drone_id" value="$(arg drone_id)" />
@@ -69,7 +71,7 @@
         
         <include file="$(find swarm_loop)/launch/pc-outdoor-fisheye.launch" if="$(arg outdoor)">
             <arg name="output" value="screen" />
-            <arg name="show" value="true" />
+            <arg name="show" value="false" />
             <arg name="width" value="$(arg width)" />
             <arg name="height" value="$(arg height)" />
             <arg name="superpoint_model_path" value="$(find swarm_loop)/models/superpoint_v1_rtx3080_$(arg height)x$(arg width)_fp16.trt" />
@@ -94,7 +96,7 @@
 
     <group if="$(arg comm)">
         <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="screen" />
+            <arg name="output" value="log" />
             <arg name="sf_queue_max_size" value="40" />
         </include>
 

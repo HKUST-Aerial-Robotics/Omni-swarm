@@ -50,5 +50,6 @@ struct swarm_localization_solver_params {
     //Debug 
     bool debug_loop_initial_only = false;
     bool debug_no_relocalization = false;
+    bool enable_data_association = true;
 };
 
