@@ -107,7 +107,7 @@ void SwarmLoop::odometry_callback(const nav_msgs::Odometry & odometry) {
         // ROS_INFO("VIO Non Keyframe callback!!");
         VIOnonKF_callback(_stereoframe);
     } else {
-        ROS_WARN("[SwarmLoop] (odometry_callback) Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
+        // ROS_WARN("[SwarmLoop] (odometry_callback) Flattened images correspond to this Odometry not found: %f", odometry.header.stamp.toSec());
     }
 }
 
