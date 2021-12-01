@@ -23,6 +23,7 @@
     <arg name="debug_save_tracked_raw" default="false" />
     <arg name="down_as_main" default="false" />
     <arg name="enable_da" default="true" />
+    <arg name="debug_only_front" default="false" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -58,6 +59,7 @@
             <arg name="width" value="$(arg width)" />
             <arg name="swarm_fused" value="/swarm_drones/swarm_drone_fused_pc"/>
             <arg name="enable_rear" value="true" />
+            <arg name="debug_only_front" value="$(arg debug_only_front)" />
             <arg name="cam_file" value="$(arg cam_up_config_file)" />
             <arg name="cam_file_down" value="$(arg cam_down_config_file)" />
             <arg name="debug_save_tracked_raw" value="$(arg debug_save_tracked_raw)" />
@@ -92,26 +94,29 @@
             <arg name="self_id" value="$(arg drone_id)" />
             <arg name="vins_config_path" value="$(arg vins_config_file)" />
         </include>
+
+        <group if="$(arg comm)">
+            <include file="$(find localization_proxy)/launch/uwb_comm.launch">
+                <arg name="output" value="log" />
+                <arg name="sf_queue_max_size" value="40" />
+            </include>
+
+            <include file="$(find inf_uwb_ros)/launch/uwb_node.launch"> 
+                <arg name="self_id" default="$(arg drone_id)" />
+                <arg name="output" value="log" />
+                <arg name="sim_latency" value="true" />
+                <arg name="latency_buffer_size" value="5" />
+            </include>
+            <include file="$(find swarm_pilot)/launch/swarm_pilot.launch"> 
+                <arg name="drone_id" default="$(arg drone_id)" />
+                <arg name="output" default="log" />
+            </include>
+            <node name="gen_sim" type="gen_sim.py" pkg="swarm_pilot" />
+        </group>
+
     </group>
 
-    <group if="$(arg comm)">
-        <include file="$(find localization_proxy)/launch/uwb_comm.launch">
-            <arg name="output" value="log" />
-            <arg name="sf_queue_max_size" value="40" />
-        </include>
 
-        <include file="$(find inf_uwb_ros)/launch/uwb_node.launch"> 
-            <arg name="self_id" default="$(arg drone_id)" />
-            <arg name="output" value="log" />
-            <arg name="sim_latency" value="true" />
-            <arg name="latency_buffer_size" value="5" />
-        </include>
-        <include file="$(find swarm_pilot)/launch/swarm_pilot.launch"> 
-            <arg name="drone_id" default="$(arg drone_id)" />
-            <arg name="output" default="log" />
-        </include>
-        <node name="gen_sim" type="gen_sim.py" pkg="swarm_pilot" />
-    </group>
 
     <node pkg="rosbag" type="record" name="rosbag_record_local" 
         args='record -O $(arg bag_path) -a -x "/stereo/(.*)|/vins_estimator/flattened_(.*)"'

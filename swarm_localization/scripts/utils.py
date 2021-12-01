@@ -27,6 +27,26 @@ def RMSE(predictions, targets):
 
     return ret
 
+def angular_error_ypr_array(ypr1_array, ypr2_array):
+    ret = []
+    for i in range(len(ypr1_array)):
+        ret.append(angular_error_ypr(ypr1_array[i], ypr2_array[i]))
+    return np.array(ret)
+
+def angular_error_ypr(ypr1, ypr2):
+    quat1 = quaternion_from_euler(ypr1[2], ypr1[1], ypr1[0])
+    quat2 = quaternion_from_euler(ypr2[2], ypr2[1], ypr2[0])
+    ret = angular_error_quat(quat1, quat2)
+
+    return ret
+
+def angular_error_quat(quat1, quat2):
+    dq = quaternion_multiply(quaternion_inverse(quat1), quat2)
+    if dq[0] < 0:
+        dq = - dq
+    angle = 2*acos(dq[0])
+    return angle
+
 def ATE_POS(predictions, targets):
     err = predictions-targets
     norm2 = err[:,0]*err[:,0]+err[:,1]*err[:,1]+err[:,2]*err[:,2]

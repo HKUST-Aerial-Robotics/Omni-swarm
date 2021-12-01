@@ -968,6 +968,9 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 memcpy(est_poses_tsid_saved[sf.ts][_id], ptr, 4*sizeof(double));
                 memcpy(est_poses_idts_saved[_id][sf.ts], ptr, 4*sizeof(double));
                 Pose p(ptr, true);
+                Pose pose_ego = ego_motion_trajs.at(_id).pose_by_appro_ts(sf.ts);
+                Quaterniond att_no_yaw_ego =  AngleAxisd(-pose_ego.yaw(), Vector3d::UnitZ()) * pose_ego.att();
+                p.att() = p.att() * att_no_yaw_ego;
                 keyframe_trajs[_nf.id].push(_nf, p);
                 if (is_init_solve) {
                     last_saved_est_kf_ts.push_back(sf.ts);
@@ -1006,6 +1009,11 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                     Pose vo_ref = all_sf[ts_kf].id2nodeframe[id].pose();
                     Pose est_ref = _kf_path.get_pose(index);
                     Pose pose = Predict_By_VO(ego_motion_traj.get_pose(i), vo_ref, est_ref, true);
+
+                    Pose pose_ego = ego_motion_trajs.at(id).pose_by_appro_ts(ts_kf);
+                    Quaterniond att_no_yaw_ego =  AngleAxisd(-pose_ego.yaw(), Vector3d::UnitZ()) * pose_ego.att();
+                    pose.att() = pose.att() * att_no_yaw_ego;
+                
                     full_path_traj.push(ego_motion_traj.get_node_frame(i), pose);
                 }
                 count ++;

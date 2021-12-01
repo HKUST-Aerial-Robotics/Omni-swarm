@@ -15,7 +15,7 @@ def read_pose_swarm_fused(bag, topic, _id, t0):
     ypr = []
     ts = []
     quat = []
-    print(f"Read poses from topic {topic}")
+    # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
             for i in range(len(msg.ids)):
@@ -41,7 +41,7 @@ def read_pose_swarm_frame(bag, topic, _id, t0):
     ypr = []
     ts = []
     quat = []
-    print(f"Read poses from topic {topic}")
+    # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
             if msg.header.stamp.to_sec() < t0:
@@ -70,7 +70,7 @@ def read_distances_swarm_frame(bag, topic, t0):
     distances = {
     }
     ts = []
-    print(f"Read distances from topic {topic}")
+    # print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
             for node in msg.node_frames:
@@ -94,7 +94,7 @@ def read_pose(bag, topic, t0, P_vicon_in_imu=None):
     ypr = []
     ts = []
     quat = []
-    print(f"Read poses from topic {topic}")
+    # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t0 == 0:
             t0 = msg.header.stamp.to_sec()
@@ -135,6 +135,7 @@ def parse_path(path, t0):
     pos = []
     ypr = []
     ts = []
+    quat = []
     
     for msg in path.poses:
         p = msg.pose.position
@@ -143,11 +144,12 @@ def parse_path(path, t0):
         y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
         ypr.append([y, p, r])
         ts.append(msg.header.stamp.to_sec() - t0)
-          
+        quat.append([q.w, q.x, q.y, q.z])  
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
-        "ypr": np.array(ypr)
+        "ypr": np.array(ypr),
+        "quat": np.array(quat)
     }
 
     return ret
@@ -308,44 +310,49 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
         else:
             poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
-            #poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
 
-        poses_fused[i]["t"] = poses_fused[i]["t"]
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
 
         if i not in poses_path or poses_path[i] is None:
             poses_path[i] = copy.copy(poses_fused[i])
 
-
+    print("Init at", poses_fused[main_id]["t"][0])
 
     # detections = read_detections_raw(bag, t0)
     # distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     if groundtruth:
         offset_gt = - poses_gt[main_id]["pos"][0]
         yaw_offset_gt = -poses_gt[main_id]["ypr"][0, 0]
-        print("GT Yaw Offset, ", yaw_offset_gt*57.3, "pos", offset_gt)
+        # print("GT Yaw Offset, ", yaw_offset_gt*57.3, "pos", offset_gt)
     else:
         offset_gt = np.array([0, 0, 0])
         yaw_offset_gt = 0
 
-    fused_offset = - poses_fused[main_id]["pos"][0]
-    fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
-    print("fused_offset", fused_offset, ", ", fused_yaw_offset)
+    fused_offset = np.array([0, 0, 0])
+    fused_yaw_offset = 0
+
+    # fused_offset = - poses_fused[main_id]["pos"][0]
+    # fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
+    # print("fused_offset", fused_offset, ", ", fused_yaw_offset)
+
     #Pvicon = DP Ppose
     #DP = PviconPpose^-1
     #DP = (PPose^-1 Pvicon)^-1
     #PVicon = DYaw * Pos
     #YawVicon = DYaw + Yaw
     for i in nodes:
-        poses_fused[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_fused[i]["pos"]) + fused_offset+ yaw_rotate_vec(fused_yaw_offset, fused_offset)
+        poses_fused[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_fused[i]["pos"]) + yaw_rotate_vec(fused_yaw_offset, fused_offset)
         poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
+        poses_fused[i]["ypr"][:, 0] = np.unwrap(poses_fused[i]["ypr"][:, 0])
         poses_fused[i]["pos_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["pos"],axis=0,fill_value="extrapolate")
         poses_fused[i]["ypr_func"] = interp1d( poses_fused[i]["t"],  poses_fused[i]["ypr"],axis=0,fill_value="extrapolate")
 
         if i in poses_path:
             if len(poses_path[i]["pos"]) > 1:
-                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([fused_yaw_offset, 0, 0]) + yaw_rotate_vec(fused_yaw_offset, fused_offset)
-                poses_path[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_path[i]["pos"]) + fused_offset
+                poses_path[i]["ypr"] = poses_path[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
+                poses_path[i]["ypr"][:, 0] = np.unwrap(poses_path[i]["ypr"][:, 0])
+                poses_path[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_path[i]["pos"])  + yaw_rotate_vec(fused_yaw_offset, fused_offset)
                 poses_path[i]["pos_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["pos"],axis=0,fill_value="extrapolate")
                 poses_path[i]["ypr_func"] = interp1d( poses_path[i]["t"],  poses_path[i]["ypr"],axis=0,fill_value="extrapolate")
 
@@ -353,7 +360,7 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             #Align by initial
             poses_gt[i]["pos"] = yaw_rotate_vec(yaw_offset_gt, poses_gt[i]["pos"]) + yaw_rotate_vec(yaw_offset_gt, offset_gt)
             poses_gt[i]["ypr"] = poses_gt[i]["ypr"] + np.array([yaw_offset_gt, 0, 0])
-
+            poses_gt[i]["ypr"][:, 0] = np.unwrap(poses_gt[i]["ypr"][:, 0])
             poses_gt[i]["pos_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["pos"],axis=0,fill_value="extrapolate")
             poses_gt[i]["ypr_func"] = interp1d( poses_gt[i]["t"],  poses_gt[i]["ypr"],axis=0,fill_value="extrapolate")
 
@@ -361,14 +368,14 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
         if groundtruth:
             vo_offset = poses_gt[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
             yaw_offset = (poses_gt[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
-            print(f"VIO Offset for {i}: {vo_offset}")
-            print(poses_gt[i]["pos"][0], poses_vo[i]["pos_raw"][0])
+            # print(f"VIO Offset for {i}: {vo_offset}")
+            # print(poses_gt[i]["pos"][0], poses_vo[i]["pos_raw"][0])
         else:    
             vo_offset = np.array([0, 0, 0])
             yaw_offset = 0
         poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + yaw_rotate_vec(yaw_offset, vo_offset)
         poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
-        
+        poses_vo[i]["ypr"][:, 0] = np.unwrap(poses_vo[i]["ypr"][:, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")
     if groundtruth:
