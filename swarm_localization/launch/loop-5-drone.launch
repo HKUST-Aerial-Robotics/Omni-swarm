@@ -29,7 +29,7 @@
         <param name="distance_measurement_outlier_threshold" value="$(arg distance_measurement_outlier_threshold)" type="double" />
         <rosparam>
             #Performance Parameters
-            force_freq: 10
+            force_freq: 1
             thread_num: 1
             max_solver_time: 0.5
 
@@ -37,30 +37,26 @@
             min_keyframe_num: 1
             min_kf_movement : 0.5
             kf_use_all_nodes: false
-            kf_time_with_half_movement: 10.0
+
             #Initial Configuration
-            init_xy_movement : 0.1 #Debug
-            init_z_movement : -0.01 #Debug 
+            init_xy_movement : 1.5 #Debug
+            init_z_movement : 0.8 #Debug 
 
             #Noise Models.
-            vo_cov_pos_per_meter: 1e-2 #Worse VO
-            vo_cov_yaw_per_meter: 1.2e-4 #Worse VO
-            distance_measurement_cov: 0.1
+            vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
+            vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
+
+            distance_measurement_cov: 0.00122
             
             DETECTION_SPHERE_STD: 0.07
             DETECTION_INV_DEP_STD: 0.07
+            DA_accept_thres: 3.345
 
-            #OUTLIER REJECTION
-            det_dpos_thres: 0.3
-            detection_outlier_thres: 1.0
-            #detection_inv_dep_outlier_thres: 0.2
-            detection_inv_dep_outlier_thres: 1.0
-            
             distance_measurement_outlier_elevation_threshold: 0.6
 
             loop_outlier_distance_threshold: 2.0
-            pcm_thres: 2.204
-            pcm_thres_det: 3.5
+            #pcm_thres: 0.872 1.635 2.204 3.455 5.348 7.840
+            pcm_thres: 2.8
 
             #Debug old thres. Not applicable to PCM.
             loop_outlier_threshold_pos: 0.5
@@ -70,6 +66,7 @@
             pub_swarm_odom: true
             is_pc_replay: false
             publish_full_path: false
+            debug_publish_goodloops: false
 
             cg: #In IMU Frame.
                 x: -0.06
