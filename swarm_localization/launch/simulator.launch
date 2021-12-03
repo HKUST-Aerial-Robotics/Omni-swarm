@@ -19,7 +19,7 @@
     <arg name="node_start_delay" default="3.0" />  
     <arg name="mission_type" default="0" />  
 
-    <node pkg="swarm_localization" name="swarm_local_sim" type="swarm_localization_simulator" output="screen"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' "  >
+    <node pkg="swarm_localization" name="swarm_local_sim" type="swarm_localization_simulator" output="log"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' "  >
         <param name="extrinsic_path" type="string" value="$(arg extrinsic_path)" />
         <param name="cam_file" type="string" value="$(arg cam_file)" />
         <param name="drone_num" type="int" value="$(arg drone_num)" />
@@ -50,8 +50,8 @@
             circle_radius_z: 2
             circle_T: 50
             initial_dis: 1.0
-            initial_t: 10
-            max_t: 101
+            initial_t: 20
+            max_t: 201
         </rosparam>
     </node>
     
@@ -64,7 +64,7 @@
         <arg name="enable_detection" value="$(arg detector)" />
         <arg name="enable_loop" default="$(arg loop)" />
         <arg name="debug_loop_initial_only" value="false" />
-        <arg name="pcm_enable_debug_file" value="true" />
+        <arg name="pcm_enable_debug_file" value="false" />
         <arg name="max_keyframe_num" value="$(arg max_keyframe_num)" />
         <arg name="debug_no_relocalization" value="$(arg debug_no_relocalization)" />
         <arg name="enable_random_keyframe_deletetion" value="$(arg enable_random_keyframe_deletetion)" />

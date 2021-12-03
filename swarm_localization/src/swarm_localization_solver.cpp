@@ -852,13 +852,16 @@ std::pair<Eigen::Vector3d, Eigen::Vector3d> SwarmLocalizationSolver::boundingbox
 
         
 double SwarmLocalizationSolver::solve() {
+    TicToc tt;
     if (self_id < 0 || sf_sld_win.size() < min_frame_number)
         return -1;
 
     if (!has_new_keyframe)
         return -1;
     std::set<int> ids_to_init;
+    TicToc tic_obs;
     ids_to_init = estimate_observability();
+    double t_obs = tic_obs.toc();
     bool is_init_solve = false;
 
     bool has_node_not_inited = false;
@@ -921,6 +924,10 @@ double SwarmLocalizationSolver::solve() {
 
     if (finish_init) {
         sync_est_poses(this->est_poses_tsid, is_init_solve);
+        
+        sum_solve_time += tt.toc();
+        count_solve_time += 1;
+        ROS_INFO("[SWARM_LOCAL] Solve avg %3.1fms cur %3.1fms obs %.1fms", sum_solve_time/count_solve_time, tt.toc(), t_obs);
     }
     printf("\n\n");
     return cost_now;
@@ -1599,9 +1606,14 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
         all_loops.erase(all_loops.begin() + outlier_loops[i]);
     }
 
-
+    TicToc tt;
     good_loops = outlier_rejection->OutlierRejectionLoopEdges(good_loops);
     auto ret_loops = average_same_loop(good_loops);
+    if (finish_init) {
+        sum_outlier_rejection_time += tt.toc();
+        count_outlier_rejection_time += 1;
+        ROS_INFO("[SWARM_LOCAL] OutlierRejection avg. %.1fms cur %.1fms", sum_outlier_rejection_time/count_outlier_rejection_time, tt.toc());
+    }
 
     for (auto p : ret_loops) {
         ret.push_back(static_cast<Swarm::GeneralMeasurement2Drones *>(p));
@@ -1740,13 +1752,10 @@ double SwarmLocalizationSolver::solve_once(EstimatePoses & swarm_est_poses, Esti
     }
     #endif
 
-    solve_time_count += summary.total_time_in_seconds;
-    solve_count++;
+    sum_opti_time += summary.total_time_in_seconds;
+    count_opti_time++;
 
-    ROS_INFO("[SWARM_LOCAL] %s avg_cost %.2e time %.1fms. Message %s.", summary.BriefReport().c_str(), equv_cost, summary.total_time_in_seconds * 1000, summary.message.c_str());
-
-    ROS_INFO("[SWARM_LOCAL] Time average %3.2fms Dt1 %3.2f ms TOTAL %3.2fms\n", solve_time_count *1000 / solve_count, 
-    (t2-t1).toSec()*1000, (ros::Time::now() - t1).toSec()*1000);
+    ROS_INFO("[SWARM_LOCAL] %s avg_cost %.2e time %.1fms. Message %s. opti_avg %3.2fms", summary.BriefReport().c_str(), equv_cost, summary.total_time_in_seconds * 1000, summary.message.c_str(), sum_opti_time*1000/count_opti_time);
 
     return equv_cost;
 }

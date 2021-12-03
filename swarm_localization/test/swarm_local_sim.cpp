@@ -91,7 +91,7 @@ class SwarmLocalSim {
 
     double loop_max_distance = 2.0;
 
-    int self_id = 0;
+    int main_id = 0;
     int loop_count = 0;
     
     enum { 
@@ -138,6 +138,7 @@ public:
     SwarmLocalSim(ros::NodeHandle & nh):
         poses_index(3), last_send_det(0), last_send_loop(0){
         nh.param<int>("drone_num", drone_num, 1);
+        nh.param<int>("main_id", main_id, 1);
         std::string extrinsic_path, camera_config_file;
 
         nh.param<int>("mission_type", mission_type, 0);
@@ -366,7 +367,7 @@ public:
             return 0;
         }
 
-        if (est_trajs[i].trajectory_size() == 0) {
+        if (est_trajs[i].trajectory_size() == 0 || est_trajs[j].trajectory_size() == 0) {
             return 1;
         }
 
@@ -460,7 +461,7 @@ public:
         Eigen::Vector3f pos_gt_f = posei_gt.pos().template cast<float>();
 
         //First we found the nearest poses
-        int search_num = SEARCH_NEAREST_NUM + MATCH_INDEX_DIST;
+        int search_num = SEARCH_NEAREST_NUM + MATCH_INDEX_DIST + drone_num;
         float distances[1024] = {0};
         faiss::Index::idx_t labels[1024];
         poses_index.search(1, pos_gt_f.data(), search_num, distances, labels);
@@ -470,7 +471,9 @@ public:
                 continue;
             }
 
-            if ( (labels[j] <= poses_index.ntotal - MATCH_INDEX_DIST || labels[j]!= i)  && distances[j] < loop_max_distance) {
+            int count = 0;
+
+            if ( (labels[j] <= poses_index.ntotal - MATCH_INDEX_DIST - drone_num || labels[j]!= i)  && distances[j] < loop_max_distance) {
                 auto ret = poses_index_map.at(labels[j]);
                 auto idj = ret.first;
                 auto indexj = ret.second;
@@ -485,7 +488,11 @@ public:
                 ROS_INFO("[LOCAL_SIM] Loop generated %d->%d dt %f distance %f relpose_gt %s",
                     i, idj, (stamp - timej).toSec(), distances[j], rp_gt.tostr().c_str());
                 publish_loop_edge(stamp, timej, i, idj, poses_index.ntotal, indexj, posei_ego, ego_poseb, rp_gt);
-                break;               
+                // break;    
+                count ++;
+                if (count >= 2) {
+                    break;
+                }
             }
         }
         
@@ -627,11 +634,9 @@ public:
             update_motions(stamp, i);
         }
 
-        for (int i = 0; i < drone_num; i++) {
-            auto sf = construct_sf(stamp, i);
-            swarm_frame_pub.publish(sf);
-            swarm_frame_predict_pub.publish(sf);
-        }
+        auto sf = construct_sf(stamp, main_id);
+        swarm_frame_pub.publish(sf);
+        swarm_frame_predict_pub.publish(sf);
 
         if (timer_count % 100 == 0) {
             for (int i = 0; i < drone_num; i++) {
@@ -639,7 +644,7 @@ public:
             }
         }
 
-        if (timer_count % 200 == 0) {
+        if (timer_count % 100 == 0) {
             generate_pub_det_measurement(stamp);
         }
 

@@ -1,69 +1,96 @@
 #!/usr/bin/env python3
 import rosbag
-import matplotlib.pyplot as plt
 import numpy as np
 from math import *
 from scipy.interpolate import interp1d
-import argparse
-from numpy.linalg import norm
-import scipy.stats as stats
 import copy
 from utils import *
+import time
 
-def read_pose_swarm_fused(bag, topic, _id, t0):
-    pos = []
-    ypr = []
-    ts = []
-    quat = []
+def read_pose_swarm_fused(bag, topic, t0):
+    pos = {}
+    ypr = {}
+    ts = {}
+    quat = {}
+    ret_poses = {}
     # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
             for i in range(len(msg.ids)):
-                _i = msg.ids[i]
-                if _i == _id:
-                    q = msg.local_drone_rotation[i]
-                    y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-                    ts.append(msg.header.stamp.to_sec() - t0)
-                    pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
-                    ypr.append([y, p, r])
-                    quat.append([q.w, q.x, q.y, q.z])
+                _id = msg.ids[i]
+                if _id not in pos:
+                    pos[_id] = []
+                    ypr[_id] = []
+                    ts[_id] = []
+                    quat[_id] = []
+                _ts = ts[_id]
+                _pos = pos[_id]
+                _ypr = ypr[_id]
+                _quat = quat[_id]
 
-    ret = {
-        "t": np.array(ts) ,
-        "pos": np.array(pos),
-        "ypr": np.array(ypr),
-        "quat": np.array(quat)
-    }
-    return ret
+                q = msg.local_drone_rotation[i]
+                y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
+                _ts.append(msg.header.stamp.to_sec() - t0)
+                _pos.append([msg.local_drone_position[i].x, msg.local_drone_position[i].y, msg.local_drone_position[i].z])
+                _ypr.append([y, p, r])
+                _quat.append([q.w, q.x, q.y, q.z])
 
-def read_pose_swarm_frame(bag, topic, _id, t0):
-    pos = []
-    ypr = []
-    ts = []
-    quat = []
-    # print(f"Read poses from topic {topic}")
+    for _id in pos:
+        _ts = ts[_id]
+        _pos = pos[_id]
+        _ypr = ypr[_id]
+        _quat = quat[_id]
+        ret = {
+            "t": np.array(_ts),
+            "pos": np.array(_pos),
+            "quat": np.array(_quat),
+            "ypr": np.array(_ypr),
+        }
+        ret_poses[_id] = ret
+    return ret_poses
+
+def read_pose_swarm_frame(bag, topic, t0):
+    pos = {}
+    ypr = {}
+    ts = {}
+    quat = {}
+    ret_poses = {}
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
             if msg.header.stamp.to_sec() < t0:
                     continue
             for node in msg.node_frames:
-                _i = node.id
-                if _i == _id and node.vo_available:
-                    ts.append(node.header.stamp.to_sec() - t0)
+                _id = node.id
+                if _id not in pos and node.vo_available:
+                    pos[_id] = []
+                    ypr[_id] = []
+                    ts[_id] = []
+                    quat[_id] = []
+
+                if node.vo_available:
+                    _ts = ts[_id]
+                    _pos = pos[_id]
+                    _ypr = ypr[_id]
+                    _quat = quat[_id]
+
+                    _ts.append(node.header.stamp.to_sec() - t0)
                     y, p, r = quat2eulers(node.quat.w, node.quat.x, node.quat.y, node.quat.z)
-                    pos.append([node.position.x, node.position.y, node.position.z])
-                    ypr.append([y, p, r])
-                    quat.append([node.quat.w, node.quat.x, node.quat.y, node.quat.z])
-    ret = {
-        "t": np.array(ts),
-        "pos_raw": np.array(pos),
-        "pos": np.array(pos),
-        "quat": np.array(quat),
-        "pos_raw_func": interp1d(ts, pos,axis=0,bounds_error=False,fill_value="extrapolate"),
-        "ypr_raw": np.array(ypr),
-        "ypr_raw_func": interp1d(ts, ypr,axis=0,bounds_error=False,fill_value="extrapolate"),
-    }
-    return ret
+                    _pos.append([node.position.x, node.position.y, node.position.z])
+                    _ypr.append([y, p, r])
+                    _quat.append([node.quat.w, node.quat.x, node.quat.y, node.quat.z])
+    for _id in pos:
+        _ts = ts[_id]
+        _pos = pos[_id]
+        _ypr = ypr[_id]
+        _quat = quat[_id]
+        ret = {
+            "t": np.array(_ts),
+            "pos": np.array(_pos),
+            "quat": np.array(_quat),
+            "ypr": np.array(_ypr),
+        }
+        ret_poses[_id] = ret
+    return ret_poses
 
 # def read_distance_swarm_frame(bag, topic, _id, to)
 def read_distances_swarm_frame(bag, topic, t0):
@@ -127,7 +154,6 @@ def read_pose(bag, topic, t0, P_vicon_in_imu=None):
         "quat": np.array(quat)
     }
     
-    print("Trajectory total length ", poses_length(ret))
     return ret, t0
 
 
@@ -280,15 +306,13 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}, verbose=False):
     bag = rosbag.Bag(bagname)
     poses_gt = {}
     poses_fused = {}
     poses_vo = {}
     poses_path = {}
     t0 = 0
-    plat = "pc"
-    
     for topic, msg, t in bag.read_messages(topics=["/swarm_drones/swarm_frame"]):
         if msg.header.stamp.to_sec() < 1e9:
             continue
@@ -297,34 +321,37 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             t0 = msg.header.stamp.to_sec() + dt
             # print("t0 is", t0, msg)
             break
-    
-    for i in nodes:
+
+    poses_vo = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
+    # print("Finish parse vo")
+
+    if is_pc:
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", t0)
+    else:
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", t0)
+    # print("Finish parse fused")
+    sum_len = 0
+    for i in poses_fused:
         if groundtruth:
             if i in P_vicon_in_imu:
                 poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, P_vicon_in_imu[i])
             else:
                 poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
-            
-        if is_pc:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", i, t0)
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
-        else:
-            poses_fused[i] = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", i, t0)
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            sum_len += poses_length(poses_gt[i])
 
-        poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", i, t0)
+        if is_pc:
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
+        else:    
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
 
         if i not in poses_path or poses_path[i] is None:
             poses_path[i] = copy.copy(poses_fused[i])
 
-    print("Init at", poses_fused[main_id]["t"][0])
+    print(f"Init. at {poses_fused[main_id]['t'][0]}. Avg. len. {sum_len/len(poses_gt):.1f}m")
 
-    # detections = read_detections_raw(bag, t0)
-    # distances = read_distances_remote_nodes(bag, "/uwb_node/remote_nodes", t0, main_id)
     if groundtruth:
         offset_gt = - poses_gt[main_id]["pos"][0]
         yaw_offset_gt = -poses_gt[main_id]["ypr"][0, 0]
-        # print("GT Yaw Offset, ", yaw_offset_gt*57.3, "pos", offset_gt)
     else:
         offset_gt = np.array([0, 0, 0])
         yaw_offset_gt = 0
@@ -332,15 +359,11 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
     fused_offset = np.array([0, 0, 0])
     fused_yaw_offset = 0
 
-    # fused_offset = - poses_fused[main_id]["pos"][0]
-    # fused_yaw_offset = -poses_fused[main_id]["ypr"][0, 0]
-    # print("fused_offset", fused_offset, ", ", fused_yaw_offset)
-
-    #Pvicon = DP Ppose
-    #DP = PviconPpose^-1
-    #DP = (PPose^-1 Pvicon)^-1
-    #PVicon = DYaw * Pos
-    #YawVicon = DYaw + Yaw
+    # Pvicon = DP Ppose
+    # DP = PviconPpose^-1
+    # DP = (PPose^-1 Pvicon)^-1
+    # PVicon = DYaw * Pos
+    # YawVicon = DYaw + Yaw
     for i in nodes:
         poses_fused[i]["pos"] = yaw_rotate_vec(fused_yaw_offset, poses_fused[i]["pos"]) + yaw_rotate_vec(fused_yaw_offset, fused_offset)
         poses_fused[i]["ypr"] = poses_fused[i]["ypr"] + np.array([fused_yaw_offset, 0, 0])
@@ -366,15 +389,13 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
 
     for i in nodes:
         if groundtruth:
-            vo_offset = poses_gt[i]["pos"][0] - poses_vo[i]["pos_raw"][0]
-            yaw_offset = (poses_gt[i]["ypr"][0] - poses_vo[i]["ypr_raw"][0])[0]
-            # print(f"VIO Offset for {i}: {vo_offset}")
-            # print(poses_gt[i]["pos"][0], poses_vo[i]["pos_raw"][0])
+            vo_offset = poses_gt[i]["pos"][0] - poses_vo[i]["pos"][0]
+            yaw_offset = (poses_gt[i]["ypr"][0] - poses_vo[i]["ypr"][0])[0]
         else:    
             vo_offset = np.array([0, 0, 0])
             yaw_offset = 0
-        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos_raw"]) + yaw_rotate_vec(yaw_offset, vo_offset)
-        poses_vo[i]["ypr"] = poses_vo[i]["ypr_raw"] + np.array([yaw_offset, 0, 0])
+        poses_vo[i]["pos"] = yaw_rotate_vec(yaw_offset, poses_vo[i]["pos"]) + yaw_rotate_vec(yaw_offset, vo_offset)
+        poses_vo[i]["ypr"] = poses_vo[i]["ypr"] + np.array([yaw_offset, 0, 0])
         poses_vo[i]["ypr"][:, 0] = np.unwrap(poses_vo[i]["ypr"][:, 0])
         poses_vo[i]["pos_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["pos"],axis=0,bounds_error=False,fill_value="extrapolate")
         poses_vo[i]["ypr_func"] = interp1d( poses_vo[i]["t"],  poses_vo[i]["ypr"],axis=0,fill_value="extrapolate")

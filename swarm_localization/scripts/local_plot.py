@@ -114,10 +114,9 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         if use_offline:
             plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline{_id}")
         plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Online {_id}")
+
     for i in nodes:
         _id = id_map[i]
-        
-        # plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO ${_id}$", alpha=0.7)
         final_vio = norm(poses_vo[i]["pos"][-1,:])
         if use_offline:
             final_path = norm(poses_path[i]["pos"][-1,:])
@@ -125,11 +124,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             final_path = norm(poses_fused[i]["pos"][-1,:])
             
         total_len = poses_length(poses_fused[i])
-        if groundtruth:
-            # plt.plot(poses[i]["pos"][:,0], poses[i]["pos"][:,1], label=f"Ground Truth {_id}")
-            pass
-        
-        print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}% total_len {total_len:.1f}m")
+        # print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}% total_len {total_len:.1f}m")
     
     plt.legend()
     plt.grid()
@@ -578,7 +573,7 @@ COV/m\t\tPOS\t\t\tYAW\t\t\tKF:\tATE P\tAng\t|\
         rmse_vo_y = RMSE(pos_vo[:,1] , pos_gt_vo[:,1])
         rmse_vo_z = RMSE(pos_vo[:,2] , pos_gt_vo[:,2])
 
-        vo_cov_per_meter, vo_yaw_cov_per_meter = odometry_covariance_per_meter(pos_vo, ypr_vo[:,0], pos_gt_vo, ypr_gt_vo[:,0], show=False,step=100)
+        vo_cov_per_meter, vo_yaw_cov_per_meter = odometry_covariance_per_meter(pos_vo, ypr_vo[:,0], pos_gt_vo, ypr_gt_vo[:,0], show=False)
         
         ate_vo = ATE_POS(pos_vo, pos_gt_vo)
         rmse_yaw_vo = RMSE(wrap_pi(ypr_vo[:,0]-ypr_gt_vo[:,0]), 0)

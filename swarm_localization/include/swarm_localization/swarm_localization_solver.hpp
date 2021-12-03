@@ -215,7 +215,14 @@ public:
     };
 
 
-    double solve_time_count = 0;
+    double count_opti_time = 0;
+    double sum_opti_time = 0;
+
+    double count_solve_time = 0;
+    double sum_solve_time = 0;
+
+    double count_outlier_rejection_time  = 0;
+    double sum_outlier_rejection_time  = 0;
     std::vector<Swarm::GeneralMeasurement2Drones*> good_2drone_measurements;
 
 
