@@ -7,7 +7,7 @@ using namespace Swarm;
 
 #define MIN_DET_THRES 0.5
 #define DET_BASELINE_THRES 0.5
-#define MAX_DRONE_ID 100
+#define MAX_DRONE_ID 1000
 //For visual initial, we limit all in 10 meter is OK
 #define POSITION_LIM 30
 #define DFS_DEBUG_OUTPUT

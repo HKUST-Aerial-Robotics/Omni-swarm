@@ -43,8 +43,8 @@
             init_z_movement : 0.8 #Debug 
 
             #Noise Models.
-            vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
-            vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
+            vo_cov_pos_per_meter: 0.002 #OK VO on PC, 600 width
+            vo_cov_yaw_per_meter: 0.0001 #OK VO on PC, 600 width
 
             distance_measurement_cov: 0.00122
             

@@ -6,7 +6,6 @@
     <arg name="cgraph" default="true" />
     <arg name="enable_distance" default="true" />
     <arg name="enable_detection" default="true" />
-    <arg name="enable_detection_depth" default="true" />
     <arg name="enable_loop" default="true" />
     <arg name="enable_da" default="true" />
     <arg name="bag_replay" default="false" />
@@ -21,7 +20,6 @@
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)"  >
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
-        <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
         <param name="enable_loop" value="$(arg enable_loop)" type="bool" />
         <param name="enable_data_association" value="$(arg enable_da)" type="bool" />
         <param name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" type="bool" />

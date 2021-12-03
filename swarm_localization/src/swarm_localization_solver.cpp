@@ -1030,7 +1030,7 @@ unsigned int SwarmLocalizationSolver::sliding_window_size() const {
     
 void SwarmLocalizationSolver::setup_problem_with_loops_and_detections(const EstimatePosesIDTS & est_poses_idts, Problem &problem) const {
     for (auto loc : good_2drone_measurements) {
-        if (!yaw_observability.at(loc->id_a) || !yaw_observability.at(loc->id_b)) {
+        if (yaw_observability.find(loc->id_a) == yaw_observability.end() || yaw_observability.find(loc->id_b) == yaw_observability.end()  || !yaw_observability.at(loc->id_a) || !yaw_observability.at(loc->id_b)) {
             continue;
         }
         double * posea = est_poses_idts.at(loc->id_a).at(loc->ts_a);

@@ -144,12 +144,12 @@ class SwarmLocalizationNode {
     double t_last = 0;
 protected:
     void on_swarm_detected(const swarm_msgs::node_detected_xyzyaw & sd) {
-        ROS_INFO("Add new detection %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
+        // ROS_INFO("Add new detection %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
         this->swarm_localization_solver->add_new_detection(sd);
     }
     
     void on_swarm_detected_6d(const swarm_msgs::node_detected & sd) {
-        ROS_INFO("Add new detection 4d %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
+        // ROS_INFO("Add new detection 4d %ld from %d->%d", sd.id, sd.self_drone_id, sd.remote_drone_id);
         this->swarm_localization_solver->add_new_detection(sd);
     }
 

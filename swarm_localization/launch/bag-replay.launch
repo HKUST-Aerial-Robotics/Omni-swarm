@@ -37,7 +37,6 @@
         <arg name="cgraph" value="$(arg cgraph)" />
         <arg name="enable_distance" value="$(arg distance)" />
         <arg name="enable_detection" value="$(arg detector)" />
-        <arg name="enable_detection_depth" value="$(arg detector_depth)" />
         <arg name="enable_loop" default="$(arg loop)" />
         <arg name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" />
         <arg name="pcm_enable_debug_file" value="false" />

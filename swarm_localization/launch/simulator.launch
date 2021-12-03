@@ -1,0 +1,78 @@
+<launch>
+    <arg name="cam_file" default="$(find swarm_detector)/config/ptgrey_17591762_camera_calib.yaml" />
+    <arg name="extrinsic_path" default="/home/xuhao/swarm_ws/src/VINS-Fisheye/config/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
+    <arg name="drone_num" default="10" />
+    <arg name="output" default="screen" />
+    <arg name="detector" default="true" />
+    <arg name="loop" default="true" />
+    <arg name="distance" default="true" />
+    <arg name="bag" default="true" />
+    <arg name="bag_path" default="$(env HOME)/bags/swarm_local_pc.bag" />
+    <arg name="cgraph" default="false" />
+    <arg name="max_keyframe_num" default="100" />
+    <arg name="debug_no_relocalization" default="false" />
+    <arg name="enable_random_keyframe_deletetion" default="true" />
+    <arg name="distance_measurement_outlier_threshold" default="0.3" />
+    <arg name="enable_da" default="false" />
+    <arg name="debug_only_front" default="false" />
+    <arg name="viz" default="false" />
+    <arg name="node_start_delay" default="3.0" />  
+    <arg name="mission_type" default="0" />  
+
+    <node pkg="swarm_localization" name="swarm_local_sim" type="swarm_localization_simulator" output="screen"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' "  >
+        <param name="extrinsic_path" type="string" value="$(arg extrinsic_path)" />
+        <param name="cam_file" type="string" value="$(arg cam_file)" />
+        <param name="drone_num" type="int" value="$(arg drone_num)" />
+        <param name="only_front" type="bool" value="$(arg debug_only_front)" />
+        <param name="mission_type" type="int" value="$(arg mission_type)" />
+        <rosparam>
+            # vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
+            # vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
+            
+            vo_cov_pos_per_meter: 0.0001 #OK VO on PC, 600 width
+            vo_cov_yaw_per_meter: 0.00001 #OK VO on PC, 600 width
+
+            distance_measurement_cov: 0.0014
+            det_cov_pos: 0.00004
+            det_cov_len: 0.0016
+            det_cov_ang: 0.0018
+
+            det_cov_pos_label: 0.01
+            det_cov_ang_label: 0.01
+
+            loop_cov_pos: 0.003
+            loop_cov_ang: 0.00052
+
+            loop_cov_pos_label: 0.01
+            loop_cov_ang_label: 0.0015
+
+            circle_radius: 5
+            circle_radius_z: 2
+            circle_T: 50
+            initial_dis: 1.0
+            initial_t: 10
+            max_t: 101
+        </rosparam>
+    </node>
+    
+    <include file="$(find swarm_localization)/launch/loop-5-sim.launch" >
+        <arg name="output" value="screen" />
+        <arg name="viz" value="$(arg viz)" />
+        <arg name="cgraph_path" value="/root/output/graph.dot" />
+        <arg name="cgraph" value="$(arg cgraph)" />
+        <arg name="enable_distance" value="$(arg distance)" />
+        <arg name="enable_detection" value="$(arg detector)" />
+        <arg name="enable_loop" default="$(arg loop)" />
+        <arg name="debug_loop_initial_only" value="false" />
+        <arg name="pcm_enable_debug_file" value="true" />
+        <arg name="max_keyframe_num" value="$(arg max_keyframe_num)" />
+        <arg name="debug_no_relocalization" value="$(arg debug_no_relocalization)" />
+        <arg name="enable_random_keyframe_deletetion" value="$(arg enable_random_keyframe_deletetion)" />
+        <arg name="distance_measurement_outlier_threshold" value="$(arg distance_measurement_outlier_threshold)" />
+        <arg name="enable_da" value="$(arg enable_da)" />
+    </include>
+
+    <node pkg="rosbag" type="record" name="rosbag_record_local" 
+        args='record -O $(arg bag_path) -a -x "/stereo/(.*)|/vins_estimator/flattened_(.*)"'
+        if="$(arg bag)" />
+</launch>

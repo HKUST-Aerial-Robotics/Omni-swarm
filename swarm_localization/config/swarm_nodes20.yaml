@@ -1,0 +1,164 @@
+%YAML:1.0
+---
+
+nodes:
+
+  0:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  1:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  2:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  3:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  4:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  5:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  6:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  7:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  8:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  9:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+    
+  10:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  11:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  12:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  13:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  14:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  15:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  16:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  17:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  18:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false
+
+  19:
+    has_uwb: true
+    has_armarkers: true
+    has_camera: true
+    has_vo: true
+    is_static: false
+    has_global_pose: false

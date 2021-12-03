@@ -8,7 +8,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Pose
 from nav_msgs.msg import Odometry
-from swarm_msgs.msg import swarm_frame, node_frame, node_detected_xyzyaw, swarm_detected
+from swarm_msgs.msg import swarm_frame, node_frame, node_detected, swarm_detected
 from tf.transformations import quaternion_from_euler
 import random
 
@@ -278,13 +278,11 @@ class SimulateDronesEnv(object):
                 _nf.dismap_dists.append(self.drone_dis[i][j])
                 dpose, in_range = self.generate_relpose(j, i, tick)
                 if in_range:
-                    nd = node_detected_xyzyaw()
+                    nd = node_detected()
                     nd.dpos = dpose.position
                     nd.dyaw = 0
-                    # nd.remote_drone_id = 10 - j + 10000 + (10-i) *100
-                    nd.remote_drone_id = j + 10000 + (i) *100
+                    nd.remote_drone_id = j + (i) *100
                     nd.header.stamp = ts
-                    nd.inv_dep = 1/math.sqrt(dpose.position.x*dpose.position.x + dpose.position.y*dpose.position.y + dpose.position.z*dpose.position.z)
                     sd.append(nd)
                         # print("In range add detected node")
         if self.enable_detection:

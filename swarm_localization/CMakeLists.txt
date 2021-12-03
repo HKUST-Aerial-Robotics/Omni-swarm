@@ -18,9 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
         std_msgs
         geometry_msgs
         swarm_msgs
+        camera_models
         )
 find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(OpenMP REQUIRED)
 # list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
 
 # find_package(Backward)
@@ -52,11 +54,13 @@ add_executable(${PROJECT_NAME}_node
         src/swarm_outlier_rejection/third_party/fast_max-clique_finder/src/utils.cpp
 )
 
+add_executable(${PROJECT_NAME}_simulator
+        test/swarm_local_sim.cpp
+)
 
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
-# add_backward(${PROJECT_NAME}_node)
+add_dependencies(${PROJECT_NAME}_simulator ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
-## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
         ${catkin_LIBRARIES}
         ${CERES_LIBRARIES}
@@ -65,3 +69,14 @@ target_link_libraries(${PROJECT_NAME}_node
         cgraph
         dw
 )
+
+target_link_libraries(${PROJECT_NAME}_simulator
+        ${catkin_LIBRARIES}
+        ${CERES_LIBRARIES}
+        ${camera_models_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
+        dw
+        faiss
+        OpenMP::OpenMP_CXX
+)
+

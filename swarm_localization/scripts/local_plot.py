@@ -10,7 +10,7 @@ from bagparse import *
 from utils import *
 
 def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, nodes, groundtruth = True, \
-    use_offline=False, output_path="/home/xuhao/output/", id_map = None, figsize=(6, 6)):
+    use_offline=False, output_path="/home/xuhao/output/", id_map = None, figsize=(6, 6), plot_each=True):
     fig = plt.figure("Traj2", figsize=figsize)
     ax = fig.add_subplot(111, projection='3d')
     ax = fig.gca(projection='3d')
@@ -156,7 +156,8 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         plt.legend()
 
         plt.savefig(output_path+f"fusedvsgt2d_{i}.pdf")
-
+    if not plot_each:
+        return
     for i in nodes:
         _id = id_map[i]
         fig = plt.figure(f"Drone {i} fused Vs GT Pos", figsize=figsize)
@@ -892,6 +893,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     pnp_inlier_nums = []
     idas = []
     idbs = []
+    dts = []
     count_inter_loop = 0
 
     loops_error = {}
@@ -935,6 +937,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
         idas.append(loop["id_a"])
         idbs.append(loop["id_b"])
         loop_ids.append(loop["id"])
+        dts.append(fabs(loop["ts_b"]-loop["ts_a"]))
 
         if loop["id"] in loops_error:
             print("Duplicate loop", loop["id"])
@@ -964,6 +967,9 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     dpos_gts = np.array(dpos_gts)
     dyaws = np.array(dyaws)
     dyaw_gts = np.array(dyaw_gts)
+    dpos_loop_norms = np.array(dpos_loop_norms)
+    dpos_errs_norm = np.array(dpos_errs_norm)
+    dts = np.array(dts)
 
     fig = plt.figure("Loop Error")
     plt.subplot(211)
@@ -1028,33 +1034,52 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
 
     plt.figure("Distance vs PosErr")
     plt.title("Distance vs PosErr")
+    plt.subplot(221)
     plt.plot(dpos_loop_norms, dpos_errs_norm, ".", label="")
     plt.grid(which="both")
+
+    mask = []
+    if good_loop_id is not None:
+        for i in range(len(loop_ids)):
+            mask.append(loop_ids[i] in good_loop_id)
+
     for i in range(len(pnp_inlier_nums)):
         if good_loop_id is not None and loop_ids[i] not in good_loop_id:
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
         elif dpos_errs_norm[i]>outlier_show_thres:
             plt.text(dpos_loop_norms[i], dpos_errs_norm[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
 
-    plt.figure("Distance vs YawErr")
-    plt.title("Distance vs YawErr")
-    plt.plot(dpos_loop_norms, dyaw_errs, ".", label="")
+    plt.subplot(222)
+    plt.plot(dpos_loop_norms[mask], dpos_errs_norm[mask], ".", label="")
+    plt.grid(which="both")
+
+
+    plt.subplot(223)
+    plt.plot(dpos_loop_norms, dyaw_errs*57.3, ".", label="")
     plt.grid(which="both")
     for i in range(len(pnp_inlier_nums)):
         if good_loop_id is not None and loop_ids[i] not in good_loop_id:
-            plt.text(dpos_loop_norms[i], dyaw_errs[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
+            plt.text(dpos_loop_norms[i], dyaw_errs[i]*57.3, f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
         elif dpos_errs_norm[i]>outlier_show_thres:
-            plt.text(dpos_loop_norms[i], dyaw_errs[i], f"{short_loop_id(loop_ids[i])}", fontsize=12)
+            plt.text(dpos_loop_norms[i], dyaw_errs[i]*57.3, f"{short_loop_id(loop_ids[i])}", fontsize=12)
 
-    mask = []
+    plt.subplot(224)
+    plt.plot(dpos_loop_norms[mask], dyaw_errs[mask]*57.3, ".", label="")
+    plt.grid(which="both")
+
+    plt.figure("Dt vs YawErr (deg)")
+    plt.plot(ts_a, dpos_errs_norm, ".", label="")
+    for i in range(len(dts)):
+        if good_loop_id is not None and loop_ids[i] not in good_loop_id:
+            plt.text(ts_a[i], dpos_errs_norm[i], f"x{short_loop_id(loop_ids[i])}", fontsize=12, color="red")
+    plt.grid()
+
     if good_loop_id is not None:
-        for i in range(len(loop_ids)):
-            mask.append(loop_ids[i] in good_loop_id)
         dpos_errs=dpos_errs[mask]
         dyaw_errs = dyaw_errs[mask]
 
     plt.figure("Loop Hist")
-    plt.subplot(131)
+    plt.subplot(141)
     plt.hist(dpos_errs[:,0], 50, density=True, facecolor='g', alpha=0.75)
 
     mu, std = stats.norm.fit(dpos_errs[:,0])
@@ -1065,7 +1090,7 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,0], 0)**2)
     plt.title(title)
 
-    plt.subplot(132)
+    plt.subplot(142)
     plt.hist(dpos_errs[:,1], 50, density=True, facecolor='g', alpha=0.75)
     mu, std = stats.norm.fit(dpos_errs[:,1])
     xmin, xmax = plt.xlim()
@@ -1075,8 +1100,18 @@ def plot_loops_error(poses, loops, good_loop_id=None, outlier_show_thres=0.5, sh
     title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,1], 0)**2)
     plt.title(title)
 
-    plt.subplot(133)
+    plt.subplot(143)
     plt.hist(dpos_errs[:,2], 50, density=True, facecolor='g', alpha=0.75)
+    mu, std = stats.norm.fit(dpos_errs[:,2])
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = stats.norm.pdf(x, mu, std)
+    plt.plot(x, p, 'k', linewidth=2)
+    title = "mu = %.2e,  std = %.2e\ncov(mu=0) = %.2e" % (mu, std, RMSE(dpos_errs[:,2], 0)**2)
+    plt.title(title)
+
+    plt.subplot(144)
+    plt.hist(dyaw_errs, 50, density=True, facecolor='g', alpha=0.75)
     mu, std = stats.norm.fit(dpos_errs[:,2])
     xmin, xmax = plt.xlim()
     x = np.linspace(xmin, xmax, 100)
