@@ -172,8 +172,6 @@ public:
     ros::Time last_est_time_tick = ros::Time::now();
     float init_xy_movement = 2.0;
     float init_z_movement = 1.0;
-    float loop_outlier_threshold_pos = 1.0;
-    float loop_outlier_threshold_yaw = 1.0;
 
     bool enable_detection;
     bool enable_loop;

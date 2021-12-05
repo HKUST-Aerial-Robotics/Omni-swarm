@@ -28,3 +28,4 @@ double loop_cov_ang;
 double odometry_consistency_threshold;
 double pos_covariance_per_meter;
 double yaw_covariance_per_meter;
+bool DEBUG_NO_REJECT;

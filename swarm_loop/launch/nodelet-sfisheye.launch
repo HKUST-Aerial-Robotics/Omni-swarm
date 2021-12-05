@@ -40,7 +40,7 @@
             camera_configuration: 1
             output_raw_superpoint_desc: false
             loop_cov_pos: 1e-2 #Indoor, 600px width
-            odometry_consistency_threshold: 3.0
+            odometry_consistency_threshold: 2.8
             pos_covariance_per_meter: 0.0009
             yaw_covariance_per_meter: 0.00005
             width: 400

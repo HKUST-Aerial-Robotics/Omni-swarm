@@ -1206,16 +1206,19 @@ def debugging_pcm(pcm_folder, good_loop_id, loops_error, pcm_threshold):
     plt.grid()
     for i in range(len(pcm_errors_sum_array)):
         if loop_error_T[i]>0.4:
-            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
-            print(f"{(loop_id_array[i])} {loop_dt[i]:.1f} error T {loop_error_T[i]}")
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
+            print(f"{short_loop_id(loop_id_array[i])} {loop_dt[i]:.1f} error T {loop_error_T[i]}")
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_T[i], "x", fontsize=12, color="red")
+        if pcm_out_thres_count_array[i]>100:
+            plt.text(pcm_out_thres_count_array[i], loop_error_T[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
 
     plt.figure("pcm_errors_count vs loop_error_yaw")
     plt.plot(pcm_out_thres_count_array, loop_error_yaw, ".")
     for i in range(len(pcm_errors_sum_array)):
         if loop_id_array[i] not in good_loop_id:
             plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], "x", fontsize=12, color="red")
+        
         if loop_error_yaw[i]>5:
             plt.text(pcm_out_thres_count_array[i], loop_error_yaw[i], f"{short_loop_id(loop_id_array[i])},{loop_dt[i]:.1f}s", fontsize=12)
             print(f"{(loop_id_array[i])} {loop_dt[i]:.1f} error Yaw {loop_error_yaw[i]}")

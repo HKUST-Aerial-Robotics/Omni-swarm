@@ -11,6 +11,7 @@
     <arg name="vins_config_path" default="/home/dji/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
     <arg name="superpoint_model_path" default="$(find swarm_loop)/models/superpoint_v1_tx2_fp16.trt" />
     <arg name="netvlad_model_path" default="$(find swarm_loop)/models/mobilenetvlad_208x400_tx2_fp16.trt" />
+    <arg name="debug_no_rejection" default="false" />
     <node pkg="swarm_loop" type="swarm_loop_node" name="swarm_loop" output="$(arg output)" >
         <rosparam>
             lcm_uri: udpm://224.0.0.251:7667?ttl=1
@@ -43,7 +44,7 @@
             camera_configuration: 1
             output_raw_superpoint_desc: false
             loop_cov_pos: 1e-2 #Indoor, 600px width
-            odometry_consistency_threshold: 3.0
+            odometry_consistency_threshold: 2.8
             pos_covariance_per_meter: 0.01
             yaw_covariance_per_meter: 0.003
         </rosparam>
@@ -59,5 +60,6 @@
         <param name="self_id" value="$(arg self_id)" type="int" />
         <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
         <param name="vins_config_path" value="$(arg vins_config_path)" type="string" />
+        <param name="debug_no_rejection" value="$(arg debug_no_rejection)" type="bool" />
     </node>
 </launch>

@@ -99,6 +99,7 @@ extern double pos_covariance_per_meter;
 extern double yaw_covariance_per_meter;
 
 extern std::string OUTPUT_PATH;
+extern bool DEBUG_NO_REJECT;
 
 enum CameraConfig{
     STEREO_PINHOLE = 0,

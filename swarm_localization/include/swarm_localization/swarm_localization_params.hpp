@@ -22,12 +22,8 @@ struct swarm_localization_solver_params {
     std::string cgraph_path;
     float DA_accept_thres = 3.345;
     bool enable_cgraph_generation = false;
-    float loop_outlier_threshold_pos = 1.0;
-    float loop_outlier_threshold_yaw = 1.0;
     float loop_outlier_distance_threshold = 2.0;
     float det_dpos_thres = 1.0;
-    float detection_outlier_thres;
-    float detection_inv_dep_outlier_thres;
 
     bool enable_detection;
     bool enable_loop;
@@ -39,6 +35,7 @@ struct swarm_localization_solver_params {
     float distance_measurement_outlier_threshold;
     float distance_measurement_outlier_elevation_threshold;
     float minimum_distance = 0.2;
+    bool debug_no_rejection = false;
 
 
     float vo_cov_pos_per_meter = 0.1;

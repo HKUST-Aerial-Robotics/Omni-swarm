@@ -7,7 +7,6 @@ struct SwarmLocalOutlierRejectionParams {
     bool debug_write_debug = true;
     bool debug_write_pcm_good = true;
     float pcm_thres = 0.6;
-    float pcm_thres_det = 1.2;
     bool enable_pcm = false;
 };
 

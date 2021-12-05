@@ -283,7 +283,7 @@ int LoopDetector::database_size() const {
 
 
 bool LoopDetector::check_loop_odometry_consistency(LoopEdge & loop_conn) const {
-    if (loop_conn.id_a != loop_conn.id_b) {
+    if (loop_conn.id_a != loop_conn.id_b || DEBUG_NO_REJECT) {
         //Is inter_loop, odometry consistency check is disabled.
         return true;
     }

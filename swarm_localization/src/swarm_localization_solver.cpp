@@ -77,8 +77,6 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             thread_num(_params.thread_num), acpt_cost(_params.acpt_cost),min_accept_keyframe_movement(_params.kf_movement),
             init_xy_movement(_params.init_xy_movement),init_z_movement(_params.init_z_movement),dense_frame_number(_params.dense_frame_number),
             cgraph_path(_params.cgraph_path),enable_cgraph_generation(_params.enable_cgraph_generation), 
-            loop_outlier_threshold_pos(_params.loop_outlier_threshold_pos),
-            loop_outlier_threshold_yaw(_params.loop_outlier_threshold_yaw),
             enable_detection(_params.enable_detection),
             enable_loop(_params.enable_loop),
             enable_distance(_params.enable_distance),
@@ -87,7 +85,18 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             generate_full_path(_params.generate_full_path),
             max_solver_time(_params.max_solver_time)
     {
-        outlier_rejection = new SwarmLocalOutlierRejection(_params.outlier_rejection_params, ego_motion_trajs);
+
+        if (_params.debug_no_rejection) {
+            params.outlier_rejection_params.pcm_thres = 1e8;
+            params.distance_measurement_outlier_elevation_threshold = 1e8;
+            params.distance_measurement_outlier_threshold = 1e8;
+            params.minimum_distance = -1;
+            params.det_dpos_thres = 1e8;
+            params.loop_outlier_distance_threshold = 1e8;
+        }
+
+        outlier_rejection = new SwarmLocalOutlierRejection(params.outlier_rejection_params, ego_motion_trajs);
+
     }
 
 
@@ -1050,7 +1059,9 @@ void SwarmLocalizationSolver::setup_problem_with_loops_and_detections(const Esti
             loc->measurement_type == Swarm::GeneralMeasurement2Drones::Detection6d) {
             CostFunction * cost = RelativePoseFactor4d::Create(loc);;
             ceres::LossFunction *loss_function = nullptr;
-            loss_function = new ceres::HuberLoss(1.0);
+            if (!params.debug_no_rejection) {
+                loss_function = new ceres::HuberLoss(1.0);
+            }
             problem.AddResidualBlock(cost, loss_function, posea, poseb);
 
             #ifdef DEBUG_OUTPUT_ALL_RES
@@ -1060,7 +1071,9 @@ void SwarmLocalizationSolver::setup_problem_with_loops_and_detections(const Esti
         } else {
             CostFunction * cost = DroneDetection4dFactor::Create(loc);;
             ceres::LossFunction *loss_function = nullptr;
-            loss_function = new ceres::HuberLoss(1.0);
+            if (!params.debug_no_rejection) {
+                loss_function = new ceres::HuberLoss(1.0);
+            }
             problem.AddResidualBlock(cost, loss_function, posea, poseb);
             #ifdef DEBUG_OUTPUT_ALL_RES
                 ROS_INFO("DetResidual: %d@%d->%d@%d %p->%p", loc->id_a, TSShort(loc->ts_a), loc->id_b, TSShort(loc->ts_b), posea, poseb);
@@ -1099,13 +1112,16 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
 
                 if (est_poses_idts.find(_idb) == est_poses_idts.end() || 
                     est_poses_idts.at(_idb).find(ts) == est_poses_idts.at(_idb).end()) {
-                    ROS_INFO("TS %d ID %d<->%d idb not found", TSShort(_nf.ts), _ida, _idb);
+                    // ROS_INFO("TS %d ID %d<->%d idb not found", TSShort(_nf.ts), _ida, _idb);
                     continue;
                 }
                 double * poseb = est_poses_idts.at(_ida).at(ts);
                 if ( _idb < _ida && sf.node_id_list.find(_idb) != sf.node_id_list.end() && _nf.distance_available(_idb)) {
                     //Now we setup factor from ida to idb
-                    auto loss_function = new ceres::HuberLoss(1.0);
+                    ceres::LossFunction *loss_function = nullptr;
+                    if (!params.debug_no_rejection) {
+                        loss_function = new ceres::HuberLoss(1.0);
+                    }
                     auto cost = DistanceMeasurementFactor::Create(distance_measurement, 1/sqrt(params.distance_measurement_cov));
                     double * poseb = est_poses_idts.at(_idb).at(ts);
                     problem.AddResidualBlock(cost, loss_function, posea, poseb);

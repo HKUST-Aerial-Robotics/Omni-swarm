@@ -246,6 +246,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<double>("yaw_covariance_per_meter", yaw_covariance_per_meter, 0.003);
 
     nh.param<double>("triangle_thres", TRIANGLE_THRES, 0.006);
+    nh.param<bool>("debug_no_rejection", DEBUG_NO_REJECT, false);
     nh.param<double>("depth_far_thres", DEPTH_FAR_THRES, 10.0);
     nh.param<double>("depth_near_thres", DEPTH_NEAR_THRES, 0.3);
     nh.param<double>("loop_cov_pos", loop_cov_pos, 0.013);

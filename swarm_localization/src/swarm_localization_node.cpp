@@ -470,16 +470,14 @@ public:
         nh.param<float>("kf_time_with_half_movement", solver_params.kf_time_with_half_movement, 1.0f);
         nh.param<float>("init_xy_movement", solver_params.init_xy_movement, 2.0f);
         nh.param<float>("init_z_movement", solver_params.init_z_movement, 1.0f);
-        nh.param<float>("loop_outlier_threshold_pos", solver_params.loop_outlier_threshold_pos, 1.0f);
         nh.param<float>("pcm_thres", solver_params.outlier_rejection_params.pcm_thres, 0.6f);
-        nh.param<float>("pcm_thres_det", solver_params.outlier_rejection_params.pcm_thres_det, 1.2f);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_good, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_errors, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_debug, false);
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
-        nh.param<float>("loop_outlier_threshold_yaw", solver_params.loop_outlier_threshold_yaw, 0.5f);
         nh.param<float>("loop_outlier_distance_threshold", solver_params.loop_outlier_distance_threshold, 2.0f);
         nh.param<float>("DA_accept_thres", solver_params.DA_accept_thres, 3.345f);
+        nh.param<bool>("debug_no_rejection", solver_params.debug_no_rejection, false);
         nh.param<int>("thread_num", solver_params.thread_num, 1);
         nh.param<bool>("pub_swarm_odom", pub_swarm_odom, false);
         nh.param<bool>("enable_cgraph_generation", solver_params.enable_cgraph_generation, false);
@@ -498,8 +496,6 @@ public:
         nh.param<bool>("is_pc_replay", is_pc_replay, false);
         nh.param<bool>("debug_publish_goodloops", debug_publish_goodloops, false);
         nh.param<std::string>("cgraph_path", solver_params.cgraph_path, "/home/xuhao/cgraph.dot");
-        nh.param<float>("detection_outlier_thres", solver_params.detection_outlier_thres, 0.5f);
-        nh.param<float>("detection_inv_dep_outlier_thres", solver_params.detection_inv_dep_outlier_thres, 0.5f);
         nh.param<float>("max_solver_time", solver_params.max_solver_time, 0.05f);
         nh.param<float>("distance_measurement_outlier_threshold", solver_params.distance_measurement_outlier_threshold, 0.3f);
         nh.param<float>("distance_measurement_outlier_elevation_threshold", solver_params.distance_measurement_outlier_elevation_threshold, 0.5f);
