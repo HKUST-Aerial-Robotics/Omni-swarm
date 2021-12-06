@@ -53,7 +53,7 @@
             DETECTION_SPHERE_STD: 0.07
             DETECTION_INV_DEP_STD: 0.07
             DA_accept_thres: 3.345
-
+            det_dpos_thres: 100000
             distance_measurement_outlier_elevation_threshold: 0.6
 
             loop_outlier_distance_threshold: 2.0
