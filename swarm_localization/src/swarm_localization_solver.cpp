@@ -54,7 +54,7 @@ using namespace Swarm;
 
 #define INIT_TRIAL 3
 
-#define BEGIN_MIN_LOOP_DT 100.0
+#define BEGIN_MIN_LOOP_DT 1000.0
 
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
