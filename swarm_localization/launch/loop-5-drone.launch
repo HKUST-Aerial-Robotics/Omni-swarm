@@ -16,6 +16,7 @@
     <arg name="debug_no_relocalization" default="false" />
     <arg name="enable_random_keyframe_deletetion" default="true" />
     <arg name="distance_measurement_outlier_threshold" default="0.3" />
+    <arg name="enable_da" default="false" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)" >
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
@@ -23,6 +24,7 @@
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
         <param name="enable_loop" value="$(arg enable_loop)" type="bool" />
         <param name="debug_loop_initial_only" value="$(arg debug_loop_initial_only)" type="bool" />
+        <param name="enable_data_association" value="$(arg enable_da)" type="bool" />
         <param name="max_keyframe_num" value="$(arg max_keyframe_num)" type="int" />
         <param name="debug_no_relocalization" value="$(arg debug_no_relocalization)" type="bool" />
         <param name="enable_random_keyframe_deletetion" value="$(arg enable_random_keyframe_deletetion)" type="bool" />
@@ -52,6 +54,8 @@
             #OUTLIER REJECTION
             det_dpos_thres: 1.0
             DA_accept_thres: 3.345
+
+            det_dpos_thres: 1000000.0
 
             distance_measurement_outlier_elevation_threshold: 0.6
 

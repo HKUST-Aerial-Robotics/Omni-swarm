@@ -9,6 +9,10 @@ using namespace std::chrono;
 #define MAX_LOOP_ID 100000000
 
 void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, std::vector<cv::Mat> imgs) {
+    TicToc tt;
+    static double t_sum = 0;
+    static int t_count = 0;
+    
     auto start = high_resolution_clock::now();
     
     if (t0 < 0) {
@@ -124,6 +128,9 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         ROS_WARN("[SWARM_LOOP] Frame contain too less landmark %d, give up", flatten_desc.landmark_num);
     }
 
+    t_sum += tt.toc();
+    t_count += 1;
+    ROS_INFO("[SWARM_LOOP] Full LoopDetect avg %.1fms cur %.1fms", t_sum/t_count, tt.toc());
 }
 
 

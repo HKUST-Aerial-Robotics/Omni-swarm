@@ -182,6 +182,9 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
     imgs.resize(msg.left_images.size());
 
     cv::Mat _show, tmp;
+    TicToc tt;
+    static int t_count = 0;
+    static double tt_sum = 0;
 
     for (unsigned int i = 0; i < msg.left_images.size(); i ++) {
         if (camera_configuration == CameraConfig::PINHOLE_DEPTH) {
@@ -198,6 +201,10 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
             cv::hconcat(_show, tmp, _show);
         }
     }
+
+    tt_sum+= tt.toc();
+    t_count+= 1;
+    ROS_INFO("[SWARM_LOOP] Generate cost avg %.1fms cur %.1fms", tt_sum/t_count, tt.toc());
 
     frame_desc.image_num = msg.left_images.size();
     frame_desc.msg_id = msg.keyframe_id;

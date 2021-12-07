@@ -32,7 +32,7 @@ using namespace Swarm;
 // #define DEBUG_OUTPUT_COV
 // #define DEBUG_OUTPUT_NEW_KF
 // #define DEBUG_OUTPUT_DETS
-// #define DEBUG_OUTPUT_LOOP_OUTLIER
+#define DEBUG_OUTPUT_LOOP_OUTLIER
 // #define DEBUG_OUTPUT_SLD_WIN
 
 #define DEBUG_LOOP_ONLY_INIT
@@ -54,7 +54,7 @@ using namespace Swarm;
 
 #define INIT_TRIAL 3
 
-#define BEGIN_MIN_LOOP_DT 100.0
+#define BEGIN_MIN_LOOP_DT 1000.0
 
 //For testing loop closure for single drone, use 1
 #define MIN_DRONES_NUM 1
@@ -658,7 +658,9 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
     int _id = nf.id;
-    if (last_saved_est_kf_ts.size() > 0 && finish_init && enable_to_init_by_drone.at(_id)) {
+    if (last_saved_est_kf_ts.size() > 0 && finish_init && 
+            enable_to_init_by_drone.find(_id) != enable_to_init_by_drone.end() &&
+            enable_to_init_by_drone.at(_id)) {
         for (auto it = last_saved_est_kf_ts.rbegin(); it != last_saved_est_kf_ts.rend(); ++it ) { 
             TsType _ts = *it;
             if(est_poses_tsid_saved.at(_ts).find(_id)!=est_poses_tsid_saved.at(_ts).end() ) {
@@ -1436,7 +1438,9 @@ bool SwarmLocalizationSolver::find_node_frame_for_measurement_2drones(const Swar
     dt_err = min_ts_err_a + min_ts_err_b;
 
     if (_index_a < 0 || _index_b < 0) {
-        // ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+#ifdef DEBUG_OUTPUT_LOOP_OUTLIER
+        ROS_WARN("loop_from_src_loop_connection. Loop [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found in L1116", TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+#endif
         return false;
     }
     return true;
