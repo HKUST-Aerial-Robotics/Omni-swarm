@@ -1140,7 +1140,7 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
     auto nfs = est_poses_idts.at(drone_id);
 
     std::vector<double*> poses_all_ego;
-
+    
     TsType ts_last = 0;
     double * last_ptr = nullptr;
     for (const SwarmFrame & sf : sf_sld_win) {
@@ -1156,7 +1156,8 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
                     double * pose_ptr_2 = nfs[ts];
                     poses_all_ego.push_back(nfs[ts]);
 
-                    if (pose_ptr_1 != pose_ptr_2) {
+                    if (pose_ptr_1 != pose_ptr_2 &&
+                            !(drone_id == self_id && params.debug_no_relocalization)) {
                         auto cf = RelativePoseFactor4d::CreateCov6d(odom.first, odom.second);
                         problem.AddResidualBlock(cf, nullptr, pose_ptr_1, pose_ptr_2);
                         if (pose_ptr_1 != last_ptr && last_ptr != nullptr) {
@@ -1176,10 +1177,14 @@ void SwarmLocalizationSolver::setup_problem_with_ego_motion(const EstimatePosesI
     }
 
     if (drone_id == self_id) {
-        problem.SetParameterBlockConstant(poses_all_ego[0]);
+        if (problem.HasParameterBlock(poses_all_ego[0])) {
+            problem.SetParameterBlockConstant(poses_all_ego[0]);
+        }
         if (params.debug_no_relocalization) {
             for (int i = 1; i < poses_all_ego.size(); i ++) {
-                problem.SetParameterBlockConstant(poses_all_ego[i]);
+                if (problem.HasParameterBlock(poses_all_ego[i])) {
+                    problem.SetParameterBlockConstant(poses_all_ego[i]);
+                }
             }
         }
     }

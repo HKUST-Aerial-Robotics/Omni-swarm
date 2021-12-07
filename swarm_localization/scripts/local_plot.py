@@ -326,15 +326,16 @@ def plot_distance_err(poses, poses_fused, distances, main_id, nodes, calib = {},
                 plt.show()
         
 
-def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, outlier_thres=100, dte=1000000, groundtruth = True, show=True, figsize=(6, 6)):
+def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, outlier_thres=100, dte=1000000, 
+    groundtruth = True, show=True, figsize=(6, 6), verbose=True):
     ts = poses_fused[main_id]["t"]
     ts = ts[ts<dte]
     posa_vo =  poses_vo[main_id]["pos_func"](ts)
     posa_fused = poses_fused[main_id]["pos_func"](ts)
     yawa_fused = poses_fused[main_id]["ypr_func"](ts)[:,0]
     yawa_vo = poses_vo[main_id]["ypr_func"](ts)[:,0]
-
-    print("Relative Trajectory Statistics\nEST RMSE:\t\tPOS\t\tYAW\t|\tBIAS: POS\t\t\tYAW\t|VO\tRMSE:\tPOS\t\tYAW")
+    if verbose:
+        print("Relative Trajectory Statistics\nEST RMSE:\t\tPOS\t\tYAW\t|\tBIAS: POS\t\t\tYAW\t|VO\tRMSE:\tPOS\t\tYAW")
     avg_rmse = np.array([0.0, 0.0, 0.0])
     avg_rmse_yaw = 0.0
     
@@ -381,10 +382,11 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             avg_rmse += np.array([rmse_x, rmse_y, rmse_z])
             avg_rmse_yaw += rmse_yaw
 
-            #ERROR
-            print(f"{main_id}->{target_id}\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.2f}°", end="\t|")
-            #BIAS
-            print(f"{np.mean(dp_gt[mask,0] - dp_fused[mask,0]):3.3f},{np.mean(dp_gt[mask,1] - dp_fused[mask,1]):+3.3f},{np.mean(dp_gt[mask,2] - dp_fused[mask,2]):+3.3f}\t{np.mean(dyaw_gt - dyaw_fused)*180/3.14:+3.2f}°",end="\t")
+            if verbose:
+                #ERROR
+                print(f"{main_id}->{target_id}\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.2f}°", end="\t|")
+                #BIAS
+                print(f"{np.mean(dp_gt[mask,0] - dp_fused[mask,0]):3.3f},{np.mean(dp_gt[mask,1] - dp_fused[mask,1]):+3.3f},{np.mean(dp_gt[mask,2] - dp_fused[mask,2]):+3.3f}\t{np.mean(dyaw_gt - dyaw_fused)*180/3.14:+3.2f}°",end="\t")
 
             rmse_yaw = RMSE(wrap_pi(yawb_vo - yawa_vo - yawb_gt + yawa_gt), 0)
             rmse_x = RMSE(dp_gt[mask,0] , dp_vo[mask,0])
@@ -394,9 +396,8 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             avg_rmse_vo += np.array([rmse_x, rmse_y, rmse_z])
             avg_rmse_vo_yaw += rmse_yaw
 
-            print(f"|\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.1f}°")
-            # print(f"\t{np.mean(dp_gt[:,0] - dp_vo[:,0]):3.3f},{np.mean(dp_gt[:,1] - dp_vo[:,1]):3.3f},{np.mean(dp_gt[:,2] - dp_vo[:,2]):3.3f}")
-            # print(f"RMSE NO BIAS {main_id}->{target_id} {rmse_x_no_bias:3.3f},{rmse_y_no_bias:3.3f},{rmse_z_no_bias:3.3f}")
+            if verbose:
+                print(f"|\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{rmse_yaw*180/pi:3.1f}°")
     
 
         if show:
@@ -409,18 +410,6 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             plt.legend()
             if target_id == target_ids[0]:
                 plt.grid()
-
-            # fig = plt.figure("Relative Pose Polar", figsize=figsize)
-            # fig.suptitle("Relative Pose Polar")
-            # ax1, ax2 = fig.subplots(2, 1)
-
-            # if groundtruth:
-            #     ax1.plot(ts, np.arctan2(dp_gt[:, 0], dp_gt[:, 1]), label=f"Relative Pose Angular GT {main_id}->{target_id}")
-            # ax1.plot(ts, np.arctan2(dp_fused[:, 0], dp_fused[:, 1]), label=f"Relative Pose Angular Fused {main_id}->{target_id}")
-
-            # if groundtruth:
-            #     ax2.plot(ts, norm(dp_gt, axis=1), label=f"Relative Pose Length GT {main_id}->{target_id}")
-            # ax2.plot(ts, norm(dp_fused, axis=1), label=f"Relative Pose Length Fused {main_id}->{target_id}")
 
 
             fig = plt.figure("Relative Pose PolarErr", figsize=figsize)
@@ -492,15 +481,15 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
 
     return avg_rmse/len(target_ids), avg_rmse_yaw/len(target_ids), avg_rmse_vo/len(target_ids), avg_rmse_vo_yaw/len(target_ids)
 
-def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dte=100000,show=True, outlier_thres=100):
+def plot_fused_err(poses, poses_fused, poses_vo, poses_path, nodes, main_id=1,dte=100000,show=True, outlier_thres=100, verbose=True):
     #Plot Fused Vs GT absolute error
     ate_vo_sum = 0
     rmse_vo_ang_sum = 0
 
     ate_fused_sum = 0
     rmse_fused_ang_sum = 0
-
-    print("""Absolute Trajectory Statistics\n\
+    if verbose:
+        print("""Absolute Trajectory Statistics\n\
 EST:\tATE P\tAng\tYaw\tPitch\tRoll\t\tRMSE\t\t\t\
 COV/m\t\tPOS\t\t\tYAW\t\t\tKF:\tATE P\tAng\t|\
 \tVO:ATE_P\tAng\tYaw\tPitch\tRoll\t\t\tATE\t\t\tCOV/m\tPOS\t\tYAW\t""")
@@ -584,13 +573,14 @@ COV/m\t\tPOS\t\t\tYAW\t\t\tKF:\tATE P\tAng\t|\
         ate_vo_sum += ate_vo
         rmse_vo_ang_sum += rmse_angular_vo
 
-        if i == main_id:
-            print(f"Ego{main_id}",end="\t")
-        else:
-            print(f"{i}by{main_id}",end="\t")
-        print(f"{ate_fused:3.3f}\t{rmse_angular_fused*180/pi:3.3f}°\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_pitch_fused*180/pi:3.3f}°\t{rmse_roll_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{fused_cov_x:.1e},{fused_cov_y:.1e},{fused_cov_z:.1e}\t{fused_yaw_cov_per_meter:.1e}rad/m\t\t{ate_path:3.3f}\t{rmse_angular_path*180/pi:3.3f}°\t|\t",end="")
+        if verbose:
+            if i == main_id:
+                print(f"Ego{main_id}",end="\t")
+            else:
+                print(f"{i}by{main_id}",end="\t")
+            print(f"{ate_fused:3.3f}\t{rmse_angular_fused*180/pi:3.3f}°\t{rmse_yaw_fused*180/pi:3.3f}°\t{rmse_pitch_fused*180/pi:3.3f}°\t{rmse_roll_fused*180/pi:3.3f}°\t{rmse_x:3.3f},{rmse_y:3.3f},{rmse_z:3.3f}\t{fused_cov_x:.1e},{fused_cov_y:.1e},{fused_cov_z:.1e}\t{fused_yaw_cov_per_meter:.1e}rad/m\t\t{ate_path:3.3f}\t{rmse_angular_path*180/pi:3.3f}°\t|\t",end="")
 
-        print(f"{ate_vo:3.3f}\t{rmse_angular_vo*180/pi:3.3f}°\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_pitch_vo*180/pi:3.3f}°\t{rmse_roll_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}\t{vo_cov_per_meter[0][0]:.1e},{vo_cov_per_meter[1][1]:.1e},{vo_cov_per_meter[2][2]:.1e}\t{vo_yaw_cov_per_meter:.1e}rad")
+            print(f"{ate_vo:3.3f}\t{rmse_angular_vo*180/pi:3.3f}°\t{rmse_yaw_vo*180/pi:3.3f}°\t{rmse_pitch_vo*180/pi:3.3f}°\t{rmse_roll_vo*180/pi:3.3f}°\t{rmse_vo_x:3.3f},{rmse_vo_y:3.3f},{rmse_vo_z:3.3f}\t{vo_cov_per_meter[0][0]:.1e},{vo_cov_per_meter[1][1]:.1e},{vo_cov_per_meter[2][2]:.1e}\t{vo_yaw_cov_per_meter:.1e}rad")
 
         # print("VO COV POS\n", vo_cov_per_meter, 'yaw', vo_yaw_cov_per_meter)
 
@@ -672,7 +662,8 @@ COV/m\t\tPOS\t\t\tYAW\t\t\tKF:\tATE P\tAng\t|\
 
         
         num = len(nodes)
-    print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
+    if verbose:
+        print(f"Avg\t{ate_fused_sum/num:3.3f}\t{rmse_yaw_fused*180/pi/num:3.3f}°\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t|\t{ate_vo_sum/num:3.3f}\t\t{rmse_yaw_vo/num*180/pi:3.3f}°")
     return ate_fused_sum/num, rmse_fused_ang_sum/num, ate_vo_sum/num, rmse_vo_ang_sum/num
 
 
