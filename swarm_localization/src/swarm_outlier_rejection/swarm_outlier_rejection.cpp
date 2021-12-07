@@ -137,10 +137,10 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
 
         if (good_loops_set.find(id_a) == good_loops_set.end() || good_loops_set[id_a].find(id_b) == good_loops_set[id_a].end()) {
             //The inlier set of the pair in good loop not established, so we make use all of them
-            ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d not exist self_id %d, assume all is right", id_a, id_b, self_id);
+            // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d not exist self_id %d, assume all is right", id_a, id_b, self_id);
             good_loops.emplace_back(loop);
         } else {
-            ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d exist with %d res, use it", id_a, id_b, good_loops_set[loop.id_a][loop.id_b].size());
+            // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d exist with %d res, use it", id_a, id_b, good_loops_set[loop.id_a][loop.id_b].size());
             auto _good_loops_set = good_loops_set[loop.id_a][loop.id_b];
             if (_good_loops_set.find(loop.id) != _good_loops_set.end()) {
                 good_loops.emplace_back(loop);

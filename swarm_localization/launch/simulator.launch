@@ -19,6 +19,8 @@
     <arg name="viz" default="false" />
     <arg name="node_start_delay" default="3.0" />  
     <arg name="mission_type" default="0" />  
+    <arg name="initial_dis" default="1.0" />  
+    <arg name="initial_pattern" default="0" />  
 
     <node pkg="swarm_localization" name="swarm_local_sim" type="swarm_localization_simulator" output="log"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' "  >
         <param name="extrinsic_path" type="string" value="$(arg extrinsic_path)" />
@@ -26,6 +28,8 @@
         <param name="drone_num" type="int" value="$(arg drone_num)" />
         <param name="only_front" type="bool" value="$(arg debug_only_front)" />
         <param name="mission_type" type="int" value="$(arg mission_type)" />
+        <param name="initial_dis" type="double" value="$(arg initial_dis)" />
+        <param name="initial_pattern" type="int" value="$(arg initial_pattern)" />
         <rosparam>
             # vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
             # vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
@@ -50,7 +54,6 @@
             circle_radius: 5
             circle_radius_z: 2
             circle_T: 50
-            initial_dis: 1.0
             initial_t: 20
             max_t: 201
         </rosparam>
