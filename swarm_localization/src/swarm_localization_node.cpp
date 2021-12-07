@@ -159,7 +159,7 @@ protected:
         int _self_id = _sf.self_id;
         frame_id = "world";
 
-        swarm_localization_solver->self_id = _self_id;
+        assert(self_id == _self_id && "self_id must be equal!");
 
         if (remote_ids_arr.empty()) {
             //This is first time of receive data
@@ -460,6 +460,8 @@ public:
 
         swarm_localization_solver_params solver_params;
 
+        nh.param<int>("self_id", self_id, -1);
+        solver_params.self_id = self_id;
         nh.param<int>("max_keyframe_num", solver_params.max_frame_number, 50);
         nh.param<int>("dense_keyframe_num", solver_params.dense_frame_number, 20);
         nh.param<int>("min_keyframe_num", solver_params.min_frame_number, 3);
@@ -475,6 +477,7 @@ public:
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_errors, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_debug, false);
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
+        nh.param<bool>("pcm_redundant", solver_params.outlier_rejection_params.redundant, false);
         nh.param<float>("loop_outlier_distance_threshold", solver_params.loop_outlier_distance_threshold, 2.0f);
         nh.param<float>("DA_accept_thres", solver_params.DA_accept_thres, 3.345f);
         nh.param<bool>("debug_no_rejection", solver_params.debug_no_rejection, false);

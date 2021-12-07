@@ -25,6 +25,7 @@
     <arg name="enable_da" default="true" />
     <arg name="debug_only_front" default="false" />
     <arg name="debug_no_rejection" default="false" />
+        <arg name="self_id" default="-1" />
 
     <arg name="output_folder" default="false" />
     <arg name="vins_config_file" default="$(env HOME)/SwarmConfig/fisheye_ptgrey_n3/fisheye_cuda.yaml"/>
@@ -47,6 +48,7 @@
         <arg name="distance_measurement_outlier_threshold" value="$(arg distance_measurement_outlier_threshold)" />
         <arg name="enable_da" value="$(arg enable_da)" />
         <arg name="debug_no_rejection" default="$(arg debug_no_rejection)" />
+        <arg name="self_id" value="$(arg self_id)" />
     </include>
 
     <group unless="$(arg backend_only)">

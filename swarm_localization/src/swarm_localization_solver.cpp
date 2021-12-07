@@ -83,7 +83,8 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             enable_detection_depth(_params.enable_detection_depth),
             kf_use_all_nodes(_params.kf_use_all_nodes),
             generate_full_path(_params.generate_full_path),
-            max_solver_time(_params.max_solver_time)
+            max_solver_time(_params.max_solver_time),
+            self_id(_params.self_id)
     {
 
         if (_params.debug_no_rejection) {
@@ -95,8 +96,9 @@ SwarmLocalizationSolver::SwarmLocalizationSolver(const swarm_localization_solver
             params.loop_outlier_distance_threshold = 1e8;
         }
 
-        outlier_rejection = new SwarmLocalOutlierRejection(params.outlier_rejection_params, ego_motion_trajs);
+        outlier_rejection = new SwarmLocalOutlierRejection(_params.self_id, params.outlier_rejection_params, ego_motion_trajs);
 
+        ROS_INFO("[SWARM_LOCAL] Init solver with self_id %d", _params.self_id);
     }
 
 
@@ -217,7 +219,11 @@ void SwarmLocalizationSolver::random_init_pose(EstimatePoses &swarm_est_poses, s
 void SwarmLocalizationSolver::init_pose_by_loops(EstimatePoses &swarm_est_poses, std::set<int> ids_to_init) {
     for (auto _id: ids_to_init) {
         ROS_INFO("Try to init %d with loops", _id);
-        for (auto it : outlier_rejection->good_loops_set.at(_id)) {
+        auto loop_sets =  outlier_rejection->all_loops_set_by_pair[_id];
+        if (outlier_rejection->good_loops_set.find(_id) != outlier_rejection->good_loops_set.end()) {
+            loop_sets = outlier_rejection->good_loops_set.at(_id);
+        }
+        for (auto it : loop_sets) {
             auto id2 = it.first;
             if (it.second.size() == 0 || estimated_nodes.find(id2) == estimated_nodes.end()) {
                 continue;
@@ -545,6 +551,8 @@ void SwarmLocalizationSolver::add_new_detection(const swarm_msgs::node_detected 
         all_detections_6d.push_back(det_ret);
         has_new_keyframe = true;
     }
+
+    last_loop_ts = detected.header.stamp;
 }
 
 
@@ -569,6 +577,14 @@ void SwarmLocalizationSolver::add_new_loop_connection(const swarm_msgs::LoopEdge
             all_loops.push_back(loc_ret);
             has_new_keyframe = true;
         }
+    }
+
+    if (loop_con.ts_a > last_loop_ts) {
+        last_loop_ts = loop_con.ts_a;
+    }
+
+    if (loop_con.ts_b > last_loop_ts) {
+        last_loop_ts = loop_con.ts_b;
     }
 }
 
@@ -1387,7 +1403,7 @@ std::set<int> SwarmLocalizationSolver::estimate_observability() {
         }
     }
 
-    printf("All Nodes %d, enable_to_solve_master %d", all_nodes.size(), enable_to_solve_master);
+    printf("All Nodes %ld, enable_to_solve_master %d", all_nodes.size(), enable_to_solve_master);
     for (int _id : all_nodes) {
         printf(" %d:%d ", _id, enable_to_init_by_drone[_id]);
     }
@@ -1468,7 +1484,8 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const Swarm::LoopEdge
 
     if((sf_sld_win[0].stamp - tsa).toSec() > BEGIN_MIN_LOOP_DT) {
 #ifdef DEBUG_OUTPUT_LOOP_OUTLIER
-        ROS_WARN("[SWARM_LOCAL] loop_from_src_loop_connection. Loop %ld [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found because of DT", _loc.id, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
+        ROS_WARN("[SWARM_LOCAL] loop_from_src_loop_connection. Loop %ld [TS%d]%d->[TS%d]%d; SF0 TS [%d] DT %f not found because of DT",
+                _loc.id, TSShort(tsa.toNSec()), _ida, TSShort(tsb.toNSec()), _idb, TSShort(sf_sld_win[0].ts), (sf_sld_win[0].stamp - tsa).toSec());
 #endif
         return 0;
     }
@@ -1632,7 +1649,7 @@ std::vector<GeneralMeasurement2Drones*> SwarmLocalizationSolver::find_available_
     }
 
     TicToc tt;
-    good_loops = outlier_rejection->OutlierRejectionLoopEdges(good_loops);
+    good_loops = outlier_rejection->OutlierRejectionLoopEdges(last_loop_ts, good_loops);
     auto ret_loops = average_same_loop(good_loops);
     if (finish_init) {
         sum_outlier_rejection_time += tt.toc();

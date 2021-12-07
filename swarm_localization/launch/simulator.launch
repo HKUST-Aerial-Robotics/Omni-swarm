@@ -2,6 +2,7 @@
     <arg name="cam_file" default="$(find swarm_detector)/config/ptgrey_17591762_camera_calib.yaml" />
     <arg name="extrinsic_path" default="/home/xuhao/swarm_ws/src/VINS-Fisheye/config/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
     <arg name="drone_num" default="10" />
+    <arg name="self_id" default="0" />
     <arg name="output" default="screen" />
     <arg name="detector" default="true" />
     <arg name="loop" default="true" />
@@ -58,6 +59,7 @@
     <include file="$(find swarm_localization)/launch/loop-5-sim.launch" >
         <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
+        <arg name="self_id" value="$(arg self_id)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
         <arg name="cgraph" value="$(arg cgraph)" />
         <arg name="enable_distance" value="$(arg distance)" />

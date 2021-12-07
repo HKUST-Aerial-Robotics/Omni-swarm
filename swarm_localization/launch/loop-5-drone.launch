@@ -17,8 +17,10 @@
     <arg name="enable_random_keyframe_deletetion" default="true" />
     <arg name="distance_measurement_outlier_threshold" default="0.3" />
     <arg name="enable_da" default="false" />
+    <arg name="self_id" default="-1" />
 
     <node pkg="swarm_localization" name="swarm_localization" type="swarm_localization_node" output="$(arg output)" >
+        <param name="self_id" value="$(arg self_id)" type="int" />
         <param name="enable_distance" value="$(arg enable_distance)" type="bool" />
         <param name="enable_detection" value="$(arg enable_detection)" type="bool" />
         <param name="enable_detection_depth" value="$(arg enable_detection_depth)" type="bool" />
@@ -56,6 +58,7 @@
             DA_accept_thres: 3.345
 
             det_dpos_thres: 1000000.0
+            pcm_redundant: false
 
             distance_measurement_outlier_elevation_threshold: 0.6
 
