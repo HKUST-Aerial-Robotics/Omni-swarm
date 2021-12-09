@@ -404,7 +404,7 @@ int LoopDetector::compute_relative_pose(
 
     success = pnp_result_verify(success, init_mode, inliers.rows, RPerr, DP_old_to_new);
 
-    ROS_INFO("[SWARM_LOOP] DPose %s PnPRansac %d inlines %d/%d, dyaw %f dpos %f. Geometry Check %f", DP_old_to_new.tostr(), success, inliers.rows, matched_2d_norm_old.size(), fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
+    ROS_INFO("[SWARM_LOOP] DPose %s PnPRansac %d inlines %d/%d, dyaw %f dpos %f. Geometry Check %f", DP_old_to_new.tostr().c_str(), success, inliers.rows, matched_2d_norm_old.size(), fabs(DP_old_to_new.yaw())*57.3, DP_old_to_new.pos().norm(), RPerr);
     inlier_num = inliers.rows;
 
     for (int i = 0; i < inlier_num; i++) {
