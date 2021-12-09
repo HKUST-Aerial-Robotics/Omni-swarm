@@ -28,6 +28,9 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     int64_t msg_id = rand() + img_des.timestamp.nsec;
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
+    static double sum_byte_sent = 0;
+    static double sum_features = 0;
+    static int count_byte_sent = 0;
 
     int byte_sent = 0;
     if (IS_PC_REPLAY) {
@@ -60,7 +63,6 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     byte_sent += img_desc_header.getEncodedSize();
     lcm.publish("VIOKF_HEADER", &img_desc_header);
     // printf("header %d", img_desc_header.getEncodedSize());
-
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         if (img_des.landmarks_flag[i] > 0 || SEND_ALL_FEATURES) {
             LandmarkDescriptor_t lm;
@@ -85,8 +87,17 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             // }
 
             lcm.publish("VIOKF_LANDMARKS", &lm);
+            feature_num ++;
+
         }
     }
+
+    sum_byte_sent+= byte_sent;
+    sum_features+=feature_num;
+    count_byte_sent ++;
+
+    ROS_INFO("[SWARM_LOOP](%d) BD KF %d LM: %d size %d avgsize %.0f sumkB %.0f avgLM %.0f", count_byte_sent,
+            img_desc_header.msg_id, feature_num, byte_sent, ceil(sum_byte_sent/count_byte_sent), sum_byte_sent/1000, ceil(sum_features/count_byte_sent));
 
 
     if (send_img || send_whole_img_desc) {

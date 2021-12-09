@@ -56,6 +56,9 @@
             circle_T: 50
             initial_t: 20
             max_t: 201
+            min_distance_det: 0.2
+            loop_max_distance: 10 #For dense
+            det_max_distance: 10.0 #For dense
         </rosparam>
     </node>
     

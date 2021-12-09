@@ -169,6 +169,7 @@ public:
         nh.param<double>("initial_dis", initial_dis, 1.0);
         nh.param<double>("initial_t", initial_t, 10);
         nh.param<double>("max_t", max_t, 10);
+        nh.param<double>("min_distance_det", min_distance_det, 0.2);
         nh.param<std::string>("extrinsic_path", extrinsic_path, "");
         nh.param<std::string>("cam_file", camera_config_file, "");
         fisheye = new swarm_detector_pkg::FisheyeUndist(camera_config_file, 235, true, img_width);
@@ -203,8 +204,14 @@ public:
 
         col_width = drone_num;
         if (initial_pattern == 1) {
-            col_width = sqrt(drone_num);
+            col_width = ceil(sqrtf(drone_num));
         }
+
+        if (col_width < 2) {
+            col_width = 2;
+        }
+
+        ROS_INFO("Simulator grid col width %d", col_width);
 
     
         Vector3d Gc_imu = Vector3d(-0.06, 0, 0.00);

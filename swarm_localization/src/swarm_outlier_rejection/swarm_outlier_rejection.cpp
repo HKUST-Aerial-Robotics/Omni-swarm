@@ -85,6 +85,14 @@ void SwarmLocalOutlierRejection::broadcast_good_loops(ros::Time stamp, int id_a,
     msg.ts = toLCMTime(stamp);
     msg.inlier_id_size = msg.inlier_ids.size();
     lcm.publish("LOOP_INLIERS", &msg);
+
+    static double sum_byte_sent = 0;
+    static int count_byte_sent = 0;
+    sum_byte_sent+= msg.getEncodedSize();
+    count_byte_sent ++;
+    ROS_INFO("[SWARM_LOCAL](%d) BD inliers %d bytes %d avg %.0f sumkB %.0f", 
+            count_byte_sent,  msg.inlier_id_size, msg.getEncodedSize(), ceil(sum_byte_sent/count_byte_sent), sum_byte_sent/1000);
+
 }
 
 std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(ros::Time stamp, const std::vector<Swarm::LoopEdge> & available_loops) {
