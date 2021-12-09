@@ -222,15 +222,23 @@ void LoopNet::scan_recv_packets() {
     double tnow = ros::Time::now().toSec();
     std::vector<int64_t> finish_recv;
     recv_lock.lock();
+    static double sum_feature_num = 0;
+    static double sum_feature_num_all = 0;
+    static int sum_packets = 0;
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%d feature_desc_size %ld(%ld)", 
+            sum_feature_num_all+=received_images[msg_id].landmark_num;
+            sum_feature_num+=received_images[msg_id].landmarks_2d.size();
+            ROS_INFO("[SWAMR_LOOP] Frame %d id %ld from drone %d, Feature %ld/%d recv_rate %.1f feature_desc_size %ld(%ld)", 
+                sum_packets,
                 msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num,
-                received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size
-            );
+                sum_feature_num/sum_feature_num_all*100,
+                received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size);
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.push_back(msg_id);
+
+            sum_packets += 1;
         }
     }
 
@@ -275,7 +283,7 @@ void LoopNet::scan_recv_packets() {
             frame_desc.landmark_num += frame_desc.images[i].landmark_num;
         }
 
-        ROS_INFO("Fisheyframe contains of %d images from drone %d, landmark %d", frame_desc.images.size(), frame_desc.drone_id, frame_desc.landmark_num );
+        ROS_INFO("[SWAMR_LOOP] FFrame contains of %d images from drone %d, landmark %d", frame_desc.images.size(), frame_desc.drone_id, frame_desc.landmark_num );
 
         frame_desc_callback(frame_desc);
         received_frames.erase(frame_hash);
