@@ -166,7 +166,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             pitch_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 1]
             roll_gt =  poses[i]["ypr_func"](poses_fused[i]["t"])[:, 2]
         if groundtruth:
-            ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${i}$")
+            ax1.plot(t_, pos_gt[:,0], label=f"Ground Truth ${_id}$")
         ax1.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,0], label=f"Aligned VO Traj{_id}")
         ax1.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,0], label=f"Estimate {_id}")
         if use_offline:
@@ -175,7 +175,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1.set_ylabel("x")
 
         if groundtruth:
-            ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${i}$")
+            ax2.plot(t_, pos_gt[:,1], label=f"Ground Truth ${_id}$")
         ax2.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,1], label=f"Aligned VO Traj{_id}")
         ax2.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,1], label=f"Estimate {_id}")
         if use_offline:
@@ -184,7 +184,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax2.set_ylabel("y")
 
         if groundtruth:
-            ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${i}$")
+            ax3.plot(t_, pos_gt[:,2], label=f"Ground Truth ${_id}$")
         ax3.plot(poses_vo[i]["t"], poses_vo[i]["pos"][:,2], label=f"Aligned VIO ${_id}$")
         ax3.plot(poses_fused[i]["t"], poses_fused[i]["pos"][:,2], label=f"Estimate {_id}")
         if use_offline:
@@ -204,7 +204,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1, ax2, ax3 = fig.subplots(3, 1)
 
         if groundtruth:
-            ax1.plot(t_, yaw_gt*57.3, label=f"Ground Truth ${i}$")
+            ax1.plot(t_, yaw_gt*57.3, label=f"Ground Truth ${_id}$")
         ax1.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,0]*57.3, label=f"Aligned VIO ${_id}$")
         ax1.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,0]*57.3, label=f"Estimate {_id}")
         if use_offline:
@@ -216,7 +216,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax1.grid()
         
         if groundtruth:
-            ax2.plot(t_, pitch_gt*57.3, label=f"Ground Truth ${i}$")
+            ax2.plot(t_, pitch_gt*57.3, label=f"Ground Truth ${_id}$")
         ax2.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,1]*57.3, label=f"Aligned VIO ${_id}$")
         ax2.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,1]*57.3, label=f"Estimate {_id}")
         if use_offline:
@@ -228,7 +228,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         ax2.grid()
 
         if groundtruth:
-            ax3.plot(t_, roll_gt*57.3, label=f"Ground Truth ${i}$")
+            ax3.plot(t_, roll_gt*57.3, label=f"Ground Truth ${_id}$")
         ax3.plot(poses_vo[i]["t"], poses_vo[i]["ypr"][:,2]*57.3, label=f"Aligned VIO ${_id}$")
         ax3.plot(poses_fused[i]["t"], poses_fused[i]["ypr"][:,2]*57.3, label=f"Estimate {_id}")
         if use_offline:

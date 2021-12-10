@@ -81,6 +81,8 @@ def odometry_covariance_per_meter_with_rp(pos_vo, yaw_vo, pos_gt, yaw_gt, rp_len
                 # print("len_ij", len_ij)
 
         #Now len ij is approximately rp_length, we compute error of ij
+        if i > len(pos_vo) or j > len(pos_vo) or i > len(pos_gt) or j > len(pos_gt):
+            break
         pos_vo_i = pos_vo[i]
         pos_vo_j = pos_vo[j]
         yaw_vo_i = yaw_vo[i]

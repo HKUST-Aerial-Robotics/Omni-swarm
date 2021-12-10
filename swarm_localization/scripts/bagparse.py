@@ -7,7 +7,7 @@ import copy
 from utils import *
 import time
 
-def read_pose_swarm_fused(bag, topic, t0):
+def read_pose_swarm_fused(bag, topic, t0, tmax):
     pos = {}
     ypr = {}
     ts = {}
@@ -15,7 +15,7 @@ def read_pose_swarm_fused(bag, topic, t0):
     ret_poses = {}
     # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
+        if tmax > t.to_sec() > t0:
             for i in range(len(msg.ids)):
                 _id = msg.ids[i]
                 if _id not in pos:
@@ -49,14 +49,14 @@ def read_pose_swarm_fused(bag, topic, t0):
         ret_poses[_id] = ret
     return ret_poses
 
-def read_pose_swarm_frame(bag, topic, t0):
+def read_pose_swarm_frame(bag, topic, t0, tmax):
     pos = {}
     ypr = {}
     ts = {}
     quat = {}
     ret_poses = {}
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
+        if tmax > t.to_sec() > t0:
             if msg.header.stamp.to_sec() < t0:
                     continue
             for node in msg.node_frames:
@@ -93,13 +93,13 @@ def read_pose_swarm_frame(bag, topic, t0):
     return ret_poses
 
 # def read_distance_swarm_frame(bag, topic, _id, to)
-def read_distances_swarm_frame(bag, topic, t0):
+def read_distances_swarm_frame(bag, topic, t0, tmax=100000):
     distances = {
     }
     ts = []
     # print(f"Read distances from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
+        if tmax+t0> t.to_sec() > t0:
             for node in msg.node_frames:
                 _ida = node.id
                 if not (_ida in distances):
@@ -116,7 +116,7 @@ def read_distances_swarm_frame(bag, topic, t0):
                     distances[_ida][_id]["dis"].append(_dis)
     return distances
 
-def read_pose(bag, topic, t0, P_vicon_in_imu=None):
+def read_pose(bag, topic, t0, tmax, P_vicon_in_imu=None):
     pos = []
     ypr = []
     ts = []
@@ -126,7 +126,7 @@ def read_pose(bag, topic, t0, P_vicon_in_imu=None):
         if t0 == 0:
             t0 = msg.header.stamp.to_sec()
         else:
-            if msg.header.stamp.to_sec() < t0:
+            if msg.header.stamp.to_sec() < t0 or msg.header.stamp.to_sec()>tmax:
                 continue
         p = msg.pose.position
         q = msg.pose.orientation
@@ -210,10 +210,11 @@ def parse_loopedge(msg, t0):
     }
     return loop
     
-def read_loops(bag, t0, topic="/swarm_loop/loop_connection"):
+def read_loops(bag, t0, topic="/swarm_loop/loop_connection", t_s=0,t_m=10000):
     loops = []
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        loops.append(parse_loopedge(msg, t0))
+        if t_m + t0 > t.to_sec() > t_s + t0:
+            loops.append(parse_loopedge(msg, t0))
     return loops 
 
 def read_goodloops(bag, t0, topic="/swarm_drones/goodloops"):
@@ -306,7 +307,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}, verbose=False):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, P_vicon_in_imu={}, verbose=False, t_s = 0, t_m = 1000000):
     bag = rosbag.Bag(bagname)
     poses_gt = {}
     poses_fused = {}
@@ -318,25 +319,26 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             continue
 
         if len(msg.node_frames) >= len(nodes):
-            t0 = msg.header.stamp.to_sec() + dt
+            t0 = msg.header.stamp.to_sec() + t_s
+            tmax = msg.header.stamp.to_sec() + t_m
             # print("t0 is", t0, msg)
             break
 
-    poses_vo = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
+    poses_vo = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", t0, tmax)
     # print("Finish parse vo")
 
     if is_pc:
-        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", t0)
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", t0, tmax)
     else:
-        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", t0)
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", t0, tmax)
     # print("Finish parse fused")
     sum_len = 0
     for i in poses_fused:
         if groundtruth:
             if i in P_vicon_in_imu:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, P_vicon_in_imu[i])
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, tmax, P_vicon_in_imu[i])
             else:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, tmax)
             sum_len += poses_length(poses_gt[i])
 
         if is_pc:
