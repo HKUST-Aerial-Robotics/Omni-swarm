@@ -50,7 +50,8 @@
             vo_cov_pos_per_meter: 0.002 #OK VO on PC, 600 width
             vo_cov_yaw_per_meter: 0.0001 #OK VO on PC, 600 width
 
-            distance_measurement_cov: 0.00122
+            #distance_measurement_cov: 0.00122
+            distance_measurement_cov: 0.02
             
 
             #OUTLIER REJECTION
