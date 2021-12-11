@@ -157,20 +157,21 @@ def read_pose(bag, topic, t0, te, P_vicon_in_imu=None):
     return ret, t0
 
 
-def parse_path(path, t0):
+def parse_path(path, t0, te):
     pos = []
     ypr = []
     ts = []
     quat = []
     
     for msg in path.poses:
-        p = msg.pose.position
-        q = msg.pose.orientation
-        pos.append([p.x, p.y, p.z])
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-        ypr.append([y, p, r])
-        ts.append(msg.header.stamp.to_sec() - t0)
-        quat.append([q.w, q.x, q.y, q.z])  
+        if te > msg.header.stamp.to_sec() > t0:
+            p = msg.pose.position
+            q = msg.pose.orientation
+            pos.append([p.x, p.y, p.z])
+            y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
+            ypr.append([y, p, r])
+            ts.append(msg.header.stamp.to_sec() - t0)
+            quat.append([q.w, q.x, q.y, q.z])  
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
@@ -180,12 +181,12 @@ def parse_path(path, t0):
 
     return ret
 
-def read_path(bag, topic, t0):
+def read_path(bag, topic, t0, te):
     path = None
     for topic, msg, t in bag.read_messages(topics=[topic]):
         path = msg
     if path is not None:
-        return parse_path(path, t0)
+        return parse_path(path, t0, te)
     return None
 
 def poses_length(poses):
@@ -341,14 +342,17 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             sum_len += poses_length(poses_gt[i])
 
         if is_pc:
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0, te)
         else:    
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0, te)
 
         if i not in poses_path or poses_path[i] is None:
             poses_path[i] = copy.copy(poses_fused[i])
 
-    print(f"Init. at {poses_fused[main_id]['t'][0]}. Avg. len. {sum_len/len(poses_gt):.1f}m")
+    if groundtruth:
+        print(f"Init. at {poses_fused[main_id]['t'][0]}. Avg. len. {sum_len/len(poses_gt):.1f}m")
+    else:
+        print(f"Init. at {poses_fused[main_id]['t'][0]}m")
 
     if groundtruth:
         offset_gt = - poses_gt[main_id]["pos"][0]

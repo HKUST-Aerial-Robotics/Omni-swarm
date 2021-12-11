@@ -42,7 +42,8 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         posa_ = poses_fused[det["id_a"]]["pos_func"](det["ts"])
         yawa_ = poses_fused[det["id_a"]]["ypr_func"](det["ts"])[0]
         dpos = yaw_rotate_vec(yawa_, det["dpos"])
-        quivers_det.append([posa_[0], posa_[1], posa_[2], dpos[0], dpos[1], dpos[2]])
+        if np.linalg.norm(dpos) < 2:
+            quivers_det.append([posa_[0], posa_[1], posa_[2], dpos[0], dpos[1], dpos[2]])
     
     quivers = np.array(quivers)
     quivers_det = np.array(quivers_det)
@@ -55,13 +56,13 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
     step = 1
     if len(quivers) > 0:   
         ax.quiver(quivers[::step,0], quivers[::step,1], quivers[::step,2], quivers[::step,3], quivers[::step,4], quivers[::step,5], 
-            arrow_length_ratio=0.1, color="black",linewidths=1.0, label="Map-based edges")
+            arrow_length_ratio=0.1, color="black",linewidths=1.0, label="Map-based Mea.")
 
     step_det = 5
     if len(quivers_det) > 0:   
         ax.quiver(quivers_det[::step_det,0], quivers_det[::step_det,1], quivers_det[::step_det,2], quivers_det[::step_det,3],
             quivers_det[::step_det,4], quivers_det[::step_det,5], 
-            arrow_length_ratio=0.1, color="gray",linewidths=1.0, label="Visual detection edges")
+            arrow_length_ratio=0.1, color="gray",linewidths=1.0, label="Vis. Mea.")
 
     plt.legend()
     plt.savefig(output_path+"Traj2.pdf")
@@ -96,7 +97,7 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             xs = [quivers[i,0],quivers[i,0]+quivers[i,3]]
             ys = [quivers[i,1], quivers[i,1]+quivers[i,4]]
             if i == 0:
-                plt.plot(xs, ys, color="black", label="Map-based edges", linewidth=qview_width)
+                plt.plot(xs, ys, color="black", label="Map-based Mea.", linewidth=qview_width)
             else:
                 plt.plot(xs, ys, color="black", linewidth=qview_width)
     step_det = 1
@@ -105,15 +106,15 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             xs = [quivers_det[i,0],quivers_det[i,0]+quivers_det[i,3]]
             ys = [quivers_det[i,1], quivers_det[i,1]+quivers_det[i,4]]
             if i == 0:
-                plt.plot(xs, ys, color="gray", label="Visual detection edges", linewidth=qview_width)
+                plt.plot(xs, ys, color="gray", label="Vis. Mea.", linewidth=qview_width)
             else:
                 plt.plot(xs, ys, color="gray", linewidth=qview_width)
     for i in nodes:
         _id = id_map[i]
 
         if use_offline:
-            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline{_id}")
-        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Online {_id}")
+            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Final {_id}")
+        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Real-time {_id}")
 
     for i in nodes:
         _id = id_map[i]
@@ -124,8 +125,9 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
             final_path = norm(poses_fused[i]["pos"][-1,:])
             
         total_len = poses_length(poses_fused[i])
-        # print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}% total_len {total_len:.1f}m")
-    
+        print(f"Final drift {i} VIO {final_vio:3.2f}m {final_vio/total_len*100:3.1f}% Fused {final_path:3.2f}m {final_path/total_len*100:3.1f}% total_len {total_len:.1f}m")
+    plt.ylabel('$Y$')
+    plt.xlabel('$X$')
     plt.legend()
     plt.grid()
     plt.savefig(output_path+"fused2d.pdf")
@@ -143,8 +145,8 @@ def plot_fused(poses, poses_fused, poses_vo, poses_path, loops, detections, node
         plt.plot(poses_vo[i]["pos"][:,0], poses_vo[i]["pos"][:,1], label=f"VIO {_id}")
         # plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], '.', label=f"Fused Offline Traj{i}")
         if i in poses_path and use_offline:
-            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Estimation offline {_id}")
-        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimation {_id}")
+            plt.plot(poses_path[i]["pos"][:,0], poses_path[i]["pos"][:,1], label=f"Final {_id}")
+        plt.plot(poses_fused[i]["pos"][:,0], poses_fused[i]["pos"][:,1], label=f"Estimate {_id}")
         plt.grid()
         plt.ylabel('$Y$')
         plt.xlabel('$X$')
