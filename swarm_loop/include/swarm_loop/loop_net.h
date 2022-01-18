@@ -33,6 +33,7 @@ public:
     LoopNet(std::string _lcm_uri, bool _send_img, bool _send_whole_img_desc, double _recv_period = 0.5):
         lcm(_lcm_uri), send_img(_send_img), send_whole_img_desc(_send_whole_img_desc), recv_period(_recv_period) {
         this->setup_network(_lcm_uri);
+        msg_recv_rate_callback = [&](const int, float) {};
     }
 
     std::map<int64_t, ImageDescriptor_t> received_images;
@@ -48,6 +49,7 @@ public:
 
     std::function<void(const FisheyeFrameDescriptor_t &)> frame_desc_callback;
     std::function<void(const LoopEdge_t &)> loopconn_callback;
+    std::function<void(const int, float)> msg_recv_rate_callback;
 
     void image_desc_callback(const ImageDescriptor_t & image);
     void setup_network(std::string _lcm_uri);
