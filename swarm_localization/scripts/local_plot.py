@@ -336,10 +336,10 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
     yawa_vo = poses_vo[main_id]["ypr_func"](ts)[:,0]
     if verbose:
         print("Relative Trajectory Statistics\nEST RMSE:\t\tPOS\t\tYAW\t|\tBIAS: POS\t\t\tYAW\t|VO\tRMSE:\tPOS\t\tYAW")
-    avg_rmse = np.array([0.0, 0.0, 0.0])
+    avg_rmse = 0
     avg_rmse_yaw = 0.0
     
-    avg_rmse_vo = np.array([0.0, 0.0, 0.0])
+    avg_rmse_vo = 0
     avg_rmse_vo_yaw = 0.0
 
     for target_id in target_ids:
@@ -379,7 +379,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             rmse_y = RMSE(dp_gt[mask,1] , dp_fused[mask,1])
             rmse_z = RMSE(dp_gt[mask,2] , dp_fused[mask,2])
 
-            avg_rmse += np.array([rmse_x, rmse_y, rmse_z])
+            avg_rmse += ATE_POS(dp_gt[mask], dp_fused[mask])
             avg_rmse_yaw += rmse_yaw
 
             if verbose:
@@ -393,7 +393,7 @@ def plot_relative_pose_err(poses, poses_fused, poses_vo, main_id, target_ids, ou
             rmse_y = RMSE(dp_gt[mask,1] , dp_vo[mask,1])
             rmse_z = RMSE(dp_gt[mask,2] , dp_vo[mask,2])
 
-            avg_rmse_vo += np.array([rmse_x, rmse_y, rmse_z])
+            avg_rmse_vo += ATE_POS(dp_gt[mask], dp_vo[mask])
             avg_rmse_vo_yaw += rmse_yaw
 
             if verbose:
