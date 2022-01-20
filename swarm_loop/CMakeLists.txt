@@ -80,6 +80,10 @@ add_executable(${PROJECT_NAME}_spy
   src/swarm_loop_spy.cpp
 )
 
+add_executable(${PROJECT_NAME}_net_tester
+  src/loop_network_tester.cpp
+)
+
 set_property(TARGET ${PROJECT_NAME}_nodelet PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_NAME}_node PROPERTY CXX_STANDARD 14)
 set_property(TARGET libswarm_loop PROPERTY CXX_STANDARD 14)
@@ -152,6 +156,16 @@ target_link_libraries(${PROJECT_NAME}_node
   dw
   libswarm_loop
 )
+
+target_link_libraries(${PROJECT_NAME}_net_tester
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${TORCH_LIBRARIES}
+  lcm
+  dw
+  libswarm_loop
+)
+
 target_link_libraries(${PROJECT_NAME}_spy
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
