@@ -208,11 +208,11 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     std::string vins_config_path;
     std::string _pca_comp_path, _pca_mean_path;
     std::string IMAGE0_TOPIC, IMAGE1_TOPIC, COMP_IMAGE0_TOPIC, COMP_IMAGE1_TOPIC, DEPTH_TOPIC;
-    int width;
-    int height;
     cv::setNumThreads(1);
     nh.param<int>("self_id", self_id, -1);
+    nh.param<bool>("is_4dof", is_4dof, true);
     nh.param<double>("min_movement_keyframe", min_movement_keyframe, 0.3);
+    nh.param<double>("nonkeyframe_waitsec", ACCEPT_NONKEYFRAME_WAITSEC, 5.0);
 
     nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
     

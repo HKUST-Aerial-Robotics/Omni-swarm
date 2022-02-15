@@ -178,7 +178,7 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
         // ROS_INFO("Receive self sent Loop message");
         return;
     }
-    ROS_INFO("Received Loop %d->%d from LCM!!!", msg->id_a, msg->id_b);    
+    ROS_INFO("Received Loop %d->%d from LCM!!!", msg->drone_id_a, msg->drone_id_b);    
     loopconn_callback(*msg);
 }
 
@@ -247,7 +247,6 @@ void LoopNet::scan_recv_packets() {
         active_receving_msg.erase(msg_id);
     }
 
-    recv_lock.unlock();
 
     for (auto _id : finish_recv) {
         auto & msg = received_images[_id];
@@ -288,6 +287,7 @@ void LoopNet::scan_recv_packets() {
         frame_desc_callback(frame_desc);
         received_frames.erase(frame_hash);
     }
+    recv_lock.unlock();
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,

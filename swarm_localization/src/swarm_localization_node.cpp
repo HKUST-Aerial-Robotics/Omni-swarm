@@ -137,7 +137,7 @@ class SwarmLocalizationNode {
 
 
     void on_loop_connection_received(const swarm_msgs::LoopEdge & loop_conn) {
-        ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
+        ROS_INFO("Add new loop connection from %d to %d", loop_conn.drone_id_a, loop_conn.drone_id_b);
         this->swarm_localization_solver->add_new_loop_connection(loop_conn);
     }
 

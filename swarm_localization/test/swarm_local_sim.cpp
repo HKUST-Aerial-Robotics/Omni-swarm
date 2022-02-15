@@ -444,10 +444,10 @@ public:
         Swarm::Pose rel_pose = rp_gt * random_pose_4dof(loop_cov_pos, loop_cov_ang);
         ret.relative_pose = rel_pose.to_ros_pose();
 
-        ret.id_a = ida;
+        ret.drone_id_a = ida;
         ret.ts_a = ta;
 
-        ret.id_b = idb;
+        ret.drone_id_b = idb;
         ret.ts_b = tb;
 
         ret.self_pose_a = ego_posea.to_ros_pose();

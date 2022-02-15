@@ -119,8 +119,6 @@
 
     </group>
 
-
-
     <node pkg="rosbag" type="record" name="rosbag_record_local" 
         args='record -O $(arg bag_path) -a -x "/stereo/(.*)|/vins_estimator/flattened_(.*)"'
         if="$(arg bag)" />

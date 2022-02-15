@@ -204,7 +204,7 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
 
     tt_sum+= tt.toc();
     t_count+= 1;
-    ROS_INFO("[SWARM_LOOP] Generate cost avg %.1fms cur %.1fms", tt_sum/t_count, tt.toc());
+    ROS_INFO("[SWARM_LOOP] KF Count %d loop_cam cost avg %.1fms cur %.1fms", kf_count, tt_sum/t_count, tt.toc());
 
     frame_desc.image_num = msg.left_images.size();
     frame_desc.msg_id = msg.keyframe_id;
@@ -215,17 +215,16 @@ FisheyeFrameDescriptor_t LoopCam::on_flattened_images(const StereoFrame & msg, s
     }
     frame_desc.drone_id = self_id;
 
-    if (show) {
-        static int count = 0;
-        count ++;
+    if (show && !_show.empty()) {
         char text[100] = {0};
         char PATH[100] = {0};
         sprintf(text, "FEATURES@Drone%d", self_id);
-        sprintf(PATH, "loop/features%d.png", count);
+        sprintf(PATH, "loop/features%d.png", kf_count);
         cv::imshow(text, _show);
         cv::imwrite(OUTPUT_PATH+PATH, _show);
         cv::waitKey(10);
     }
+    kf_count ++;
     return frame_desc;
 }
 
@@ -330,6 +329,9 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
         }
 
         _show = img_up;
+        char text[100] = {0};
+        sprintf(text, "Frame %d: %ld Features %d/%d", kf_count, msg.keyframe_id, count_3d, pts_up.size());
+        cv::putText(_show, text, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1.5);
     }
     
     return ides;
@@ -503,6 +505,10 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
                 // cv::putText(_show, title, pt + cv::Point2f(0, 5), CV_FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 0), 1);
             }
         }
+
+        char text[100] = {0};
+        sprintf(text, "Frame %ld Features %d/%d", msg.keyframe_id, count_3d, pts_up.size());
+        cv::putText(_show, text, cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1.5);
     }
 
     if (LOWER_CAM_AS_MAIN) {

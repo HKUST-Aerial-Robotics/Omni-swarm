@@ -4,6 +4,7 @@
     <arg name="manager"     default="swarm_manager"/>
     <arg name="send_img"     default="false"/>
     <arg name="send_whole_img_desc"     default="false"/>
+    <arg name="is_4dof"     default="true"/>
     <arg name="self_id"     default="1"/>
     <arg name="vins"     default="false"/>
     <arg name="superpoint_model_path"     default="$(find swarm_loop)/models/superpoint_v1_480x640_rtx3080_fp16.trt"/>
@@ -69,5 +70,6 @@
         <param name="superpoint_max_num" value="$(arg superpoint_max_num)" type="int" />
         <param name="camera_config_path" value="$(arg camera_config_path)" type="string" />
         <param name="vins_config_path" value="$(arg vins_config_path)" type="string" />
+        <param name="is_4dof" value="$(arg is_4dof)" type="bool" />
     </node>
 </launch>

@@ -29,3 +29,8 @@ double odometry_consistency_threshold;
 double pos_covariance_per_meter;
 double yaw_covariance_per_meter;
 bool DEBUG_NO_REJECT;
+int width;
+int height;
+bool is_4dof;
+
+double ACCEPT_NONKEYFRAME_WAITSEC;
