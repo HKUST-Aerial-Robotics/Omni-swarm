@@ -55,6 +55,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.camera_extrinsic = img_des.camera_extrinsic;
     img_desc_header.prevent_adding_db = img_des.prevent_adding_db;
     img_desc_header.msg_id = img_des.msg_id;
+    img_desc_header.frame_id = img_des.frame_id;
     img_desc_header.image_desc_size = img_des.image_desc_size;
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = feature_num;
@@ -140,7 +141,7 @@ void LoopNet::on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
 }
 
 void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
-    int64_t frame_hash = hash_stamp_drone_id(image.timestamp, image.drone_id);
+    int64_t frame_hash = image.msg_id;
 
     if (received_frames.find(frame_hash) == received_frames.end()) {
         FisheyeFrameDescriptor_t frame_desc;
@@ -155,7 +156,8 @@ void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
                 frame_desc.images.push_back(image);
             }
         }
-        frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + image.drone_id * 100;
+
+        frame_desc.msg_id = image.frame_id;
         frame_desc.pose_drone = image.pose_drone;
         frame_desc.landmark_num = 0;
         frame_desc.drone_id = image.drone_id;
@@ -210,6 +212,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.pose_drone = msg->pose_drone;
     tmp.camera_extrinsic = msg->camera_extrinsic;
     tmp.landmark_num = msg->feature_num;
+    tmp.frame_id = msg->frame_id;
     tmp.msg_id = msg->msg_id;
     tmp.prevent_adding_db = msg->prevent_adding_db;
     tmp.direction = msg->direction;

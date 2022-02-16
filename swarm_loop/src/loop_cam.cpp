@@ -255,6 +255,7 @@ ImageDescriptor_t LoopCam::generate_gray_depth_image_descriptor(const StereoFram
     ides.camera_extrinsic = fromROSPose(msg.left_extrisincs[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.image_size = 0;
+    ides.frame_id = msg.keyframe_id;
 
     auto image_left = msg.left_images[vcam_id];
 
@@ -364,12 +365,14 @@ ImageDescriptor_t LoopCam::generate_stereo_image_descriptor(const StereoFrame & 
     ides.camera_extrinsic = fromROSPose(msg.left_extrisincs[vcam_id]);
     ides.pose_drone = fromROSPose(msg.pose_drone);
     ides.image_size = 0;
+    ides.frame_id = msg.keyframe_id;
 
     ides_down.timestamp = toLCMTime(msg.stamp);
     ides_down.drone_id = self_id; // -1 is self drone;
     ides_down.camera_extrinsic = fromROSPose(msg.right_extrisincs[vcam_id]);
     ides_down.pose_drone = fromROSPose(msg.pose_drone);
     ides_down.image_size = 0;
+    ides_down.frame_id = msg.keyframe_id;
 
     auto image_left = msg.left_images[vcam_id];
     auto image_right = msg.left_images[vcam_id];
