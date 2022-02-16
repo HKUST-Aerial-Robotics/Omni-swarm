@@ -217,12 +217,12 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     nh.param<std::string>("lcm_uri", _lcm_uri, "udpm://224.0.0.251:7667?ttl=1");
     
     nh.param<int>("init_loop_min_feature_num", INIT_MODE_MIN_LOOP_NUM, 10);
-    nh.param<int>("init_loop_min_feature_num_l2", INIT_MODE_MIN_LOOP_NUM_LEVEL2, 10);
     nh.param<int>("match_index_dist", MATCH_INDEX_DIST, 10);
     nh.param<int>("min_loop_feature_num", MIN_LOOP_NUM, 15);
     nh.param<int>("min_match_per_dir", MIN_MATCH_PRE_DIR, 15);
     nh.param<int>("jpg_quality", JPG_QUALITY, 50);
     nh.param<int>("accept_min_3d_pts", ACCEPT_MIN_3D_PTS, 50);
+    nh.param<int>("inter_drone_init_frames", inter_drone_init_frames, 50);
     nh.param<bool>("enable_lk", ENABLE_LK_LOOP_DETECTION, true);
     nh.param<bool>("enable_pub_remote_frame", enable_pub_remote_frame, false);
     nh.param<bool>("enable_pub_local_frame", enable_pub_local_frame, false);

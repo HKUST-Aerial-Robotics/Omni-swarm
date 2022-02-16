@@ -66,6 +66,9 @@ void LoopDetector::on_image_recv(const FisheyeFrameDescriptor_t & flatten_desc, 
         bool init_mode = false;
         if (drone_id != self_id) {
             init_mode = true;
+            if (inter_drone_loop_count[drone_id][self_id] >= inter_drone_init_frames) {
+                init_mode = false;
+            }
         }
 
         //Initialize images for visualization
@@ -323,11 +326,7 @@ bool pnp_result_verify(bool pnp_success, bool init_mode, int inliers, double rpe
     }
 
     if (init_mode) {
-        bool _success = (inliers >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
-        if (!_success) {
-        _success = (inliers >= INIT_MODE_MIN_LOOP_NUM_LEVEL2) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS_LEVEL2;            
-        }
-        success = _success;
+        success = (inliers >= INIT_MODE_MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;            
     } else {
         success = (inliers >= MIN_LOOP_NUM) && fabs(DP_old_to_new.yaw()) < ACCEPT_LOOP_YAW_RAD && DP_old_to_new.pos().norm() < MAX_LOOP_DIS;
     }        
@@ -761,6 +760,10 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
                 DP_old_to_new.pos().x(), DP_old_to_new.pos().y(), DP_old_to_new.pos().z(),
                 ypr.z(), ypr.y(), ypr.x());
             cv::putText(show, title, cv::Point2f(20, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1.5);
+            sprintf(title, "%d<->%d", 
+                old_frame_desc.msg_id,
+                new_frame_desc.msg_id);
+            cv::putText(show, title, cv::Point2f(20, 70), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1.5);
             
            } else {
             sprintf(title, "FAILED LOOP %d->%d dt %3.3fs inliers %d", old_frame_desc.drone_id, new_frame_desc.drone_id, dt, inlier_num);
@@ -772,7 +775,7 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
         loop_match_count ++;
         char PATH[100] = {0};
 
-        if (!show.empty()) {
+        if (!show.empty() && success) {
             sprintf(PATH, "loop/match%d.png", loop_match_count);
             cv::imwrite(OUTPUT_PATH+PATH, show);
             
@@ -817,7 +820,14 @@ bool LoopDetector::compute_loop(const FisheyeFrameDescriptor_t & new_frame_desc,
                 DP_old_to_new.yaw()*57.3,
                 ret.pnp_inlier_num
             );
+
+            int new_d_id = new_frame_desc.drone_id;
+            int old_d_id = old_frame_desc.drone_id;
+            inter_drone_loop_count[new_d_id][old_d_id] = inter_drone_loop_count[new_d_id][old_d_id] +1;
+            inter_drone_loop_count[old_d_id][new_d_id] = inter_drone_loop_count[old_d_id][new_d_id] +1;
+            
             return true;
+
         } else {
             ROS_INFO("[SWARM_LOOP] Loop not consistency with odometry, give up.");
         }

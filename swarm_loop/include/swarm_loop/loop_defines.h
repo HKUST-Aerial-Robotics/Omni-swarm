@@ -17,7 +17,6 @@ extern int JPG_QUALITY;
 #define MAX_LOOP_DIS 5.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
 extern int INIT_MODE_MIN_LOOP_NUM; //Init mode we accepte this inlier number
-extern int INIT_MODE_MIN_LOOP_NUM_LEVEL2; //Init mode we accepte this inlier number
 extern int MIN_LOOP_NUM;
 
 #define MAX_LOOP_DIS_LEVEL2 3.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
@@ -104,6 +103,8 @@ extern bool DEBUG_NO_REJECT;
 
 extern int width;
 extern int height;
+
+extern int inter_drone_init_frames;
 
 extern bool is_4dof;
     
