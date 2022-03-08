@@ -13,6 +13,7 @@ void LoopNet::setup_network(std::string _lcm_uri) {
     lcm.subscribe("VIOKF_LANDMARKS", &LoopNet::on_landmark_recevied, this);
 
     srand((unsigned)time(NULL)); 
+    msg_recv_rate_callback = [&](int drone_id, float rate) {};
 }
 
 
@@ -88,8 +89,6 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             // }
 
             lcm.publish("VIOKF_LANDMARKS", &lm);
-            feature_num ++;
-
         }
     }
 
@@ -233,15 +232,18 @@ void LoopNet::scan_recv_packets() {
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
             sum_feature_num_all+=received_images[msg_id].landmark_num;
             sum_feature_num+=received_images[msg_id].landmarks_2d.size();
-            ROS_INFO("[SWAMR_LOOP] Frame %d id %ld from drone %d, Feature %ld/%d recv_rate %.1f feature_desc_size %ld(%ld)", 
+            float cur_recv_rate = ((float)received_images[msg_id].landmarks_2d.size())/((float) received_images[msg_id].landmark_num);
+            ROS_INFO("[SWAMR_LOOP] Frame %d id %ld from drone %d, Feature %ld/%d recv_rate %.1f cur %.1f feature_desc_size %ld(%ld)", 
                 sum_packets,
                 msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num,
                 sum_feature_num/sum_feature_num_all*100,
+                cur_recv_rate*100,
                 received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size);
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.push_back(msg_id);
 
             sum_packets += 1;
+            msg_recv_rate_callback(received_images[msg_id].drone_id, cur_recv_rate);
         }
     }
 
@@ -301,7 +303,6 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     }
     recv_lock.lock();
     update_recv_img_desc_ts(msg->header_id, false);
-    // ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
     if (received_images.find(msg->header_id) == received_images.end()) {
         ImageDescriptor_t tmp;
         received_images[msg->header_id] = tmp; 
