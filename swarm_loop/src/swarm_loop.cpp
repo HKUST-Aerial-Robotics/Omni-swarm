@@ -122,16 +122,16 @@ void SwarmLoop::odometry_keyframe_callback(const nav_msgs::Odometry & odometry) 
 }
 
 void SwarmLoop::VIOnonKF_callback(const StereoFrame & stereoframe) {
-    //If never received image or 15 sec not receiving kf, use this as KF, this is ensure we don't missing data
-    //Note that for the second case, we will not add it to database, matching only
-        
-    if (!recived_image && (stereoframe.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
+    if (!received_image && (stereoframe.stamp - last_kftime).toSec() > INIT_ACCEPT_NONKEYFRAME_WAITSEC) {
         //
         ROS_INFO("[SWARM_LOOP] (VIOnonKF_callback) USE non vio kf as KF at first keyframe!");
         VIOKF_callback(stereoframe);
         return;
     }
-
+    
+    //If never received image or 15 sec not receiving kf, use this as KF, this is ensure we don't missing data
+    //Note that for the second case, we will not add it to database, matching only
+    
     if ((stereoframe.stamp - last_kftime).toSec() > ACCEPT_NONKEYFRAME_WAITSEC) {
         VIOKF_callback(stereoframe, true);
     }
@@ -161,7 +161,7 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
         return;
     }
 
-    recived_image = true;
+    received_image = true;
     last_keyframe_position = drone_pos;
 
     loop_net->broadcast_fisheye_desc(ret);
@@ -170,7 +170,9 @@ void SwarmLoop::VIOKF_callback(const StereoFrame & stereoframe, bool nonkeyframe
 }
 
 void SwarmLoop::pub_node_frame(const FisheyeFrameDescriptor_t & viokf) {
+    ROS_INFO("[SWARM_LOOP](pub_node_frame) drone %d pub nodeframe", viokf.drone_id);
     swarm_msgs::node_frame nf;
+    nf.header.stamp = toROSTime(viokf.timestamp);
     nf.position.x = viokf.pose_drone.position[0];
     nf.position.y = viokf.pose_drone.position[1];
     nf.position.z = viokf.pose_drone.position[2];
@@ -179,7 +181,7 @@ void SwarmLoop::pub_node_frame(const FisheyeFrameDescriptor_t & viokf) {
     nf.quat.z = viokf.pose_drone.orientation[2];
     nf.quat.w = viokf.pose_drone.orientation[3];
     nf.vo_available = true;
-    nf.id = viokf.drone_id;
+    nf.drone_id = viokf.drone_id;
     nf.keyframe_id = viokf.msg_id;
     keyframe_pub.publish(nf);
 }
@@ -187,7 +189,7 @@ void SwarmLoop::pub_node_frame(const FisheyeFrameDescriptor_t & viokf) {
 
 void SwarmLoop::on_remote_frame_ros(const swarm_msgs::FisheyeFrameDescriptor & remote_img_desc) {
     // ROS_INFO("Remote");
-    if (recived_image) {
+    if (received_image) {
         this->on_remote_image(toLCMFisheyeDescriptor(remote_img_desc));
     }
 }
@@ -318,7 +320,7 @@ void SwarmLoop::Init(ros::NodeHandle & nh) {
     };
 
     loop_net->frame_desc_callback = [&] (const FisheyeFrameDescriptor_t & frame_desc) {
-        if (recived_image) {
+        if (received_image) {
             if (enable_pub_remote_frame) {
                 remote_image_desc_pub.publish(toROSFisheyeDescriptor(frame_desc));
             }

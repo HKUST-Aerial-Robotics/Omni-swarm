@@ -270,7 +270,7 @@ void SwarmLocalizationSolver::init_pose_by_loop(EstimatePoses &swarm_est_poses, 
 
 
 void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &_nf) {
-    int _id = _nf.id;
+    int _id = _nf.drone_id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
     auto _p = new double[4];
@@ -296,9 +296,9 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &
                 Pose predict_now = Predict_By_VO(now_vo, last_vo, est_last, true);
                 predict_now.to_vector_xyzyaw(_p);
             }
-            // ROS_INFO("Init ID %d at %d with predict value", _nf.id, TSShort(ts));
+            // ROS_INFO("Init ID %d at %d with predict value", _nf.drone_id, TSShort(ts));
         } else {
-            ROS_INFO("[SWARM_LOCAL] Init ID %d at %d with random value", _nf.id, TSShort(ts));
+            ROS_INFO("[SWARM_LOCAL] Init ID %d at %d with random value", _nf.drone_id, TSShort(ts));
             est_last.set_pos(_nf.pose().pos() + rand_FloatRange_vec(-RAND_INIT_XY, RAND_INIT_XY));
             est_last.set_att(_nf.pose().att());
             est_last.to_vector_xyzyaw(_p);
@@ -319,7 +319,7 @@ void SwarmLocalizationSolver::init_dynamic_nf_in_keyframe(TsType ts, NodeFrame &
 
 
 void SwarmLocalizationSolver::init_static_nf_in_keyframe(TsType ts, const NodeFrame &_nf) {
-    int _id = _nf.id;
+    int _id = _nf.drone_id;
     EstimatePoses & est_poses = est_poses_tsid;
     EstimatePosesIDTS & est_poses2 = est_poses_idts;
     double * _p = nullptr;
@@ -672,7 +672,7 @@ void SwarmLocalizationSolver::add_new_swarm_frame(const SwarmFrame &sf) {
 
 bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Eigen::Matrix4d & cov) const {
     std::pair<Pose, Eigen::Matrix4d> ret; 
-    int _id = nf.id;
+    int _id = nf.drone_id;
     if (last_saved_est_kf_ts.size() > 0 && finish_init && 
             enable_to_init_by_drone.find(_id) != enable_to_init_by_drone.end() &&
             enable_to_init_by_drone.at(_id)) {
@@ -681,7 +681,7 @@ bool SwarmLocalizationSolver::PredictNode(const NodeFrame & nf, Pose & _pose, Ei
             if(est_poses_tsid_saved.at(_ts).find(_id)!=est_poses_tsid_saved.at(_ts).end() ) {
 
                 //Use last solve relative res, e.g init with last
-                int _id = nf.id;
+                int _id = nf.drone_id;
                 Pose est_last_4d = Pose(est_poses_tsid_saved.at(_ts).at(_id), true);
                 Pose last_vo_4d = all_sf.at(_ts).id2nodeframe.at(_id).pose();
                 last_vo_4d.set_yaw_only();
@@ -753,7 +753,7 @@ SwarmFrameState SwarmLocalizationSolver::PredictSwarm(const SwarmFrame &sf) cons
         }
         //Give node velocity predict here
         sfs.node_vels[_id] = Eigen::Vector3d(0, 0, 0);
-        ret = this->NodeCooridnateOffset(nf.id, pose1, cov1);
+        ret = this->NodeCooridnateOffset(nf.drone_id, pose1, cov1);
         if (ret) {
             sfs.base_coor_poses[_id] = pose1;
             sfs.base_coor_covs[_id] = cov1;
@@ -971,8 +971,8 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
             int _id = it.first;
             const NodeFrame _nf = it.second;
 
-            if (keyframe_trajs.find(_nf.id) == keyframe_trajs.end()) {
-                keyframe_trajs.emplace(_id, DroneTrajectory(_nf.id, false, params.vo_cov_pos_per_meter, params.vo_cov_yaw_per_meter));
+            if (keyframe_trajs.find(_nf.drone_id) == keyframe_trajs.end()) {
+                keyframe_trajs.emplace(_id, DroneTrajectory(_nf.drone_id, false, params.vo_cov_pos_per_meter, params.vo_cov_yaw_per_meter));
             }
 
             if (est_poses_tsid_saved.find(sf.ts) == est_poses_tsid_saved.end()) {
@@ -1004,7 +1004,7 @@ void  SwarmLocalizationSolver::sync_est_poses(const EstimatePoses &_est_poses_ts
                 Pose pose_ego = ego_motion_trajs.at(_id).pose_by_appro_ts(sf.ts);
                 Quaterniond att_no_yaw_ego =  AngleAxisd(-pose_ego.yaw(), Vector3d::UnitZ()) * pose_ego.att();
                 p.att() = p.att() * att_no_yaw_ego;
-                keyframe_trajs[_nf.id].push(_nf, p);
+                keyframe_trajs[_nf.drone_id].push(_nf, p);
                 if (is_init_solve) {
                     last_saved_est_kf_ts.push_back(sf.ts);
                 }
@@ -1122,7 +1122,7 @@ void SwarmLocalizationSolver::setup_problem_with_sferror(const EstimatePoses & s
         double * posea = est_poses_idts.at(_ida).at(ts);
 
         if (enable_distance && _nf.frame_available && _nf.dists_available) {
-            // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.id, _nf.dis_map.size(), _nf.enabled_distance.size());
+            // ROS_WARN("TS %d ID %d ENABLED %ld DISMAP %ld\n", TSShort(_nf.ts), _nf.drone_id, _nf.dis_map.size(), _nf.enabled_distance.size());
             for (auto it : _nf.dis_map) {
                 auto _idb = it.first;
                 auto distance_measurement = it.second;
@@ -1502,8 +1502,8 @@ int SwarmLocalizationSolver::loop_from_src_loop_connection(const Swarm::LoopEdge
     const NodeFrame & _nf_a = sf_sld_win.at(_index_a).id2nodeframe.at(_ida);
     const NodeFrame & _nf_b = sf_sld_win.at(_index_b).id2nodeframe.at(_idb);
 
-    Matrix6d cov_odom = ego_motion_trajs.at(_nf_a.id).covariance_between_appro_ts(_nf_a.ts, loc_ret.ts_a);
-    cov_odom += ego_motion_trajs.at(_nf_b.id).covariance_between_appro_ts(_nf_b.ts, loc_ret.ts_b);
+    Matrix6d cov_odom = ego_motion_trajs.at(_nf_a.drone_id).covariance_between_appro_ts(_nf_a.ts, loc_ret.ts_a);
+    cov_odom += ego_motion_trajs.at(_nf_b.drone_id).covariance_between_appro_ts(_nf_b.ts, loc_ret.ts_b);
     double dt = 0;
 
     if (_loc.measurement_type == GeneralMeasurement2Drones::Detection4d || _loc.measurement_type == GeneralMeasurement2Drones::Detection6d) {
@@ -1902,7 +1902,7 @@ void SwarmLocalizationSolver::generate_cgraph() {
                 int _idj = it.first;
                 if(sf.node_id_list.find(_idj) != sf.node_id_list.end() &&
                     nf.distance_available(_idj)) {
-                    auto _ida = nf.id;
+                    auto _ida = nf.drone_id;
                     if (AGNodes.find(ts) != AGNodes.end() &&
                         AGNodes[ts].find(_ida) != AGNodes[ts].end() &&
                         AGNodes[ts].find(_idj) != AGNodes[ts].end()){

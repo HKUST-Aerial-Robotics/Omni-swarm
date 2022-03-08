@@ -556,7 +556,7 @@ public:
             Swarm::Pose ego_pose = ego_motion_trajs[i].get_latest_pose();
             swarm_msgs::node_frame nf;
             nf.header.stamp = stamp;
-            nf.id = i;
+            nf.drone_id = i;
             nf.keyframe_id = kf_id*100 + i;
             nf.position.x = ego_pose.pos().x();
             nf.position.y = ego_pose.pos().y();

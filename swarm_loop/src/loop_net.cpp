@@ -195,7 +195,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
     recv_lock.lock();
 
-    ROS_INFO("Image descriptor header from drone (%d): msg_id: %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
+    ROS_INFO("ImageDescriptorHeader from drone (%d): msg_id: %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
     update_recv_img_desc_ts(msg->msg_id, true);
 
     if (received_images.find(msg->msg_id) == received_images.end()) {

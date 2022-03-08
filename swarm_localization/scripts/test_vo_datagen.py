@@ -243,7 +243,7 @@ class SimulateDronesEnv(object):
             _nf.vo_available = True
         else:
             _nf.vo_available = False
-        _nf.id = i
+        _nf.drone_id = i
 
 
         qx, qy, qz, qw = quaternion_from_euler(roll, pitch, self.global_yaw(i))

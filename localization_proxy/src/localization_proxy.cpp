@@ -247,7 +247,7 @@ class LocalProxy {
     //Eul is roll pitch yaw
     void add_odom_dis_to_sf(swarm_frame & sf, int _id, geometry_msgs::Point pos, Eigen::Vector3d eul, geometry_msgs::Point vel, ros::Time _time, std::map<int, float> & _dis) {
         for (node_frame & nf : sf.node_frames) {
-            if (nf.id == _id && !nf.vo_available) {
+            if (nf.drone_id == _id && !nf.vo_available) {
                 //Easy to deal with this, add only first time
                 nf.position = pos;
                 nf.velocity = vel;
@@ -569,7 +569,7 @@ class LocalProxy {
             swarm_frame & _sf = sf_queue[ptr];
             for (unsigned int k = 0; k < _sf.node_frames.size(); k++) {
                 node_frame & _nf = _sf.node_frames[k];
-                if (_nf.id == _id) {
+                if (_nf.drone_id == _id) {
                     if (_nf.vo_available){
                         return &_nf;
                     } else {
@@ -589,7 +589,7 @@ class LocalProxy {
         nf.position.x += _nf.velocity.x * dt;
         nf.position.y += _nf.velocity.y * dt;
         nf.position.z += _nf.velocity.z * dt;
-        ROS_INFO_THROTTLE_NAMED(1.0, "[LOCAL_PROXY] PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms DX %3.2f %3.2f %3.2f mm with vel %3.2f %3.2f %3.2f mm/s", _nf.id, dt*1000,
+        ROS_INFO_THROTTLE_NAMED(1.0, "[LOCAL_PROXY] PROXY_FOR_PREIDCT", "Predict NF %d DT %3.2fms DX %3.2f %3.2f %3.2f mm with vel %3.2f %3.2f %3.2f mm/s", _nf.drone_id, dt*1000,
             _nf.velocity.x * dt*1000, _nf.velocity.y * dt*1000, _nf.velocity.z * dt*1000,
             _nf.velocity.x*1000,_nf.velocity.y*1000, _nf.velocity.z*1000
             );
@@ -641,7 +641,7 @@ class LocalProxy {
 
         if (_force_id < 0) {
             node_frame self_nf;
-            self_nf.id = self_id;
+            self_nf.drone_id = self_id;
             self_nf.header.stamp = self_odom.header.stamp;
             self_nf.vo_available = odometry_available;
             Eigen::Quaterniond q;
@@ -695,7 +695,7 @@ class LocalProxy {
 
         if (_force_id < 0) {
             node_frame self_nf;
-            self_nf.id = self_id;
+            self_nf.drone_id = self_id;
             self_nf.header.stamp = self_odom.header.stamp;
             self_nf.vo_available = odometry_available;
             Eigen::Quaterniond q;
@@ -728,7 +728,7 @@ class LocalProxy {
             int _idx = info.node_ids[i];
             if (info.active[i] && _idx!=self_id) {
                 node_frame nf;
-                nf.id = _idx;
+                nf.drone_id = _idx;
                 all_nodes.insert(_idx);
 
                 nf.header.stamp = sf.header.stamp;
