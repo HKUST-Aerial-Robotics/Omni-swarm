@@ -17,7 +17,6 @@ extern int JPG_QUALITY;
 #define MAX_LOOP_DIS 5.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
 
 extern int INIT_MODE_MIN_LOOP_NUM; //Init mode we accepte this inlier number
-extern int INIT_MODE_MIN_LOOP_NUM_LEVEL2; //Init mode we accepte this inlier number
 extern int MIN_LOOP_NUM;
 
 #define MAX_LOOP_DIS_LEVEL2 3.0 //ACCEPT MAX DISTANCE, 2.0 for indoor flying
@@ -31,9 +30,10 @@ extern int MIN_LOOP_NUM;
 #define DEEP_DESC_SIZE 1024
 
 #define SEARCH_NEAREST_NUM 5
-#define ACCEPT_NONKEYFRAME_WAITSEC 5.0
+// #define ACCEPT_NONKEYFRAME_WAITSEC 5.0
 #define INIT_ACCEPT_NONKEYFRAME_WAITSEC 1.0
 
+extern double ACCEPT_NONKEYFRAME_WAITSEC;
 extern double INNER_PRODUCT_THRES;
 extern double INIT_MODE_PRODUCT_THRES;//INIT mode we can accept this inner product as similar
 extern int MATCH_INDEX_DIST;
@@ -101,6 +101,13 @@ extern double yaw_covariance_per_meter;
 extern std::string OUTPUT_PATH;
 extern bool DEBUG_NO_REJECT;
 
+extern int width;
+extern int height;
+
+extern int inter_drone_init_frames;
+
+extern bool is_4dof;
+    
 enum CameraConfig{
     STEREO_PINHOLE = 0,
     STEREO_FISHEYE = 1,

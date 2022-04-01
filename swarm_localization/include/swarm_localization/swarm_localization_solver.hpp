@@ -57,6 +57,7 @@ class SwarmLocalizationSolver {
     std::vector<SwarmFrame> sf_sld_win;
     std::map<TsType, SwarmFrame> all_sf;
     TsType last_kf_ts = 0;
+    ros::Time last_loop_ts;
     std::vector<TsType> last_saved_est_kf_ts;
     unsigned int drone_num = 0;
 

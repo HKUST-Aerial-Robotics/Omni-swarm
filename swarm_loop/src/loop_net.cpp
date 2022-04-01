@@ -13,6 +13,7 @@ void LoopNet::setup_network(std::string _lcm_uri) {
     lcm.subscribe("VIOKF_LANDMARKS", &LoopNet::on_landmark_recevied, this);
 
     srand((unsigned)time(NULL)); 
+    msg_recv_rate_callback = [&](int drone_id, float rate) {};
 }
 
 
@@ -28,6 +29,9 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     int64_t msg_id = rand() + img_des.timestamp.nsec;
     img_des.msg_id = msg_id;
     sent_message.insert(img_des.msg_id);
+    static double sum_byte_sent = 0;
+    static double sum_features = 0;
+    static int count_byte_sent = 0;
 
     int byte_sent = 0;
     if (IS_PC_REPLAY) {
@@ -52,6 +56,7 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     img_desc_header.camera_extrinsic = img_des.camera_extrinsic;
     img_desc_header.prevent_adding_db = img_des.prevent_adding_db;
     img_desc_header.msg_id = img_des.msg_id;
+    img_desc_header.frame_id = img_des.frame_id;
     img_desc_header.image_desc_size = img_des.image_desc_size;
     img_desc_header.image_desc = img_des.image_desc;
     img_desc_header.feature_num = feature_num;
@@ -60,7 +65,6 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
     byte_sent += img_desc_header.getEncodedSize();
     lcm.publish("VIOKF_HEADER", &img_desc_header);
     // printf("header %d", img_desc_header.getEncodedSize());
-
     for (size_t i = 0; i < img_des.landmark_num; i++ ) {
         if (img_des.landmarks_flag[i] > 0 || SEND_ALL_FEATURES) {
             LandmarkDescriptor_t lm;
@@ -87,6 +91,13 @@ void LoopNet::broadcast_img_desc(ImageDescriptor_t & img_des) {
             lcm.publish("VIOKF_LANDMARKS", &lm);
         }
     }
+
+    sum_byte_sent+= byte_sent;
+    sum_features+=feature_num;
+    count_byte_sent ++;
+
+    ROS_INFO("[SWARM_LOOP](%d) BD KF %d LM: %d size %d avgsize %.0f sumkB %.0f avgLM %.0f", count_byte_sent,
+            img_desc_header.msg_id, feature_num, byte_sent, ceil(sum_byte_sent/count_byte_sent), sum_byte_sent/1000, ceil(sum_features/count_byte_sent));
 
 
     if (send_img || send_whole_img_desc) {
@@ -129,7 +140,7 @@ void LoopNet::on_img_desc_recevied(const lcm::ReceiveBuffer* rbuf,
 }
 
 void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
-    int64_t frame_hash = hash_stamp_drone_id(image.timestamp, image.drone_id);
+    int64_t frame_hash = image.msg_id;
 
     if (received_frames.find(frame_hash) == received_frames.end()) {
         FisheyeFrameDescriptor_t frame_desc;
@@ -144,7 +155,8 @@ void LoopNet::image_desc_callback(const ImageDescriptor_t & image){
                 frame_desc.images.push_back(image);
             }
         }
-        frame_desc.msg_id = frame_desc.timestamp.nsec%100000 * 10000 + rand()%10000 + image.drone_id * 100;
+
+        frame_desc.msg_id = image.frame_id;
         frame_desc.pose_drone = image.pose_drone;
         frame_desc.landmark_num = 0;
         frame_desc.drone_id = image.drone_id;
@@ -167,7 +179,7 @@ void LoopNet::on_loop_connection_recevied(const lcm::ReceiveBuffer* rbuf,
         // ROS_INFO("Receive self sent Loop message");
         return;
     }
-    ROS_INFO("Received Loop %d->%d from LCM!!!", msg->id_a, msg->id_b);    
+    ROS_INFO("Received Loop %d->%d from LCM!!!", msg->drone_id_a, msg->drone_id_b);    
     loopconn_callback(*msg);
 }
 
@@ -182,7 +194,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
 
     recv_lock.lock();
 
-    ROS_INFO("Image descriptor header from drone (%d): msg_id: %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
+    ROS_INFO("ImageDescriptorHeader from drone (%d): msg_id: %ld feature num %d", msg->drone_id, msg->msg_id, msg->feature_num);
     update_recv_img_desc_ts(msg->msg_id, true);
 
     if (received_images.find(msg->msg_id) == received_images.end()) {
@@ -199,6 +211,7 @@ void LoopNet::on_img_desc_header_recevied(const lcm::ReceiveBuffer* rbuf,
     tmp.pose_drone = msg->pose_drone;
     tmp.camera_extrinsic = msg->camera_extrinsic;
     tmp.landmark_num = msg->feature_num;
+    tmp.frame_id = msg->frame_id;
     tmp.msg_id = msg->msg_id;
     tmp.prevent_adding_db = msg->prevent_adding_db;
     tmp.direction = msg->direction;
@@ -211,15 +224,26 @@ void LoopNet::scan_recv_packets() {
     double tnow = ros::Time::now().toSec();
     std::vector<int64_t> finish_recv;
     recv_lock.lock();
+    static double sum_feature_num = 0;
+    static double sum_feature_num_all = 0;
+    static int sum_packets = 0;
     for (auto msg_id : active_receving_msg) {
         if (tnow - msg_header_recv_time[msg_id] > recv_period ||
             received_images[msg_id].landmark_num == received_images[msg_id].landmarks_2d.size()) {
-            ROS_INFO("Finish recv msg %ld from drone %d, Feature %ld/%d feature_desc_size %ld(%ld)", 
+            sum_feature_num_all+=received_images[msg_id].landmark_num;
+            sum_feature_num+=received_images[msg_id].landmarks_2d.size();
+            float cur_recv_rate = ((float)received_images[msg_id].landmarks_2d.size())/((float) received_images[msg_id].landmark_num);
+            ROS_INFO("[SWAMR_LOOP] Frame %d id %ld from drone %d, Feature %ld/%d recv_rate %.1f cur %.1f feature_desc_size %ld(%ld)", 
+                sum_packets,
                 msg_id, received_images[msg_id].drone_id, received_images[msg_id].landmarks_2d.size(), received_images[msg_id].landmark_num,
-                received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size
-            );
+                sum_feature_num/sum_feature_num_all*100,
+                cur_recv_rate*100,
+                received_images[msg_id].feature_descriptor.size(), received_images[msg_id].feature_descriptor_size);
             received_images[msg_id].landmark_num = received_images[msg_id].landmarks_2d.size();
             finish_recv.push_back(msg_id);
+
+            sum_packets += 1;
+            msg_recv_rate_callback(received_images[msg_id].drone_id, cur_recv_rate);
         }
     }
 
@@ -228,7 +252,6 @@ void LoopNet::scan_recv_packets() {
         active_receving_msg.erase(msg_id);
     }
 
-    recv_lock.unlock();
 
     for (auto _id : finish_recv) {
         auto & msg = received_images[_id];
@@ -264,11 +287,12 @@ void LoopNet::scan_recv_packets() {
             frame_desc.landmark_num += frame_desc.images[i].landmark_num;
         }
 
-        ROS_INFO("Fisheyframe contains of %d images from drone %d, landmark %d", frame_desc.images.size(), frame_desc.drone_id, frame_desc.landmark_num );
+        ROS_INFO("[SWAMR_LOOP] FFrame contains of %d images from drone %d, landmark %d", frame_desc.images.size(), frame_desc.drone_id, frame_desc.landmark_num );
 
         frame_desc_callback(frame_desc);
         received_frames.erase(frame_hash);
     }
+    recv_lock.unlock();
 }
 
 void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
@@ -279,7 +303,6 @@ void LoopNet::on_landmark_recevied(const lcm::ReceiveBuffer* rbuf,
     }
     recv_lock.lock();
     update_recv_img_desc_ts(msg->header_id, false);
-    // ROS_INFO("Landmark %d from drone (%d) : %ld", msg->landmark_id, msg->drone_id, msg->header_id);
     if (received_images.find(msg->header_id) == received_images.end()) {
         ImageDescriptor_t tmp;
         received_images[msg->header_id] = tmp; 

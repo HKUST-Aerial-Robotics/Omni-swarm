@@ -23,6 +23,8 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(yaml-cpp REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(lcm REQUIRED)
+
 # list(APPEND CMAKE_MODULE_PATH $ENV{HOME}/source/backward-cpp)
 
 # find_package(Backward)
@@ -68,6 +70,7 @@ target_link_libraries(${PROJECT_NAME}_node
         ${YAML_CPP_LIBRARIES}
         cgraph
         dw
+        lcm
 )
 
 target_link_libraries(${PROJECT_NAME}_simulator

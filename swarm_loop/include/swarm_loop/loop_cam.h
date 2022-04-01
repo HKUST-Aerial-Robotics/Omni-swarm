@@ -80,6 +80,7 @@ class LoopCam {
     int cam_count = 0;
     int loop_duration = 10;
     int self_id = 0;
+    int kf_count = 0;
     ros::ServiceClient hfnet_client;
     ros::ServiceClient superpoint_client;
     CameraConfig camera_configuration;

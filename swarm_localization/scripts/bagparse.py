@@ -7,7 +7,7 @@ import copy
 from utils import *
 import time
 
-def read_pose_swarm_fused(bag, topic, t0):
+def read_pose_swarm_fused(bag, topic, t0, te):
     pos = {}
     ypr = {}
     ts = {}
@@ -15,7 +15,7 @@ def read_pose_swarm_fused(bag, topic, t0):
     ret_poses = {}
     # print(f"Read poses from topic {topic}")
     for topic, msg, t in bag.read_messages(topics=[topic]):
-        if t.to_sec() > t0:
+        if te > t.to_sec() > t0:
             for i in range(len(msg.ids)):
                 _id = msg.ids[i]
                 if _id not in pos:
@@ -49,7 +49,7 @@ def read_pose_swarm_fused(bag, topic, t0):
         ret_poses[_id] = ret
     return ret_poses
 
-def read_pose_swarm_frame(bag, topic, t0):
+def read_pose_swarm_frame(bag, topic, t0, te):
     pos = {}
     ypr = {}
     ts = {}
@@ -57,7 +57,7 @@ def read_pose_swarm_frame(bag, topic, t0):
     ret_poses = {}
     for topic, msg, t in bag.read_messages(topics=[topic]):
         if t.to_sec() > t0:
-            if msg.header.stamp.to_sec() < t0:
+            if te < msg.header.stamp.to_sec() or   msg.header.stamp.to_sec() > te:
                     continue
             for node in msg.node_frames:
                 _id = node.id
@@ -116,7 +116,7 @@ def read_distances_swarm_frame(bag, topic, t0):
                     distances[_ida][_id]["dis"].append(_dis)
     return distances
 
-def read_pose(bag, topic, t0, P_vicon_in_imu=None):
+def read_pose(bag, topic, t0, te, P_vicon_in_imu=None):
     pos = []
     ypr = []
     ts = []
@@ -126,7 +126,7 @@ def read_pose(bag, topic, t0, P_vicon_in_imu=None):
         if t0 == 0:
             t0 = msg.header.stamp.to_sec()
         else:
-            if msg.header.stamp.to_sec() < t0:
+            if msg.header.stamp.to_sec() < t0 or msg.header.stamp.to_sec()>te:
                 continue
         p = msg.pose.position
         q = msg.pose.orientation
@@ -157,20 +157,21 @@ def read_pose(bag, topic, t0, P_vicon_in_imu=None):
     return ret, t0
 
 
-def parse_path(path, t0):
+def parse_path(path, t0, te):
     pos = []
     ypr = []
     ts = []
     quat = []
     
     for msg in path.poses:
-        p = msg.pose.position
-        q = msg.pose.orientation
-        pos.append([p.x, p.y, p.z])
-        y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
-        ypr.append([y, p, r])
-        ts.append(msg.header.stamp.to_sec() - t0)
-        quat.append([q.w, q.x, q.y, q.z])  
+        if te > msg.header.stamp.to_sec() > t0:
+            p = msg.pose.position
+            q = msg.pose.orientation
+            pos.append([p.x, p.y, p.z])
+            y, p, r = quat2eulers(q.w, q.x, q.y, q.z)
+            ypr.append([y, p, r])
+            ts.append(msg.header.stamp.to_sec() - t0)
+            quat.append([q.w, q.x, q.y, q.z])  
     ret = {
         "t": np.array(ts),
         "pos": np.array(pos),
@@ -180,12 +181,12 @@ def parse_path(path, t0):
 
     return ret
 
-def read_path(bag, topic, t0):
+def read_path(bag, topic, t0, te):
     path = None
     for topic, msg, t in bag.read_messages(topics=[topic]):
         path = msg
     if path is not None:
-        return parse_path(path, t0)
+        return parse_path(path, t0, te)
     return None
 
 def poses_length(poses):
@@ -306,7 +307,7 @@ def bag2dataset(bagname, nodes = [1, 2], alg="fused", is_pc=False, main_id=1, tr
         poses_vo[i] = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame_predict", i, t0)
         output_pose_to_csv(f"data/{plat}/vio/{plat}_vio_drone{i}/stamped_traj_estimate{trial}.txt", poses_vo[i], 10)
 
-def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, dt = 0, P_vicon_in_imu={}, verbose=False):
+def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True, t_s = 0, t_e=10000, P_vicon_in_imu={}, verbose=False):
     bag = rosbag.Bag(bagname)
     poses_gt = {}
     poses_fused = {}
@@ -318,36 +319,40 @@ def bag_read(bagname, nodes = [1, 2], is_pc=False, main_id=1, groundtruth = True
             continue
 
         if len(msg.node_frames) >= len(nodes):
-            t0 = msg.header.stamp.to_sec() + dt
+            t0 = msg.header.stamp.to_sec() + t_s
+            te = msg.header.stamp.to_sec() + t_s + t_e 
             # print("t0 is", t0, msg)
             break
 
-    poses_vo = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", t0)
+    poses_vo = read_pose_swarm_frame(bag, "/swarm_drones/swarm_frame", t0, te)
     # print("Finish parse vo")
 
     if is_pc:
-        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", t0)
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused_pc", t0, te)
     else:
-        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", t0)
+        poses_fused = read_pose_swarm_fused(bag, "/swarm_drones/swarm_drone_fused", t0, te)
     # print("Finish parse fused")
     sum_len = 0
     for i in poses_fused:
         if groundtruth:
             if i in P_vicon_in_imu:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, P_vicon_in_imu[i])
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, te, P_vicon_in_imu[i])
             else:
-                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0)
+                poses_gt[i], t0 = read_pose(bag, f"/SwarmNode{i}/pose", t0, te)
             sum_len += poses_length(poses_gt[i])
 
         if is_pc:
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path_pc", t0, te)
         else:    
-            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0)
+            poses_path[i] = read_path(bag, f"/swarm_drones/est_drone_{i}_path", t0, te)
 
         if i not in poses_path or poses_path[i] is None:
             poses_path[i] = copy.copy(poses_fused[i])
 
-    print(f"Init. at {poses_fused[main_id]['t'][0]}. Avg. len. {sum_len/len(poses_gt):.1f}m")
+    if groundtruth:
+        print(f"Init. at {poses_fused[main_id]['t'][0]}. Avg. len. {sum_len/len(poses_gt):.1f}m")
+    else:
+        print(f"Init. at {poses_fused[main_id]['t'][0]}m")
 
     if groundtruth:
         offset_gt = - poses_gt[main_id]["pos"][0]

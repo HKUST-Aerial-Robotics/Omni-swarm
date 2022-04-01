@@ -4,24 +4,98 @@
 #include "third_party/fast_max-clique_finder/src/graphIO.h"
 #include "third_party/fast_max-clique_finder/src/findClique.h"
 #include "swarm_localization/swarm_localization_factors.hpp"
+#include "swarm_msgs/swarm_lcm_converter.hpp"
 
 #define PCM_DEBUG_OUTPUT
 
 std::fstream pcm_errors;
 FILE * f_logs;
 
-SwarmLocalOutlierRejection::SwarmLocalOutlierRejection(const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs):
-        param(_param), ego_motion_trajs(_ego_motion_trajs) {
+SwarmLocalOutlierRejection::SwarmLocalOutlierRejection(int _self_id, const SwarmLocalOutlierRejectionParams &_param, std::map<int, Swarm::DroneTrajectory> &_ego_motion_trajs):
+        self_id(_self_id), param(_param), ego_motion_trajs(_ego_motion_trajs), lcm(_param.lcm_uri) {
     if (param.debug_write_pcm_errors) {
         f_logs = fopen("/root/output/pcm_logs.txt", "w");
         pcm_errors.open("/root/output/pcm_errors.txt", std::ios::out);
         pcm_errors.close();
         fclose(f_logs);
     }
+
+    if (!lcm.good()) {
+        ROS_ERROR("[SWARM_LOCAL](OutlierRejection) LCM %s failed", _param.lcm_uri.c_str());
+        exit(-1);
+    }
+
+    lcm.subscribe("LOOP_INLIERS", &SwarmLocalOutlierRejection::good_ids_handle, this);
+
+    rej_lcm_thread = std::thread([&] {
+        while(0 == lcm.handle()) {
+        }
+    });
+
+}
+
+void SwarmLocalOutlierRejection::good_ids_handle(const lcm::ReceiveBuffer* rbuf,
+                const std::string& chan, 
+                const LoopInliers_t* msg) {
+    if (msg->drone_id_a == self_id || msg->drone_id_b == self_id) {
+        ROS_INFO("[SWARM_LOCAL](OutlierRejection) Recv good ids for %d<->%d from %d, rejected.", msg->drone_id_a, msg->drone_id_b, msg->sender_id);
+        return;
+    }
+
+    ROS_INFO("[SWARM_LOCAL](OutlierRejection) Recv good ids for %d<->%d from %d", msg->drone_id_a, msg->drone_id_b, msg->sender_id);
+
+    lcm_mutex.lock();
+    good_loops_set[msg->drone_id_a][msg->drone_id_b].clear();
+    good_loops_set[msg->drone_id_b][msg->drone_id_a].clear();
+
+    for (int i = 0; i < msg->inlier_id_size; i ++) {
+        good_loops_set[msg->drone_id_a][msg->drone_id_b].insert(i);
+        good_loops_set[msg->drone_id_b][msg->drone_id_a].insert(i);
+    }
+    lcm_mutex.unlock();
 }
 
 
-std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(const std::vector<Swarm::LoopEdge> & available_loops) {
+std::vector<int64_t> SwarmLocalOutlierRejection::good_loops() {
+    lcm_mutex.lock();
+    std::vector<int64_t> ret;
+    for (auto & it1: good_loops_set) {
+        for (auto & it2: it1.second) {
+            for (auto it3: it2.second) {
+                ret.push_back(it3);
+            }
+        }
+    }
+    lcm_mutex.unlock();
+    return ret;
+}
+
+void SwarmLocalOutlierRejection::broadcast_good_loops(ros::Time stamp, int id_a, int id_b) {
+    LoopInliers_t msg;
+    if (good_loops_set.find(id_a) != good_loops_set.end()) {
+        if (good_loops_set.find(id_b) != good_loops_set.end()) {
+            for (auto _id : good_loops_set[id_a][id_b]) {
+                msg.inlier_ids.push_back(_id);
+            }
+        }
+    }
+    msg.drone_id_a = id_a;
+    msg.drone_id_b = id_b;
+    msg.sender_id = self_id;
+    msg.ts = toLCMTime(stamp);
+    msg.inlier_id_size = msg.inlier_ids.size();
+    lcm.publish("LOOP_INLIERS", &msg);
+
+    static double sum_byte_sent = 0;
+    static int count_byte_sent = 0;
+    sum_byte_sent+= msg.getEncodedSize();
+    count_byte_sent ++;
+    ROS_INFO("[SWARM_LOCAL](%d) BD inliers %d bytes %d avg %.0f sumkB %.0f", 
+            count_byte_sent,  msg.inlier_id_size, msg.getEncodedSize(), ceil(sum_byte_sent/count_byte_sent), sum_byte_sent/1000);
+
+}
+
+std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdges(ros::Time stamp, const std::vector<Swarm::LoopEdge> & available_loops) {
     if (param.debug_write_pcm_errors) {
         pcm_errors.open("/root/output/pcm_errors.txt", std::ios::app);
         f_logs = fopen("/root/output/pcm_logs.txt", "a");
@@ -38,23 +112,50 @@ std::vector<Swarm::LoopEdge> SwarmLocalOutlierRejection::OutlierRejectionLoopEdg
             if (all_loop_map.find(edge.id) == all_loop_map.end()) {
                 all_loop_map[edge.id] = edge;
             }
+
+            all_loops_set_by_pair[edge.id_a][edge.id_b].insert(edge.id);
+            all_loops_set_by_pair[edge.id_b][edge.id_a].insert(edge.id);
+
         }
     }
 
-    for (auto it_a: new_loops) {
-        for (auto it_b: it_a.second) {
-            if (it_a.first >= it_b.first) {
-                OutlierRejectionLoopEdgesPCM(it_b.second, it_a.first, it_b.first);
+    if (param.redundant) {
+        for (auto it_a: new_loops) {
+            for (auto it_b: it_a.second) {
+                if (it_a.first >= it_b.first) {
+                    OutlierRejectionLoopEdgesPCM(it_b.second, it_a.first, it_b.first);
+                }
+            }
+        }
+    } else {
+        for (auto it_a: new_loops) {
+            for (auto it_b: it_a.second) {
+                if (it_a.first == self_id) {
+                    OutlierRejectionLoopEdgesPCM(it_b.second, it_a.first, it_b.first);
+                    broadcast_good_loops(stamp, it_a.first, it_b.first);
+                }
             }
         }
     }
 
+    lcm_mutex.lock();
     for (auto & loop : available_loops) {
-        auto _good_loops_set = good_loops_set[loop.id_a][loop.id_b];
-        if (_good_loops_set.find(loop.id) != _good_loops_set.end()) {
+        auto id_a = loop.id_a;
+        auto id_b = loop.id_b;
+
+        if (good_loops_set.find(id_a) == good_loops_set.end() || good_loops_set[id_a].find(id_b) == good_loops_set[id_a].end()) {
+            //The inlier set of the pair in good loop not established, so we make use all of them
+            // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d not exist self_id %d, assume all is right", id_a, id_b, self_id);
             good_loops.emplace_back(loop);
+        } else {
+            // ROS_INFO("[SWARM_LOCAL](OutlierRejection) Drone pair %d<->%d exist with %d res, use it", id_a, id_b, good_loops_set[loop.id_a][loop.id_b].size());
+            auto _good_loops_set = good_loops_set[loop.id_a][loop.id_b];
+            if (_good_loops_set.find(loop.id) != _good_loops_set.end()) {
+                good_loops.emplace_back(loop);
+            }
         }
     }
+    lcm_mutex.unlock();
 
     if (param.debug_write_pcm_errors) {
         pcm_errors.close();
@@ -73,7 +174,6 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
     std::map<FrameIdType, int> bad_pair_count;
 
     auto & pcm_graph = loop_pcm_graph[id_a][id_b];
-    auto & _all_loop_set = all_loops_set_by_pair[id_a][id_b];
     auto & _all_loops = all_loops[id_a][id_b];
 
     TicToc tic1;
@@ -169,7 +269,6 @@ void SwarmLocalOutlierRejection::OutlierRejectionLoopEdgesPCM(const std::vector<
             }
         }
         _all_loops.push_back(edge1);
-        _all_loop_set.insert(edge1.id);
         all_loops_set.insert(edge1.id);
     }
 

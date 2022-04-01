@@ -106,6 +106,7 @@ class SwarmLocalSim {
 
     int mission_type = ParalCirc; // Draw circle,
     int initial_setup = 0; // Parallel on y
+    int initial_pattern = 0;
 
     ros::Time last_send_det;
     ros::Time last_send_loop;
@@ -134,6 +135,8 @@ class SwarmLocalSim {
     double initial_t = 10;
     double kf_dis_thres = 0.5;
 
+    int col_width = 1;
+
 public:
     SwarmLocalSim(ros::NodeHandle & nh):
         poses_index(3), last_send_det(0), last_send_loop(0){
@@ -142,6 +145,7 @@ public:
         std::string extrinsic_path, camera_config_file;
 
         nh.param<int>("mission_type", mission_type, 0);
+        nh.param<int>("initial_pattern", initial_pattern, 0);
         nh.param<double>("distance_measurement_cov", uwb_cov, 0);
         nh.param<double>("vo_cov_pos_per_meter", vo_cov_pos_per_meter, 0);
         nh.param<double>("vo_cov_yaw_per_meter", vo_cov_yaw_per_meter, 0);
@@ -158,12 +162,14 @@ public:
 
         nh.param<bool>("only_front", det_only_front, false);
         nh.param<double>("loop_max_distance", loop_max_distance, 2.0);
+        nh.param<double>("det_max_distance", max_distance_det, 2.0);
         nh.param<double>("circle_radius", circle_radius, 20);
         nh.param<double>("circle_radius_z", circle_radius_z, 5);
         nh.param<double>("circle_T", circle_T, 50);
         nh.param<double>("initial_dis", initial_dis, 1.0);
         nh.param<double>("initial_t", initial_t, 10);
         nh.param<double>("max_t", max_t, 10);
+        nh.param<double>("min_distance_det", min_distance_det, 0.2);
         nh.param<std::string>("extrinsic_path", extrinsic_path, "");
         nh.param<std::string>("cam_file", camera_config_file, "");
         fisheye = new swarm_detector_pkg::FisheyeUndist(camera_config_file, 235, true, img_width);
@@ -195,6 +201,17 @@ public:
         double z_max = 0.115;
         double z_min = -0.071;
         double z_mid = 0.05;
+
+        col_width = drone_num;
+        if (initial_pattern == 1) {
+            col_width = ceil(sqrtf(drone_num));
+        }
+
+        if (col_width < 2) {
+            col_width = 2;
+        }
+
+        ROS_INFO("Simulator grid col width %d", col_width);
 
     
         Vector3d Gc_imu = Vector3d(-0.06, 0, 0.00);
@@ -427,10 +444,10 @@ public:
         Swarm::Pose rel_pose = rp_gt * random_pose_4dof(loop_cov_pos, loop_cov_ang);
         ret.relative_pose = rel_pose.to_ros_pose();
 
-        ret.id_a = ida;
+        ret.drone_id_a = ida;
         ret.ts_a = ta;
 
-        ret.id_b = idb;
+        ret.drone_id_b = idb;
         ret.ts_b = tb;
 
         ret.self_pose_a = ego_posea.to_ros_pose();
@@ -539,7 +556,7 @@ public:
             Swarm::Pose ego_pose = ego_motion_trajs[i].get_latest_pose();
             swarm_msgs::node_frame nf;
             nf.header.stamp = stamp;
-            nf.id = i;
+            nf.drone_id = i;
             nf.keyframe_id = kf_id*100 + i;
             nf.position.x = ego_pose.pos().x();
             nf.position.y = ego_pose.pos().y();
@@ -571,15 +588,15 @@ public:
         double t = _t - initial_t;
         if (mission_type == ParalCirc) {
             if (_t > initial_t) {
-                double x = circle_radius * sin(2*M_PI*t/circle_T);
-                double y = circle_radius * (1 - cos(2*M_PI*t/circle_T)) + i * initial_dis;
+                double x = circle_radius * sin(2*M_PI*t/circle_T)  + (i / col_width)* initial_dis;
+                double y = circle_radius * (1 - cos(2*M_PI*t/circle_T)) + (i%col_width) * initial_dis;
                 double z = circle_radius_z * sin(2*M_PI*t/circle_T);
 
                 Swarm::Pose pose_gt(Eigen::Vector3d(x, y, z), 0);
                 ground_truth_trajs[i].push(stamp, pose_gt);
             } else {
-                double x = 0;
-                double y = i * initial_dis;
+                double x = (i / col_width)* initial_dis;
+                double y = (i%col_width) * initial_dis;
                 double z = 0;
                 Swarm::Pose pose_gt(Eigen::Vector3d(x, y, z), 0);
                 ground_truth_trajs[i].push(stamp, pose_gt);

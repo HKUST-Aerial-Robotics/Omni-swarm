@@ -3,7 +3,6 @@
 int JPG_QUALITY;
 
 int INIT_MODE_MIN_LOOP_NUM; //Init mode we accepte this inlier number
-int INIT_MODE_MIN_LOOP_NUM_LEVEL2;
 int MIN_LOOP_NUM;
 bool ENABLE_LK_LOOP_DETECTION;
 
@@ -29,3 +28,9 @@ double odometry_consistency_threshold;
 double pos_covariance_per_meter;
 double yaw_covariance_per_meter;
 bool DEBUG_NO_REJECT;
+int width;
+int height;
+int inter_drone_init_frames;
+bool is_4dof;
+
+double ACCEPT_NONKEYFRAME_WAITSEC;

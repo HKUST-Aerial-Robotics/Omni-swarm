@@ -37,14 +37,14 @@ public:
         };
 
         loop_net->loopconn_callback = [&] (const LoopEdge_t & loop_conn) {
-            ROS_INFO("Received loop from %d to %d", loop_conn.id_a, loop_conn.id_b);
+            ROS_INFO("Received loop from %d to %d", loop_conn.drone_id_a, loop_conn.drone_id_b);
         };
         
         timer = nh.createTimer(ros::Duration(0.03), &SwarmLoopSpy::timer_callback, this);
     }
 
       void on_loop_connection (LoopEdge & loop_con, bool is_local = false) {
-        ROS_INFO("Loop conn from %d to %d", loop_con.id_a, loop_con.id_b);
+        ROS_INFO("Loop conn from %d to %d", loop_con.drone_id_a, loop_con.drone_id_b);
     }
 
     void timer_callback(const ros::TimerEvent & e) {

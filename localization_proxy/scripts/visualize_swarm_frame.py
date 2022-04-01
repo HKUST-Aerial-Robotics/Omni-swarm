@@ -32,14 +32,14 @@ class visuallizer:
                 odom.pose.pose.position = _nf.position
                 odom.twist.twist.linear = _nf.velocity
                 odom.header.frame_id = "world"
-                self.node_vo_predict_pub[_nf.id].publish(odom)
-                # if _nf.id == 3:
+                self.node_vo_predict_pub[_nf.drone_id].publish(odom)
+                # if _nf.drone_id == 3:
                     # print(_nf.position.z)
                 for d in _nf.detected:
                     if d.self_drone_id == 3 or d.remote_drone_id == 3:
                         # detected.append("Z {} CAM {} MAR {} DZ {}".format(_nf.position.z, d.self_drone_id, d.remote_drone_id, d.dpos.z))
                         detected.append(sf)
-                        if _nf.id ==0 :
+                        if _nf.drone_id ==0 :
                             p = Pose()
                             p.position.x = odom.pose.pose.position.x + d.dpos.x
                             p.position.y = odom.pose.pose.position.y + d.dpos.y

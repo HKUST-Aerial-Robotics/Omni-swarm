@@ -2,6 +2,7 @@
     <arg name="cam_file" default="$(find swarm_detector)/config/ptgrey_17591762_camera_calib.yaml" />
     <arg name="extrinsic_path" default="/home/xuhao/swarm_ws/src/VINS-Fisheye/config/fisheye_ptgrey_n3/fisheye_cuda.yaml" />
     <arg name="drone_num" default="10" />
+    <arg name="self_id" default="0" />
     <arg name="output" default="screen" />
     <arg name="detector" default="true" />
     <arg name="loop" default="true" />
@@ -18,6 +19,8 @@
     <arg name="viz" default="false" />
     <arg name="node_start_delay" default="3.0" />  
     <arg name="mission_type" default="0" />  
+    <arg name="initial_dis" default="1.0" />  
+    <arg name="initial_pattern" default="0" />  
 
     <node pkg="swarm_localization" name="swarm_local_sim" type="swarm_localization_simulator" output="log"  launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' "  >
         <param name="extrinsic_path" type="string" value="$(arg extrinsic_path)" />
@@ -25,6 +28,8 @@
         <param name="drone_num" type="int" value="$(arg drone_num)" />
         <param name="only_front" type="bool" value="$(arg debug_only_front)" />
         <param name="mission_type" type="int" value="$(arg mission_type)" />
+        <param name="initial_dis" type="double" value="$(arg initial_dis)" />
+        <param name="initial_pattern" type="int" value="$(arg initial_pattern)" />
         <rosparam>
             # vo_cov_pos_per_meter: 0.0009 #OK VO on PC, 600 width
             # vo_cov_yaw_per_meter: 0.00005 #OK VO on PC, 600 width
@@ -49,15 +54,18 @@
             circle_radius: 5
             circle_radius_z: 2
             circle_T: 50
-            initial_dis: 1.0
             initial_t: 20
             max_t: 201
+            min_distance_det: 0.2
+            loop_max_distance: 10 #For dense
+            det_max_distance: 10.0 #For dense
         </rosparam>
     </node>
     
     <include file="$(find swarm_localization)/launch/loop-5-sim.launch" >
         <arg name="output" value="screen" />
         <arg name="viz" value="$(arg viz)" />
+        <arg name="self_id" value="$(arg self_id)" />
         <arg name="cgraph_path" value="/root/output/graph.dot" />
         <arg name="cgraph" value="$(arg cgraph)" />
         <arg name="enable_distance" value="$(arg distance)" />

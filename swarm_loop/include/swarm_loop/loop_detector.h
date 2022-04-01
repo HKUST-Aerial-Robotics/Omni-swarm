@@ -30,6 +30,7 @@ protected:
 
     std::map<int, int64_t> imgid2fisheye;
     std::map<int, int> imgid2dir;
+    std::map<int, std::map<int, int>> inter_drone_loop_count;
 
     std::map<int64_t, FisheyeFrameDescriptor_t> fisheyeframe_database;
 

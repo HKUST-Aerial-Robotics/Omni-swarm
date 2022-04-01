@@ -68,17 +68,17 @@ class SwarmLocalizationNode {
 
     NodeFrame node_frame_from_msg(const swarm_msgs::node_frame &_nf) const {
         //TODO: Deal with global pose
-        if (!nodedef_has_id(_nf.id)) {
-            ROS_ERROR("No such node %d", _nf.id);
+        if (!nodedef_has_id(_nf.drone_id)) {
+            ROS_ERROR("No such node %d", _nf.drone_id);
             exit(-1);
         }
-        NodeFrame nf(all_node_defs.at(_nf.id));
+        NodeFrame nf(all_node_defs.at(_nf.drone_id));
         nf.stamp = _nf.header.stamp;
         nf.ts = nf.stamp.toNSec();
         nf.frame_available = true;
         nf.vo_available = _nf.vo_available;
         nf.dists_available = !_nf.dismap_ids.empty();
-        nf.id = _nf.id;
+        nf.drone_id = _nf.drone_id;
 
         assert(_nf.dismap_ids.size() == _nf.dismap_dists.size() && "Dismap ids and distance must equal size");
 
@@ -92,13 +92,13 @@ class SwarmLocalizationNode {
 
         if (nf.vo_available) {
             nf.self_pose = Pose(_nf.position, _nf.quat);
-            // ROS_WARN("Node %d vo valid", _nf.id);
+            // ROS_WARN("Node %d vo valid", _nf.drone_id);
             nf.is_valid = true;
 
         } else {
             if (nf.node->has_odometry()) {
-                // ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.id);
-                // ROS_WARN("Node %d invalid: No vo now", _nf.id);
+                // ROS_WARN_THROTTLE(1.0, "Node %d invalid: No vo now", _nf.drone_id);
+                // ROS_WARN("Node %d invalid: No vo now", _nf.drone_id);
             }
             nf.is_valid = false;
         }
@@ -119,15 +119,15 @@ class SwarmLocalizationNode {
         sf.self_id = _sf.self_id;
 
         for (const swarm_msgs::node_frame &_nf: _sf.node_frames) {
-            if (nodedef_has_id(_nf.id)) {
+            if (nodedef_has_id(_nf.drone_id)) {
                 NodeFrame nf = node_frame_from_msg(_nf);
                 //Set nf ts to sf ts here; Trick for early version
                 nf.ts = sf.ts;
 
                 if (nf.is_static || (!nf.is_static && nf.vo_available)) { //If not static then must has vo
-                    sf.id2nodeframe[_nf.id] = nf;
-                    sf.node_id_list.insert(_nf.id);
-                    sf.dis_mat[_nf.id] = sf.id2nodeframe[_nf.id].dis_map;
+                    sf.id2nodeframe[_nf.drone_id] = nf;
+                    sf.node_id_list.insert(_nf.drone_id);
+                    sf.dis_mat[_nf.drone_id] = sf.id2nodeframe[_nf.drone_id].dis_map;
                 }
             }
         }
@@ -137,7 +137,7 @@ class SwarmLocalizationNode {
 
 
     void on_loop_connection_received(const swarm_msgs::LoopEdge & loop_conn) {
-        ROS_INFO("Add new loop connection from %d to %d", loop_conn.id_a, loop_conn.id_b);
+        ROS_INFO("Add new loop connection from %d to %d", loop_conn.drone_id_a, loop_conn.drone_id_b);
         this->swarm_localization_solver->add_new_loop_connection(loop_conn);
     }
 
@@ -159,7 +159,7 @@ protected:
         int _self_id = _sf.self_id;
         frame_id = "world";
 
-        swarm_localization_solver->self_id = _self_id;
+        assert(self_id == _self_id && "self_id must be equal!");
 
         if (remote_ids_arr.empty()) {
             //This is first time of receive data
@@ -460,6 +460,8 @@ public:
 
         swarm_localization_solver_params solver_params;
 
+        nh.param<int>("self_id", self_id, -1);
+        solver_params.self_id = self_id;
         nh.param<int>("max_keyframe_num", solver_params.max_frame_number, 50);
         nh.param<int>("dense_keyframe_num", solver_params.dense_frame_number, 20);
         nh.param<int>("min_keyframe_num", solver_params.min_frame_number, 3);
@@ -475,6 +477,7 @@ public:
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_pcm_errors, false);
         nh.param<bool>("pcm_enable_debug_file", solver_params.outlier_rejection_params.debug_write_debug, false);
         nh.param<bool>("pcm_enable", solver_params.outlier_rejection_params.enable_pcm, true);
+        nh.param<bool>("pcm_redundant", solver_params.outlier_rejection_params.redundant, false);
         nh.param<float>("loop_outlier_distance_threshold", solver_params.loop_outlier_distance_threshold, 2.0f);
         nh.param<float>("DA_accept_thres", solver_params.DA_accept_thres, 3.345f);
         nh.param<bool>("debug_no_rejection", solver_params.debug_no_rejection, false);

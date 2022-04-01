@@ -25,7 +25,7 @@ protected:
     bool debug_image = false;
     double min_movement_keyframe = 0.3;
     int self_id = 0;
-    bool recived_image = false;
+    bool received_image = false;
     ros::Time last_kftime;
     Eigen::Vector3d last_keyframe_position = Eigen::Vector3d(10000, 10000, 10000);
 
