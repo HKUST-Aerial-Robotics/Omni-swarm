@@ -61,5 +61,10 @@ Add __bag_replay:=true__ only when evaluation dataset, when evaluate pre-process
 Some analysis tools is located in [DataAnalysis](swarm_localization/DataAnalysis)
 ![](./doc/ob-Traj2.png)
 
+## Docker and dataset
+To evaluate the program, a recommended way is by using a docker. We provide a runnable docker on docker hub: xuhao1/swarm2020:pc
+Due to the limitation of the TensorRT engine adopted in the frontend to accelerate the CNNs, the docker is restricted to running with an RTX 3080 or similar graphic card. We are working on migrating
+ an onnxruntime version for CNNs referencing and a buildable docker file, which will be released very soon.
+ Datasets will be release at https://1drv.ms/u/s!AnAU3eHDkI18rB_f4X8d6SJL-T0_?e=k2sP8m
 ## LICENSE
 GPLV3
