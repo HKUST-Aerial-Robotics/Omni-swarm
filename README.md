@@ -62,7 +62,8 @@ Some analysis tools is located in [DataAnalysis](swarm_localization/DataAnalysis
 ![](./doc/ob-Traj2.png)
 
 ## Docker
-To evaluate the program, a recommended way is by using a docker. We provide a runnable docker on docker hub: xuhao1/swarm2020:pc
+To evaluate the program, a recommended way is by using a docker. We provide a runnable docker on docker hub, TAG is xuhao1/swarm2020:pc.
+
 Due to the limitation of the TensorRT engine adopted in the frontend to accelerate the CNNs, the docker is restricted to running with an RTX 3080 or similar graphic card. We are working on migrating an onnxruntime version for CNNs referencing and a buildable docker file, which will be released very soon.
 ## LICENSE
 GPLV3
