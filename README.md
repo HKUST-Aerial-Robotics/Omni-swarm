@@ -24,7 +24,7 @@ The Omni-swarm offical support TX2 with Ubuntu 18.04. For those running on other
 
 [Here](https://www.dropbox.com/s/skq1vgfeawiw151/models.zip?dl=0) to download the CNN models for Omni-swarm and extract it to swarm_loop folder.
 
-[Here](https://www.dropbox.com/sh/yrm3ga7swrbx96i/AACqIMY55H2B5C_HKEwsMJYVa?dl=0) to get the raw and preprocessed offical omni-directional and pinole dataset.
+[Here](https://1drv.ms/u/s!AnAU3eHDkI18rB_f4X8d6SJL-T0_?e=k2sP8m) to get the raw and preprocessed offical omni-directional and pinole dataset.
 
 [swarm_msgs](https://github.com/HKUST-Swarm/swarm_msgs) [inf_uwb_ros](https://github.com/HKUST-Swarm/inf_uwb_ros) are compulsory.
 And [swarm_detector](https://github.com/HKUST-Swarm/swarm_detector) if you want to use detector, 
@@ -61,10 +61,8 @@ Add __bag_replay:=true__ only when evaluation dataset, when evaluate pre-process
 Some analysis tools is located in [DataAnalysis](swarm_localization/DataAnalysis)
 ![](./doc/ob-Traj2.png)
 
-## Docker and dataset
+## Docker
 To evaluate the program, a recommended way is by using a docker. We provide a runnable docker on docker hub: xuhao1/swarm2020:pc
-Due to the limitation of the TensorRT engine adopted in the frontend to accelerate the CNNs, the docker is restricted to running with an RTX 3080 or similar graphic card. We are working on migrating
- an onnxruntime version for CNNs referencing and a buildable docker file, which will be released very soon.
- Datasets will be release at https://1drv.ms/u/s!AnAU3eHDkI18rB_f4X8d6SJL-T0_?e=k2sP8m
+Due to the limitation of the TensorRT engine adopted in the frontend to accelerate the CNNs, the docker is restricted to running with an RTX 3080 or similar graphic card. We are working on migrating an onnxruntime version for CNNs referencing and a buildable docker file, which will be released very soon.
 ## LICENSE
 GPLV3
