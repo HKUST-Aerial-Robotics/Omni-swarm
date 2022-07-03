@@ -26,7 +26,7 @@ The Omni-swarm offical support TX2 with Ubuntu 18.04. For those running on other
 
 [Here](https://www.dropbox.com/s/skq1vgfeawiw151/models.zip?dl=0) to download the CNN models for Omni-swarm and extract it to swarm_loop folder.
 
-[Here](https://1drv.ms/u/s!AnAU3eHDkI18rB_f4X8d6SJL-T0_?e=k2sP8m) to get the raw and preprocessed offical omni-directional and pinole dataset.
+[Here](https://www.dropbox.com/sh/ln35vb8b73kiwpo/AAAg5zMe8EmxLt2a9xiRCzjPa?dl=0) to get the raw and preprocessed offical omni-directional and pinole dataset.
 
 [swarm_msgs](https://github.com/HKUST-Swarm/swarm_msgs) [inf_uwb_ros](https://github.com/HKUST-Swarm/inf_uwb_ros) are compulsory.
 And [swarm_detector](https://github.com/HKUST-Swarm/swarm_detector) if you want to use detector, 
